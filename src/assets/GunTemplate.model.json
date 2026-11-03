@@ -1,0 +1,14 @@
+{
+  "className": "Part",
+  "properties": {
+    "Size": [0.5, 0.5, 2.2],
+    "Color": [0.6, 0.63, 0.66],
+    "Material": "Metal",
+    "Anchored": true,
+    "CanCollide": false,
+    "CanQuery": false,
+    "CanTouch": false,
+    "TopSurface": "Smooth",
+    "BottomSurface": "Smooth"
+  }
+}

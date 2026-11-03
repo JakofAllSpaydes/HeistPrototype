@@ -1,0 +1,48 @@
+{
+  "className": "Model",
+  "children": [
+    {
+      "name": "HumanoidRootPart",
+      "className": "Part",
+      "properties": {
+        "Size": [2, 4.5, 2],
+        "Color": [0.16, 0.16, 0.19],
+        "Material": "SmoothPlastic",
+        "Anchored": false,
+        "CanCollide": true,
+        "TopSurface": "Smooth",
+        "BottomSurface": "Smooth"
+      }
+    },
+    {
+      "name": "Head",
+      "className": "Part",
+      "properties": {
+        "Size": [1.6, 1.6, 1.6],
+        "Color": [0.85, 0.15, 0.15],
+        "Material": "Neon",
+        "Anchored": false,
+        "CanCollide": false,
+        "Massless": true,
+        "TopSurface": "Smooth",
+        "BottomSurface": "Smooth"
+      }
+    },
+    {
+      "name": "Humanoid",
+      "className": "Humanoid",
+      "properties": {
+        "RigType": "R15",
+        "HipHeight": 0.5,
+        "RequiresNeck": false,
+        "BreakJointsOnDeath": false,
+        "AutoRotate": true,
+        "MaxHealth": 1000000000,
+        "Health": 1000000000,
+        "DisplayDistanceType": "None",
+        "HealthDisplayType": "AlwaysOff",
+        "NameDisplayDistance": 0
+      }
+    }
+  ]
+}

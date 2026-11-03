@@ -1,0 +1,31 @@
+{
+  "className": "Model",
+  "children": [
+    {
+      "name": "Body",
+      "className": "Part",
+      "properties": {
+        "Size": [6, 4, 6],
+        "Color": [0.36, 0.28, 0.16],
+        "Material": "WoodPlanks",
+        "Anchored": true,
+        "CanCollide": true,
+        "TopSurface": "Smooth",
+        "BottomSurface": "Smooth"
+      }
+    },
+    {
+      "name": "Lid",
+      "className": "Part",
+      "properties": {
+        "Size": [6, 0.4, 6],
+        "Color": [0.91, 0.71, 0.3],
+        "Material": "Metal",
+        "Anchored": true,
+        "CanCollide": false,
+        "TopSurface": "Smooth",
+        "BottomSurface": "Smooth"
+      }
+    }
+  ]
+}
