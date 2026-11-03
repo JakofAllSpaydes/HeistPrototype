@@ -1,0 +1,69 @@
+--!strict
+-- Fixed right-shoulder third person, mouse look, shift-lock style. No first person.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local ClientState = require(script.Parent:WaitForChild("ClientState"))
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera :: Camera
+
+local yaw = 0
+local pitch = -0.12
+local PITCH_MIN, PITCH_MAX = -1.2, 0.9
+local SHOULDER = Vector3.new(2.6, 1.2, 8) -- right, up, back
+
+UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed: boolean)
+	if ClientState.blocked() then
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		yaw -= input.Delta.X * Config.MouseSensitivity
+		pitch = math.clamp(pitch - input.Delta.Y * Config.MouseSensitivity, PITCH_MIN, PITCH_MAX)
+	elseif input.UserInputType == Enum.UserInputType.Touch and not gameProcessed then
+		yaw -= input.Delta.X * Config.TouchSensitivity
+		pitch = math.clamp(pitch - input.Delta.Y * Config.TouchSensitivity, PITCH_MIN, PITCH_MAX)
+	end
+end)
+
+local params = RaycastParams.new()
+params.FilterType = Enum.RaycastFilterType.Exclude
+
+RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function()
+	camera.CameraType = Enum.CameraType.Scriptable
+	local free = ClientState.blocked()
+	UserInputService.MouseBehavior = if free then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
+	UserInputService.MouseIconEnabled = free
+
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not char or not root then
+		return
+	end
+
+	local rot = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)
+	local pivot = root.Position + Vector3.new(0, 1.5, 0)
+	local desired = pivot + rot:VectorToWorldSpace(SHOULDER)
+	local filter: { Instance } = { char }
+	for _, name in { "GroundLoot", "Effects" } do
+		local f = Workspace:FindFirstChild(name)
+		if f then
+			table.insert(filter, f)
+		end
+	end
+	params.FilterDescendantsInstances = filter
+	local hit = Workspace:Raycast(pivot, desired - pivot, params)
+	local camPos = if hit then hit.Position + (pivot - desired).Unit * 0.6 else desired
+	camera.CFrame = CFrame.new(camPos) * rot
+	camera.Focus = CFrame.new(pivot)
+
+	if hum and hum.Health > 0 then
+		hum.AutoRotate = false
+		root.CFrame = CFrame.new(root.Position) * CFrame.fromEulerAnglesYXZ(0, yaw, 0)
+	end
+end)
