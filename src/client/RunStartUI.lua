@@ -28,8 +28,12 @@ local function easeOut(s: number): number
 	return 1 - (1 - s) * (1 - s)
 end
 
-local function charOf(userId: number): Model?
-	local p = Players:GetPlayerByUserId(userId)
+-- A roster entry's character: a dummy's model, or the player's character.
+function RunStartUI.charFor(entry: any): Model?
+	if typeof(entry.model) == "Instance" then
+		return entry.model
+	end
+	local p = Players:GetPlayerByUserId(tonumber(entry.userId) or 0)
 	return if p then p.Character else nil
 end
 
@@ -155,7 +159,7 @@ local function step(_dt: number)
 	elseif t < beats.poses then
 		once("masks", function()
 			for _, entry in d.players do
-				RunStartUI.playAnim(charOf(entry.userId), Config.MaskOnAnimationId, beats.poses - beats.masks)
+				RunStartUI.playAnim(RunStartUI.charFor(entry), Config.MaskOnAnimationId, beats.poses - beats.masks)
 			end
 			UI.sound(Theme.Sounds.swap, 1.1, 0.5)
 		end)
@@ -167,7 +171,7 @@ local function step(_dt: number)
 				local pose = Config.Poses[entry.pose] or Config.Poses[1]
 				task.delay(Config.PoseStagger * (i - 1), function()
 					if data == d then
-						RunStartUI.playAnim(charOf(entry.userId), pose.animationId, pose.holdSec)
+						RunStartUI.playAnim(RunStartUI.charFor(entry), pose.animationId, pose.holdSec)
 					end
 				end)
 			end

@@ -159,12 +159,15 @@ task.spawn(function()
 		Remotes.Juice:FireAllClients("RunOver", {
 			wave = World.wave,
 			slowSec = Config.RunOverSlowSec,
+			holdSec = Config.RunOverHoldSec,
 			timeScale = Config.RunOverTimeScale,
 		})
 		Enemy.freezeAll(Config.RunOverSlowSec)
 		Log.event("Run", "Run %d over at wave %d", World.runId, World.wave)
 		task.wait(Config.RunOverSlowSec)
 		Enemy.killAll()
+		-- The red screen and stamp run their course before the cutscene cuts in.
+		task.wait(Config.RunOverHoldSec)
 
 		-- Run end sequence, MVP, summary (PLAY AGAIN / TO LOBBY both lead back to the yard).
 		setState("RunEnd")

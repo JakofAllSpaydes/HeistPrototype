@@ -1,9 +1,9 @@
 --!strict
--- Run end timeline (beats in Config.RunEndBeats), after the RUN OVER stamp, in the arena spawn zone.
--- The server lines everyone up at the van with a fresh character, cash bag and mask, hangs a KILLS · $CASH
--- tag over each head, rains bills scaled to Total Banked, picks the MVP, then holds the Summary state until
--- a summary button is pressed or SummaryAutoLobbySec passes. Clients run the camera, poses, MVP stamp and
--- the summary panel off the same clock (RunEndUI).
+-- Run end timeline (beats in Config.RunEndBeats), after the RUN OVER beat, in the arena spawn zone.
+-- The server lines everyone up (plus dummies up to SquadSize) with a fresh character, cash bag and mask,
+-- hangs a KILLS · $CASH tag over each head, rains bills scaled to Total Banked, picks the MVP, then holds
+-- the Summary state until a summary button is pressed or SummaryAutoLobbySec passes. Clients run the
+-- camera, poses, MVP stamp and the summary panel off the same clock (RunEndUI).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -16,6 +16,7 @@ local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
 local RunStart = require(script.Parent.RunStart)
 local Staging = require(script.Parent.Staging)
+local Squad = require(script.Parent.Squad)
 
 local RunEnd = {}
 
@@ -34,12 +35,12 @@ export type Row = {
 	reviveAll: number,
 	score: number,
 	lineIndex: number,
+	model: Model?, -- dummies only
+	dummy: boolean?,
 }
 
-function RunEnd.mvpScore(state: PlayerState.State): number
-	return state.kills * Config.MvpKillWeight
-		+ state.cashCollected * Config.MvpCashWeight
-		+ state.revives * Config.MvpReviveWeight
+function RunEnd.mvpScore(kills: number, cash: number, revives: number): number
+	return kills * Config.MvpKillWeight + cash * Config.MvpCashWeight + revives * Config.MvpReviveWeight
 end
 
 -- The stat line under the MVP stamp: whichever term carried the score.
@@ -50,7 +51,7 @@ local function statLine(row: Row): string
 	if r > k and r > c then
 		return string.format("%d REVIVES", row.revives)
 	elseif c > k then
-		return string.format("$%s BANKED", tostring(row.cash))
+		return string.format("$%d BANKED", row.cash)
 	end
 	return string.format("%d KILLS", row.kills)
 end
@@ -125,6 +126,21 @@ local function cashBag(char: Model)
 	stripe.Parent = char
 end
 
+-- Line-up dressing for any character: anchored at its slot, mask on, bag, tag.
+local function dress(char: Model, cf: CFrame, row: Row)
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		char:PivotTo(cf)
+		root.Anchored = true
+	end
+	local head = char:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		head.Color = Color3.fromHex(row.maskColor)
+	end
+	cashBag(char)
+	headTag(char, row)
+end
+
 local function rain(center: Vector3, count: number, seconds: number)
 	local bills: { BasePart } = {}
 	-- Spread the drop over `seconds`: a batch every tick, ~20 ticks a second.
@@ -155,25 +171,44 @@ local function rain(center: Vector3, count: number, seconds: number)
 	end)
 end
 
+-- Dummy rows carry plausible numbers under the best real player, so the layout reads like a 4-man run.
+local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, topCash: number): Row
+	local kills = math.floor(topKills * (0.4 + math.random() * 0.5))
+	local cash = math.floor(topCash * (0.4 + math.random() * 0.5))
+	local revives = math.random(0, 2)
+	return {
+		userId = -k,
+		name = d.name,
+		pose = d.pose,
+		maskColor = d.maskColor,
+		kills = kills,
+		cash = cash,
+		revives = revives,
+		downs = math.random(0, 2),
+		selfRevives = 0,
+		reviveAll = 0,
+		score = RunEnd.mvpScore(kills, cash, revives),
+		lineIndex = i,
+		model = d.model,
+		dummy = true,
+	}
+end
+
 -- Yields through the sequence and the summary. Returns "again" | "lobby".
 function RunEnd.play(): string
 	Staging.clearArena()
 	local players = RunStart.roster()
-	local n = #players
+	local dummyCount = RunStart.dummyCount()
+	local n = #players + dummyCount
 	local beats = Config.RunEndBeats
-	local vanTo = RunStart.vanBrake()
-	local van = Room.van
-	if van then
-		van:PivotTo(vanTo)
-	end
 
-	-- Rows, MVP, totals.
+	-- Real rows and totals.
 	local rows: { Row } = {}
 	local total = 0
-	local mvp: Row? = nil
+	local topKills, topCash = 0, 0
 	for i, p in players do
 		local s = PlayerState.get(p)
-		local row: Row = {
+		rows[i] = {
 			userId = p.UserId,
 			name = p.Name,
 			pose = s.pose,
@@ -184,11 +219,51 @@ function RunEnd.play(): string
 			downs = s.downs,
 			selfRevives = s.selfRevives,
 			reviveAll = s.reviveAllUsed,
-			score = RunEnd.mvpScore(s),
+			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}
-		rows[i] = row
 		total += s.cashCollected
+		topKills = math.max(topKills, s.kills)
+		topCash = math.max(topCash, s.cashCollected)
+	end
+	if topKills == 0 and topCash == 0 then
+		-- Debug skip with nothing earned: give the dummies something to show.
+		topKills = World.wave * 10
+		topCash = topKills * Config.CashPerKill
+	end
+
+	-- Everyone gets a fresh character standing in the line, anchored, bag and mask on. Dummies fill the squad.
+	local line = {}
+	for i = 1, n do
+		line[i] = RunStart.lineCFrame(i, n)
+	end
+	for i, p in players do
+		local s = PlayerState.get(p)
+		s.downed = false
+		s.bledOut = false
+		s.pendingSpawnCFrame = line[i]
+		p:LoadCharacter()
+	end
+	for i, p in players do
+		task.spawn(function()
+			local char = p.Character or p.CharacterAdded:Wait()
+			char:WaitForChild("HumanoidRootPart", 5)
+			char:WaitForChild("Humanoid", 5)
+			task.wait(0.1)
+			dress(char, line[i], rows[i])
+		end)
+	end
+	local dummies = Squad.spawn(dummyCount, #players + 1, function(slot)
+		return line[slot]
+	end)
+	for k, d in dummies do
+		local i = #players + k
+		rows[i] = dummyRow(d, i, k, topKills, topCash)
+		dress(d.model, line[i], rows[i])
+	end
+
+	local mvp: Row? = nil
+	for _, row in rows do
 		if not mvp or row.score > mvp.score then
 			mvp = row -- rows are in join order, so a tie keeps the earlier joiner
 		end
@@ -196,45 +271,17 @@ function RunEnd.play(): string
 	local rainCount = math.clamp(math.floor(total * Config.CashRainPerBanked), 0, Config.CashRainMax)
 	local gold = math.floor(total * Config.GoldPerBanked)
 
-	-- Everyone (spectators included) gets a fresh character standing in the line, anchored, bag and mask on.
-	local line = {}
-	for i, p in players do
-		local s = PlayerState.get(p)
-		s.downed = false
-		s.bledOut = false
-		line[i] = RunStart.lineCFrame(i, n)
-		s.pendingSpawnCFrame = line[i]
-		p:LoadCharacter()
-	end
-	for i, p in players do
-		task.spawn(function()
-			local char = p.Character or p.CharacterAdded:Wait()
-			local root = char:WaitForChild("HumanoidRootPart", 5)
-			char:WaitForChild("Humanoid", 5)
-			task.wait(0.1)
-			if root and root:IsA("BasePart") then
-				char:PivotTo(line[i])
-				root.Anchored = true
-			end
-			local head = char:FindFirstChild("Head")
-			if head and head:IsA("BasePart") then
-				head.Color = Color3.fromHex(rows[i].maskColor)
-			end
-			cashBag(char)
-			headTag(char, rows[i])
-		end)
-	end
-
 	local startedAt = Workspace:GetServerTimeNow()
 	Remotes.Juice:FireAllClients("RunEndBegin", {
 		startedAt = startedAt,
 		players = rows,
-		mvp = if mvp then { userId = mvp.userId, name = mvp.name, statLine = statLine(mvp), pose = mvp.pose } else nil,
+		mvp = if mvp
+			then { userId = mvp.userId, name = mvp.name, statLine = statLine(mvp), pose = mvp.pose, model = mvp.model }
+			else nil,
 		totalBanked = total,
 		gold = gold,
 		wave = World.wave,
 		line = line,
-		van = vanTo,
 		beats = beats,
 		rainSec = Config.CashRainSec,
 		rainCount = rainCount,
@@ -244,9 +291,10 @@ function RunEnd.play(): string
 	})
 	Log.event(
 		"Run",
-		"run end: wave %d, total banked $%d, %d bills, MVP %s (%s)",
+		"run end: wave %d, total banked $%d, gold %d, %d bills, MVP %s (%s)",
 		World.wave,
 		total,
+		gold,
 		rainCount,
 		if mvp then mvp.name else "none",
 		if mvp then statLine(mvp) else ""

@@ -32,7 +32,6 @@ local gui: ScreenGui? = nil
 local dim: Frame? = nil
 local stampFrame: Frame? = nil
 local summaryShownAt = -1
-local bankedLabel: TextLabel? = nil
 local goldLabel: TextLabel? = nil
 local lobbyButton: TextButton? = nil
 local chosen = false
@@ -42,13 +41,8 @@ local function easeOut(s: number): number
 	return 1 - (1 - s) * (1 - s)
 end
 
-local function charOf(userId: number): Model?
-	local p = Players:GetPlayerByUserId(userId)
-	return if p then p.Character else nil
-end
-
-local function rootOf(userId: number): BasePart?
-	local char = charOf(userId)
+local function rootFor(entry: any): BasePart?
+	local char = RunStartUI.charFor(entry)
 	local root = char and char:FindFirstChild("HumanoidRootPart")
 	return if root and root:IsA("BasePart") then root else nil
 end
@@ -75,7 +69,6 @@ local function teardown()
 	end
 	dim = nil
 	stampFrame = nil
-	bankedLabel = nil
 	goldLabel = nil
 	lobbyButton = nil
 	summaryShownAt = -1
@@ -154,7 +147,7 @@ local function showMvp(d: any)
 	end)
 	-- The MVP's pose replays under the stamp.
 	local pose = Config.Poses[d.mvp.pose] or Config.Poses[1]
-	RunStartUI.playAnim(charOf(d.mvp.userId), pose.animationId, pose.holdSec + 1)
+	RunStartUI.playAnim(RunStartUI.charFor(d.mvp), pose.animationId, pose.holdSec + 1)
 end
 
 local function showSummary(d: any)
@@ -183,7 +176,7 @@ local function showSummary(d: any)
 	local vp = camera.ViewportSize
 	local W = math.min(math.floor(vp.X * 0.9), S(700))
 	local rowH = S(30)
-	local H = S(84) + S(24) + rowH * n + S(44) + S(72) + S(28)
+	local H = S(84) + S(24) + rowH * n + S(72) + S(28)
 	H = math.min(H, math.floor(vp.Y * 0.94))
 	local panel = UI.frame({
 		Name = "Summary",
@@ -200,9 +193,9 @@ local function showSummary(d: any)
 	UI.tween(panel, { Position = UDim2.fromScale(0.5, 0.5) }, 0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	UI.sound(Theme.Sounds.call, 1, 0.6)
 
-	-- Headline.
+	-- Headline: the meta currency this run earned (cash is the per-run currency and sits in the rows).
 	UI.text({
-		Text = "TOTAL BANKED",
+		Text = "GOLD EARNED",
 		Font = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.textDim,
@@ -212,14 +205,24 @@ local function showSummary(d: any)
 		ZIndex = 11,
 		Parent = panel,
 	})
-	bankedLabel = UI.text({
-		Text = "$0",
+	goldLabel = UI.text({
+		Text = "+0",
 		Font = Theme.Fonts.display,
 		TextSize = S(44),
-		TextColor3 = Theme.Colors.cash,
+		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(S(24), S(34)),
 		Size = UDim2.fromOffset(S(360), S(50)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	UI.text({
+		Text = "DISPLAY ONLY · NO PERSISTENCE YET",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(26), S(80)),
+		Size = UDim2.fromOffset(S(300), S(12)),
 		ZIndex = 11,
 		Parent = panel,
 	})
@@ -233,16 +236,15 @@ local function showSummary(d: any)
 
 	-- Table.
 	local cols = {
-		{ title = "CREW", w = 0.3, align = Enum.TextXAlignment.Left },
-		{ title = "POSE", w = 0.12, align = Enum.TextXAlignment.Center },
-		{ title = "KILLS", w = 0.11, align = Enum.TextXAlignment.Center },
-		{ title = "CASH", w = 0.17, align = Enum.TextXAlignment.Center },
+		{ title = "CREW", w = 0.34, align = Enum.TextXAlignment.Left },
+		{ title = "POSE", w = 0.14, align = Enum.TextXAlignment.Center },
+		{ title = "KILLS", w = 0.14, align = Enum.TextXAlignment.Center },
+		{ title = "CASH", w = 0.18, align = Enum.TextXAlignment.Center },
 		{ title = "REVIVES", w = 0.1, align = Enum.TextXAlignment.Center },
 		{ title = "DOWNS", w = 0.1, align = Enum.TextXAlignment.Center },
-		{ title = "SELF-REV", w = 0.1, align = Enum.TextXAlignment.Center },
 	}
 	local tableX, tableW = S(24), W - S(48)
-	local y = S(92)
+	local y = S(96)
 	local function cell(
 		parent: Instance,
 		text: string,
@@ -313,37 +315,11 @@ local function showSummary(d: any)
 		cell(rowFrame, tostring(row.revives or 0), cols[5], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
 		xx += math.floor(tableW * cols[5].w)
 		cell(rowFrame, tostring(row.downs or 0), cols[6], xx, Theme.Colors.malus, S(13), Theme.Fonts.body)
-		xx += math.floor(tableW * cols[6].w)
-		cell(rowFrame, tostring(row.selfRevives or 0), cols[7], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
 		if row.userId == player.UserId then
 			UI.stroke(rowFrame, color, S(1.5), 0.3)
 		end
 		y += rowH
 	end
-
-	-- Gold line.
-	y += S(8)
-	goldLabel = UI.text({
-		Text = "GOLD +0",
-		Font = Theme.Fonts.display,
-		TextSize = S(26),
-		TextColor3 = Theme.Colors.gold,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(24), y),
-		Size = UDim2.fromOffset(S(300), S(32)),
-		ZIndex = 11,
-		Parent = panel,
-	})
-	UI.text({
-		Text = "DISPLAY ONLY · NO PERSISTENCE YET",
-		TextSize = S(10),
-		TextColor3 = Theme.Colors.grey,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(24), y + S(30)),
-		Size = UDim2.fromOffset(S(300), S(14)),
-		ZIndex = 11,
-		Parent = panel,
-	})
 
 	-- Buttons.
 	local btnY = H - S(72)
@@ -428,7 +404,7 @@ local function step(_dt: number)
 				local pose = Config.Poses[row.pose] or Config.Poses[1]
 				task.delay(Config.PoseStagger * (i - 1), function()
 					if data == d then
-						RunStartUI.playAnim(charOf(row.userId), pose.animationId, pose.holdSec)
+						RunStartUI.playAnim(RunStartUI.charFor(row), pose.animationId, pose.holdSec)
 					end
 				end)
 			end
@@ -459,7 +435,7 @@ local function step(_dt: number)
 			showMvp(d)
 		end)
 		-- Tight 3/4 shot on the MVP, slow orbit.
-		local mvpRoot = if d.mvp then rootOf(d.mvp.userId) else nil
+		local mvpRoot = if d.mvp then rootFor(d.mvp) else nil
 		local pos = if mvpRoot then mvpRoot.Position else center
 		local s = (t - beats.mvp) / math.max(d.mvpOrbitSec or 2, 0.1)
 		local a = 0.55 - 0.7 * math.clamp(s, 0, 1)
@@ -478,16 +454,9 @@ local function step(_dt: number)
 	if summaryShownAt >= 0 then
 		local e = os.clock() - summaryShownAt
 		local k = easeOut(e / math.max(d.countUpSec or 1, 0.05))
-		if bankedLabel then
-			bankedLabel.Text = fmtCash(math.floor((d.totalBanked or 0) * k))
-			if k < 1 then
-				bankedLabel.TextSize = UI.S(44 + 6 * math.sin(e * 30))
-			else
-				bankedLabel.TextSize = UI.S(44)
-			end
-		end
 		if goldLabel then
-			goldLabel.Text = string.format("GOLD +%d", math.floor((d.gold or 0) * k))
+			goldLabel.Text = string.format("+%d", math.floor((d.gold or 0) * k))
+			goldLabel.TextSize = if k < 1 then UI.S(44 + 6 * math.sin(e * 30)) else UI.S(44)
 		end
 		if lobbyButton and not chosen then
 			local left = math.max(0, math.ceil((d.autoLobbySec or 30) - e))

@@ -21,6 +21,7 @@ local DEFS: { [string]: string } = {
 	MinigameResult = "RemoteEvent", -- client -> server: token, outcome (done | fail | cancel), misses
 	ReviveHold = "RemoteEvent", -- client -> server: on (boolean); holding F / the REVIVE button near a downed teammate
 	SelfRevive = "RemoteEvent", -- client -> server: none; the SELF-REVIVE button while downed
+	GiveUp = "RemoteEvent", -- client -> server: none; the GIVE UP button while downed (bleed out now)
 	ReviveEverybody = "RemoteEvent", -- client -> server: none; the spectate screen button
 	SummaryChoice = "RemoteEvent", -- client -> server: "again" | "lobby" from the summary panel
 }

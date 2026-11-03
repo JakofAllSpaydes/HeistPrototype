@@ -399,7 +399,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				string.format("RUN OVER · WAVE %d", data.wave or currentWave),
 				Theme.Colors.red,
 				72,
-				(data.slowSec or 1) + 1.5,
+				(data.slowSec or 1) + (data.holdSec or 2.5) - 0.5,
 				Theme.Sounds.wave,
 				0.45
 			)

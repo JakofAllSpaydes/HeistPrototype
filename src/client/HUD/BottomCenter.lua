@@ -61,23 +61,34 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = health,
 	})
 
-	-- SELF-REVIVE, right of the bar while downed.
-	local selfBtn = UI.button({
-		Name = "SelfRevive",
-		Text = "SELF-REVIVE",
-		Font = Theme.Fonts.display,
-		TextSize = S(13),
-		TextColor3 = Theme.Colors.bg,
-		BackgroundColor3 = Theme.Colors.cash,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0.5, hw / 2 + S(10), 0, hh / 2),
-		Size = UDim2.fromOffset(S(150), hh + S(10)),
-		Visible = false,
-		ZIndex = 3,
-		Parent = root,
-	})
-	UI.corner(selfBtn, S(8))
-	UI.stroke(selfBtn, Theme.Colors.black, S(1.5), 0.4)
+	-- While downed: GIVE UP and SELF-REVIVE sit side by side above the bar.
+	local btnH = hh + S(12)
+	local function downedButton(name: string, text: string, bg: Color3, anchorX: number, x: number): TextButton
+		local b = UI.button({
+			Name = name,
+			Text = text,
+			Font = Theme.Fonts.display,
+			TextSize = S(13),
+			TextColor3 = Theme.Colors.bg,
+			BackgroundColor3 = bg,
+			AnchorPoint = Vector2.new(anchorX, 1),
+			Position = UDim2.new(0.5, x, 0, -S(8)),
+			Size = UDim2.fromOffset(S(150), btnH),
+			Visible = false,
+			ZIndex = 3,
+			Parent = root,
+		})
+		UI.corner(b, S(8))
+		UI.stroke(b, Theme.Colors.black, S(1.5), 0.4)
+		return b
+	end
+	local giveUpBtn = downedButton("GiveUp", "GIVE UP", Theme.Colors.red, 1, -S(5))
+	giveUpBtn.TextColor3 = Theme.Colors.text
+	giveUpBtn.Activated:Connect(function()
+		UI.punch(giveUpBtn, 0.9, 0.15)
+		Remotes.GiveUp:FireServer()
+	end)
+	local selfBtn = downedButton("SelfRevive", "SELF-REVIVE", Theme.Colors.cash, 0, S(5))
 	selfBtn.Activated:Connect(function()
 		UI.punch(selfBtn, 0.9, 0.15)
 		Remotes.SelfRevive:FireServer()
@@ -252,7 +263,9 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		healthStroke.Transparency = 0
 		paintSelf()
 		selfBtn.Visible = true
+		giveUpBtn.Visible = true
 		UI.punch(selfBtn, 1.2, 0.4)
+		UI.punch(giveUpBtn, 1.2, 0.4)
 		UI.punch(health, 1.15, 0.4)
 	end
 
@@ -262,6 +275,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 		bleeding = false
 		selfBtn.Visible = false
+		giveUpBtn.Visible = false
 		ring.Visible = false
 		healthText.TextColor3 = Theme.Colors.bg
 		healthStroke.Color = Theme.Colors.black

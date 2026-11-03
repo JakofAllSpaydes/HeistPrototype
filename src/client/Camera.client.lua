@@ -40,6 +40,22 @@ local function zoomStep(ticks: number)
 	end
 end
 
+-- Cursor unlocked: holding RMB drags the camera round like default Roblox, so RMB still aims and turns.
+local rmbHeld = false
+UserInputService.InputBegan:Connect(function(input: InputObject)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		rmbHeld = true
+	end
+end)
+UserInputService.InputEnded:Connect(function(input: InputObject)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		rmbHeld = false
+	end
+end)
+local function dragging(): boolean
+	return rmbHeld and ClientState.isMouseFree() and not ClientState.blocked()
+end
+
 UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed: boolean)
 	if input.UserInputType == Enum.UserInputType.MouseWheel then
 		if not ClientState.blocked() then
@@ -47,8 +63,9 @@ UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed
 		end
 		return
 	end
-	-- Cursor unlocked: the camera holds still; the character turns toward the cursor in the render step.
-	if ClientState.isMouseFree() then
+	-- Cursor unlocked: the camera holds still (the character turns toward the cursor in the render step)
+	-- unless RMB is held, which drags it.
+	if ClientState.isMouseFree() and not dragging() then
 		return
 	end
 	local sens = if ClientState.ads then Config.AdsSensitivityMult else 1
@@ -110,9 +127,9 @@ ClientState.Juice:Connect(function(name: string, data: any)
 	elseif name == "StimEnd" then
 		stimFov = 0
 	elseif name == "RunOver" then
-		-- Slow-mo beat: pull the lens in, release after the stamp.
+		-- Slow-mo beat: pull the lens in, release as the red screen clears.
 		slowFov = -10
-		task.delay((data.slowSec or 1) + 1, function()
+		task.delay((data.slowSec or 1) + (data.holdSec or 2.5) - 0.5, function()
 			slowFov = 0
 		end)
 	end
@@ -144,11 +161,19 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	local adsGoal = if ClientState.ads then 1 else 0
 	local adsRate = dt / math.max(Config.AdsBlendSec, 0.01)
 	adsBlend += math.clamp(adsGoal - adsBlend, -adsRate, adsRate)
-	local fovMult = 1 + (Config.AdsFovMult - 1) * adsBlend
+	-- Unlocked cursor: ADS only pulls in a little.
+	local unlocked = ClientState.isMouseFree() and not ClientState.blocked()
+	local adsFov = if unlocked then Config.AdsFovMultUnlocked else Config.AdsFovMult
+	local adsZoom = if unlocked then Config.AdsZoomMultUnlocked else Config.AdsZoomMult
+	local fovMult = 1 + (adsFov - 1) * adsBlend
 	camera.FieldOfView = Config.CameraFov * fovMult + fovKick + stimFov + slowFov
 	local free = ClientState.isMouseFree()
-	UserInputService.MouseBehavior = if free then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
-	UserInputService.MouseIconEnabled = free
+	local drag = dragging()
+	UserInputService.MouseBehavior = if not free
+		then Enum.MouseBehavior.LockCenter
+		elseif drag then Enum.MouseBehavior.LockCurrentPosition
+		else Enum.MouseBehavior.Default
+	UserInputService.MouseIconEnabled = free and not drag
 	-- Spectate and the run start / end sequences drive the camera themselves.
 	if ClientState.cameraMode ~= "gameplay" then
 		return
@@ -192,7 +217,7 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 		local head = char:FindFirstChild("Head") :: BasePart?
 		camPos = if head then head.Position else pivot
 	else
-		local dist = zoom * (1 + (Config.AdsZoomMult - 1) * adsBlend)
+		local dist = zoom * (1 + (adsZoom - 1) * adsBlend)
 		local side = math.clamp(dist / Config.CameraZoomDefault, 0, 1)
 		local offset = Vector3.new(Config.CameraShoulder.X * side, Config.CameraShoulder.Y * side, dist)
 		local desired = pivot + rot:VectorToWorldSpace(offset)

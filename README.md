@@ -30,7 +30,7 @@ arena door says `START RUN`. Downed / revive lines need Studio's Local Server wi
 | Input | Action |
 | --- | --- |
 | LMB (hold) | Fire. `HoldToFire` in Config. |
-| RMB (hold) | Aim down sights: narrower FOV, camera pulls in, half spread, tighter crosshair, lower sensitivity. `Ads*` in Config. |
+| RMB (hold) | Aim down sights: narrower FOV, camera pulls in, half spread, tighter crosshair, lower sensitivity. `Ads*` in Config. With the cursor unlocked (Ctrl) it only pulls in a little and dragging rotates the camera. |
 | R | Reload. Tube-fed guns (`shellReload` in Weapons, currently the SPAS-12) load one shell per `reloadTime`; firing or R again stops at the current count. |
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 / 2 | Buy weapon roll / buy upgrade pick (also clickable tiles, left column). |
@@ -210,6 +210,15 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   PLAY AGAIN / TO LOBBY (30s auto). Debug: start run, skip to run end, down me / all, revive all, open any minigame,
   tier, stats; `DBG` chip on mobile. Characters are loaded by hand. Config gains the Staging, Minigames, Downed, Run
   start and Run end groups.
+
+- **Round 9b (3 Nov, feedback)** — cursor unlocked: ADS only pulls in a little (`AdsFovMultUnlocked`,
+  `AdsZoomMultUnlocked`) and holding RMB drags the camera round like default Roblox; Lockpick needs 3 / 4 / 5 points by
+  tier (`LockpickTargetByTier`); the capture marker no longer pops on every percent tick, only on stepping in or out;
+  bleed-out is 15s with GIVE UP and SELF-REVIVE side by side above the bar; the RUN OVER red screen runs its course
+  (`RunOverHoldSec`) before the run end cutscene; the summary leads with GOLD EARNED (cash stays in the rows, no
+  self-revive column); the van is put away in the yard and only appears in the start animation (drives off and is
+  removed over `VanExitSec`); the start and end line-ups fill up to `SquadSize` (4) with dummy crew (default R15 rigs
+  with masks, poses, bags, tags and plausible summary rows under the best real player).
 
 ## Open design notes (not built)
 

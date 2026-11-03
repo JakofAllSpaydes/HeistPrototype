@@ -16,6 +16,7 @@ local BigCrate = require(script.Parent.BigCrate)
 local CrewCall = require(script.Parent.CrewCall)
 local WeaponRoll = require(script.Parent.WeaponRoll)
 local Abilities = require(script.Parent.Abilities)
+local Squad = require(script.Parent.Squad)
 
 local Staging = {}
 
@@ -136,6 +137,7 @@ function Staging.clearArena()
 	CrewCall.finish(false, true)
 	WeaponRoll.clearAll()
 	Abilities.clearAll()
+	Squad.clear()
 	World.spawnsPaused = false
 	World.enemiesLeft = 0
 end
@@ -149,13 +151,14 @@ function Staging.spawnCFrame(_player: Player): CFrame?
 	return CFrame.new(Room.arenaSpawn + Vector3.new((math.random() - 0.5) * 8, 3, 6))
 end
 
--- Back to the yard: clean arena, van parked, fresh state with StagingCash, and a fresh character for
--- everyone at the yard spawn (masks off, nothing anchored, bled-out players back).
+-- Back to the yard: clean arena, van put away (it only appears in the start animation), fresh state with
+-- StagingCash, and a fresh character for everyone at the yard spawn (masks off, nothing anchored,
+-- bled-out players back).
 function Staging.enter()
 	Staging.clearArena()
 	local van = Room.van
 	if van then
-		van:PivotTo(Room.vanHome)
+		van.Parent = nil
 	end
 	if startPrompt then
 		startPrompt.Enabled = true

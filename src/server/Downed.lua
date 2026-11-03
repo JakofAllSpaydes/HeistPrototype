@@ -192,6 +192,14 @@ local function onSelfRevive(player: Player)
 	Downed.standUp(player, Config.SelfReviveHPPct, "self")
 end
 
+local function onGiveUp(player: Player)
+	local state = PlayerState.get(player)
+	if state.downed then
+		Log.event("Downed", "%s gave up", player.Name)
+		Downed.bleedOut(player)
+	end
+end
+
 local function onReviveEverybody(player: Player)
 	local state = PlayerState.get(player)
 	if not state.bledOut then
@@ -225,6 +233,7 @@ function Downed.init()
 	PlayerState.onZeroHP = Downed.down
 	Remotes.ReviveHold.OnServerEvent:Connect(onHold)
 	Remotes.SelfRevive.OnServerEvent:Connect(onSelfRevive)
+	Remotes.GiveUp.OnServerEvent:Connect(onGiveUp)
 	Remotes.ReviveEverybody.OnServerEvent:Connect(onReviveEverybody)
 	Players.PlayerRemoving:Connect(function(player)
 		holding[player] = nil

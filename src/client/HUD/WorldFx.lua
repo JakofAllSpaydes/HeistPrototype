@@ -310,7 +310,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			cc.TintColor = Theme.Colors.white
 			cc.Parent = Lighting
 			UI.tween(cc, { Saturation = -0.8, TintColor = Color3.fromRGB(255, 200, 200) }, 0.25)
-			task.delay((data.slowSec or 1) + 2, function()
+			task.delay((data.slowSec or 1) + (data.holdSec or 2.5) - 0.6, function()
 				UI.tween(cc, { Saturation = 0, TintColor = Theme.Colors.white }, 0.6)
 			end)
 		elseif name == "Multishot" then

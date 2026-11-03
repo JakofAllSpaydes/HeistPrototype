@@ -31,7 +31,7 @@ function Lockpick.open(host: Frame.Host)
 	local zone = zoneStart
 	local sliver = Config.LockpickSliverDeg
 	local speed = Config.LockpickPinSpeed
-	local target = Config.LockpickTarget
+	local target = Config.LockpickTargetByTier[host.tier] or Config.LockpickTargetByTier[1]
 	local zoneCenter = math.random() * 360
 	local angle = (zoneCenter + 180) % 360
 	local score = 0

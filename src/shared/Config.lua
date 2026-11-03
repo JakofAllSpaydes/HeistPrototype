@@ -79,6 +79,9 @@ local Config = {
 	AdsSpreadMult = 0.5, -- bullet spread while aiming
 	AdsSensitivityMult = 0.7, -- look sensitivity while aiming
 	AdsBlendSec = 0.12, -- seconds to ease in / out of ADS
+	-- Cursor unlocked (Ctrl): ADS only pulls in a little, and holding RMB drags the camera round like default Roblox.
+	AdsFovMultUnlocked = 0.94,
+	AdsZoomMultUnlocked = 0.92,
 	-- Rarity juice, indexed by tier 1..5: camera shake amplitude (studs) and duration, screen flash alpha.
 	JuiceShakeByTier = { 0, 0.1, 0.25, 0.45, 0.8 },
 	JuiceShakeDurByTier = { 0, 0.15, 0.2, 0.3, 0.45 },
@@ -212,7 +215,7 @@ local Config = {
 	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
 	MinigameMinSec = { Lockpick = 1.5, Hotwire = 1.5, Keypad = 1.5, Charges = 1.5, Safe = 2, Freq = 1 },
 	MinigameHaptics = true, -- HapticService pulses on hits and locks (mobile / gamepad)
-	LockpickTarget = 3, -- points to open: green zone +1, pink sliver +2
+	LockpickTargetByTier = { 3, 4, 5 }, -- points to open per tier: green zone +1, pink sliver +2
 	LockpickZoneShrink = 0.9, -- zone width x this per hit, floored at half the starting width
 	LockpickSpeedUp = 1.08, -- pin speed x this per hit
 	LockpickZoneByTier = { 90, 70, 55 }, -- starting zone width in degrees
@@ -236,17 +239,20 @@ local Config = {
 	DownedWalkSpeed = 6,
 	DownedCameraHeight = 3, -- studs above the floor while downed
 	DownedAnimationId = "rbxassetid://507784897", -- Roblox default R15 swim idle stands in for the crawl
-	BleedOutSec = 30,
+	BleedOutSec = 15, -- GIVE UP on the bleed bar ends it early
 	ReviveRadius = 6, -- studs from the downed player a reviver must stand within
 	ReviveHoldSec = 3, -- hold F (mobile: the REVIVE button) this long
 	ReviveHPPct = 50, -- HP after a teammate revive or REVIVE EVERYBODY, % of max
 	SelfReviveHPPct = 50,
 	ReviveInvulnSec = 1, -- no damage for this long after standing up
-	RunOverSlowSec = 1, -- slow-mo + RUN OVER stamp before the run end sequence
+	RunOverSlowSec = 1, -- slow-mo under the RUN OVER stamp
+	RunOverHoldSec = 2.5, -- the red screen and stamp stay this much longer, then the run end cutscene starts
 	RunOverTimeScale = 0.3, -- player and enemy speed during the slow-mo
 
 	------------------------------------------------------------------ Run start (IntroSec is the total length)
 	RunStartBeats = { doors = 1.4, masks = 2.2, poses = 2.8, orbit = 4.2 }, -- seconds from START RUN
+	SquadSize = 4, -- the start / end line-ups fill up to this many with dummy crew (prototype presentation)
+	VanExitSec = 1.2, -- after control returns the van drives off and is removed; it only exists in the start animation
 	PoseStagger = 0.15, -- gap between each player's pose starting
 	MaskColors = { "E8554D", "4D9FE8", "8FE3A1", "E8B64C", "A864E8", "F2E6C8" }, -- head recolor per player, by join order
 	MaskOnAnimationId = "rbxassetid://507770818", -- hands-to-face stand-in (default R15 laugh)

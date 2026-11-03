@@ -29,6 +29,7 @@ type Marker = {
 	color: Color3,
 	endsAt: number,
 	position: Vector3,
+	wasInside: boolean?,
 }
 
 local Markers = {}
@@ -201,14 +202,17 @@ function Markers.add(id: string, position: Vector3, color: Color3, titleText: st
 	}
 end
 
-function Markers.setSub(id: string, text: string, color: Color3?)
+-- `punch` defaults to true; pass false for text that ticks every frame (capture percent) so the box holds still.
+function Markers.setSub(id: string, text: string, color: Color3?, punch: boolean?)
 	local m = markers[id]
 	if not m then
 		return
 	end
 	if m.sub.Text ~= text then
 		m.sub.Text = text
-		UI.punch(m.frame, 1.12, 0.2)
+		if punch ~= false then
+			UI.punch(m.frame, 1.12, 0.2)
+		end
 	end
 	m.sub.TextColor3 = color or Theme.Colors.text
 end
@@ -240,13 +244,20 @@ function Markers.init()
 			end
 		elseif name == "JobProgress" then
 			local pct = math.floor((data.progress or 0) * 100 + 0.5)
-			Markers.setProgress("job", data.progress or 0, data.inside == true)
-			if data.inside then
-				Markers.setSub("job", string.format(Lines.capture.holdingHint, pct), Theme.Colors.cash)
+			local inside = data.inside == true
+			Markers.setProgress("job", data.progress or 0, inside)
+			-- Only a step in / step out pops the box; the percent ticks quietly.
+			local m = markers.job
+			local flipped = m ~= nil and m.wasInside ~= inside
+			if m then
+				m.wasInside = inside
+			end
+			if inside then
+				Markers.setSub("job", string.format(Lines.capture.holdingHint, pct), Theme.Colors.cash, flipped)
 			elseif pct > 0 then
-				Markers.setSub("job", string.format(Lines.capture.leftHint, pct), Theme.Colors.malus)
+				Markers.setSub("job", string.format(Lines.capture.leftHint, pct), Theme.Colors.malus, flipped)
 			else
-				Markers.setSub("job", Lines.capture.markerHint)
+				Markers.setSub("job", Lines.capture.markerHint, nil, flipped)
 			end
 		elseif name == "CallEnd" then
 			Markers.remove("job")
