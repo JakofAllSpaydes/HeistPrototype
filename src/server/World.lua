@@ -1,5 +1,5 @@
 --!strict
--- Wave state shared by every server module. GameLoop writes, everyone else reads.
+-- Run and wave state shared by every server module. GameLoop writes, everyone else reads.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -8,7 +8,12 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local World = {
 	heat = Config.HeatStart, -- stars, 0..5
 	wave = 1,
-	state = "Intro", -- Intro | Wave | Intermission
+	-- Staging (yard, nothing hostile) | Intro | Wave | Intermission | RunOver | RunEnd | Summary
+	state = "Staging",
+	runId = 0, -- counts runs since the server started
+	runRequested = false, -- START RUN pressed (or debug): leave Staging
+	runOver = false, -- game over (or debug): the wave loop winds down and the run end plays
+	summaryChoice = nil :: string?, -- "again" | "lobby": a summary button was pressed
 	intermissionEndsAt = 0, -- server time (workspace:GetServerTimeNow())
 	pendingWave = nil :: number?, -- set by debug: next loop iteration jumps here
 	skipRequested = false, -- set by debug: end the current wave / intermission now
@@ -17,7 +22,13 @@ local World = {
 	waveStartedAt = 0, -- server time the current wave started
 	skipVotes = {} :: { [number]: boolean }, -- userId -> voted to skip this intermission
 	autoSkip = {} :: { [number]: boolean }, -- userId -> votes automatically every intermission
+	minigameTier = Config.MinigameTier, -- 1..3, set by the tier pad in the yard or the debug panel
 }
+
+-- True while a run is on: waves can spawn, downs count, cash is Match Cash.
+function World.inRun(): boolean
+	return World.state == "Intro" or World.state == "Wave" or World.state == "Intermission"
+end
 
 function World.skipNeeded(): number
 	return math.max(1, math.ceil(#Players:GetPlayers() * Config.SkipVoteFraction))

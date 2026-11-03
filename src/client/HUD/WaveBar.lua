@@ -310,16 +310,39 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	local component = {}
 
+	-- Staging (the yard): the bar reads STAGING, no stars, no pills. Run over: RUN OVER.
+	local function paintState()
+		local inRun = state == "Intro" or state == "Wave" or state == "Intermission"
+		stars.Visible = inRun
+		autoSkip.Visible = inRun
+		votes.Visible = inRun
+		if not inRun then
+			left.Visible = false
+			lastLeft = -1
+		end
+	end
+
 	function component.update(sync: any)
 		local wasState = state
 		state = sync.waveState
 		endsAt = sync.intermissionEndsAt
 		waveStartedAt = sync.waveStartedAt or waveStartedAt
 		currentWave = sync.wave
-		if state ~= "Intermission" then
+		if state == "Staging" then
+			wave.Text = "STAGING"
+			wave.TextColor3 = Theme.Colors.grey
+			lastShown = -1
+		elseif state == "RunOver" or state == "RunEnd" or state == "Summary" then
+			wave.Text = "RUN OVER"
+			wave.TextColor3 = Theme.Colors.red
+			lastShown = -1
+		elseif state ~= "Intermission" then
 			wave.Text = string.format("WAVE %d", currentWave)
 			wave.TextColor3 = Theme.Colors.text
 			lastShown = -1
+		end
+		if wasState ~= state then
+			paintState()
 		end
 		if shownHeat < 0 then
 			setHeat(sync.heat)
@@ -337,7 +360,8 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	function component.onJuice(name: string, data: any)
 		if name == "WaveStart" then
-			state = "Wave"
+			state = if data.intro then "Intro" else "Wave"
+			paintState()
 			waveStartedAt = ClientState.serverNow()
 			currentWave = data.wave
 			wave.Text = string.format("WAVE %d", data.wave)

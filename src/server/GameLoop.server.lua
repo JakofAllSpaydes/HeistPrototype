@@ -1,7 +1,6 @@
 --!strict
--- Server entry point. Builds the room, wires every module, then runs the wave state machine forever:
--- Intro (WAVE 1 banner) -> Wave -> Intermission -> Wave ... No game over.
-local Players = game:GetService("Players")
+-- Server entry point. Builds the map, wires every module, then runs the run state machine forever:
+-- Staging (yard, nothing hostile) -> START RUN -> Intro -> Wave -> Intermission -> Wave ... -> RunOver -> Staging.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -25,6 +24,7 @@ local CrewCall = require(script.Parent.CrewCall)
 local Debug = require(script.Parent.Debug)
 local Abilities = require(script.Parent.Abilities)
 local SkipVote = require(script.Parent.SkipVote)
+local Staging = require(script.Parent.Staging)
 
 PlayerState.init()
 SkipVote.init()
@@ -35,6 +35,7 @@ UpgradeShop.init()
 WeaponRoll.init()
 BigCrate.init()
 CrewCall.init()
+Staging.init()
 Debug.init()
 
 local function setState(state: string)
@@ -45,7 +46,7 @@ end
 local function waitIntermission()
 	local t0 = os.clock()
 	while os.clock() - t0 < Config.IntermissionSec do
-		if World.skipRequested or World.pendingWave then
+		if World.skipRequested or World.pendingWave or World.runOver then
 			break
 		end
 		if os.clock() - t0 >= Config.SkipMinIntermissionSec and World.skipVotePassed() then
@@ -57,30 +58,9 @@ local function waitIntermission()
 	end
 end
 
--- Hold the intro until the first player is standing in the room, so they see the crate land.
-local function waitForFirstPlayer()
-	while true do
-		for _, player in Players:GetPlayers() do
-			local char = player.Character
-			if char and char:FindFirstChild("HumanoidRootPart") then
-				return
-			end
-		end
-		task.wait(0.25)
-	end
-end
-
-task.spawn(function()
-	World.wave = 1
-	setState("Intro")
-	waitForFirstPlayer()
-	task.wait(1)
-	Remotes.Juice:FireAllClients("WaveStart", { wave = 1, intro = true })
-	Log.event("Wave", "Intro, first wave in %ds", Config.IntroSec)
-	BigCrate.onIntro()
-	task.wait(Config.IntroSec)
-
-	while true do
+-- Wave -> intermission -> wave until the run is over (game over or debug). World.wave stays on the last wave.
+local function runWaves()
+	while not World.runOver do
 		if World.pendingWave then
 			World.wave = World.pendingWave
 			World.pendingWave = nil
@@ -102,6 +82,9 @@ task.spawn(function()
 		CrewCall.onWaveStart(wave)
 
 		local advanced = Spawner.runWave(wave)
+		if World.runOver then
+			return
+		end
 
 		BigCrate.onWaveEnd()
 		if advanced then
@@ -130,5 +113,45 @@ task.spawn(function()
 		if not World.pendingWave then
 			World.wave = wave + 1
 		end
+	end
+end
+
+task.spawn(function()
+	while true do
+		-- Staging: everyone in the yard, nothing hostile, until someone presses START RUN.
+		World.wave = 1
+		World.runOver = false
+		World.runRequested = false
+		World.pendingWave = nil
+		World.skipRequested = false
+		World.summaryChoice = nil
+		setState("Staging")
+		Staging.enter()
+		Remotes.Juice:FireAllClients("StagingEnter", {})
+		Log.event("Run", "Staging: waiting for START RUN")
+		while not World.runRequested do
+			task.wait(0.1)
+		end
+		World.runRequested = false
+		World.runId += 1
+
+		-- Run start. Bare teleport-in for now; the drive-in sequence takes this slot.
+		World.wave = 1
+		World.heat = Config.HeatStart
+		World.heatDirty = true
+		Staging.beginRun()
+		setState("Intro")
+		Remotes.Juice:FireAllClients("WaveStart", { wave = 1, intro = true })
+		Log.event("Run", "Run %d start, first wave in %.1fs", World.runId, Config.IntroSec)
+		BigCrate.onIntro()
+		task.wait(Config.IntroSec)
+
+		runWaves()
+
+		-- Run over: hold on the arena for a beat, then everyone goes back to the yard.
+		setState("RunOver")
+		Remotes.Juice:FireAllClients("RunOver", { wave = World.wave })
+		Log.event("Run", "Run %d over at wave %d", World.runId, World.wave)
+		task.wait(Config.RunOverSlowSec)
 	end
 end)

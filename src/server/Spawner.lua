@@ -33,7 +33,7 @@ function Spawner.runWave(wave: number): boolean
 	local startedAt = os.clock()
 	publishLeft(budget + Enemy.count())
 
-	while remaining > 0 and not World.skipRequested do
+	while remaining > 0 and not World.skipRequested and not World.runOver do
 		if World.spawnsPaused then
 			task.wait(0.25)
 			continue
@@ -50,14 +50,15 @@ function Spawner.runWave(wave: number): boolean
 		task.wait(interval)
 	end
 
-	while Enemy.count() > 0 and not World.skipRequested do
+	while Enemy.count() > 0 and not World.skipRequested and not World.runOver do
 		publishLeft(Enemy.count())
 		if World.autoSkipActive() and os.clock() - startedAt >= Config.AutoSkipWaveSec then
 			return true
 		end
 		task.wait(0.2)
 	end
-	if World.skipRequested then
+	-- Game over leaves the enemies to the run-over beat (freeze and fade); a debug skip just clears them.
+	if World.skipRequested and not World.runOver then
 		Enemy.killAll()
 	end
 	publishLeft(0)

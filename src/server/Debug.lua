@@ -16,6 +16,7 @@ local CrewCall = require(script.Parent.CrewCall)
 local Abilities = require(script.Parent.Abilities)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Staging = require(script.Parent.Staging)
 
 local Debug = {}
 
@@ -70,7 +71,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	ResetRun = function(_player, _state, _args)
 		for _, s in PlayerState.all() do
-			PlayerState.reset(s)
+			PlayerState.reset(s, if World.inRun() then Config.StartingCash else Config.StagingCash)
 		end
 		BigCrate.finishAll()
 		CrewCall.finish(false, true)
@@ -80,6 +81,24 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		World.spawnsPaused = false
 		World.pendingWave = 1
 		World.skipRequested = true
+	end,
+	StartRun = function(player, _state, _args)
+		if World.state == "Staging" then
+			Staging.requestRun(player)
+		else
+			toast(player, "ALREADY IN A RUN")
+		end
+	end,
+	EndRun = function(player, _state, _args)
+		if World.inRun() then
+			World.runOver = true
+			World.skipRequested = true
+		else
+			toast(player, "NO RUN TO END")
+		end
+	end,
+	SetTier = function(player, _state, args)
+		Staging.setTier(tonumber(args) or 1, player.Name)
 	end,
 }
 

@@ -12,7 +12,7 @@ local Config = {
 	OpeningSurgeIntervalMult = 0.3, -- SpawnInterval multiplier during the surge
 	MaxActiveEnemies = 50, -- hard cap on alive enemies, backfilled as they die
 	IntermissionSec = 5, -- NEXT WAVE IN countdown
-	IntroSec = 3, -- WAVE 1 banner hold before the first wave
+	IntroSec = 5.0, -- run start sequence length (START RUN pressed -> WAVE 1); also the GET READY hold
 	SkipVoteFraction = 0.5, -- share of players that must vote (or have AUTO SKIP on) to end the intermission early
 	SkipMinIntermissionSec = 1, -- the intermission always lasts at least this long, even with every vote in
 	AutoSkipWaveSec = 10, -- with AUTO SKIP on, the next wave starts this long into the current one (once it has all spawned)
@@ -198,6 +198,77 @@ local Config = {
 	WallHeight = 12,
 	PillarGrid = 5, -- NxN pillars, the center one is skipped so the spawn stays clear
 	PillarSize = 4,
+
+	------------------------------------------------------------------ Staging yard (regenerate the map after changing sizes)
+	StagingCash = 5000, -- Match Cash while in the yard so the buy tiles can be tested there; START RUN resets to StartingCash
+	YardWidth = 120, -- studs east-west, attached to the arena's south wall
+	YardDepth = 80, -- studs north-south
+	DoorWidth = 12, -- run start door opening in the south wall
+	PropSpacing = 10, -- studs between the minigame props along the yard's west wall
+
+	------------------------------------------------------------------ Minigames (test props in the yard)
+	MinigameTier = 1, -- starting tier for every game (1..3); the tier pad and the debug panel change it per session
+	MinigamePanelPct = 0.55, -- panel width as a share of the shorter screen edge
+	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
+	MinigameMinSec = { Lockpick = 1.5, Hotwire = 1.5, Keypad = 1.5, Charges = 1.5, Safe = 2, Freq = 1 },
+	MinigameHaptics = true, -- HapticService pulses on hits and locks (mobile / gamepad)
+	LockpickTarget = 3, -- points to open: green zone +1, pink sliver +2
+	LockpickZoneShrink = 0.9, -- zone width x this per hit, floored at half the starting width
+	LockpickSpeedUp = 1.08, -- pin speed x this per hit
+	LockpickZoneByTier = { 90, 70, 55 }, -- starting zone width in degrees
+	LockpickPinSpeed = 150, -- degrees per second at the start
+	LockpickSliverDeg = 10, -- width of the +2 pink sliver in the middle of the zone
+	HotwireCountByTier = { 3, 4, 5 }, -- wires
+	KeypadShowSec = 1.2, -- the code shows this long before the pad lights
+	KeypadReshowSec = 0.8, -- the code shows again this long after a wrong digit
+	KeypadDigitsByTier = { 3, 4, 5 },
+	ChargesCountByTier = { 5, 6, 8 }, -- blast caps to press in order
+	SafeWarmRange = 15, -- needle turns amber within this many numbers of the target
+	SafeHotRange = 4, -- needle turns green within this
+	SafeLockSec = 0.4, -- hold inside the hot range this long to lock a number
+	SafeNumbersByTier = { 2, 3, 4 },
+	FreqTolerance = 0.06, -- the two waves count as overlapping within this share of the fixed frequency
+	FreqLockSec = 0.5, -- hold the overlap this long to lock
+	FreqLocksByTier = { 1, 2, 3 },
+	FreqRangeByTier = { 1.6, 2.4, 3.5 }, -- slider range as a multiple of the base frequency; wider = harder
+
+	------------------------------------------------------------------ Downed / revive / game over
+	DownedWalkSpeed = 6,
+	DownedCameraHeight = 3, -- studs above the floor while downed
+	DownedAnimationId = "rbxassetid://507784897", -- Roblox default R15 swim idle stands in for the crawl
+	BleedOutSec = 30,
+	ReviveRadius = 6, -- studs from the downed player a reviver must stand within
+	ReviveHoldSec = 3, -- hold F (mobile: the REVIVE button) this long
+	ReviveHPPct = 50, -- HP after a teammate revive or REVIVE EVERYBODY, % of max
+	SelfReviveHPPct = 50,
+	ReviveInvulnSec = 1, -- no damage for this long after standing up
+	RunOverSlowSec = 1, -- slow-mo + RUN OVER stamp before the run end sequence
+	RunOverTimeScale = 0.3, -- player and enemy speed during the slow-mo
+
+	------------------------------------------------------------------ Run start (IntroSec is the total length)
+	RunStartBeats = { doors = 1.4, masks = 2.2, poses = 2.8, orbit = 4.2 }, -- seconds from START RUN
+	PoseStagger = 0.15, -- gap between each player's pose starting
+	MaskColors = { "E8554D", "4D9FE8", "8FE3A1", "E8B64C", "A864E8", "F2E6C8" }, -- head recolor per player, by join order
+	MaskOnAnimationId = "rbxassetid://507770818", -- hands-to-face stand-in (default R15 laugh)
+	-- Each player gets a random pose at run start and keeps it for the run end. Default R15 emotes.
+	Poses = {
+		{ name = "WAVE", animationId = "rbxassetid://507770239", holdSec = 1.2 },
+		{ name = "POINT", animationId = "rbxassetid://507770453", holdSec = 1.2 },
+		{ name = "CHEER", animationId = "rbxassetid://507770677", holdSec = 1.2 },
+	},
+
+	------------------------------------------------------------------ Run end
+	RunEndBeats = { poses = 0.6, rain = 1.2, mvp = 2.8, summary = 5.0 }, -- seconds from the start of the sequence
+	MvpOrbitSec = 2, -- slow orbit on the MVP before the summary
+	CashRainSec = 2,
+	CashRainPerBanked = 0.02, -- bills = this x Total Banked
+	CashRainMax = 200,
+	MvpKillWeight = 1,
+	MvpCashWeight = 0.05,
+	MvpReviveWeight = 40,
+	SummaryAutoLobbySec = 30, -- TO LOBBY fires on its own after this
+	SummaryCountUpSec = 1, -- TOTAL BANKED / GOLD count-up length
+	GoldPerBanked = 0.01, -- display only, no persistence
 }
 
 return Config

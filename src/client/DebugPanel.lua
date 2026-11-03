@@ -173,6 +173,14 @@ local function build()
 	btn(r7, "Reset run", 0.5, function()
 		send("ResetRun")
 	end, Theme.Colors.malus)
+
+	local r8 = row(panel, 9, rh)
+	btn(r8, "Start run", 0.5, function()
+		send("StartRun")
+	end, Theme.Colors.cash)
+	btn(r8, "Skip to run end", 0.5, function()
+		send("EndRun")
+	end, Theme.Colors.red)
 end
 
 local function refreshToggles()

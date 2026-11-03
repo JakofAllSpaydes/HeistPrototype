@@ -1,7 +1,8 @@
 --!strict
--- The room lives in the place as Workspace.Room (synced by Rojo from src/map/Room.model.json, regenerate
--- with `lune run tools/genmap.luau`). This module reads spawn points and pillars from it and only builds
--- the room in code if the folder is missing, so a fresh clone still plays.
+-- The map lives in the place as Workspace.Room (synced by Rojo from src/map/Room.model.json, regenerate
+-- with `lune run tools/genmap.luau`): the arena plus the staging yard on its south wall. This module reads
+-- spawn points, pillars, the van, the yard props and the door marker from it, and only builds the map in
+-- code if the folder is missing, so a fresh clone still plays.
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -13,6 +14,16 @@ local Room = {
 	spawnPoints = {} :: { Vector3 },
 	pillars = {} :: { Vector3 },
 	folder = nil :: Folder?,
+	PropNames = { "Lockpick", "Hotwire", "Keypad", "Charges", "Safe", "Freq" },
+	arenaSpawn = Vector3.new(0, 0, 0), -- floor point where the van brakes and the crew lines up
+	yardSpawn = CFrame.new(0, 3, 0), -- where characters stand in the yard, facing the door
+	doorPosition = Vector3.new(0, 0, 0), -- floor point in the middle of the south wall opening
+	van = nil :: Model?,
+	vanHome = CFrame.identity, -- parked pivot of the van in the yard
+	props = {} :: { [string]: { panel: BasePart, label: BasePart } },
+	tierPads = {} :: { BasePart },
+	tierPadBase = nil :: BasePart?,
+	startMarker = nil :: BasePart?,
 }
 
 local function part(
@@ -55,40 +66,29 @@ local function buildFallback(): Folder
 	local wallH = Config.WallHeight
 	local dark = Color3.fromRGB(44, 44, 50)
 	local darker = Color3.fromRGB(34, 34, 40)
+	local amber = Color3.fromHex("E8B64C")
 	local half = size / 2
-	part("Floor", Vector3.new(size, 2, size), CFrame.new(0, -1, 0), darker, Enum.Material.Concrete, room)
-	part(
-		"WallN",
-		Vector3.new(size + 2, wallH, 1),
-		CFrame.new(0, wallH / 2, -half - 0.5),
-		dark,
-		Enum.Material.Concrete,
-		room
-	)
-	part(
-		"WallS",
-		Vector3.new(size + 2, wallH, 1),
-		CFrame.new(0, wallH / 2, half + 0.5),
-		dark,
-		Enum.Material.Concrete,
-		room
-	)
-	part(
-		"WallE",
-		Vector3.new(1, wallH, size + 2),
-		CFrame.new(half + 0.5, wallH / 2, 0),
-		dark,
-		Enum.Material.Concrete,
-		room
-	)
-	part(
-		"WallW",
-		Vector3.new(1, wallH, size + 2),
-		CFrame.new(-half - 0.5, wallH / 2, 0),
-		dark,
-		Enum.Material.Concrete,
-		room
-	)
+	local concrete = Enum.Material.Concrete
+	part("Floor", Vector3.new(size, 2, size), CFrame.new(0, -1, 0), darker, concrete, room)
+	part("WallN", Vector3.new(size + 2, wallH, 1), CFrame.new(0, wallH / 2, -half - 0.5), dark, concrete, room)
+	part("WallE", Vector3.new(1, wallH, size + 2), CFrame.new(half + 0.5, wallH / 2, 0), dark, concrete, room)
+	part("WallW", Vector3.new(1, wallH, size + 2), CFrame.new(-half - 0.5, wallH / 2, 0), dark, concrete, room)
+	local doorHalf = Config.DoorWidth / 2
+	local segment = (size + 2) / 2 - doorHalf
+	local segCenter = doorHalf + segment / 2
+	part("WallS_L", Vector3.new(segment, wallH, 1), CFrame.new(-segCenter, wallH / 2, half + 0.5), dark, concrete, room)
+	part("WallS_R", Vector3.new(segment, wallH, 1), CFrame.new(segCenter, wallH / 2, half + 0.5), dark, concrete, room)
+	for _, side in { -1, 1 } do
+		local frame = part(
+			if side < 0 then "DoorFrameL" else "DoorFrameR",
+			Vector3.new(0.4, wallH, 1.2),
+			CFrame.new(side * (doorHalf + 0.2), wallH / 2, half + 0.5),
+			amber,
+			Enum.Material.Neon,
+			room
+		)
+		frame.CanCollide = false
+	end
 	local n = Config.PillarGrid
 	local spacing = size / (n + 1)
 	local ps = Config.PillarSize
@@ -104,22 +104,21 @@ local function buildFallback(): Folder
 				Vector3.new(ps, wallH, ps),
 				CFrame.new(x, wallH / 2, z),
 				dark,
-				Enum.Material.Concrete,
+				concrete,
 				room
 			)
 		end
 	end
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "Spawn"
-	spawn.Size = Vector3.new(8, 0.4, 8)
-	spawn.CFrame = CFrame.new(0, 0.25, 0)
-	spawn.Anchored = true
-	spawn.CanCollide = false
-	spawn.Transparency = 0.6
-	spawn.Color = Color3.fromRGB(80, 80, 90)
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Parent = room
+	local pad = part(
+		"ArenaSpawn",
+		Vector3.new(8, 0.4, 8),
+		CFrame.new(0, 0.25, 0),
+		Color3.fromRGB(80, 80, 90),
+		Enum.Material.SmoothPlastic,
+		room
+	)
+	pad.CanCollide = false
+	pad.Transparency = 0.6
 	local count = Config.SpawnPointCount
 	local radius = math.min(Config.SpawnRingRadius, half - 4)
 	for k = 1, count do
@@ -135,6 +134,144 @@ local function buildFallback(): Folder
 		marker.CanCollide = false
 		marker.Transparency = 0.4
 	end
+
+	-- Yard.
+	local yw, yd = Config.YardWidth, Config.YardDepth
+	local yardNorth = half + 1
+	local yardZ = yardNorth + yd / 2
+	local asphalt = Color3.fromRGB(51, 51, 59)
+	local yardWall = Color3.fromRGB(56, 56, 66)
+	part("YardFloor", Vector3.new(yw, 2, yd), CFrame.new(0, -1, yardZ), asphalt, Enum.Material.Asphalt, room)
+	part(
+		"YardWallS",
+		Vector3.new(yw + 2, wallH, 1),
+		CFrame.new(0, wallH / 2, yardNorth + yd + 0.5),
+		yardWall,
+		concrete,
+		room
+	)
+	part("YardWallE", Vector3.new(1, wallH, yd), CFrame.new(yw / 2 + 0.5, wallH / 2, yardZ), yardWall, concrete, room)
+	part("YardWallW", Vector3.new(1, wallH, yd), CFrame.new(-yw / 2 - 0.5, wallH / 2, yardZ), yardWall, concrete, room)
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "Spawn"
+	spawn.Size = Vector3.new(8, 0.4, 8)
+	spawn.CFrame = CFrame.new(0, 0.25, yardNorth + yd * 0.75)
+	spawn.Anchored = true
+	spawn.CanCollide = false
+	spawn.Transparency = 0.6
+	spawn.Color = Color3.fromRGB(80, 80, 90)
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Parent = room
+	local marker = part(
+		"StartRunMarker",
+		Vector3.new(Config.DoorWidth, 0.2, 6),
+		CFrame.new(0, 0.1, yardNorth + 4),
+		amber,
+		Enum.Material.Neon,
+		room
+	)
+	marker.CanCollide = false
+	marker.Transparency = 0.45
+	for _, sx in { -1, 1 } do
+		for _, sz in { 0.12, 0.88 } do
+			local x = sx * (yw / 2 - 10)
+			local z = yardNorth + yd * sz
+			local label = string.format("Lamp_%s_%s", if sx < 0 then "W" else "E", if sz < 0.5 then "N" else "S")
+			part(
+				label .. "_Post",
+				Vector3.new(0.6, 14, 0.6),
+				CFrame.new(x, 7, z),
+				Color3.fromRGB(77, 77, 87),
+				Enum.Material.Metal,
+				room
+			)
+			local head = part(
+				label,
+				Vector3.new(1.6, 1, 1.6),
+				CFrame.new(x, 14.5, z),
+				Color3.fromRGB(255, 230, 180),
+				Enum.Material.Neon,
+				room
+			)
+			head.CanCollide = false
+			local light = Instance.new("PointLight")
+			light.Brightness = 1.5
+			light.Range = 70
+			light.Color = Color3.fromRGB(255, 230, 184)
+			light.Parent = head
+		end
+	end
+	local van = Instance.new("Model")
+	van.Name = "Van"
+	local vanY = 1.4
+	local body = part(
+		"Body",
+		Vector3.new(6, 4.2, 11),
+		CFrame.new(0, vanY + 2.1, yardZ),
+		Color3.fromRGB(51, 61, 92),
+		Enum.Material.SmoothPlastic,
+		van
+	)
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			local wheel = part(
+				string.format("Wheel_%s%s", if sx < 0 then "L" else "R", if sz < 0 then "F" else "B"),
+				Vector3.new(0.8, 2.2, 2.2),
+				CFrame.new(sx * 3.2, 1.1, yardZ + sz * 3.6),
+				Color3.fromRGB(20, 20, 23),
+				Enum.Material.Rubber,
+				van
+			)
+			wheel.Shape = Enum.PartType.Cylinder
+			wheel.CanCollide = false
+		end
+	end
+	van.PrimaryPart = body
+	van.Parent = room
+	local propX = -yw / 2 + 1.3
+	local propZ0 = yardNorth + 11
+	for i, name in Room.PropNames do
+		local z = propZ0 + (i - 1) * Config.PropSpacing
+		part(
+			"Prop_" .. name,
+			Vector3.new(0.6, 6, 4),
+			CFrame.new(propX, 3, z),
+			Color3.fromRGB(66, 71, 87),
+			Enum.Material.Metal,
+			room
+		)
+		local label = part(
+			"PropLabel_" .. name,
+			Vector3.new(6, 0.2, 3),
+			CFrame.new(propX + 4.6, 0.1, z) * CFrame.Angles(0, math.rad(90), 0),
+			Color3.fromRGB(26, 26, 31),
+			Enum.Material.SmoothPlastic,
+			room
+		)
+		label.CanCollide = false
+	end
+	local padZ = propZ0 + #Room.PropNames * Config.PropSpacing + 2
+	local base = part(
+		"TierPad",
+		Vector3.new(10, 0.4, 4),
+		CFrame.new(propX + 4.6, 0.2, padZ) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.fromRGB(26, 26, 31),
+		Enum.Material.SmoothPlastic,
+		room
+	)
+	base.CanCollide = false
+	for t = 1, 3 do
+		local button = part(
+			"TierPad" .. t,
+			Vector3.new(2.4, 0.6, 2.4),
+			CFrame.new(propX + 4.6, 0.7, padZ + (t - 2) * 3),
+			Color3.fromRGB(77, 77, 87),
+			Enum.Material.Metal,
+			room
+		)
+		button.CanCollide = false
+	end
 	return room
 end
 
@@ -147,9 +284,12 @@ function Room.build()
 
 	local existing = Workspace:FindFirstChild("Room")
 	local room: Folder
-	if existing and existing:IsA("Folder") then
+	if existing and existing:IsA("Folder") and existing:FindFirstChild("YardFloor") then
 		room = existing
 	else
+		if existing then
+			existing:Destroy()
+		end
 		room = buildFallback()
 	end
 	Room.folder = room
@@ -181,6 +321,47 @@ function Room.build()
 	if #Room.pillars == 0 then
 		table.insert(Room.pillars, Vector3.new(30, 0, 30))
 	end
+
+	-- Yard and sequence anchors.
+	local arenaSpawn = room:FindFirstChild("ArenaSpawn")
+	if arenaSpawn and arenaSpawn:IsA("BasePart") then
+		Room.arenaSpawn = Vector3.new(arenaSpawn.Position.X, 0, arenaSpawn.Position.Z)
+	end
+	Room.doorPosition = Vector3.new(0, 0, Config.RoomSize / 2)
+	local spawn = room:FindFirstChild("Spawn")
+	if spawn and spawn:IsA("BasePart") then
+		Room.yardSpawn = CFrame.new(spawn.Position.X, 3, spawn.Position.Z)
+	else
+		Room.yardSpawn = CFrame.new(0, 3, Config.RoomSize / 2 + 1 + Config.YardDepth * 0.75)
+	end
+	local van = room:FindFirstChild("Van")
+	if van and van:IsA("Model") then
+		local body = van:FindFirstChild("Body")
+		if body and body:IsA("BasePart") then
+			van.PrimaryPart = body
+		end
+		Room.van = van
+		Room.vanHome = van:GetPivot()
+	end
+	Room.props = {}
+	for _, name in Room.PropNames do
+		local panel = room:FindFirstChild("Prop_" .. name)
+		local label = room:FindFirstChild("PropLabel_" .. name)
+		if panel and panel:IsA("BasePart") and label and label:IsA("BasePart") then
+			Room.props[name] = { panel = panel, label = label }
+		end
+	end
+	Room.tierPads = {}
+	for t = 1, 3 do
+		local pad = room:FindFirstChild("TierPad" .. t)
+		if pad and pad:IsA("BasePart") then
+			Room.tierPads[t] = pad
+		end
+	end
+	local base = room:FindFirstChild("TierPad")
+	Room.tierPadBase = if base and base:IsA("BasePart") then base else nil
+	local marker = room:FindFirstChild("StartRunMarker")
+	Room.startMarker = if marker and marker:IsA("BasePart") then marker else nil
 
 	Lighting.Ambient = Color3.fromRGB(70, 70, 80)
 	Lighting.OutdoorAmbient = Color3.fromRGB(90, 90, 100)

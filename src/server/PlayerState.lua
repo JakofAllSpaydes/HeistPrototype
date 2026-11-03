@@ -172,11 +172,15 @@ function PlayerState.applyCharacterStats(state: State)
 	hum.WalkSpeed = st.moveSpeed
 end
 
-function PlayerState.reset(state: State)
+-- Installed by Staging: where a freshly loaded character goes (nil = the SpawnLocation).
+PlayerState.spawnCFrame = nil :: ((Player) -> CFrame?)?
+
+function PlayerState.reset(state: State, cash: number?)
 	local fresh = freshState(state.player)
 	for k, v in fresh do
 		(state :: any)[k] = v
 	end
+	state.cash = cash or Config.StartingCash
 	local char = state.player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if hum then
@@ -318,6 +322,15 @@ local function onCharacter(player: Player, char: Model)
 		char:WaitForChild("RightHand", 5)
 		PlayerState.refreshHeldVisual(state)
 	end)
+	local hook = PlayerState.spawnCFrame
+	local cf = if hook then hook(player) else nil
+	if cf then
+		task.spawn(function()
+			if char:WaitForChild("HumanoidRootPart", 5) then
+				char:PivotTo(cf)
+			end
+		end)
+	end
 	state.dirty = true
 end
 
