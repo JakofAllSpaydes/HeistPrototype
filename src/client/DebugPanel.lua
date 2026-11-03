@@ -181,6 +181,36 @@ local function build()
 	btn(r8, "Skip to run end", 0.5, function()
 		send("EndRun")
 	end, Theme.Colors.red)
+
+	UI.text({
+		Text = "MINIGAMES (open · tier)",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.new(1, 0, 0, S(14)),
+		LayoutOrder = 10,
+		Parent = panel,
+	})
+	local r9 = row(panel, 11, rh)
+	for _, name in { "Lockpick", "Hotwire", "Keypad" } do
+		btn(r9, name, 1 / 3, function()
+			send("OpenMinigame", name)
+		end)
+	end
+	local r10 = row(panel, 12, rh)
+	for _, name in { "Charges", "Safe", "Freq" } do
+		btn(r10, name, 1 / 3, function()
+			send("OpenMinigame", name)
+		end)
+	end
+	local r11 = row(panel, 13, rh)
+	for t = 1, 3 do
+		toggles["tier" .. t] = btn(r11, "Tier " .. t, 0.2, function()
+			send("SetTier", t)
+		end)
+	end
+	btn(r11, "Stats", 0.4, function()
+		send("MinigameStats")
+	end, Theme.Colors.gold)
 end
 
 local function refreshToggles()
@@ -195,6 +225,12 @@ local function refreshToggles()
 	if toggles.god and toggles.god.Parent then
 		toggles.god.Text = if sync.god then "God mode ON" else "God mode"
 		toggles.god.TextColor3 = if sync.god then Theme.Colors.gold else Theme.Colors.text
+	end
+	for t = 1, 3 do
+		local b = toggles["tier" .. t]
+		if b and b.Parent then
+			b.TextColor3 = if sync.minigameTier == t then Theme.Colors.gold else Theme.Colors.text
+		end
 	end
 end
 

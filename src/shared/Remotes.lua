@@ -17,6 +17,8 @@ local DEFS: { [string]: string } = {
 	UseAbility = "RemoteEvent", -- client -> server: abilityId (turret | barricade | stim)
 	VoteSkip = "RemoteEvent", -- client -> server: on (boolean); only counts during an intermission
 	SetAutoSkip = "RemoteEvent", -- client -> server: on (boolean); votes to skip every intermission
+	MinigameStart = "RemoteEvent", -- server -> client: { token, name, tier }; open that game's panel
+	MinigameResult = "RemoteEvent", -- client -> server: token, outcome (done | fail | cancel), misses
 }
 
 local folder: Instance

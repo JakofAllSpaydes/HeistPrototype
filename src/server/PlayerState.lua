@@ -278,6 +278,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		skipNeeded = World.skipNeeded(),
 		myVote = World.skipVotes[state.player.UserId] == true,
 		autoSkip = World.autoSkip[state.player.UserId] == true,
+		minigameTier = World.minigameTier,
 	}
 end
 

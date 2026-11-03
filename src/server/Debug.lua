@@ -17,6 +17,7 @@ local Abilities = require(script.Parent.Abilities)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Staging = require(script.Parent.Staging)
+local Minigames = require(script.Parent.Minigames)
 
 local Debug = {}
 
@@ -99,6 +100,12 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	SetTier = function(player, _state, args)
 		Staging.setTier(tonumber(args) or 1, player.Name)
+	end,
+	OpenMinigame = function(player, _state, args)
+		Minigames.open(player, tostring(args))
+	end,
+	MinigameStats = function(_player, _state, _args)
+		Minigames.printStats()
 	end,
 }
 

@@ -80,6 +80,7 @@ export type Sync = {
 	skipNeeded: number,
 	myVote: boolean,
 	autoSkip: boolean,
+	minigameTier: number, -- 1..3, session-wide
 }
 
 return {}
