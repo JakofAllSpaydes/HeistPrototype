@@ -1,5 +1,6 @@
 --!strict
--- The New Weapon tile is the reel: spin, land, eject, reset. Nothing else appears on the HUD.
+-- Weapon roll: a reel panel in the top-center slot under the wave bar. Spin -> land -> eject toward the
+-- player's feet while the server drops the real gun in from above. The buy tile just shows ROLLING.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -8,7 +9,6 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
-local Weapons = require(Shared:WaitForChild("Weapons"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
@@ -21,6 +21,7 @@ local WeaponReel = {}
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera :: Camera
 local spinning = false
+local CELLS = 18
 
 local function tile()
 	local buy = HUD.get("buy")
@@ -31,15 +32,14 @@ local function feetScreenPos(): Vector2
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if root then
-		local p = camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+		local p = camera:WorldToViewportPoint(root.Position + root.CFrame.LookVector * 4 - Vector3.new(0, 2.5, 0))
 		return Vector2.new(p.X, p.Y)
 	end
 	return camera.ViewportSize / 2
 end
 
-local function legendaryRays(button: GuiObject)
+local function legendaryRays(center: Vector2)
 	local S = UI.S
-	local center = button.AbsolutePosition + button.AbsoluteSize / 2
 	local gui = HUD.gui
 	if not gui then
 		return
@@ -52,81 +52,168 @@ local function legendaryRays(button: GuiObject)
 		ZIndex = 0,
 		Parent = gui,
 	})
-	for i = 1, 10 do
+	for i = 1, 12 do
 		local ray = UI.frame({
 			BackgroundColor3 = Theme.Colors.gold,
 			BackgroundTransparency = 0.3,
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(S(14), S(160)),
-			Rotation = (i - 1) * 36,
+			Size = UDim2.fromOffset(S(18), S(220)),
+			Rotation = (i - 1) * 30,
 			Parent = rays,
 		})
-		UI.tween(ray, { BackgroundTransparency = 1, Size = UDim2.fromOffset(S(4), S(260)) }, 0.6)
+		UI.tween(ray, { BackgroundTransparency = 1, Size = UDim2.fromOffset(S(4), S(360)) }, 0.6)
 	end
-	UI.tween(rays, { Rotation = 40 }, 0.6)
+	UI.tween(rays, { Rotation = 35 }, 0.6)
 	task.delay(0.65, function()
 		rays:Destroy()
 	end)
 end
 
-local function spin(weapon: any)
-	local t = tile()
-	if not t then
-		spinning = false
-		return
-	end
+-- Builds the panel in the call slot. Returns the pieces the spin needs.
+local function buildPanel()
 	local S = UI.S
-	local well = t.well :: Frame
-	local cellH = math.max(well.AbsoluteSize.Y, S(24))
-	local cellW = math.max(well.AbsoluteSize.X, S(24))
-	local N = 14
-	t.icon.Visible = false
-	t.name.Text = "ROLLING"
-	t.stroke.Color = Theme.Colors.grey
-	t.pricePill.Visible = false
-
-	local column = UI.frame({
-		Name = "Reel",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(cellW, cellH * N),
-		Position = UDim2.fromOffset(0, 0),
-		Parent = well,
+	local cs = HUD.get("callSlot")
+	local w = cs.width
+	local h = S(128)
+	local panel = UI.frame({
+		Name = "ReelPanel",
+		BackgroundColor3 = Theme.Colors.panel,
+		Size = UDim2.fromOffset(w, h),
+		ClipsDescendants = true,
 	})
-	for i = 1, N do
-		local isLast = i == N
+	UI.corner(panel, S(14))
+	local stroke = UI.stroke(panel, Theme.Colors.grey, S(3))
+	local title = UI.text({
+		Text = "NEW WEAPON",
+		Font = Theme.Fonts.display,
+		TextSize = S(14),
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.new(1, 0, 0, S(22)),
+		Position = UDim2.fromOffset(0, S(4)),
+		Parent = panel,
+	})
+	local stripW = w - S(20)
+	local stripH = S(66)
+	local strip = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		Position = UDim2.fromOffset(S(10), S(28)),
+		Size = UDim2.fromOffset(stripW, stripH),
+		ClipsDescendants = true,
+		Parent = panel,
+	})
+	UI.corner(strip, S(10))
+	local cellW = S(72)
+	local row = UI.frame({
+		Name = "Row",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(cellW * CELLS, stripH),
+		Position = UDim2.fromOffset(stripW / 2 - cellW / 2, 0),
+		Parent = strip,
+	})
+	-- Center marker.
+	local marker = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.fromOffset(cellW, stripH),
+		ZIndex = 3,
+		Parent = strip,
+	})
+	UI.corner(marker, S(8))
+	local markerStroke = UI.stroke(marker, Theme.Colors.gold, S(2), 0.3)
+	for _, y in { 0, 1 } do
+		local tick = UI.frame({
+			BackgroundColor3 = Theme.Colors.gold,
+			AnchorPoint = Vector2.new(0.5, y),
+			Position = UDim2.new(0.5, 0, y, 0),
+			Size = UDim2.fromOffset(S(4), S(8)),
+			ZIndex = 4,
+			Parent = strip,
+		})
+		UI.corner(tick, S(2))
+	end
+	local result = UI.text({
+		Text = "ROLLING",
+		Font = Theme.Fonts.display,
+		TextSize = S(18),
+		TextColor3 = Theme.Colors.text,
+		Size = UDim2.new(1, 0, 0, S(26)),
+		Position = UDim2.fromOffset(0, S(98)),
+		Parent = panel,
+	})
+	cs.add(panel, 0)
+	panel.Size = UDim2.fromOffset(w, 0)
+	UI.tween(panel, { Size = UDim2.fromOffset(w, h) }, 0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	return {
+		panel = panel,
+		stroke = stroke,
+		title = title,
+		strip = strip,
+		stripW = stripW,
+		stripH = stripH,
+		row = row,
+		cellW = cellW,
+		marker = marker,
+		markerStroke = markerStroke,
+		result = result,
+		width = w,
+		height = h,
+	}
+end
+
+local function fillRow(p: any, weapon: any)
+	local S = UI.S
+	for i = 1, CELLS do
+		local isLast = i == CELLS
 		local rarity = if isLast then weapon.rarity else math.random(1, 5)
+		local color = Rarity.color(rarity)
 		local cell = UI.frame({
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(0, (i - 1) * cellH),
-			Size = UDim2.fromOffset(cellW, cellH),
-			Parent = column,
+			Position = UDim2.fromOffset((i - 1) * p.cellW, 0),
+			Size = UDim2.fromOffset(p.cellW, p.stripH),
+			Parent = p.row,
 		})
 		local frame = UI.frame({
-			BackgroundTransparency = 1,
+			BackgroundColor3 = Theme.Colors.panel2,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.new(1, -S(6), 1, -S(6)),
+			Size = UDim2.new(1, -S(8), 1, -S(10)),
 			Parent = cell,
 		})
-		UI.corner(frame, S(6))
-		UI.stroke(frame, Rarity.color(rarity), S(2), if isLast then 0 else 0.35)
-		local icon = UI.gunIcon(frame, Rarity.color(rarity), math.floor(cellH * 0.8))
+		UI.corner(frame, S(8))
+		UI.stroke(frame, color, S(2), if isLast then 0 else 0.4)
+		local icon = UI.gunIcon(frame, color, math.floor(p.stripH * 0.72))
 		icon.AnchorPoint = Vector2.new(0.5, 0.5)
 		icon.Position = UDim2.fromScale(0.5, 0.5)
 		if not isLast then
 			for _, c in icon:GetChildren() do
 				if c:IsA("Frame") then
-					c.BackgroundTransparency = 0.35
+					c.BackgroundTransparency = 0.3
 				end
 			end
 		end
 	end
+end
 
-	local travel = (N - 1) * cellH
+local function spin(weapon: any)
+	local t = tile()
+	local p = buildPanel()
+	fillRow(p, weapon)
+	if t then
+		t.icon.Visible = false
+		t.name.Text = "ROLLING"
+		t.pricePill.Visible = false
+		t.setGreyed(true)
+	end
+
+	-- Scroll so the last cell ends under the marker.
+	local startX = p.stripW / 2 - p.cellW / 2
+	local endX = p.stripW / 2 - (CELLS - 0.5) * p.cellW
+	p.row.Position = UDim2.fromOffset(startX, 0)
 	local tween = UI.tween(
-		column,
-		{ Position = UDim2.fromOffset(0, -travel) },
+		p.row,
+		{ Position = UDim2.fromOffset(endX, 0) },
 		Config.RollDurationSec,
 		Enum.EasingStyle.Quart,
 		Enum.EasingDirection.Out
@@ -134,47 +221,57 @@ local function spin(weapon: any)
 	local lastIdx = 0
 	local conn: RBXScriptConnection
 	conn = RunService.Heartbeat:Connect(function()
-		if not column.Parent then
+		if not p.row.Parent then
 			conn:Disconnect()
 			return
 		end
-		local idx = math.floor(-column.Position.Y.Offset / cellH + 0.5)
+		local idx = math.floor((p.stripW / 2 - p.row.Position.X.Offset) / p.cellW + 0.5)
 		if idx > lastIdx then
 			lastIdx = idx
-			UI.sound(Theme.Sounds.reelTick, 0.8 + (idx / N) * 0.9, 0.35)
+			UI.sound(Theme.Sounds.reelTick, 0.7 + (idx / CELLS) * 1.1, 0.4)
+			UI.punch(p.marker, 1.06, 0.1)
 		end
 	end)
 	tween.Completed:Wait()
 	conn:Disconnect()
-	if not column.Parent then
+	if not p.panel.Parent then
 		spinning = false
 		return
 	end
 
-	-- Land
+	-- Land.
 	local color = Rarity.color(weapon.rarity)
-	UI.punch(t.button, 1.06, 0.3)
-	t.stroke.Color = color
-	t.name.Text = string.format("%s\n%s", string.upper(weapon.displayName), string.upper(weapon.rarityName))
-	UI.sound(Theme.Sounds.reelLand, 0.7 + weapon.rarity * 0.15, 0.6)
-	if weapon.rarity == Rarity.Legendary then
-		legendaryRays(t.button)
-		UI.sound(Theme.Sounds.legendary, 1, 0.6)
+	p.stroke.Color = color
+	p.markerStroke.Color = color
+	p.markerStroke.Transparency = 0
+	p.title.Text = string.upper(weapon.rarityName)
+	p.title.TextColor3 = color
+	p.result.Text = string.format("%s  ·  DMG %d", string.upper(weapon.displayName), weapon.dmg)
+	p.result.TextColor3 = color
+	UI.punch(p.panel, 1.08, 0.35)
+	UI.punch(p.result, 1.3, 0.35)
+	UI.sound(Theme.Sounds.reelLand, 0.6 + weapon.rarity * 0.15, 0.7)
+	local center = p.panel.AbsolutePosition + p.panel.AbsoluteSize / 2
+	if weapon.rarity >= Rarity.Epic then
+		legendaryRays(center)
 	end
-	task.wait(0.35)
+	if weapon.rarity == Rarity.Legendary then
+		UI.sound(Theme.Sounds.legendary, 1, 0.7)
+	end
+	task.wait(Config.RollLandHoldSec)
 
-	-- Eject: icon tweens out toward the player's feet and fades.
+	-- Eject: the icon flies down toward the player's feet while the real gun drops in.
 	local gui = HUD.gui
-	if gui then
-		local start = well.AbsolutePosition + well.AbsoluteSize / 2
-		local ghost = UI.gunIcon(gui, color, math.floor(cellH * 0.9))
+	if gui and p.panel.Parent then
+		local start = p.marker.AbsolutePosition + p.marker.AbsoluteSize / 2
+		local ghost = UI.gunIcon(gui, color, math.floor(p.stripH * 0.9))
 		ghost.AnchorPoint = Vector2.new(0.5, 0.5)
 		ghost.Position = UDim2.fromOffset(start.X, start.Y)
 		ghost.ZIndex = 20
 		local feet = feetScreenPos()
 		UI.tween(
 			ghost,
-			{ Position = UDim2.fromOffset(feet.X, feet.Y), Rotation = 90 },
+			{ Position = UDim2.fromOffset(feet.X, feet.Y), Rotation = 110 },
 			Config.RollEjectSec,
 			Enum.EasingStyle.Quad,
 			Enum.EasingDirection.In
@@ -183,7 +280,7 @@ local function spin(weapon: any)
 			if c:IsA("Frame") then
 				UI.tween(
 					c,
-					{ BackgroundTransparency = 1 },
+					{ BackgroundTransparency = 0.6 },
 					Config.RollEjectSec,
 					Enum.EasingStyle.Quad,
 					Enum.EasingDirection.In
@@ -193,22 +290,31 @@ local function spin(weapon: any)
 		task.delay(Config.RollEjectSec + 0.05, function()
 			ghost:Destroy()
 		end)
+		UI.sound(Theme.Sounds.swap, 0.8, 0.5)
 	end
-	column:Destroy()
-	t.setGreyed(true)
-	task.wait(Config.RollEjectSec)
+	local close = UI.tween(
+		p.panel,
+		{ Size = UDim2.fromOffset(p.width, 0) },
+		Config.RollEjectSec,
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.In
+	)
+	close.Completed:Wait()
+	p.panel:Destroy()
 
-	-- Reset: next price, interactive again.
-	t.setGreyed(false)
-	t.icon.Visible = true
-	t.name.Text = "NEW WEAPON"
-	local sync = ClientState.sync
-	if sync then
-		t.setPrice(sync.prices.weapon)
-		t.setAffordable(sync.cash >= sync.prices.weapon)
+	-- Reset the tile: next price, interactive again.
+	if t then
+		t.setGreyed(false)
+		t.icon.Visible = true
+		t.name.Text = "NEW WEAPON"
+		local sync = ClientState.sync
+		if sync then
+			t.setPrice(sync.prices.weapon)
+			t.setAffordable(sync.cash >= sync.prices.weapon)
+		end
+		t.setEnabled(true)
 	end
 	spinning = false
-	t.setEnabled(true)
 end
 
 function WeaponReel.press()
@@ -253,8 +359,6 @@ function WeaponReel.init()
 		spinning = false
 		bind()
 	end)
-	-- Keep the pool warm for the reel cells so the first spin has icons to show.
-	local _ = Weapons.List
 end
 
 return WeaponReel

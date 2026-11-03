@@ -1,8 +1,12 @@
 --!strict
 -- Bottom-center toast above the health bar: "+11% DAMAGE", debug notices, downed stub.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rarity"))
+local Weapons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Weapons"))
 
 local Toast = {}
 
@@ -54,6 +58,15 @@ function Toast.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 	function component.onJuice(name: string, data: any)
 		if name == "Toast" then
 			component.show(tostring(data.text), Theme.Colors.gold, 1.2)
+		elseif name == "Swap" then
+			local rarity = Rarity.color(data.rarity or 1)
+			local w = Weapons.ById[data.weaponId]
+			local label = if w then string.upper(w.displayName) else tostring(data.weaponId)
+			component.show(
+				string.format("EQUIPPED %s · %s", label, string.upper(Rarity.name(data.rarity or 1))),
+				rarity,
+				1.2
+			)
 		elseif name == "Downed" then
 			component.show("DOWNED (STUB) · HP RESET", Theme.Colors.malus, 1.5)
 		end

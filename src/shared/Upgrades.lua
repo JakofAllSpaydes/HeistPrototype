@@ -7,17 +7,16 @@ export type Stat = { id: string, name: string, short: string, additive: boolean 
 local Upgrades = {}
 
 -- additive = true means the magnitude is added in percentage points instead of multiplying a base.
+-- Prototype list is gun-focused plus Move Speed so every pick is felt. Max HP, HP Regen and Greed are
+-- still supported by Stats if you add them back here (names and magnitudes below).
 Upgrades.Stats = {
 	{ id = "Damage", name = "Damage", short = "DMG", additive = false },
 	{ id = "FireRate", name = "Fire Rate", short = "RPM", additive = false },
 	{ id = "MagSize", name = "Mag Size", short = "MAG", additive = false },
 	{ id = "ReloadSpeed", name = "Reload Speed", short = "RLD", additive = false },
-	{ id = "MaxHP", name = "Max HP", short = "HP", additive = false },
-	{ id = "HPRegen", name = "HP Regen", short = "RGN", additive = false },
-	{ id = "MoveSpeed", name = "Move Speed", short = "SPD", additive = false },
 	{ id = "CritChance", name = "Crit Chance", short = "CRT", additive = true },
 	{ id = "HeadshotMult", name = "Headshot Mult", short = "HS", additive = false },
-	{ id = "Greed", name = "Greed", short = "$", additive = false },
+	{ id = "MoveSpeed", name = "Move Speed", short = "SPD", additive = false },
 } :: { Stat }
 
 -- Card name per stat x tier (1..5).
@@ -36,16 +35,16 @@ Upgrades.TierNames = {
 
 -- Magnitude in % per stat x tier (1..5). CritChance is in percentage points.
 Upgrades.Magnitude = {
-	Damage = { 8, 11, 15, 20, 28 },
-	FireRate = { 6, 9, 12, 16, 22 },
-	MagSize = { 10, 15, 20, 30, 40 },
-	ReloadSpeed = { 8, 12, 16, 22, 30 },
-	MaxHP = { 10, 15, 20, 28, 40 },
-	HPRegen = { 25, 40, 60, 90, 130 },
-	MoveSpeed = { 4, 6, 8, 11, 15 },
-	CritChance = { 3, 5, 7, 10, 15 },
-	HeadshotMult = { 10, 15, 20, 30, 40 },
-	Greed = { 8, 12, 16, 22, 30 },
+	Damage = { 15, 22, 30, 40, 55 },
+	FireRate = { 12, 18, 25, 35, 50 },
+	MagSize = { 20, 30, 45, 60, 80 },
+	ReloadSpeed = { 15, 22, 30, 40, 55 },
+	MaxHP = { 15, 25, 35, 50, 70 },
+	HPRegen = { 50, 80, 120, 180, 260 },
+	MoveSpeed = { 8, 12, 16, 22, 30 },
+	CritChance = { 5, 10, 15, 22, 30 },
+	HeadshotMult = { 20, 30, 45, 60, 80 },
+	Greed = { 15, 25, 35, 50, 70 },
 } :: { [string]: { number } }
 
 Upgrades.TradeoffChance = Config.TradeoffChance

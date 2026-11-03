@@ -214,10 +214,20 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end
 
-	function component.onJuice(juiceName: string)
+	function component.onJuice(juiceName: string, data: any)
 		if juiceName == "Swap" then
-			UI.punch(slot, 1.12, 0.3)
+			UI.punch(slot, 1.18, 0.35)
 			UI.sound(Theme.Sounds.swap, 1, 0.5)
+			slotStroke.Thickness = S(5)
+			UI.tween(slotStroke, { Thickness = S(2) }, 0.4)
+		elseif juiceName == "UpgradeApplied" then
+			UI.punch(slot, 1.1, 0.3)
+			local statId = data and data.card and data.card.stat
+			if statId == "Damage" or statId == "HeadshotMult" or statId == "CritChance" then
+				dmg.TextColor3 = Theme.Colors.cash
+				UI.punch(dmg, 1.5, 0.4)
+				UI.tween(dmg, { TextColor3 = Theme.Colors.text }, 0.8)
+			end
 		elseif juiceName == "PlayerHit" then
 			UI.shake(health, S(2), 0.15)
 		end

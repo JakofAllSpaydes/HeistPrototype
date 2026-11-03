@@ -33,8 +33,18 @@ end)
 local params = RaycastParams.new()
 params.FilterType = Enum.RaycastFilterType.Exclude
 
-RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function()
+-- FOV kick on fire, decays each frame.
+local fovKick = 0
+ClientState.Juice:Connect(function(name: string)
+	if name == "LocalFire" then
+		fovKick = Config.FireFovKick
+	end
+end)
+
+RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
+	fovKick = math.max(0, fovKick - dt * 18)
+	camera.FieldOfView = Config.CameraFov + fovKick
 	local free = ClientState.isMouseFree()
 	UserInputService.MouseBehavior = if free then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
 	UserInputService.MouseIconEnabled = free

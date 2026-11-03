@@ -526,6 +526,7 @@ function UpgradeOverlay.open()
 		return
 	end
 	show(result.cards, result.reopened == true)
+	UI.sound(Theme.Sounds.call, if result.reopened then 0.9 else 1.2, 0.5)
 end
 
 function UpgradeOverlay.toggle()

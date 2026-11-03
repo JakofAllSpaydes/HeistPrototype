@@ -238,6 +238,8 @@ function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: 
 			return
 		end
 		if tile.enabled and tile.onPress then
+			UI.punch(button, 0.92, 0.18)
+			UI.sound(Theme.Sounds.toast, 1.4, 0.35)
 			tile.onPress()
 		end
 	end)

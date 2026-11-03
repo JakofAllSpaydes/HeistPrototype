@@ -116,6 +116,25 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			target = sync.cash
 			if target > shown then
 				UI.punch(cashLabel, 1.12, 0.25)
+			else
+				-- Spend: flash the row and show the amount leaving.
+				UI.shake(cashRow, S(2), 0.15)
+				cashLabel.TextColor3 = Theme.Colors.malus
+				UI.tween(cashLabel, { TextColor3 = Theme.Colors.cash }, 0.4)
+				local spent = UI.text({
+					Text = "-" .. UI.fmtCash(shown - target),
+					Font = Theme.Fonts.display,
+					TextSize = S(20),
+					TextColor3 = Theme.Colors.malus,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Position = UDim2.fromOffset(S(40), -S(10)),
+					Size = UDim2.fromOffset(S(160), S(24)),
+					Parent = root,
+				})
+				UI.tween(spent, { Position = UDim2.fromOffset(S(40), -S(40)), TextTransparency = 1 }, 0.7)
+				task.delay(0.75, function()
+					spent:Destroy()
+				end)
 			end
 		end
 	end

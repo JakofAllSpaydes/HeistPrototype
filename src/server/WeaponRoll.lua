@@ -2,6 +2,7 @@
 -- Weapon roll with pity, ground loot spawn, swap. Also the ground-gun factory used by the big crate.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
@@ -24,12 +25,13 @@ export type SpawnOpts = {
 	crateId: string?,
 	slot: number?,
 	promptText: string?,
+	dropFrom: number?, -- fall in from this height and bounce on the floor
 }
 
 local WeaponRoll = {}
 
--- BigCrate installs its take handler here so the two modules never require each other.
-WeaponRoll.CrateTakeHandler = nil :: ((Player, BasePart) -> ())?
+-- BigCrate installs this so the two modules never require each other: (player, crateId, slot).
+WeaponRoll.CrateGunTakenHandler = nil :: ((Player, string, number) -> ())?
 
 local assets = ReplicatedStorage:WaitForChild("Assets")
 local gunTemplate = assets:WaitForChild("GunTemplate") :: BasePart
@@ -61,6 +63,28 @@ function WeaponRoll.setLifetime(gun: BasePart, lifetime: number)
 			end
 		end)
 	end
+end
+
+-- Flat expanding ring on the floor. Used by gun drops and the crate landing.
+function WeaponRoll.dustRing(position: Vector3, size: number, color: Color3?)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.2, 1, 1)
+	ring.CFrame = CFrame.new(position.X, 0.3, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.Color = color or Color3.fromRGB(160, 150, 130)
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.3
+	ring.Parent = Workspace:WaitForChild("Effects")
+	TweenService:Create(ring, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.2, size, size),
+		Transparency = 1,
+	}):Play()
+	task.delay(0.6, function()
+		ring:Destroy()
+	end)
 end
 
 -- Keep the beam world-vertical whatever angle the gun lies at. Call again after moving a gun.
@@ -126,6 +150,24 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 
 	gun.Parent = lootFolder
 	WeaponRoll.setLifetime(gun, if opts.lifetime ~= nil then opts.lifetime else Config.GroundWeaponLifetime)
+
+	local dropFrom = opts.dropFrom
+	if dropFrom and dropFrom > 0 then
+		local final = opts.cframe
+		gun.CFrame = final + Vector3.new(0, dropFrom, 0)
+		local fall = TweenService:Create(
+			gun,
+			TweenInfo.new(Config.GunDropSec, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+			{ CFrame = final }
+		)
+		fall:Play()
+		fall.Completed:Once(function()
+			if gun.Parent then
+				WeaponRoll.dustRing(final.Position, 8, Rarity.color(opts.rarity))
+				Remotes.Juice:FireAllClients("GunLanded", { position = final.Position, rarity = opts.rarity })
+			end
+		end)
+	end
 	return gun
 end
 
@@ -142,13 +184,6 @@ function WeaponRoll.groundCFrameInFront(char: Model, distance: number): CFrame
 end
 
 function WeaponRoll.onPrompt(player: Player, gun: BasePart)
-	if gun:GetAttribute("CrateId") ~= nil then
-		local handler = WeaponRoll.CrateTakeHandler
-		if handler then
-			handler(player, gun)
-		end
-		return
-	end
 	WeaponRoll.swap(player, gun)
 end
 
@@ -164,7 +199,7 @@ function WeaponRoll.dropHeld(state: PlayerState.State, cframe: CFrame): BasePart
 end
 
 function WeaponRoll.swap(player: Player, gun: BasePart)
-	if not gun.Parent or gun.Parent ~= lootFolder or gun:GetAttribute("CrateId") ~= nil then
+	if not gun.Parent or gun.Parent ~= lootFolder then
 		return
 	end
 	if not withinReach(player, gun) then
@@ -174,11 +209,18 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	local cf = gun.CFrame
 	local newId = gun:GetAttribute("WeaponId") :: string
 	local newRarity = gun:GetAttribute("Rarity") :: number
+	local crateId = gun:GetAttribute("CrateId")
+	local slot = gun:GetAttribute("Slot")
 	local oldId, oldRarity = state.held.weaponId, state.held.rarity
 	expireTokens[gun] = nil
 	gun:Destroy()
+	-- The old gun lands where the new one was, with a fresh timer.
 	WeaponRoll.dropHeld(state, cf)
 	PlayerState.setHeld(state, newId, newRarity)
+	local handler = WeaponRoll.CrateGunTakenHandler
+	if handler and typeof(crateId) == "string" and typeof(slot) == "number" then
+		handler(player, crateId, slot)
+	end
 	Remotes.Juice:FireClient(player, "Swap", { weaponId = newId, rarity = newRarity })
 	Log.event(
 		"Swap",
@@ -243,7 +285,8 @@ function WeaponRoll.buy(player: Player): any
 		if note ~= "" then ", " .. note else ""
 	)
 
-	task.delay(Config.RollDurationSec, function()
+	-- The gun starts falling when the client reel ejects, and lands 4 studs in front of the player.
+	task.delay(Config.RollDurationSec + Config.RollLandHoldSec, function()
 		local char = player.Character
 		if not player.Parent or not char then
 			return
@@ -253,6 +296,7 @@ function WeaponRoll.buy(player: Player): any
 			rarity = rarity,
 			cframe = WeaponRoll.groundCFrameInFront(char, 4),
 			dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state)),
+			dropFrom = Config.GunDropHeight,
 		})
 	end)
 

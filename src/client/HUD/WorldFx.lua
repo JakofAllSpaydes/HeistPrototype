@@ -2,9 +2,12 @@
 -- World-space juice: damage numbers, kill pop, cash floats, enemy hit flash, red screen pulse on damage.
 local Workspace = game:GetService("Workspace")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rarity"))
 
 local WorldFx = {}
 
@@ -133,6 +136,20 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			vignette.BackgroundTransparency = 0.55
 			UI.tween(vignette, { BackgroundTransparency = 1 }, 0.45)
 			UI.sound(Theme.Sounds.hurt, 1, 0.25)
+		elseif name == "GunLanded" then
+			UI.sound(Theme.Sounds.crate, 1.3, 0.5)
+			local gui = billboard(data.position + Vector3.new(0, 1, 0), 60, 60, 0.5)
+			local ring = UI.frame({
+				BackgroundTransparency = 1,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromScale(0.2, 0.2),
+				Parent = gui,
+			})
+			UI.corner(ring, 999)
+			local stroke = UI.stroke(ring, Rarity.color(data.rarity or 1), 4)
+			UI.tween(ring, { Size = UDim2.fromScale(1, 1) }, 0.4)
+			UI.tween(stroke, { Transparency = 1 }, 0.4)
 		end
 	end
 

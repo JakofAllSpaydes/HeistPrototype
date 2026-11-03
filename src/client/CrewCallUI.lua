@@ -1,5 +1,5 @@
 --!strict
--- Crew call component in the slot under the wave bar: expanded card -> timer pill -> toast.
+-- Crew call component in the slot under the wave bar: expanded card -> timer pill -> result card -> toast.
 -- Also owns the ARMS DROP banner since it shares the slot.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -101,10 +101,22 @@ local function buildPill(data: any): (Frame, TextLabel, UIStroke)
 	return pill, timer, stroke
 end
 
-local function buildExpanded(data: any): (Frame, TextLabel)
+-- Expanded card: portrait, name, type pill or title, timer (optional), 2 lines, reward line.
+type CardSpec = {
+	kind: string,
+	crewLead: string,
+	label: string, -- type pill text or result title
+	labelColor: Color3?,
+	text: { string },
+	rewardLine: string,
+	showTimer: boolean,
+	duration: number?,
+}
+
+local function buildExpanded(spec: CardSpec): (Frame, TextLabel)
 	local S = UI.S
 	local cs = slot()
-	local color = KIND_COLORS[data.kind] or Theme.Colors.blue
+	local color = spec.labelColor or KIND_COLORS[spec.kind] or Theme.Colors.blue
 	local h = S(112)
 	local frame = UI.frame({
 		Name = "CallCard",
@@ -121,7 +133,6 @@ local function buildExpanded(data: any): (Frame, TextLabel)
 		Parent = frame,
 	})
 	UI.corner(portrait, S(10))
-	-- Placeholder silhouette: head + shoulders.
 	local head = UI.frame({
 		BackgroundColor3 = Theme.Colors.grey,
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -148,7 +159,7 @@ local function buildExpanded(data: any): (Frame, TextLabel)
 	})
 	local textX = h + S(4)
 	UI.text({
-		Text = data.crewLead,
+		Text = spec.crewLead,
 		Font = Theme.Fonts.display,
 		TextSize = S(18),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -156,10 +167,10 @@ local function buildExpanded(data: any): (Frame, TextLabel)
 		Size = UDim2.fromOffset(S(140), S(24)),
 		Parent = frame,
 	})
-	local typePill = UI.pill(frame, data.typeLabel, color, Theme.Colors.bg, S(16), S(10))
-	typePill.Position = UDim2.fromOffset(textX + S(118), S(12))
+	local labelPill = UI.pill(frame, spec.label, color, Theme.Colors.bg, S(16), S(10))
+	labelPill.Position = UDim2.fromOffset(textX + S(118), S(12))
 	local timer = UI.text({
-		Text = fmtTime(data.duration),
+		Text = if spec.duration then fmtTime(spec.duration) else "",
 		Font = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = color,
@@ -167,10 +178,11 @@ local function buildExpanded(data: any): (Frame, TextLabel)
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -S(12), 0, S(8)),
 		Size = UDim2.fromOffset(S(80), S(26)),
+		Visible = spec.showTimer,
 		Parent = frame,
 	})
 	UI.text({
-		Text = table.concat(data.text, "\n"),
+		Text = table.concat(spec.text, "\n"),
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -181,7 +193,7 @@ local function buildExpanded(data: any): (Frame, TextLabel)
 		Parent = frame,
 	})
 	UI.text({
-		Text = data.rewardLine,
+		Text = spec.rewardLine,
 		Font = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.cash,
@@ -193,31 +205,36 @@ local function buildExpanded(data: any): (Frame, TextLabel)
 	return frame, timer
 end
 
+local function slideIn(frame: Frame, height: number)
+	local cs = slot()
+	frame.Size = UDim2.fromOffset(cs.width, 0)
+	UI.tween(frame, { Size = UDim2.fromOffset(cs.width, height) }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+end
+
 local function onCallStart(data: any)
 	clearCall()
 	callToken += 1
 	local token = callToken
 	local cs = slot()
-	local expanded, expandedTimer = buildExpanded(data)
+	local expanded, expandedTimer = buildExpanded({
+		kind = data.kind,
+		crewLead = data.crewLead,
+		label = data.typeLabel,
+		text = data.text,
+		rewardLine = data.rewardLine,
+		showTimer = true,
+		duration = data.duration,
+	})
 	activeCall =
 		{ data = data, frame = expanded, timerLabel = expandedTimer, stroke = nil, pill = false, token = token }
 	cs.add(expanded, 1)
-	expanded.Position = UDim2.fromOffset(0, -UI.S(130))
-	expanded.Size = UDim2.fromOffset(cs.width, 0)
-	UI.tween(
-		expanded,
-		{ Size = UDim2.fromOffset(cs.width, UI.S(112)) },
-		0.3,
-		Enum.EasingStyle.Back,
-		Enum.EasingDirection.Out
-	)
+	slideIn(expanded, UI.S(112))
 	UI.sound(Theme.Sounds.call, 1, 0.6)
 
 	task.delay(Config.CallHoldSec, function()
 		if not activeCall or activeCall.token ~= token then
 			return
 		end
-		-- Collapse to the pill.
 		local shrink = UI.tween(
 			expanded,
 			{ Size = UDim2.fromOffset(cs.width, 0) },
@@ -240,17 +257,53 @@ local function onCallStart(data: any)
 	end)
 end
 
+-- Result: a "nice work" / "too slow" card from the crew lead, then the toast.
 local function onCallEnd(data: any)
 	clearCall()
+	callToken += 1
+	local token = callToken
 	local cs = slot()
-	cs.toast(tostring(data.toast), if data.success then Theme.Colors.cash else Theme.Colors.red, 0.8)
-	UI.sound(if data.success then Theme.Sounds.legendary else Theme.Sounds.deny, if data.success then 1.1 else 0.8, 0.5)
+	local color = if data.success then Theme.Colors.cash else Theme.Colors.red
+	local card = buildExpanded({
+		kind = data.kind or "job",
+		crewLead = data.crewLead or Lines.job.crewLead,
+		label = data.title or (if data.success then Lines.job.doneTitle else Lines.failToast),
+		labelColor = color,
+		text = data.text or {},
+		rewardLine = data.rewardLine or "",
+		showTimer = false,
+	})
+	cs.add(card, 1)
+	slideIn(card, UI.S(112))
+	UI.sound(if data.success then Theme.Sounds.legendary else Theme.Sounds.deny, if data.success then 1.1 else 0.8, 0.6)
+	if data.success then
+		UI.punch(card, 1.06, 0.4)
+	else
+		UI.shake(card, UI.S(3), 0.3)
+	end
+	task.delay(Config.CallHoldSec, function()
+		if token ~= callToken then
+			return
+		end
+		local shrink = UI.tween(
+			card,
+			{ Size = UDim2.fromOffset(cs.width, 0) },
+			0.2,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.In
+		)
+		shrink.Completed:Wait()
+		card:Destroy()
+		if token == callToken then
+			cs.toast(tostring(data.toast), color, 0.8)
+		end
+	end)
 end
 
 local function updateBanner(left: number, crateId: string)
 	local S = UI.S
 	local cs = slot()
-	local text = string.format("ARMS DROP · %d LEFT · ONE EACH", left)
+	local text = string.format("ARMS DROP · %d LEFT", left)
 	if crateBanner and crateBanner.frame.Parent then
 		crateBanner.label.Text = text
 		crateBanner.crateId = crateId
@@ -306,12 +359,12 @@ function CrewCallUI.init()
 	end)
 
 	HUD.Rebuilt:Connect(function()
-		-- The slot was rebuilt; drop stale frames. The server will not resend, so re-add what is live.
+		-- The slot was rebuilt; re-add what is live.
 		local call = activeCall
 		activeCall = nil
 		local banner = crateBanner
 		crateBanner = nil
-		if call then
+		if call and call.data and call.data.endsAt then
 			local pill, timer, stroke = buildPill(call.data)
 			slot().add(pill, 1)
 			activeCall =
@@ -327,7 +380,7 @@ function CrewCallUI.init()
 	local pulse = 0
 	RunService.Heartbeat:Connect(function(dt)
 		local call = activeCall
-		if not call or not call.frame.Parent then
+		if not call or not call.frame.Parent or not call.data.endsAt then
 			return
 		end
 		local remaining = call.data.endsAt - ClientState.serverNow()

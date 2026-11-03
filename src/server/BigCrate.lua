@@ -23,7 +23,6 @@ type Crate = {
 	glow: BasePart?,
 	guns: { [number]: BasePart },
 	left: number,
-	takenBy: { [Player]: boolean },
 	active: boolean,
 }
 
@@ -93,8 +92,15 @@ function BigCrate.drop(at: Vector3?)
 	lid.CFrame = lidLand + lift
 	model.Parent = effects
 
-	local crate: Crate = { id = id, model = model, glow = nil, guns = {}, left = n, takenBy = {}, active = true }
+	local crate: Crate = { id = id, model = model, glow = nil, guns = {}, left = n, active = true }
 	crates[id] = crate
+	if Config.BigCrateLifetime > 0 then
+		task.delay(Config.BigCrateLifetime, function()
+			if crate.active then
+				BigCrate.finish(crate)
+			end
+		end)
+	end
 	Remotes.Juice:FireAllClients("CrateIncoming", { crateId = id, left = n, total = n })
 	Log.event("Crate", "Arms drop %s incoming at wave %d with %d guns", id, World.wave, n)
 
@@ -146,10 +152,10 @@ function BigCrate.drop(at: Vector3?)
 				rarity = rarity,
 				cframe = CFrame.new(landPos + Vector3.new(0, body.Size.Y + 0.5, 0)),
 				dmg = Stats.weaponDamage(weapon.id, rarity, dmgPct),
-				lifetime = 0,
+				lifetime = Config.GroundWeaponLifetime,
 				crateId = id,
 				slot = slot,
-				promptText = "TAKE",
+				promptText = "SWAP",
 			})
 			crate.guns[slot] = gun
 			local settle = CFrame.new(target)
@@ -193,44 +199,17 @@ function BigCrate.drop(at: Vector3?)
 	end)
 end
 
-function BigCrate.take(player: Player, gun: BasePart)
-	local crateId = gun:GetAttribute("CrateId")
-	local crate = if typeof(crateId) == "string" then crates[crateId] else nil
+-- Crate guns are ordinary swaps (you only hold one gun, so the old one lands on the floor anyway).
+-- WeaponRoll calls this after a crate gun is picked up so the banner count and the crate follow.
+function BigCrate.onGunTaken(player: Player, crateId: string, slot: number)
+	local crate = crates[crateId]
 	if not crate or not crate.active then
 		return
 	end
-	if crate.takenBy[player] then
-		return
-	end
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not char or not root or (root.Position - gun.Position).Magnitude > Config.InteractRadius + 2 then
-		return
-	end
-	local state = PlayerState.get(player)
-	local slot = gun:GetAttribute("Slot") :: number
-	local weaponId = gun:GetAttribute("WeaponId") :: string
-	local rarity = gun:GetAttribute("Rarity") :: number
-
-	WeaponRoll.dropHeld(state, WeaponRoll.groundCFrameInFront(char, 2))
-	PlayerState.setHeld(state, weaponId, rarity)
-	crate.takenBy[player] = true
-	state.cratesTaken[crate.id] = true
-	state.dirty = true
 	crate.guns[slot] = nil
-	gun:Destroy()
 	crate.left -= 1
 	Remotes.Juice:FireAllClients("CrateCount", { crateId = crate.id, left = crate.left })
-	Remotes.Juice:FireClient(player, "Swap", { weaponId = weaponId, rarity = rarity, fromCrate = true })
-	Log.event(
-		"Crate",
-		"%s took %s %s from %s, %d left",
-		player.Name,
-		Rarity.name(rarity),
-		weaponId,
-		crate.id,
-		crate.left
-	)
+	Log.event("Crate", "%s took a gun from %s, %d left", player.Name, crate.id, crate.left)
 	if crate.left <= 0 then
 		BigCrate.finish(crate)
 	end
@@ -242,7 +221,7 @@ function BigCrate.finish(crate: Crate)
 	end
 	crate.active = false
 	crates[crate.id] = nil
-	-- Leftover guns become ordinary ground loot with the normal lifetime.
+	-- Leftover guns become ordinary ground loot and keep their remaining lifetime.
 	for _, gun in crate.guns do
 		if gun.Parent then
 			gun:SetAttribute("CrateId", nil)
@@ -251,7 +230,6 @@ function BigCrate.finish(crate: Crate)
 			if prompt and prompt:IsA("ProximityPrompt") then
 				prompt.ActionText = "SWAP"
 			end
-			WeaponRoll.setLifetime(gun, Config.GroundWeaponLifetime)
 		end
 	end
 	crate.guns = {}
@@ -297,17 +275,20 @@ function BigCrate.onIntro()
 end
 
 function BigCrate.onWaveStart(wave: number)
-	if wave > 0 and wave % Config.BigCrateWaveInterval == 0 then
+	local interval = Config.BigCrateWaveInterval
+	if interval > 0 and wave > 0 and wave % interval == 0 then
 		BigCrate.drop()
 	end
 end
 
 function BigCrate.onWaveEnd()
-	BigCrate.finishAll()
+	if Config.BigCrateDespawnOnWaveEnd then
+		BigCrate.finishAll()
+	end
 end
 
 function BigCrate.init()
-	WeaponRoll.CrateTakeHandler = BigCrate.take
+	WeaponRoll.CrateGunTakenHandler = BigCrate.onGunTaken
 	Remotes.TakeCrateWeapon.OnServerEvent:Connect(function(player: Player, crateId: any, slot: any)
 		local crate = if typeof(crateId) == "string" then crates[crateId] else nil
 		if not crate or typeof(slot) ~= "number" then
@@ -315,7 +296,7 @@ function BigCrate.init()
 		end
 		local gun = crate.guns[slot]
 		if gun then
-			BigCrate.take(player, gun)
+			WeaponRoll.swap(player, gun)
 		end
 	end)
 end

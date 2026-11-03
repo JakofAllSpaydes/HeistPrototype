@@ -46,6 +46,8 @@ local Config = {
 	PlayerHPRegenPerSec = 1, -- base regen, scaled by the HP Regen upgrade
 	MouseSensitivity = 0.0022, -- radians per mouse pixel
 	TouchSensitivity = 0.006, -- radians per touch pixel
+	CameraFov = 70,
+	FireFovKick = 2.5, -- degrees of FOV punch per shot
 
 	------------------------------------------------------------------ Economy
 	UpgradePrice = 100,
@@ -64,8 +66,11 @@ local Config = {
 
 	------------------------------------------------------------------ Weapon reel / ground loot
 	RollDurationSec = 1.2,
+	RollLandHoldSec = 0.5, -- reel shows the result this long before the gun ejects
 	RollEjectSec = 0.4,
-	GroundWeaponLifetime = 60,
+	GunDropHeight = 14, -- rolled guns fall in from this height
+	GunDropSec = 0.45,
+	GroundWeaponLifetime = 30, -- floor guns despawn after this; a fresh drop (or swap) restarts it
 	GroundWeaponFadeSec = 10, -- beam fades over the last N seconds of lifetime
 	InteractRadius = 8,
 	MaxConsecutiveNonUpgrades = 3, -- pity: rolls below held rarity before the floor kicks in
@@ -81,9 +86,11 @@ local Config = {
 	RarityDmgMult = { 1, 1.15, 1.35, 1.6, 2.0 },
 
 	------------------------------------------------------------------ Big crate
-	BigCrateWaveInterval = 1, -- a crate at the start of every Nth wave (brief says 10; 1 for testing)
-	BigCrateIntroDrop = true, -- also drop one during the intro so there is a crate at the start
+	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never (brief says 10)
+	BigCrateIntroDrop = true, -- one crate during the intro; after that only Side Job completion drops one
 	BigCrateIntroPosition = Vector3.new(0, 0, -14), -- where the intro crate lands
+	BigCrateLifetime = 60, -- crate (and its guns) clear after this many seconds
+	BigCrateDespawnOnWaveEnd = false, -- true restores the brief's "crate closes at wave end"
 	BigCrateWeaponCount = { plus = 1, min = 2 }, -- players + plus, never below min
 	BigCrateRarityFloorByBracket = { 2, 3, 3, 4 }, -- Uncommon / Rare / Rare / Epic
 	BigCrateDropHeight = 40,
@@ -93,12 +100,13 @@ local Config = {
 
 	------------------------------------------------------------------ Crew call / stub Side Job
 	CallHoldSec = 4,
-	SideJobFirstWave = 5,
-	SideJobEveryWaves = 5,
+	SideJobFirstWave = 1,
+	SideJobEveryWaves = 3,
 	SideJobDurationSec = 75,
 	SideJobReward = 600,
 	SideJobBeaconRadius = 6,
-	SideJobStandSec = 10, -- cumulative seconds inside the beacon to complete
+	SideJobHoldSec = 2, -- hold the HACK prompt on the beacon this long to complete
+	SideJobRewardCrate = true, -- a crate drops at the beacon on completion
 	CallPillWarnSec = 10, -- pill turns red under this many seconds
 
 	------------------------------------------------------------------ HUD
