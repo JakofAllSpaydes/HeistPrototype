@@ -10,6 +10,7 @@ local Signal = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared
 
 local WaveBar = require(script.WaveBar)
 local CallSlot = require(script.CallSlot)
+local TopRight = require(script.TopRight)
 local BuyColumn = require(script.BuyColumn)
 local AbilityColumn = require(script.AbilityColumn)
 local Currency = require(script.Currency)
@@ -65,6 +66,7 @@ function HUD.build()
 	HUD.components = {
 		waveBar = WaveBar.build(gui, track),
 		callSlot = CallSlot.build(gui, track),
+		topRight = TopRight.build(gui, track),
 		buy = BuyColumn.build(gui, track),
 		abilities = AbilityColumn.build(gui, track),
 		currency = Currency.build(gui, track),

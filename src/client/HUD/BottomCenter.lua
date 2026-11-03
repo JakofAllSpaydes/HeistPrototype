@@ -216,10 +216,14 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	function component.onJuice(juiceName: string, data: any)
 		if juiceName == "Swap" then
-			UI.punch(slot, 1.18, 0.35)
-			UI.sound(Theme.Sounds.swap, 1, 0.5)
-			slotStroke.Thickness = S(5)
+			local tier = (data and data.rarity) or 1
+			UI.punch(slot, 1.1 + tier * 0.04, 0.35)
+			UI.sound(Theme.Sounds.swap, 0.8 + tier * 0.1, 0.5)
+			slotStroke.Thickness = S(3 + tier)
 			UI.tween(slotStroke, { Thickness = S(2) }, 0.4)
+			if tier >= 3 then
+				ClientState.Juice:Fire("Shake", { amp = 0.08 * tier, dur = 0.2 })
+			end
 		elseif juiceName == "UpgradeApplied" then
 			UI.punch(slot, 1.1, 0.3)
 			local statId = data and data.card and data.card.stat

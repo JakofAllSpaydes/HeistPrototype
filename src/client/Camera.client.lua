@@ -33,11 +33,18 @@ end)
 local params = RaycastParams.new()
 params.FilterType = Enum.RaycastFilterType.Exclude
 
--- FOV kick on fire, decays each frame.
+-- FOV kick on fire and camera shake, both decay each frame.
 local fovKick = 0
-ClientState.Juice:Connect(function(name: string)
+local shakeAmp = 0
+local shakeLeft = 0
+local shakeTotal = 0
+ClientState.Juice:Connect(function(name: string, data: any)
 	if name == "LocalFire" then
 		fovKick = Config.FireFovKick
+	elseif name == "Shake" then
+		shakeAmp = math.max(shakeAmp, data.amp or 0)
+		shakeTotal = data.dur or 0.2
+		shakeLeft = shakeTotal
 	end
 end)
 
@@ -69,7 +76,16 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	params.FilterDescendantsInstances = filter
 	local hit = Workspace:Raycast(pivot, desired - pivot, params)
 	local camPos = if hit then hit.Position + (pivot - desired).Unit * 0.6 else desired
-	camera.CFrame = CFrame.new(camPos) * rot
+	local shake = CFrame.identity
+	if shakeLeft > 0 then
+		shakeLeft = math.max(0, shakeLeft - dt)
+		local k = shakeAmp * (shakeLeft / math.max(shakeTotal, 0.01))
+		shake = CFrame.new((math.random() - 0.5) * 2 * k, (math.random() - 0.5) * 2 * k, 0)
+		if shakeLeft <= 0 then
+			shakeAmp = 0
+		end
+	end
+	camera.CFrame = CFrame.new(camPos) * rot * shake
 	camera.Focus = CFrame.new(pivot)
 
 	if hum and hum.Health > 0 then

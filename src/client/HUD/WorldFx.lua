@@ -104,10 +104,23 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 		Parent = vignette,
 	})
 
+	local flash = UI.frame({
+		Name = "RarityFlash",
+		BackgroundColor3 = Theme.Colors.gold,
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 0,
+		Parent = gui,
+	})
+
 	local component = {}
 
 	function component.onJuice(name: string, data: any)
-		if name == "Hit" then
+		if name == "RarityFlash" then
+			flash.BackgroundColor3 = data.color or Theme.Colors.gold
+			flash.BackgroundTransparency = 1 - (data.alpha or 0.3)
+			UI.tween(flash, { BackgroundTransparency = 1 }, 0.4)
+		elseif name == "Hit" then
 			local color = if data.crit
 				then Theme.Colors.red
 				elseif data.headshot then Theme.Colors.gold

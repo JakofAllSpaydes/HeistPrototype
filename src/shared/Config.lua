@@ -48,6 +48,10 @@ local Config = {
 	TouchSensitivity = 0.006, -- radians per touch pixel
 	CameraFov = 70,
 	FireFovKick = 2.5, -- degrees of FOV punch per shot
+	-- Rarity juice, indexed by tier 1..5: camera shake amplitude (studs) and duration, screen flash alpha.
+	JuiceShakeByTier = { 0, 0.1, 0.25, 0.45, 0.8 },
+	JuiceShakeDurByTier = { 0, 0.15, 0.2, 0.3, 0.45 },
+	JuiceFlashByTier = { 0, 0, 0.25, 0.4, 0.55 },
 
 	------------------------------------------------------------------ Economy
 	UpgradePrice = 100,
@@ -59,7 +63,9 @@ local Config = {
 	ShopDimPct = 35, -- world dim while the pick-3 is open
 	PanelShakePx = 2,
 	CardDealStagger = 0.08,
-	CardFlipStagger = 0.07,
+	CardFlipStagger = 0.07, -- unused by the slot roll, kept for the flip variant
+	CardRollSec = 0.8, -- each card's mini slot roll
+	CardRollStagger = 0.22, -- gap between card rolls starting
 	TradeoffChance = { 0, 0.1, 0.25, 0.4, 0.5 }, -- per tier 1..5
 	TradeoffMalusRatio = 0.5, -- malus = one other stat at this ratio of the buff
 	TrackerCols = 10,

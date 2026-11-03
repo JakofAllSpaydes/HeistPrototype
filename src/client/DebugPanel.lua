@@ -74,7 +74,7 @@ local function build()
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.05,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(20), 0, S(20)),
+		Position = UDim2.new(1, -S(20), 0, S(72)),
 		Size = UDim2.fromOffset(S(230), 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Active = true,

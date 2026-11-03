@@ -15,6 +15,7 @@ local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
+local Juice = require(script.Parent:WaitForChild("Juice"))
 
 local WeaponReel = {}
 
@@ -36,38 +37,6 @@ local function feetScreenPos(): Vector2
 		return Vector2.new(p.X, p.Y)
 	end
 	return camera.ViewportSize / 2
-end
-
-local function legendaryRays(center: Vector2)
-	local S = UI.S
-	local gui = HUD.gui
-	if not gui then
-		return
-	end
-	local rays = UI.frame({
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromOffset(center.X, center.Y),
-		Size = UDim2.fromOffset(S(10), S(10)),
-		ZIndex = 0,
-		Parent = gui,
-	})
-	for i = 1, 12 do
-		local ray = UI.frame({
-			BackgroundColor3 = Theme.Colors.gold,
-			BackgroundTransparency = 0.3,
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(S(18), S(220)),
-			Rotation = (i - 1) * 30,
-			Parent = rays,
-		})
-		UI.tween(ray, { BackgroundTransparency = 1, Size = UDim2.fromOffset(S(4), S(360)) }, 0.6)
-	end
-	UI.tween(rays, { Rotation = 35 }, 0.6)
-	task.delay(0.65, function()
-		rays:Destroy()
-	end)
 end
 
 -- Builds the panel in the call slot. Returns the pieces the spin needs.
@@ -248,17 +217,17 @@ local function spin(weapon: any)
 	p.title.TextColor3 = color
 	p.result.Text = string.format("%s  ·  DMG %d", string.upper(weapon.displayName), weapon.dmg)
 	p.result.TextColor3 = color
-	UI.punch(p.panel, 1.08, 0.35)
-	UI.punch(p.result, 1.3, 0.35)
-	UI.sound(Theme.Sounds.reelLand, 0.6 + weapon.rarity * 0.15, 0.7)
 	local center = p.panel.AbsolutePosition + p.panel.AbsoluteSize / 2
-	if weapon.rarity >= Rarity.Epic then
-		legendaryRays(center)
+	local j = Juice.burst(weapon.rarity, color, center)
+	UI.punch(p.panel, j.punch, 0.35)
+	UI.punch(p.result, 1.2 + j.tier * 0.08, 0.4)
+	UI.sound(Theme.Sounds.reelLand, j.pitch, j.volume)
+	if j.tier >= 4 then
+		-- Double tap on the stroke so high tiers visibly "lock in".
+		p.stroke.Thickness = UI.S(6)
+		UI.tween(p.stroke, { Thickness = UI.S(3) }, 0.5)
 	end
-	if weapon.rarity == Rarity.Legendary then
-		UI.sound(Theme.Sounds.legendary, 1, 0.7)
-	end
-	task.wait(Config.RollLandHoldSec)
+	task.wait(Config.RollLandHoldSec + j.hold)
 
 	-- Eject: the icon flies down toward the player's feet while the real gun drops in.
 	local gui = HUD.gui

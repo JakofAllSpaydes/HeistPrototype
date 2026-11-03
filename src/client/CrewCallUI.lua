@@ -23,7 +23,6 @@ local KIND_COLORS = {
 }
 
 local activeCall: any = nil -- { data, frame, timerLabel, stroke, pill: boolean, token }
-local crateBanner: { frame: Frame, label: TextLabel, crateId: string }? = nil
 local callToken = 0
 
 local function slot()
@@ -42,9 +41,14 @@ local function clearCall()
 	activeCall = nil
 end
 
+-- The timer pill lives top-right above the abilities so the center stays clear.
+local function pillHome()
+	return HUD.get("topRight")
+end
+
 local function buildPill(data: any): (Frame, TextLabel, UIStroke)
 	local S = UI.S
-	local cs = slot()
+	local cs = pillHome()
 	local color = KIND_COLORS[data.kind] or Theme.Colors.blue
 	local pill = UI.frame({
 		Name = "CallPill",
@@ -248,8 +252,8 @@ local function onCallStart(data: any)
 		end
 		expanded:Destroy()
 		local pill, pillTimer, stroke = buildPill(data)
-		cs.add(pill, 1)
-		UI.punch(pill, 1.08, 0.25)
+		pillHome().add(pill, 1)
+		UI.punch(pill, 1.15, 0.3)
 		activeCall.frame = pill
 		activeCall.timerLabel = pillTimer
 		activeCall.stroke = stroke
@@ -300,43 +304,6 @@ local function onCallEnd(data: any)
 	end)
 end
 
-local function updateBanner(left: number, crateId: string)
-	local S = UI.S
-	local cs = slot()
-	local text = string.format("ARMS DROP · %d LEFT", left)
-	if crateBanner and crateBanner.frame.Parent then
-		crateBanner.label.Text = text
-		crateBanner.crateId = crateId
-		UI.punch(crateBanner.frame, 1.05, 0.2)
-		return
-	end
-	local banner = UI.frame({
-		Name = "CrateBanner",
-		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.fromOffset(cs.width, S(38)),
-	})
-	UI.corner(banner, S(10))
-	UI.stroke(banner, Theme.Colors.gold, S(2))
-	local label = UI.text({
-		Text = text,
-		Font = Theme.Fonts.display,
-		TextSize = S(18),
-		TextColor3 = Theme.Colors.gold,
-		Size = UDim2.fromScale(1, 1),
-		Parent = banner,
-	})
-	cs.add(banner, 2)
-	UI.punch(banner, 1.12, 0.3)
-	crateBanner = { frame = banner, label = label, crateId = crateId }
-end
-
-local function removeBanner()
-	if crateBanner then
-		crateBanner.frame:Destroy()
-		crateBanner = nil
-	end
-end
-
 function CrewCallUI.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "CallStart" then
@@ -344,35 +311,25 @@ function CrewCallUI.init()
 		elseif name == "CallEnd" then
 			onCallEnd(data)
 		elseif name == "CrateIncoming" then
-			updateBanner(data.left, data.crateId)
+			-- Transient only: no persistent arms-drop banner.
+			slot().toast("ARMS DROP INCOMING", Theme.Colors.gold, 1)
 			UI.sound(Theme.Sounds.crate, 0.6, 0.6)
 		elseif name == "CrateLand" then
-			updateBanner(data.left, data.crateId)
+			slot().toast(string.format("ARMS DROP · %d GUNS", data.total or data.left or 0), Theme.Colors.gold, 1.2)
 			UI.sound(Theme.Sounds.crate, 0.9, 0.7)
-		elseif name == "CrateCount" then
-			updateBanner(data.left, data.crateId)
-		elseif name == "CrateEnd" then
-			if (data.remaining or 0) <= 0 then
-				removeBanner()
-			end
+			ClientState.Juice:Fire("Shake", { amp = 0.35, dur = 0.3 })
 		end
 	end)
 
 	HUD.Rebuilt:Connect(function()
-		-- The slot was rebuilt; re-add what is live.
+		-- The HUD was rebuilt; re-add the live pill.
 		local call = activeCall
 		activeCall = nil
-		local banner = crateBanner
-		crateBanner = nil
 		if call and call.data and call.data.endsAt then
 			local pill, timer, stroke = buildPill(call.data)
-			slot().add(pill, 1)
+			pillHome().add(pill, 1)
 			activeCall =
 				{ data = call.data, frame = pill, timerLabel = timer, stroke = stroke, pill = true, token = call.token }
-		end
-		if banner then
-			local n = tonumber(string.match(banner.label.Text, "(%d+) LEFT")) or 0
-			updateBanner(n, banner.crateId)
 		end
 	end)
 
