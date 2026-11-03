@@ -44,8 +44,15 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			ammo.Text = "RELOADING"
 			ammo.TextColor3 = Theme.Colors.gold
 		else
-			ammo.Text = string.format("%d / ∞", a.mag)
-			ammo.TextColor3 = if a.mag == 0 then Theme.Colors.malus else Theme.Colors.text
+			ammo.Text = if a.mag == 0 then "RELOAD" else string.format("%d / ∞", a.mag)
+			local low = a.max > 0 and a.mag <= math.max(1, math.floor(a.max * 0.2))
+			ammo.TextColor3 = if a.mag == 0
+				then Theme.Colors.malus
+				elseif low then Theme.Colors.gold
+				else Theme.Colors.text
+			if low then
+				UI.punch(ammo, if a.mag == 0 then 1.3 else 1.12, 0.25)
+			end
 		end
 	end
 	track(ClientState.Ammo:Connect(render) :: any)

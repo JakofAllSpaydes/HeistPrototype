@@ -36,7 +36,7 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	local dmg = gun:GetAttribute("Dmg") :: number? or 0
 	local dps = gun:GetAttribute("Dps") :: number? or 0
 	local held = heldDps()
-	tag.dmgLabel.Text = string.format("DMG %d  ·  DPS %d", dmg, dps)
+	tag.dmgLabel.Text = string.format("DPS %d", dps)
 	tag.dmgLabel.TextColor3 = if dps > held
 		then Theme.Colors.cash
 		elseif dps < held then Theme.Colors.malus

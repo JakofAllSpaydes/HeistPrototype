@@ -224,7 +224,7 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	if handler and typeof(crateId) == "string" and typeof(slot) == "number" then
 		handler(player, crateId, slot)
 	end
-	Remotes.Juice:FireClient(player, "Swap", { weaponId = newId, rarity = newRarity })
+	Remotes.Juice:FireClient(player, "Swap", { weaponId = newId, rarity = newRarity, position = cf.Position })
 	Log.event(
 		"Swap",
 		"%s picked up %s %s, dropped %s %s",

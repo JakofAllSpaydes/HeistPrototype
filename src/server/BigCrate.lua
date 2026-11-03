@@ -146,8 +146,14 @@ function BigCrate.drop(at: Vector3?)
 		local wave = World.wave
 		local floor = Config.BigCrateRarityFloorByBracket[Rarity.bracketIndex(wave)]
 		local dmgPct = tagDamagePct()
+		-- Distinct weapon types per crate: shuffle the pool and deal from the top.
+		local deck = table.clone(Weapons.List)
+		for i = #deck, 2, -1 do
+			local k = math.random(i)
+			deck[i], deck[k] = deck[k], deck[i]
+		end
 		for slot = 1, n do
-			local weapon = Weapons.List[math.random(#Weapons.List)]
+			local weapon = deck[((slot - 1) % #deck) + 1]
 			local rarity = Rarity.roll(wave, floor, weapon.rarityWeights)
 			local a = (slot - 1) / n * math.pi * 2 + (math.random() - 0.5) * 0.4
 			local dist = Config.BigCrateFanMin + math.random() * (Config.BigCrateFanMax - Config.BigCrateFanMin)

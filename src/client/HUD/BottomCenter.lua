@@ -171,6 +171,9 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		fill.Size = UDim2.fromScale(frac, 1)
 		fill.BackgroundColor3 = if frac < 0.3 then Theme.Colors.red else Theme.Colors.health
 		healthText.Text = string.format("%d / %d", math.ceil(cur), math.round(max))
+		if frac < 0.3 and frac > 0 then
+			UI.punch(health, 1.08, 0.3)
+		end
 	end
 	local player = Players.LocalPlayer
 	local humConn: RBXScriptConnection? = nil
@@ -206,7 +209,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		pill.BackgroundColor3 = color
 		slotStroke.Color = color
 		UI.recolorIcon(icon, color)
-		dmg.Text = string.format("DMG %d · DPS %d", math.round(held.dmg), math.round(held.dps or 0))
+		dmg.Text = string.format("DPS %d", math.round(held.dps or 0))
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then

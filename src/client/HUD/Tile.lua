@@ -181,9 +181,18 @@ function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: 
 	tile.enabled = true
 	tile.onPress = nil
 
+	local wasAffordable: boolean? = nil
 	function tile.setAffordable(ok: boolean)
 		stroke.Color = if ok then Theme.Colors.gold else Theme.Colors.grey
 		priceLabel.TextColor3 = if ok then Theme.Colors.gold else Theme.Colors.grey
+		if ok and wasAffordable == false then
+			-- Just became affordable: ready pop.
+			UI.punch(button, 1.18, 0.35)
+			stroke.Thickness = S(5)
+			UI.tween(stroke, { Thickness = S(2) }, 0.4)
+			UI.sound(Theme.Sounds.toast, 1.5, 0.3)
+		end
+		wasAffordable = ok
 	end
 
 	local currentPrice: number? = nil

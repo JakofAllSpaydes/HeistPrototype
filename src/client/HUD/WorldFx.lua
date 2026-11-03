@@ -128,7 +128,7 @@ local function killPop(position: Vector3)
 	UI.tween(stroke, { Transparency = 1 }, 0.3)
 end
 
-function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
+function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local vignette = UI.frame({
 		Name = "HurtVignette",
 		BackgroundColor3 = Theme.Colors.red,
@@ -157,6 +157,19 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 		Parent = gui,
 	})
 
+	-- Enemy spawn puff: a dark ring where each enemy appears.
+	local enemies = Workspace:FindFirstChild("Enemies")
+	if enemies then
+		track(enemies.ChildAdded:Connect(function(model)
+			task.defer(function()
+				local root = model:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					blastRing(root.Position, 5, Color3.fromRGB(120, 40, 40))
+				end
+			end)
+		end))
+	end
+
 	local component = {}
 
 	function component.onJuice(name: string, data: any)
@@ -174,10 +187,10 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			if typeof(data.model) == "Instance" then
 				flashEnemy(data.model)
 			end
-			UI.sound(Theme.Sounds.hit, if data.headshot then 1.4 else 1, 0.3)
+			UI.sound(Theme.Sounds.hit, if data.headshot then 1.4 else 1, 0.2)
 			if data.killed then
 				killPop(data.position)
-				UI.sound(Theme.Sounds.kill, 1.2, 0.4)
+				UI.sound(Theme.Sounds.kill, 1.2, 0.12)
 				if data.cash and data.cash > 0 then
 					floatText(
 						data.position + Vector3.new(0, 1, 0),
@@ -200,6 +213,13 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			blastRing(data.position, data.radius or 8, Theme.Colors.malus)
 			UI.sound(Theme.Sounds.crate, 1.6, 0.5)
 			ClientState.Juice:Fire("Shake", { amp = 0.15, dur = 0.15 })
+		elseif name == "Swap" and typeof(data.position) == "Vector3" then
+			blastRing(data.position, 6, Rarity.color(data.rarity or 1))
+		elseif name == "WaveStart" then
+			flash.BackgroundColor3 = Theme.Colors.text
+			flash.BackgroundTransparency = 0.8
+			UI.tween(flash, { BackgroundTransparency = 1 }, 0.5)
+			ClientState.Juice:Fire("Shake", { amp = 0.25, dur = 0.3 })
 		elseif name == "Multishot" then
 			UI.sound(Theme.Sounds.shot, 1.4, 0.25)
 		elseif name == "TurretShot" then
@@ -209,10 +229,10 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			blastRing(data.position, 5, Theme.Colors.gold)
 			UI.sound(Theme.Sounds.crate, 1.2, 0.5)
 		elseif name == "StructureHit" then
-			UI.sound(Theme.Sounds.kill, 0.8, 0.2)
+			UI.sound(Theme.Sounds.kill, 0.8, 0.08)
 		elseif name == "StructureGone" then
 			blastRing(data.position, 6, Theme.Colors.malus)
-			UI.sound(Theme.Sounds.deny, 0.9, 0.4)
+			UI.sound(Theme.Sounds.deny, 0.9, 0.15)
 		elseif name == "StimStart" then
 			vignette.BackgroundColor3 = Theme.Colors.gold
 			vignette.BackgroundTransparency = 0.5

@@ -88,10 +88,10 @@ local Config = {
 	-- Rarity odds per wave bracket, in order Common / Uncommon / Rare / Epic / Legendary.
 	-- Weights, not percentages; they are normalised at roll time. Also drives upgrade card tiers.
 	RarityOddsByWaveBracket = {
-		{ maxWave = 5, odds = { 70, 22, 7, 1, 0 } },
-		{ maxWave = 10, odds = { 50, 30, 15, 4.5, 0.5 } },
-		{ maxWave = 20, odds = { 30, 35, 22, 10, 3 } },
-		{ maxWave = math.huge, odds = { 15, 30, 30, 18, 7 } },
+		{ maxWave = 5, odds = { 45, 30, 17, 7, 1 } },
+		{ maxWave = 10, odds = { 30, 32, 24, 11, 3 } },
+		{ maxWave = 20, odds = { 18, 28, 30, 17, 7 } },
+		{ maxWave = math.huge, odds = { 10, 22, 30, 25, 13 } },
 	},
 	RarityDmgMult = { 1, 1.15, 1.35, 1.6, 2.0 },
 
