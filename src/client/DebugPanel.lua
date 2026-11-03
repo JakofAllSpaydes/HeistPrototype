@@ -253,8 +253,44 @@ function DebugPanel.setVisible(on: boolean)
 	ClientState.setBlock("debug", on)
 end
 
+-- Mobile has no backtick: a small DBG chip top-left toggles the panel.
+local function buildMobileToggle()
+	if not ClientState.isMobile then
+		return
+	end
+	local S = UI.S
+	local g = UI.new("ScreenGui", {
+		Name = "DebugToggle",
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		DisplayOrder = 21,
+		Parent = playerGui,
+	}) :: ScreenGui
+	local chip = UI.button({
+		Text = "DBG",
+		Font = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.gold,
+		BackgroundColor3 = Theme.Colors.panel,
+		BackgroundTransparency = 0.3,
+		Position = UDim2.fromOffset(S(8), S(8)),
+		Size = UDim2.fromOffset(S(44), S(26)),
+		Parent = g,
+	})
+	UI.corner(chip, S(8))
+	UI.stroke(chip, Theme.Colors.gold, S(1), 0.5)
+	chip.Activated:Connect(function()
+		local sync = ClientState.sync
+		if sync and not sync.debugEnabled then
+			return
+		end
+		DebugPanel.setVisible(not visible)
+	end)
+end
+
 function DebugPanel.init()
 	build()
+	buildMobileToggle()
 	HUD.Rebuilt:Connect(function()
 		build()
 		refreshToggles()
