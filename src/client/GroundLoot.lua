@@ -49,11 +49,9 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	local crateId = gun:GetAttribute("CrateId")
 	local prompt = tag.prompt
 	if prompt then
-		if crateId and sync and table.find(sync.cratesTaken, crateId) then
-			prompt.Enabled = false
-		else
-			prompt.Enabled = true
-		end
+		local taken = crateId ~= nil and sync ~= nil and table.find(sync.cratesTaken, crateId) ~= nil
+		-- A downed teammate in reach owns F: gun prompts step aside until they are up.
+		prompt.Enabled = not taken and not ClientState.reviveNearby
 	end
 end
 
@@ -167,7 +165,16 @@ function GroundLoot.init()
 
 	-- Beam fades over the last seconds of lifetime.
 	local acc = 0
+	local lastNearby = false
 	RunService.Heartbeat:Connect(function(dt)
+		if ClientState.reviveNearby ~= lastNearby then
+			lastNearby = ClientState.reviveNearby
+			for gun, tag in tags do
+				if gun.Parent then
+					refreshTag(gun, tag)
+				end
+			end
+		end
 		acc += dt
 		if acc < 0.2 then
 			return

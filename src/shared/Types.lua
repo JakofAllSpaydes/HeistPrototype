@@ -81,6 +81,11 @@ export type Sync = {
 	myVote: boolean,
 	autoSkip: boolean,
 	minigameTier: number, -- 1..3, session-wide
+	downed: boolean,
+	bledOut: boolean,
+	bleedEndsAt: number, -- server time, while downed
+	selfRevives: number, -- used this run
+	reviveAllUsed: number, -- REVIVE EVERYBODY presses this run
 }
 
 return {}

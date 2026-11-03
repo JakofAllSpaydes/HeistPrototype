@@ -18,6 +18,7 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Staging = require(script.Parent.Staging)
 local Minigames = require(script.Parent.Minigames)
+local Downed = require(script.Parent.Downed)
 
 local Debug = {}
 
@@ -106,6 +107,19 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	MinigameStats = function(_player, _state, _args)
 		Minigames.printStats()
+	end,
+	DownMe = function(player, _state, _args)
+		Downed.down(player)
+	end,
+	DownAll = function(_player, _state, _args)
+		for p, s in PlayerState.all() do
+			if PlayerState.isStanding(s) then
+				Downed.down(p)
+			end
+		end
+	end,
+	ReviveAll = function(_player, _state, _args)
+		Downed.reviveEverybody(nil)
 	end,
 }
 

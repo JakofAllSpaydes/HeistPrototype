@@ -317,6 +317,11 @@ function WeaponReel.press()
 	if not t or not sync then
 		return
 	end
+	if ClientState.downed then
+		t.shake()
+		UI.sound(Theme.Sounds.deny, 1, 0.4)
+		return
+	end
 	if sync.cash < sync.prices.weapon then
 		t.shake()
 		UI.sound(Theme.Sounds.deny, 1, 0.4)

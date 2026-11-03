@@ -164,6 +164,9 @@ function Combat.init()
 		end
 
 		local state = PlayerState.get(player)
+		if state.downed or state.bledOut then
+			return
+		end
 		local st = PlayerState.computed(state)
 		local now = os.clock()
 		if now - state.lastShotAt < 1 / (st.fireRate * Config.FireRateTolerance) then

@@ -26,8 +26,10 @@ local Abilities = require(script.Parent.Abilities)
 local SkipVote = require(script.Parent.SkipVote)
 local Staging = require(script.Parent.Staging)
 local Minigames = require(script.Parent.Minigames)
+local Downed = require(script.Parent.Downed)
 
 PlayerState.init()
+Downed.init()
 SkipVote.init()
 Abilities.init()
 Enemy.init()
@@ -150,10 +152,16 @@ task.spawn(function()
 
 		runWaves()
 
-		-- Run over: hold on the arena for a beat, then everyone goes back to the yard.
+		-- Run over: enemies freeze and fade under the RUN OVER stamp, then everyone goes back to the yard.
 		setState("RunOver")
-		Remotes.Juice:FireAllClients("RunOver", { wave = World.wave })
+		Remotes.Juice:FireAllClients("RunOver", {
+			wave = World.wave,
+			slowSec = Config.RunOverSlowSec,
+			timeScale = Config.RunOverTimeScale,
+		})
+		Enemy.freezeAll(Config.RunOverSlowSec)
 		Log.event("Run", "Run %d over at wave %d", World.runId, World.wave)
 		task.wait(Config.RunOverSlowSec)
+		Enemy.killAll()
 	end
 end)

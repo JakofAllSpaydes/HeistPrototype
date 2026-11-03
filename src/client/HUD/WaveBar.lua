@@ -390,6 +390,21 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				1.2
 			)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.2 })
+		elseif name == "RunOver" then
+			state = "RunOver"
+			paintState()
+			wave.Text = "RUN OVER"
+			wave.TextColor3 = Theme.Colors.red
+			banner(
+				string.format("RUN OVER · WAVE %d", data.wave or currentWave),
+				Theme.Colors.red,
+				72,
+				(data.slowSec or 1) + 1.5,
+				Theme.Sounds.wave,
+				0.45
+			)
+			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.red, alpha = 0.35 })
+			ClientState.Juice:Fire("Shake", { amp = 0.5, dur = 0.4 })
 		elseif name == "SkipVote" then
 			voteCount = data.votes or voteCount
 			voteNeeded = data.needed or voteNeeded

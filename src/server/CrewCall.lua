@@ -163,7 +163,7 @@ local function anyoneInside(position: Vector3, radius: number): boolean
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if root and hum and hum.Health > 0 then
+		if root and hum and hum.Health > 0 and PlayerState.isStanding(PlayerState.get(player)) then
 			local d = root.Position - position
 			if Vector3.new(d.X, 0, d.Z).Magnitude <= radius then
 				return true

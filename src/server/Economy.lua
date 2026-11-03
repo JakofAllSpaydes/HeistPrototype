@@ -15,6 +15,9 @@ end
 
 function Economy.addCash(state: PlayerState.State, amount: number)
 	state.cash += amount
+	if amount > 0 then
+		state.cashCollected += amount
+	end
 	state.dirty = true
 end
 

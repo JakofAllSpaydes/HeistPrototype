@@ -36,13 +36,33 @@ export type State = {
 	dirty: boolean,
 	cooldowns: { [string]: number }, -- ability id -> server time the cooldown ends
 	stimUntil: number, -- server time the stim buff ends, 0 = inactive
+	-- Downed / revive
+	downed: boolean,
+	bledOut: boolean, -- spectator: no character until revived or the run ends
+	bleedEndsAt: number,
+	invulnUntil: number, -- no damage until this server time (just revived)
+	reviveProgress: number, -- 0..1 while a teammate holds the revive
+	reviver: Player?,
+	savedJump: { useJumpPower: boolean, jumpPower: number, jumpHeight: number }?,
+	lastPosition: Vector3, -- where the character was when it bled out
+	pendingSpawnCFrame: CFrame?, -- next LoadCharacter lands here
+	-- Run stats (reset per run)
+	kills: number,
+	cashCollected: number, -- cash earned this run, not the balance
+	revives: number, -- teammates stood up by this player
+	downs: number,
+	selfRevives: number,
+	reviveAllUsed: number,
+	pose: number, -- index into Config.Poses, rolled at run start
+	joinIndex: number, -- order the player joined the server (ties, line-ups)
 }
 
 local states: { [Player]: State } = {}
+local joinCounter = 0
 
 local PlayerState = {}
 
-local function freshState(player: Player): State
+local function freshState(player: Player, joinIndex: number): State
 	return {
 		player = player,
 		cash = Config.StartingCash,
@@ -63,16 +83,41 @@ local function freshState(player: Player): State
 		dirty = true,
 		cooldowns = {},
 		stimUntil = 0,
+		downed = false,
+		bledOut = false,
+		bleedEndsAt = 0,
+		invulnUntil = 0,
+		reviveProgress = 0,
+		reviver = nil,
+		savedJump = nil,
+		lastPosition = Vector3.zero,
+		pendingSpawnCFrame = nil,
+		kills = 0,
+		cashCollected = 0,
+		revives = 0,
+		downs = 0,
+		selfRevives = 0,
+		reviveAllUsed = 0,
+		pose = 1,
+		joinIndex = joinIndex,
 	}
 end
 
 function PlayerState.get(player: Player): State
 	local s = states[player]
 	if not s then
-		s = freshState(player)
+		joinCounter += 1
+		s = freshState(player, joinCounter)
 		states[player] = s
 	end
 	return s
+end
+
+-- Alive and on their feet: has a character, not downed, not bled out.
+function PlayerState.isStanding(state: State): boolean
+	local char = state.player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	return hum ~= nil and hum.Health > 0 and not state.downed and not state.bledOut
 end
 
 function PlayerState.all(): { [Player]: State }
@@ -176,7 +221,7 @@ end
 PlayerState.spawnCFrame = nil :: ((Player) -> CFrame?)?
 
 function PlayerState.reset(state: State, cash: number?)
-	local fresh = freshState(state.player)
+	local fresh = freshState(state.player, state.joinIndex)
 	for k, v in fresh do
 		(state :: any)[k] = v
 	end
@@ -186,16 +231,24 @@ function PlayerState.reset(state: State, cash: number?)
 	if hum then
 		hum.MaxHealth = Config.PlayerMaxHP
 		hum.Health = Config.PlayerMaxHP
+		-- Back on their feet if the reset caught them downed.
+		hum.UseJumpPower = false
+		hum.JumpHeight = 7.2
 	end
 	PlayerState.applyCharacterStats(state)
 	PlayerState.refreshHeldVisual(state)
 	state.dirty = true
 end
 
--- Downed / revive is out of scope: hitting 0 resets health and prints.
+-- Installed by Downed: what happens at 0 HP. Without it health just resets.
+PlayerState.onZeroHP = nil :: ((Player) -> ())?
+
 function PlayerState.damage(player: Player, amount: number, source: string?)
 	local state = states[player]
-	if not state or state.god then
+	if not state or state.god or state.downed or state.bledOut then
+		return
+	end
+	if state.invulnUntil > Workspace:GetServerTimeNow() then
 		return
 	end
 	local char = player.Character
@@ -206,10 +259,14 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 	local newHP = hum.Health - amount
 	Remotes.Juice:FireClient(player, "PlayerHit", { amount = amount, source = source })
 	if newHP <= 0 then
-		hum.Health = hum.MaxHealth
-		Log.event("Player", "%s reached 0 HP (downed flow is stubbed): health reset to %d", player.Name, hum.MaxHealth)
-		Remotes.Juice:FireClient(player, "Downed", {})
-		World.addHeat(Config.HeatDowned, player.Name .. " downed")
+		local hook = PlayerState.onZeroHP
+		if hook then
+			hum.Health = 1
+			hook(player)
+		else
+			hum.Health = hum.MaxHealth
+			Log.event("Player", "%s reached 0 HP with no downed handler: health reset", player.Name)
+		end
 	else
 		hum.Health = newHP
 	end
@@ -279,6 +336,11 @@ function PlayerState.buildSync(state: State): Types.Sync
 		myVote = World.skipVotes[state.player.UserId] == true,
 		autoSkip = World.autoSkip[state.player.UserId] == true,
 		minigameTier = World.minigameTier,
+		downed = state.downed,
+		bledOut = state.bledOut,
+		bleedEndsAt = state.bleedEndsAt,
+		selfRevives = state.selfRevives,
+		reviveAllUsed = state.reviveAllUsed,
 	}
 end
 
@@ -324,7 +386,8 @@ local function onCharacter(player: Player, char: Model)
 		PlayerState.refreshHeldVisual(state)
 	end)
 	local hook = PlayerState.spawnCFrame
-	local cf = if hook then hook(player) else nil
+	local cf = state.pendingSpawnCFrame or (if hook then hook(player) else nil)
+	state.pendingSpawnCFrame = nil
 	if cf then
 		task.spawn(function()
 			if char:WaitForChild("HumanoidRootPart", 5) then
@@ -337,13 +400,26 @@ end
 
 function PlayerState.init()
 	PlayerState.setupCollisionGroups()
+	-- Characters are loaded by hand: a bled-out player has none until revived or the run ends.
+	Players.CharacterAutoLoads = false
 	local function onPlayer(player: Player)
-		PlayerState.get(player)
+		local state = PlayerState.get(player)
 		player.CharacterAdded:Connect(function(char)
 			onCharacter(player, char)
+			local hum = char:WaitForChild("Humanoid") :: Humanoid
+			hum.Died:Connect(function()
+				-- Falls and other oddities (damage never kills): respawn unless bled out on purpose.
+				task.delay(3, function()
+					if player.Parent and not state.bledOut and player.Character == char then
+						player:LoadCharacter()
+					end
+				end)
+			end)
 		end)
 		if player.Character then
 			onCharacter(player, player.Character)
+		else
+			player:LoadCharacter()
 		end
 	end
 	Players.PlayerAdded:Connect(onPlayer)
@@ -361,7 +437,7 @@ function PlayerState.init()
 		for player, state in states do
 			local char = player.Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			if hum and hum.Health > 0 and hum.Health < hum.MaxHealth then
+			if hum and not state.downed and hum.Health > 0 and hum.Health < hum.MaxHealth then
 				local st = PlayerState.computed(state)
 				hum.Health = math.min(hum.MaxHealth, hum.Health + st.hpRegen * dt)
 			end

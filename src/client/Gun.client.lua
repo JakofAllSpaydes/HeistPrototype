@@ -215,7 +215,7 @@ end
 
 RunService.Heartbeat:Connect(function()
 	local h = held
-	if not h or ClientState.blocked() then
+	if not h or ClientState.blocked() or ClientState.downed then
 		return
 	end
 	local want = firing or ClientState.touchFire

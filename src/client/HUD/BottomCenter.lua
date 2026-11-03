@@ -1,15 +1,24 @@
 --!strict
 -- Bottom-center: health bar with cur / max and the held weapon slot (icon, name, rarity pill, DMG + RATE).
+-- Downed: the bar becomes a red bleed bar counting down from BleedOutSec, SELF-REVIVE sits on its right,
+-- and a ring at its left end fills while a teammate holds the revive.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
-local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rarity"))
 
 local BottomCenter = {}
+
+local RING_TICKS = 16
 
 function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S
@@ -35,7 +44,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = root,
 	})
 	UI.corner(health, hh / 2)
-	UI.stroke(health, Theme.Colors.black, S(1), 0.5)
+	local healthStroke = UI.stroke(health, Theme.Colors.black, S(1), 0.5)
 	local fill = UI.frame({
 		Name = "Fill",
 		BackgroundColor3 = Theme.Colors.health,
@@ -51,6 +60,68 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		ZIndex = 2,
 		Parent = health,
 	})
+
+	-- SELF-REVIVE, right of the bar while downed.
+	local selfBtn = UI.button({
+		Name = "SelfRevive",
+		Text = "SELF-REVIVE",
+		Font = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.bg,
+		BackgroundColor3 = Theme.Colors.cash,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0.5, hw / 2 + S(10), 0, hh / 2),
+		Size = UDim2.fromOffset(S(150), hh + S(10)),
+		Visible = false,
+		ZIndex = 3,
+		Parent = root,
+	})
+	UI.corner(selfBtn, S(8))
+	UI.stroke(selfBtn, Theme.Colors.black, S(1.5), 0.4)
+	selfBtn.Activated:Connect(function()
+		UI.punch(selfBtn, 0.9, 0.15)
+		Remotes.SelfRevive:FireServer()
+	end)
+
+	-- Revive ring at the bar's left end: fills while a teammate holds F on you.
+	local ringR = hh * 1.1
+	local ring = UI.frame({
+		Name = "ReviveRing",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, -hw / 2, 0, hh / 2),
+		Size = UDim2.fromOffset(ringR * 2 + S(8), ringR * 2 + S(8)),
+		Visible = false,
+		ZIndex = 4,
+		Parent = root,
+	})
+	local ringTicks: { Frame } = {}
+	for i = 1, RING_TICKS do
+		local a = (i - 1) / RING_TICKS * math.pi * 2 - math.pi / 2
+		local tick = UI.frame({
+			BackgroundColor3 = Theme.Colors.panel2,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, math.cos(a) * ringR, 0.5, math.sin(a) * ringR),
+			Size = UDim2.fromOffset(S(3), S(6)),
+			Rotation = math.deg(a) + 90,
+			ZIndex = 4,
+			Parent = ring,
+		})
+		UI.corner(tick, S(2))
+		ringTicks[i] = tick
+	end
+	local ringLabel = UI.text({
+		Text = "",
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.cash,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, S(2)),
+		Size = UDim2.fromOffset(S(140), S(14)),
+		ZIndex = 4,
+		Parent = ring,
+	})
+	UI.stroke(ringLabel, Theme.Colors.black, S(1), 0.4)
 
 	-- Weapon slot
 	local slotY = hh + S(10)
@@ -109,7 +180,13 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	-- Health binding
 	local maxHP = 100
+	local bleeding = false
+	local bleedEndsAt = 0
+	local lastBleedShown = -1
 	local function setHealth(cur: number, max: number)
+		if bleeding then
+			return
+		end
 		local frac = if max > 0 then math.clamp(cur / max, 0, 1) else 0
 		fill.Size = UDim2.fromScale(frac, 1)
 		fill.BackgroundColor3 = if frac < 0.3 then Theme.Colors.red else Theme.Colors.health
@@ -139,9 +216,79 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		task.spawn(bindCharacter, player.Character)
 	end
 
+	-- Bleed countdown.
+	track(RunService.Heartbeat:Connect(function()
+		if not bleeding then
+			return
+		end
+		local remaining = math.max(0, bleedEndsAt - ClientState.serverNow())
+		fill.Size = UDim2.fromScale(math.clamp(remaining / math.max(Config.BleedOutSec, 0.1), 0, 1), 1)
+		local shown = math.ceil(remaining)
+		if shown ~= lastBleedShown then
+			lastBleedShown = shown
+			healthText.Text = string.format("DOWNED · %ds", shown)
+			UI.punch(health, if shown <= 5 then 1.1 else 1.03, 0.2)
+		end
+	end))
+
 	local component = {}
 	component.frame = root
 	component.slot = slot
+
+	local selfRevives = 0
+	local function paintSelf()
+		selfBtn.Text = if selfRevives > 0 then string.format("SELF-REVIVE (%d used)", selfRevives) else "SELF-REVIVE"
+	end
+
+	function component.setDowned(endsAt: number, used: number?)
+		bleeding = true
+		bleedEndsAt = endsAt
+		lastBleedShown = -1
+		selfRevives = used or selfRevives
+		fill.BackgroundColor3 = Theme.Colors.red
+		fill.Size = UDim2.fromScale(1, 1)
+		healthText.TextColor3 = Theme.Colors.text
+		healthStroke.Color = Theme.Colors.red
+		healthStroke.Transparency = 0
+		paintSelf()
+		selfBtn.Visible = true
+		UI.punch(selfBtn, 1.2, 0.4)
+		UI.punch(health, 1.15, 0.4)
+	end
+
+	function component.clearDowned()
+		if not bleeding then
+			return
+		end
+		bleeding = false
+		selfBtn.Visible = false
+		ring.Visible = false
+		healthText.TextColor3 = Theme.Colors.bg
+		healthStroke.Color = Theme.Colors.black
+		healthStroke.Transparency = 0.5
+		local char = player.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			setHealth(hum.Health, math.max(hum.MaxHealth, maxHP))
+		end
+		UI.punch(health, 1.2, 0.4)
+	end
+
+	-- Teammate's revive hold on this player: 0 hides the ring.
+	function component.setReviveRing(progress: number, reviver: string?)
+		if progress <= 0 then
+			if ring.Visible then
+				ring.Visible = false
+			end
+			return
+		end
+		ring.Visible = true
+		local lit = math.floor(progress * RING_TICKS + 0.5)
+		for i, tick in ringTicks do
+			tick.BackgroundColor3 = if i <= lit then Theme.Colors.cash else Theme.Colors.panel2
+		end
+		ringLabel.Text = if reviver then string.upper(reviver) else ""
+	end
 
 	-- Any DPS change (upgrade, swap, tradeoff) floats the delta off the slot.
 	local lastDps = -1
@@ -186,6 +333,10 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		lastDps = dps
 		dmg.Text = "DMG " .. UI.fmtDmg(held.dmg or 0, held.pellets or 1)
 		rate.Text = "RATE " .. UI.fmtRate(held.fireRate or 0)
+		if typeof(sync.selfRevives) == "number" and sync.selfRevives ~= selfRevives then
+			selfRevives = sync.selfRevives
+			paintSelf()
+		end
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then

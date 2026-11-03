@@ -67,8 +67,6 @@ function Toast.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 				rarity,
 				1.2
 			)
-		elseif name == "Downed" then
-			component.show("DOWNED (STUB) · HP RESET", Theme.Colors.malus, 1.5)
 		end
 	end
 

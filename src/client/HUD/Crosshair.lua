@@ -84,13 +84,21 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			followingCursor = false
 		end
 		local a = ClientState.ammo
+		local progress: number? = nil
+		local ringColor = Theme.Colors.gold
 		if a.reloading and a.reloadEndsAt > a.reloadStartedAt then
+			progress = math.clamp((os.clock() - a.reloadStartedAt) / (a.reloadEndsAt - a.reloadStartedAt), 0, 1)
+		elseif ClientState.reviveProgress > 0 then
+			-- Holding a revive on a teammate: the same ring fills green.
+			progress = ClientState.reviveProgress
+			ringColor = Theme.Colors.cash
+		end
+		if progress then
 			ringShown = true
-			local progress = math.clamp((os.clock() - a.reloadStartedAt) / (a.reloadEndsAt - a.reloadStartedAt), 0, 1)
 			local lit = math.floor(progress * TICKS + 0.5)
 			for i, tick in ticks do
 				tick.Visible = true
-				tick.BackgroundColor3 = if i <= lit then Theme.Colors.gold else Theme.Colors.panel2
+				tick.BackgroundColor3 = if i <= lit then ringColor else Theme.Colors.panel2
 				tick.BackgroundTransparency = if i <= lit then 0 else 0.4
 			end
 		elseif ringShown then

@@ -210,7 +210,7 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	end
 	local state = PlayerState.get(player)
 	local now = os.clock()
-	if now - state.lastSwapAt < Config.SwapCooldownSec then
+	if now - state.lastSwapAt < Config.SwapCooldownSec or state.downed then
 		return
 	end
 	state.lastSwapAt = now
@@ -271,6 +271,9 @@ end
 
 function WeaponRoll.buy(player: Player): any
 	local state = PlayerState.get(player)
+	if state.downed or state.bledOut then
+		return { ok = false, reason = "downed" }
+	end
 	local price = Economy.weaponPrice(state)
 	if not Economy.tryCharge(state, price) then
 		return { ok = false, reason = "cash", price = price }

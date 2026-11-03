@@ -27,7 +27,82 @@ local HUD = {
 	Rebuilt = Signal.new(),
 	gui = nil :: ScreenGui?,
 	components = {} :: { [string]: Component },
+	mode = "gameplay", -- gameplay | downed | spectate | cinematic | none
 }
+
+-- Top-level pieces a mode can hide. Toast and Combo show themselves, so a mode only ever hides them.
+local MANAGED = {
+	"WaveBar",
+	"CallSlot",
+	"TopRight",
+	"BuyColumn",
+	"AbilityColumn",
+	"Currency",
+	"BottomCenter",
+	"Ammo",
+	"Crosshair",
+	"HurtVignette",
+	"RarityFlash",
+	"FireButton",
+	"ADSButton",
+	"ReloadButton",
+}
+local SELF_MANAGED = { Toast = true, Combo = true }
+local COMBAT = {
+	Crosshair = true,
+	Ammo = true,
+	BuyColumn = true,
+	AbilityColumn = true,
+	FireButton = true,
+	ADSButton = true,
+	ReloadButton = true,
+}
+local MODES: { [string]: { hide: { [string]: boolean }?, only: { [string]: boolean }? } } = {
+	gameplay = { hide = {} },
+	downed = { hide = COMBAT },
+	spectate = {
+		hide = {
+			Crosshair = true,
+			Ammo = true,
+			BuyColumn = true,
+			AbilityColumn = true,
+			FireButton = true,
+			ADSButton = true,
+			ReloadButton = true,
+			BottomCenter = true,
+			Currency = true,
+			Combo = true,
+		},
+	},
+	cinematic = { only = { WaveBar = true } },
+	none = { only = {} },
+}
+
+-- Show or hide HUD pieces for a mode (downed, spectating, the run start / end sequences).
+function HUD.setMode(mode: string)
+	HUD.mode = mode
+	local spec = MODES[mode] or MODES.gameplay
+	local gui = HUD.gui
+	if not gui then
+		return
+	end
+	for _, child in gui:GetChildren() do
+		if not child:IsA("GuiObject") then
+			continue
+		end
+		local name = child.Name
+		local managed = table.find(MANAGED, name) ~= nil
+		if spec.only then
+			if managed or SELF_MANAGED[name] then
+				child.Visible = spec.only[name] == true
+			end
+		elseif spec.hide and spec.hide[name] then
+			child.Visible = false
+		elseif managed then
+			child.Visible = true
+		end
+	end
+end
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -80,6 +155,7 @@ function HUD.build()
 	if ClientState.sync then
 		HUD.update(ClientState.sync)
 	end
+	HUD.setMode(HUD.mode)
 	HUD.Rebuilt:Fire(HUD.components)
 end
 

@@ -94,6 +94,10 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	local function use(id: string)
 		local t = tiles[id]
+		if ClientState.downed then
+			t.shake()
+			return
+		end
 		UI.punch(t.button, 0.9, 0.2)
 		Remotes.UseAbility:FireServer(id)
 	end

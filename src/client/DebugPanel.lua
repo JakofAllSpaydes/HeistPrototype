@@ -182,27 +182,38 @@ local function build()
 		send("EndRun")
 	end, Theme.Colors.red)
 
+	local r8b = row(panel, 10, rh)
+	btn(r8b, "Down me", 1 / 3, function()
+		send("DownMe")
+	end, Theme.Colors.malus)
+	btn(r8b, "Down all", 1 / 3, function()
+		send("DownAll")
+	end, Theme.Colors.malus)
+	btn(r8b, "Revive all", 1 / 3, function()
+		send("ReviveAll")
+	end, Theme.Colors.cash)
+
 	UI.text({
 		Text = "MINIGAMES (open · tier)",
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.grey,
 		Size = UDim2.new(1, 0, 0, S(14)),
-		LayoutOrder = 10,
+		LayoutOrder = 11,
 		Parent = panel,
 	})
-	local r9 = row(panel, 11, rh)
+	local r9 = row(panel, 12, rh)
 	for _, name in { "Lockpick", "Hotwire", "Keypad" } do
 		btn(r9, name, 1 / 3, function()
 			send("OpenMinigame", name)
 		end)
 	end
-	local r10 = row(panel, 12, rh)
+	local r10 = row(panel, 13, rh)
 	for _, name in { "Charges", "Safe", "Freq" } do
 		btn(r10, name, 1 / 3, function()
 			send("OpenMinigame", name)
 		end)
 	end
-	local r11 = row(panel, 13, rh)
+	local r11 = row(panel, 14, rh)
 	for t = 1, 3 do
 		toggles["tier" .. t] = btn(r11, "Tier " .. t, 0.2, function()
 			send("SetTier", t)

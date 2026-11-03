@@ -176,6 +176,9 @@ function Staging.enter()
 		local char = player.Character
 		if char then
 			teleport(char, Room.yardSpawn * CFrame.new((math.random() - 0.5) * 8, 0, (math.random() - 0.5) * 4))
+		else
+			-- Bled out last run: a fresh character at the yard spawn.
+			player:LoadCharacter()
 		end
 	end
 end

@@ -93,6 +93,7 @@ params.FilterType = Enum.RaycastFilterType.Exclude
 -- FOV kick on fire and camera shake, both decay each frame.
 local fovKick = 0
 local stimFov = 0
+local slowFov = 0
 local shakeAmp = 0
 local shakeLeft = 0
 local shakeTotal = 0
@@ -108,6 +109,12 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		stimFov = 6
 	elseif name == "StimEnd" then
 		stimFov = 0
+	elseif name == "RunOver" then
+		-- Slow-mo beat: pull the lens in, release after the stamp.
+		slowFov = -10
+		task.delay((data.slowSec or 1) + 1, function()
+			slowFov = 0
+		end)
 	end
 end)
 
@@ -131,10 +138,14 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	local adsRate = dt / math.max(Config.AdsBlendSec, 0.01)
 	adsBlend += math.clamp(adsGoal - adsBlend, -adsRate, adsRate)
 	local fovMult = 1 + (Config.AdsFovMult - 1) * adsBlend
-	camera.FieldOfView = Config.CameraFov * fovMult + fovKick + stimFov
+	camera.FieldOfView = Config.CameraFov * fovMult + fovKick + stimFov + slowFov
 	local free = ClientState.isMouseFree()
 	UserInputService.MouseBehavior = if free then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
 	UserInputService.MouseIconEnabled = free
+	-- Spectate and the run start / end sequences drive the camera themselves.
+	if ClientState.cameraMode ~= "gameplay" then
+		return
+	end
 
 	zoom += (targetZoom - zoom) * math.min(1, dt * Config.CameraZoomSmoothing)
 	if math.abs(targetZoom - zoom) < 0.02 then
@@ -166,7 +177,9 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	end
 
 	local rot = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)
-	local pivot = root.Position + Vector3.new(0, 1.5, 0)
+	-- Downed: the pivot drops to DownedCameraHeight above the floor (the root sits 3 studs up).
+	local pivotY = if ClientState.downed then Config.DownedCameraHeight - 3 else 1.5
+	local pivot = root.Position + Vector3.new(0, pivotY, 0)
 	local camPos: Vector3
 	if firstPerson then
 		local head = char:FindFirstChild("Head") :: BasePart?

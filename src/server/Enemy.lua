@@ -49,7 +49,9 @@ local function nearestTarget(from: Vector3): BasePart?
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if root and hum and hum.Health > 0 then
+		local state = PlayerState.get(player)
+		-- Downed players are dropped from targeting.
+		if root and hum and hum.Health > 0 and not state.downed and not state.bledOut then
 			local d = (root.Position - from).Magnitude
 			if d < bestDist then
 				bestDist = d
@@ -163,6 +165,10 @@ function Enemy.kill(model: Model, attacker: Player?)
 	d.dead = true
 	active[model] = nil
 	count -= 1
+	if attacker then
+		local ks = PlayerState.get(attacker)
+		ks.kills += 1
+	end
 	-- Shrink out, no ragdoll.
 	for _, p in model:GetDescendants() do
 		if p:IsA("BasePart") then
@@ -194,8 +200,29 @@ function Enemy.damage(model: Model, amount: number, attacker: Player?): boolean
 end
 
 function Enemy.killAll()
+	Enemy.frozen = false
 	for model in table.clone(active) do
 		Enemy.kill(model, nil)
+	end
+end
+
+-- Run over: every enemy stops where it stands and fades over `fadeSec`. killAll clears them afterwards.
+Enemy.frozen = false
+function Enemy.freezeAll(fadeSec: number)
+	Enemy.frozen = true
+	for model, d in active do
+		if d.dead then
+			continue
+		end
+		d.humanoid:MoveTo(d.root.Position)
+		d.root.Anchored = true
+		for _, p in model:GetDescendants() do
+			if p:IsA("BasePart") then
+				TweenService:Create(p, TweenInfo.new(fadeSec, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Transparency = 0.75,
+				}):Play()
+			end
+		end
 	end
 end
 
@@ -244,6 +271,9 @@ end
 
 function Enemy.init()
 	RunService.Heartbeat:Connect(function()
+		if Enemy.frozen then
+			return
+		end
 		local now = os.clock()
 		for model, d in active do
 			if d.dead then

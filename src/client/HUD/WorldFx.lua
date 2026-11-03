@@ -1,5 +1,6 @@
 --!strict
 -- World-space juice: damage numbers, kill pop, cash floats, enemy hit flash, red screen pulse on damage.
+local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -294,6 +295,20 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			flash.BackgroundTransparency = 0.8
 			UI.tween(flash, { BackgroundTransparency = 1 }, 0.5)
 			ClientState.Juice:Fire("Shake", { amp = 0.25, dur = 0.3 })
+		elseif name == "RunOver" then
+			-- Slow-mo read: the world drains of color and tints red for the stamp, then recovers.
+			local existing = Lighting:FindFirstChild("GHSSlowMo")
+			local cc = if existing and existing:IsA("ColorCorrectionEffect")
+				then existing
+				else Instance.new("ColorCorrectionEffect")
+			cc.Name = "GHSSlowMo"
+			cc.Saturation = 0
+			cc.TintColor = Theme.Colors.white
+			cc.Parent = Lighting
+			UI.tween(cc, { Saturation = -0.8, TintColor = Color3.fromRGB(255, 200, 200) }, 0.25)
+			task.delay((data.slowSec or 1) + 2, function()
+				UI.tween(cc, { Saturation = 0, TintColor = Theme.Colors.white }, 0.6)
+			end)
 		elseif name == "Multishot" then
 			UI.sound(Theme.Sounds.shot, 1.4, 0.25)
 		elseif name == "TurretShot" then

@@ -22,6 +22,12 @@ local ClientState = {
 	touchFire = false, -- mobile fire button held
 	ads = false, -- aiming down sights (RMB held, or mobile ADS toggle)
 	isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,
+	downed = false, -- the local player is down: crawl, no fire, no buys
+	spectating = false, -- bled out: the camera rides a teammate
+	cameraMode = "gameplay", -- gameplay | spectate | cinematic: who drives the camera
+	reviveProgress = 0, -- 0..1 while this player holds a revive on a teammate (ring on the crosshair)
+	reviveNearby = false, -- a downed teammate is within ReviveRadius: F means revive, gun prompts step aside
+	downedPlayers = {} :: { [number]: boolean }, -- userId -> currently down (any player)
 }
 
 function ClientState.setAds(on: boolean)

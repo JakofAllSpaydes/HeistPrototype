@@ -19,6 +19,9 @@ local DEFS: { [string]: string } = {
 	SetAutoSkip = "RemoteEvent", -- client -> server: on (boolean); votes to skip every intermission
 	MinigameStart = "RemoteEvent", -- server -> client: { token, name, tier }; open that game's panel
 	MinigameResult = "RemoteEvent", -- client -> server: token, outcome (done | fail | cancel), misses
+	ReviveHold = "RemoteEvent", -- client -> server: on (boolean); holding F / the REVIVE button near a downed teammate
+	SelfRevive = "RemoteEvent", -- client -> server: none; the SELF-REVIVE button while downed
+	ReviveEverybody = "RemoteEvent", -- client -> server: none; the spectate screen button
 }
 
 local folder: Instance
