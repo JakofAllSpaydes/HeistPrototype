@@ -28,6 +28,7 @@ local Staging = require(script.Parent.Staging)
 local Minigames = require(script.Parent.Minigames)
 local Downed = require(script.Parent.Downed)
 local RunStart = require(script.Parent.RunStart)
+local RunEnd = require(script.Parent.RunEnd)
 
 PlayerState.init()
 Downed.init()
@@ -41,6 +42,7 @@ BigCrate.init()
 CrewCall.init()
 Staging.init()
 Minigames.init()
+RunEnd.init()
 Debug.init()
 
 local function setState(state: string)
@@ -163,5 +165,10 @@ task.spawn(function()
 		Log.event("Run", "Run %d over at wave %d", World.runId, World.wave)
 		task.wait(Config.RunOverSlowSec)
 		Enemy.killAll()
+
+		-- Run end sequence, MVP, summary (PLAY AGAIN / TO LOBBY both lead back to the yard).
+		setState("RunEnd")
+		local choice = RunEnd.play()
+		Log.event("Run", "summary closed (%s), back to the yard", choice)
 	end
 end)

@@ -1,0 +1,539 @@
+--!strict
+-- Run end on the client: the camera timeline (low front shot of the line, push in on the poses, hold for
+-- the cash rain, cut to a tight 3/4 shot of the MVP with a slow orbit), the poses, the MVP stamp with gold
+-- rays, then the summary panel (TOTAL BANKED count-up, per-player rows, GOLD count-up, PLAY AGAIN /
+-- TO LOBBY with the auto countdown). Runs off the server clock in RunEndBegin.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
+local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local HUD = require(script.Parent:WaitForChild("HUD"))
+local Juice = require(script.Parent:WaitForChild("Juice"))
+local Spectate = require(script.Parent:WaitForChild("Spectate"))
+local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
+local MinigameFrame = require(script.Parent:WaitForChild("Minigames"):WaitForChild("Frame"))
+
+local RunEndUI = {}
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local camera = Workspace.CurrentCamera :: Camera
+
+local data: any = nil
+local fired: { [string]: boolean } = {}
+local gui: ScreenGui? = nil
+local dim: Frame? = nil
+local stampFrame: Frame? = nil
+local summaryShownAt = -1
+local bankedLabel: TextLabel? = nil
+local goldLabel: TextLabel? = nil
+local lobbyButton: TextButton? = nil
+local chosen = false
+
+local function easeOut(s: number): number
+	s = math.clamp(s, 0, 1)
+	return 1 - (1 - s) * (1 - s)
+end
+
+local function charOf(userId: number): Model?
+	local p = Players:GetPlayerByUserId(userId)
+	return if p then p.Character else nil
+end
+
+local function rootOf(userId: number): BasePart?
+	local char = charOf(userId)
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	return if root and root:IsA("BasePart") then root else nil
+end
+
+local function once(beat: string, fn: () -> ())
+	if not fired[beat] then
+		fired[beat] = true
+		fn()
+	end
+end
+
+local function fmtCash(n: number): string
+	return UI.fmtCash(n)
+end
+
+local function teardown()
+	data = nil
+	pcall(function()
+		RunService:UnbindFromRenderStep("GHSRunEnd")
+	end)
+	if gui then
+		gui:Destroy()
+		gui = nil
+	end
+	dim = nil
+	stampFrame = nil
+	bankedLabel = nil
+	goldLabel = nil
+	lobbyButton = nil
+	summaryShownAt = -1
+	chosen = false
+end
+
+local function finish()
+	if not data then
+		return
+	end
+	teardown()
+	ClientState.cameraMode = "gameplay"
+	ClientState.requestCameraYaw = 0
+	ClientState.setBlock("cinematic", false)
+	HUD.setMode("gameplay")
+end
+
+local function showMvp(d: any)
+	local g = gui
+	if not g or not d.mvp then
+		return
+	end
+	local S = UI.S
+	local frame = UI.frame({
+		Name = "MvpStamp",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.3, 0),
+		Size = UDim2.fromOffset(S(520), S(190)),
+		ZIndex = 5,
+		Parent = g,
+	})
+	stampFrame = frame
+	local mvp = UI.text({
+		Text = "MVP",
+		Font = Theme.Fonts.display,
+		TextSize = S(110),
+		TextColor3 = Theme.Colors.gold,
+		Size = UDim2.new(1, 0, 0, S(110)),
+		Rotation = -8,
+		ZIndex = 6,
+		Parent = frame,
+	})
+	UI.stroke(mvp, Theme.Colors.black, S(4), 0.1)
+	local name = UI.text({
+		Text = string.upper(tostring(d.mvp.name)),
+		Font = Theme.Fonts.display,
+		TextSize = S(34),
+		TextColor3 = Theme.Colors.text,
+		Position = UDim2.fromOffset(0, S(112)),
+		Size = UDim2.new(1, 0, 0, S(40)),
+		ZIndex = 6,
+		Parent = frame,
+	})
+	UI.stroke(name, Theme.Colors.black, S(2), 0.2)
+	local stat = UI.text({
+		Text = tostring(d.mvp.statLine),
+		Font = Theme.Fonts.display,
+		TextSize = S(24),
+		TextColor3 = Theme.Colors.gold,
+		Position = UDim2.fromOffset(0, S(152)),
+		Size = UDim2.new(1, 0, 0, S(30)),
+		ZIndex = 6,
+		Parent = frame,
+	})
+	UI.stroke(stat, Theme.Colors.black, S(2), 0.2)
+	UI.punch(frame, 2.2, 0.5)
+	local center = frame.AbsolutePosition + frame.AbsoluteSize / 2
+	Juice.rays(center, Theme.Colors.gold, 14, 300, 0.9)
+	ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.gold, alpha = 0.4 })
+	ClientState.Juice:Fire("Shake", { amp = 0.6, dur = 0.4 })
+	UI.sound(Theme.Sounds.legendary, 1, 0.8)
+	MinigameFrame.haptic(1)
+	task.delay(0.3, function()
+		MinigameFrame.haptic(0.8)
+	end)
+	-- The MVP's pose replays under the stamp.
+	local pose = Config.Poses[d.mvp.pose] or Config.Poses[1]
+	RunStartUI.playAnim(charOf(d.mvp.userId), pose.animationId, pose.holdSec + 1)
+end
+
+local function showSummary(d: any)
+	local g = gui
+	if not g then
+		return
+	end
+	local S = UI.S
+	summaryShownAt = os.clock()
+	local dimFrame = dim
+	if dimFrame then
+		UI.tween(dimFrame, { BackgroundTransparency = 0.45 }, 0.4)
+	end
+	if stampFrame then
+		for _, l in stampFrame:GetDescendants() do
+			if l:IsA("TextLabel") then
+				UI.tween(l, { TextTransparency = 1 }, 0.3)
+			elseif l:IsA("UIStroke") then
+				UI.tween(l, { Transparency = 1 }, 0.3)
+			end
+		end
+	end
+
+	local rows: { any } = d.players
+	local n = #rows
+	local vp = camera.ViewportSize
+	local W = math.min(math.floor(vp.X * 0.9), S(700))
+	local rowH = S(30)
+	local H = S(84) + S(24) + rowH * n + S(44) + S(72) + S(28)
+	H = math.min(H, math.floor(vp.Y * 0.94))
+	local panel = UI.frame({
+		Name = "Summary",
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.08,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 1.3, 0),
+		Size = UDim2.fromOffset(W, H),
+		ZIndex = 10,
+		Parent = g,
+	})
+	UI.corner(panel, S(16))
+	UI.stroke(panel, Theme.Colors.gold, S(3))
+	UI.tween(panel, { Position = UDim2.fromScale(0.5, 0.5) }, 0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	UI.sound(Theme.Sounds.call, 1, 0.6)
+
+	-- Headline.
+	UI.text({
+		Text = "TOTAL BANKED",
+		Font = Theme.Fonts.display,
+		TextSize = S(18),
+		TextColor3 = Theme.Colors.textDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(24), S(14)),
+		Size = UDim2.fromOffset(S(300), S(22)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	bankedLabel = UI.text({
+		Text = "$0",
+		Font = Theme.Fonts.display,
+		TextSize = S(44),
+		TextColor3 = Theme.Colors.cash,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(24), S(34)),
+		Size = UDim2.fromOffset(S(360), S(50)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	local wavePill, waveLabel =
+		UI.pill(panel, string.format("WAVE %d", d.wave or 1), Theme.Colors.gold, Theme.Colors.bg, S(30), S(16))
+	wavePill.AnchorPoint = Vector2.new(1, 0)
+	wavePill.Position = UDim2.new(1, -S(24), 0, S(36))
+	wavePill.ZIndex = 11
+	waveLabel.ZIndex = 12
+	waveLabel.Font = Theme.Fonts.display
+
+	-- Table.
+	local cols = {
+		{ title = "CREW", w = 0.3, align = Enum.TextXAlignment.Left },
+		{ title = "POSE", w = 0.12, align = Enum.TextXAlignment.Center },
+		{ title = "KILLS", w = 0.11, align = Enum.TextXAlignment.Center },
+		{ title = "CASH", w = 0.17, align = Enum.TextXAlignment.Center },
+		{ title = "REVIVES", w = 0.1, align = Enum.TextXAlignment.Center },
+		{ title = "DOWNS", w = 0.1, align = Enum.TextXAlignment.Center },
+		{ title = "SELF-REV", w = 0.1, align = Enum.TextXAlignment.Center },
+	}
+	local tableX, tableW = S(24), W - S(48)
+	local y = S(92)
+	local function cell(
+		parent: Instance,
+		text: string,
+		col: any,
+		x: number,
+		color: Color3,
+		size: number,
+		font: Enum.Font
+	)
+		return UI.text({
+			Text = text,
+			Font = font,
+			TextSize = size,
+			TextColor3 = color,
+			TextXAlignment = col.align,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Position = UDim2.fromOffset(x, 0),
+			Size = UDim2.new(col.w, 0, 1, 0),
+			ZIndex = 12,
+			Parent = parent,
+		})
+	end
+	local header = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(tableX, y),
+		Size = UDim2.fromOffset(tableW, S(20)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	local x = 0
+	for _, col in cols do
+		cell(header, col.title, col, x, Theme.Colors.grey, S(11), Theme.Fonts.body)
+		x += math.floor(tableW * col.w)
+	end
+	y += S(24)
+	for i, row in rows do
+		local rowFrame = UI.frame({
+			BackgroundColor3 = Theme.Colors.panel,
+			BackgroundTransparency = if i % 2 == 0 then 0.6 else 0.3,
+			Position = UDim2.fromOffset(tableX, y),
+			Size = UDim2.fromOffset(tableW, rowH - S(4)),
+			ZIndex = 11,
+			Parent = panel,
+		})
+		UI.corner(rowFrame, S(6))
+		local isMvp = d.mvp and d.mvp.userId == row.userId
+		local color = Color3.fromHex(tostring(row.maskColor or "F2E6C8"))
+		local xx = 0
+		local nameCell =
+			cell(rowFrame, string.upper(tostring(row.name)), cols[1], xx + S(8), color, S(14), Theme.Fonts.display)
+		if isMvp then
+			local tag, tagLabel = UI.pill(rowFrame, "MVP", Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
+			tag.AnchorPoint = Vector2.new(1, 0.5)
+			tag.Position = UDim2.new(cols[1].w, -S(6), 0.5, 0)
+			tag.ZIndex = 13
+			tagLabel.ZIndex = 14
+			tagLabel.Font = Theme.Fonts.display
+			nameCell.Size = UDim2.new(cols[1].w, -S(60), 1, 0)
+		end
+		xx += math.floor(tableW * cols[1].w)
+		local pose = Config.Poses[row.pose or 1] or Config.Poses[1]
+		cell(rowFrame, pose.name, cols[2], xx, Theme.Colors.textDim, S(12), Theme.Fonts.display)
+		xx += math.floor(tableW * cols[2].w)
+		cell(rowFrame, tostring(row.kills or 0), cols[3], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
+		xx += math.floor(tableW * cols[3].w)
+		cell(rowFrame, fmtCash(row.cash or 0), cols[4], xx, Theme.Colors.cash, S(13), Theme.Fonts.body)
+		xx += math.floor(tableW * cols[4].w)
+		cell(rowFrame, tostring(row.revives or 0), cols[5], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
+		xx += math.floor(tableW * cols[5].w)
+		cell(rowFrame, tostring(row.downs or 0), cols[6], xx, Theme.Colors.malus, S(13), Theme.Fonts.body)
+		xx += math.floor(tableW * cols[6].w)
+		cell(rowFrame, tostring(row.selfRevives or 0), cols[7], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
+		if row.userId == player.UserId then
+			UI.stroke(rowFrame, color, S(1.5), 0.3)
+		end
+		y += rowH
+	end
+
+	-- Gold line.
+	y += S(8)
+	goldLabel = UI.text({
+		Text = "GOLD +0",
+		Font = Theme.Fonts.display,
+		TextSize = S(26),
+		TextColor3 = Theme.Colors.gold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(24), y),
+		Size = UDim2.fromOffset(S(300), S(32)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	UI.text({
+		Text = "DISPLAY ONLY · NO PERSISTENCE YET",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(24), y + S(30)),
+		Size = UDim2.fromOffset(S(300), S(14)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+
+	-- Buttons.
+	local btnY = H - S(72)
+	local function choose(choice: string, button: TextButton)
+		if chosen then
+			return
+		end
+		chosen = true
+		Remotes.SummaryChoice:FireServer(choice)
+		UI.punch(button, 0.92, 0.2)
+		UI.sound(Theme.Sounds.toast, 1.3, 0.5)
+		button.Text = "LOADING THE YARD…"
+	end
+	local again = UI.button({
+		Text = "PLAY AGAIN",
+		Font = Theme.Fonts.display,
+		TextSize = S(22),
+		TextColor3 = Theme.Colors.bg,
+		BackgroundColor3 = Theme.Colors.cash,
+		Position = UDim2.fromOffset(S(24), btnY),
+		Size = UDim2.new(0.5, -S(32), 0, S(54)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	UI.corner(again, S(12))
+	UI.stroke(again, Theme.Colors.black, S(2), 0.4)
+	again.Activated:Connect(function()
+		choose("again", again)
+	end)
+	local lobby = UI.button({
+		Text = "TO LOBBY",
+		Font = Theme.Fonts.display,
+		TextSize = S(22),
+		TextColor3 = Theme.Colors.gold,
+		BackgroundColor3 = Theme.Colors.panel2,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(24), 0, btnY),
+		Size = UDim2.new(0.5, -S(32), 0, S(54)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	UI.corner(lobby, S(12))
+	UI.stroke(lobby, Theme.Colors.gold, S(2))
+	lobby.Activated:Connect(function()
+		choose("lobby", lobby)
+	end)
+	lobbyButton = lobby
+	UI.text({
+		Text = "BOTH GO BACK TO THE YARD IN THE PROTOTYPE",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		Position = UDim2.fromOffset(0, H - S(16)),
+		Size = UDim2.new(1, 0, 0, S(12)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+end
+
+local lastCF: CFrame? = nil
+
+local function step(_dt: number)
+	local d = data
+	if not d then
+		return
+	end
+	local t = ClientState.serverNow() - d.startedAt
+	local beats = d.beats
+	local line: { CFrame } = d.line
+	local sum = Vector3.zero
+	for _, cf in line do
+		sum += cf.Position
+	end
+	local center = if #line > 0 then sum / #line else Vector3.zero
+	local lineShot = CFrame.lookAt(Vector3.new(center.X, 2.6, center.Z - 9), center + Vector3.new(0, 1.8, 0))
+
+	local cf: CFrame = lineShot
+	if t < beats.poses then
+		cf = lineShot
+	elseif t < beats.rain then
+		once("poses", function()
+			for i, row in d.players do
+				local pose = Config.Poses[row.pose] or Config.Poses[1]
+				task.delay(Config.PoseStagger * (i - 1), function()
+					if data == d then
+						RunStartUI.playAnim(charOf(row.userId), pose.animationId, pose.holdSec)
+					end
+				end)
+			end
+			UI.sound(Theme.Sounds.reelLand, 1, 0.5)
+		end)
+		local s = easeOut((t - beats.poses) / math.max(beats.rain - beats.poses, 0.01))
+		cf = CFrame.lookAt(
+			Vector3.new(center.X, 2.6 - 0.2 * s, center.Z - (9 - 2.5 * s)),
+			center + Vector3.new(0, 1.8, 0)
+		)
+	elseif t < beats.mvp then
+		once("rain", function()
+			UI.sound(Theme.Sounds.crate, 1.2, 0.5)
+			task.spawn(function()
+				local ticks = math.clamp(math.floor((d.rainCount or 0) / 8), 3, 24)
+				for i = 1, ticks do
+					if data ~= d then
+						return
+					end
+					UI.sound(Theme.Sounds.reelTick, 1.2 + (i % 4) * 0.15, 0.2)
+					task.wait((d.rainSec or 2) / ticks)
+				end
+			end)
+		end)
+		cf = lastCF or lineShot
+	elseif t < beats.summary then
+		once("mvp", function()
+			showMvp(d)
+		end)
+		-- Tight 3/4 shot on the MVP, slow orbit.
+		local mvpRoot = if d.mvp then rootOf(d.mvp.userId) else nil
+		local pos = if mvpRoot then mvpRoot.Position else center
+		local s = (t - beats.mvp) / math.max(d.mvpOrbitSec or 2, 0.1)
+		local a = 0.55 - 0.7 * math.clamp(s, 0, 1)
+		cf = CFrame.lookAt(pos + Vector3.new(math.sin(a) * 4.6, 2.0, -math.cos(a) * 4.6), pos + Vector3.new(0, 1.7, 0))
+	else
+		once("summary", function()
+			showSummary(d)
+		end)
+		cf = lineShot
+	end
+	lastCF = cf
+	camera.CFrame = cf
+	camera.Focus = cf
+
+	-- Summary count-ups and the lobby countdown.
+	if summaryShownAt >= 0 then
+		local e = os.clock() - summaryShownAt
+		local k = easeOut(e / math.max(d.countUpSec or 1, 0.05))
+		if bankedLabel then
+			bankedLabel.Text = fmtCash(math.floor((d.totalBanked or 0) * k))
+			if k < 1 then
+				bankedLabel.TextSize = UI.S(44 + 6 * math.sin(e * 30))
+			else
+				bankedLabel.TextSize = UI.S(44)
+			end
+		end
+		if goldLabel then
+			goldLabel.Text = string.format("GOLD +%d", math.floor((d.gold or 0) * k))
+		end
+		if lobbyButton and not chosen then
+			local left = math.max(0, math.ceil((d.autoLobbySec or 30) - e))
+			lobbyButton.Text = string.format("TO LOBBY (%d)", left)
+		end
+	end
+end
+
+local function begin(d: any)
+	teardown()
+	data = d
+	fired = {}
+	lastCF = nil
+	Spectate.exit(true)
+	MinigameFrame.close("cancel")
+	ClientState.setAds(false)
+	ClientState.cameraMode = "cinematic"
+	ClientState.setBlock("cinematic", true)
+	HUD.setMode("none")
+	local g = UI.new("ScreenGui", {
+		Name = "RunEnd",
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		DisplayOrder = 12,
+		Parent = playerGui,
+	}) :: ScreenGui
+	gui = g
+	dim = UI.frame({
+		Name = "Dim",
+		BackgroundColor3 = Theme.Colors.black,
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 1,
+		Parent = g,
+	})
+	RunService:BindToRenderStep("GHSRunEnd", Enum.RenderPriority.Camera.Value + 1, step)
+end
+
+function RunEndUI.init()
+	ClientState.Juice:Connect(function(name: string, d: any)
+		if name == "RunEndBegin" then
+			begin(d)
+		elseif name == "StagingEnter" then
+			finish()
+		end
+	end)
+end
+
+return RunEndUI
