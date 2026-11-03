@@ -31,6 +31,7 @@ export type State = {
 	god: boolean,
 	cratesTaken: { [string]: boolean },
 	lastShotAt: number,
+	lastSwapAt: number,
 	nextUid: number,
 	dirty: boolean,
 	cooldowns: { [string]: number }, -- ability id -> server time the cooldown ends
@@ -57,6 +58,7 @@ local function freshState(player: Player): State
 		god = false,
 		cratesTaken = {},
 		lastShotAt = 0,
+		lastSwapAt = 0,
 		nextUid = 2,
 		dirty = true,
 		cooldowns = {},

@@ -209,6 +209,11 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 		return
 	end
 	local state = PlayerState.get(player)
+	local now = os.clock()
+	if now - state.lastSwapAt < Config.SwapCooldownSec then
+		return
+	end
+	state.lastSwapAt = now
 	local cf = gun.CFrame
 	local newId = gun:GetAttribute("WeaponId") :: string
 	local newRarity = gun:GetAttribute("Rarity") :: number

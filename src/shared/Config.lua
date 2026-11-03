@@ -80,6 +80,7 @@ local Config = {
 	RollEjectSec = 0.4,
 	GunDropHeight = 14, -- rolled guns fall in from this height
 	GunDropSec = 0.45,
+	SwapCooldownSec = 0.5, -- after a swap, further swaps are ignored for this long (anti-spam mid-combat)
 	GroundWeaponLifetime = 30, -- floor guns despawn after this; a fresh drop (or swap) restarts it
 	GroundWeaponFadeSec = 10, -- beam fades over the last N seconds of lifetime
 	InteractRadius = 8,
