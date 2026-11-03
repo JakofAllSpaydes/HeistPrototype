@@ -215,6 +215,7 @@ local Config = {
 	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
 	MinigameMinSec = { Lockpick = 1.5, Hotwire = 1.5, Keypad = 1.5, Charges = 1.5, Safe = 2, Freq = 1 },
 	MinigameHaptics = true, -- HapticService pulses on hits and locks (mobile / gamepad)
+	MinigameCloseDistance = 14, -- walking further than this from the prop closes the panel (counts as cancel)
 	LockpickTargetByTier = { 3, 4, 5 }, -- points to open per tier: green zone +1, pink sliver +2
 	LockpickZoneShrink = 0.9, -- zone width x this per hit, floored at half the starting width
 	LockpickSpeedUp = 1.08, -- pin speed x this per hit
@@ -264,8 +265,9 @@ local Config = {
 	},
 
 	------------------------------------------------------------------ Run end
-	RunEndBeats = { poses = 0.6, rain = 1.2, mvp = 2.8, summary = 5.0 }, -- seconds from the start of the sequence
-	MvpOrbitSec = 2, -- slow orbit on the MVP before the summary
+	-- Seconds from the start of the sequence: the camera pans the team until `mvp`, then the MVP beat runs to `summary`.
+	RunEndBeats = { poses = 0.6, rain = 1.4, mvp = 4.0, summary = 7.0 },
+	MvpOrbitSec = 2.5, -- the slow orbit on the MVP covers this long
 	CashRainSec = 2,
 	CashRainPerBanked = 0.02, -- bills = this x Total Banked
 	CashRainMax = 200,

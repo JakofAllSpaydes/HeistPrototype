@@ -55,6 +55,7 @@ type Active = {
 	startedAt: number,
 	closed: boolean,
 	connections: { RBXScriptConnection },
+	origin: Vector3?, -- the prop; walking past MinigameCloseDistance from it closes the panel
 }
 
 local Frame = {}
@@ -242,7 +243,7 @@ function Frame.close(outcome: string)
 	destroy(a)
 end
 
-function Frame.open(name: string, spec: GameSpec, tier: number, token: number)
+function Frame.open(name: string, spec: GameSpec, tier: number, token: number, origin: Vector3?)
 	if active then
 		Frame.close("cancel")
 	end
@@ -414,15 +415,29 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number)
 		startedAt = os.clock(),
 		closed = false,
 		connections = connections,
+		origin = origin,
 	}
 	active = a
 	ClientState.setBlock("minigame", true)
 	closeBtn.Activated:Connect(function()
 		Frame.close("cancel")
 	end)
+	local player = Players.LocalPlayer
 	host.track(RunService.Heartbeat:Connect(function()
-		if not a.closed then
-			timer.Text = string.format("%.1fs", os.clock() - a.startedAt)
+		if a.closed then
+			return
+		end
+		timer.Text = string.format("%.1fs", os.clock() - a.startedAt)
+		-- Walked away from the prop: the panel closes as a cancel.
+		local from = a.origin
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		if from and root and root:IsA("BasePart") then
+			if (root.Position - from).Magnitude > Config.MinigameCloseDistance then
+				hint.Text = "TOO FAR FROM THE PROP"
+				hint.TextColor3 = Theme.Colors.malus
+				Frame.close("cancel")
+			end
 		end
 	end))
 	UI.sound(Theme.Sounds.call, 1.1, 0.4)

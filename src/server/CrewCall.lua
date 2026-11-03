@@ -251,6 +251,7 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	if success then
 		for _, state in PlayerState.all() do
 			Economy.addCash(state, Config.SideJobReward)
+			state.jobsDone += 1
 		end
 		if Config.SideJobRewardCrate then
 			BigCrate.drop(j.position)

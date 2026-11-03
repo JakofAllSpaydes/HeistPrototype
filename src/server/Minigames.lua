@@ -12,6 +12,7 @@ local Remotes = require(Shared.Remotes)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local PlayerState = require(script.Parent.PlayerState)
 
 type Session = { token: number, player: Player, name: string, tier: number, startedAt: number }
 type Result = { sec: number, misses: number, outcome: string, tier: number }
@@ -65,7 +66,13 @@ function Minigames.open(player: Player, name: string)
 	}
 	sessions[s.token] = s
 	byPlayer[player] = s
-	Remotes.MinigameStart:FireClient(player, { token = s.token, name = name, tier = s.tier })
+	local prop = Room.props[name]
+	Remotes.MinigameStart:FireClient(player, {
+		token = s.token,
+		name = name,
+		tier = s.tier,
+		position = if prop then prop.panel.Position else nil, -- walking away from here closes the panel
+	})
 	Log.event("Minigame", "%s opened %s at tier %d", player.Name, name, s.tier)
 end
 
@@ -89,6 +96,9 @@ local function onResult(player: Player, token: any, outcome: any, misses: any)
 	end
 	close(s, out, m)
 	if out == "done" then
+		local state = PlayerState.get(player)
+		state.minigamesDone += 1
+		state.dirty = true
 		Remotes.Juice:FireClient(player, "MinigameDone", { name = s.name, tier = s.tier })
 	end
 end

@@ -237,7 +237,7 @@ local function showSummary(d: any)
 	-- Table.
 	local cols = {
 		{ title = "CREW", w = 0.34, align = Enum.TextXAlignment.Left },
-		{ title = "POSE", w = 0.14, align = Enum.TextXAlignment.Center },
+		{ title = "JOBS", w = 0.14, align = Enum.TextXAlignment.Center },
 		{ title = "KILLS", w = 0.14, align = Enum.TextXAlignment.Center },
 		{ title = "CASH", w = 0.18, align = Enum.TextXAlignment.Center },
 		{ title = "REVIVES", w = 0.1, align = Enum.TextXAlignment.Center },
@@ -305,8 +305,8 @@ local function showSummary(d: any)
 			nameCell.Size = UDim2.new(cols[1].w, -S(60), 1, 0)
 		end
 		xx += math.floor(tableW * cols[1].w)
-		local pose = Config.Poses[row.pose or 1] or Config.Poses[1]
-		cell(rowFrame, pose.name, cols[2], xx, Theme.Colors.textDim, S(12), Theme.Fonts.display)
+		-- Side jobs plus minigames completed.
+		cell(rowFrame, tostring(row.jobs or 0), cols[2], xx, Theme.Colors.blue, S(13), Theme.Fonts.body)
 		xx += math.floor(tableW * cols[2].w)
 		cell(rowFrame, tostring(row.kills or 0), cols[3], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
 		xx += math.floor(tableW * cols[3].w)
@@ -396,40 +396,42 @@ local function step(_dt: number)
 	local lineShot = CFrame.lookAt(Vector3.new(center.X, 2.6, center.Z - 9), center + Vector3.new(0, 1.8, 0))
 
 	local cf: CFrame = lineShot
-	if t < beats.poses then
-		cf = lineShot
-	elseif t < beats.rain then
-		once("poses", function()
-			for i, row in d.players do
-				local pose = Config.Poses[row.pose] or Config.Poses[1]
-				task.delay(Config.PoseStagger * (i - 1), function()
-					if data == d then
-						RunStartUI.playAnim(RunStartUI.charFor(row), pose.animationId, pose.holdSec)
+	if t < beats.mvp then
+		-- One slow pan along the whole team up to the MVP beat, easing in a little as it goes. The poses
+		-- and the cash rain land inside it.
+		if t >= beats.poses then
+			once("poses", function()
+				for i, row in d.players do
+					local pose = Config.Poses[row.pose] or Config.Poses[1]
+					task.delay(Config.PoseStagger * (i - 1), function()
+						if data == d then
+							RunStartUI.playAnim(RunStartUI.charFor(row), pose.animationId, pose.holdSec)
+						end
+					end)
+				end
+				UI.sound(Theme.Sounds.reelLand, 1, 0.5)
+			end)
+		end
+		if t >= beats.rain then
+			once("rain", function()
+				UI.sound(Theme.Sounds.crate, 1.2, 0.5)
+				task.spawn(function()
+					local ticks = math.clamp(math.floor((d.rainCount or 0) / 8), 3, 24)
+					for i = 1, ticks do
+						if data ~= d then
+							return
+						end
+						UI.sound(Theme.Sounds.reelTick, 1.2 + (i % 4) * 0.15, 0.2)
+						task.wait((d.rainSec or 2) / ticks)
 					end
 				end)
-			end
-			UI.sound(Theme.Sounds.reelLand, 1, 0.5)
-		end)
-		local s = easeOut((t - beats.poses) / math.max(beats.rain - beats.poses, 0.01))
-		cf = CFrame.lookAt(
-			Vector3.new(center.X, 2.6 - 0.2 * s, center.Z - (9 - 2.5 * s)),
-			center + Vector3.new(0, 1.8, 0)
-		)
-	elseif t < beats.mvp then
-		once("rain", function()
-			UI.sound(Theme.Sounds.crate, 1.2, 0.5)
-			task.spawn(function()
-				local ticks = math.clamp(math.floor((d.rainCount or 0) / 8), 3, 24)
-				for i = 1, ticks do
-					if data ~= d then
-						return
-					end
-					UI.sound(Theme.Sounds.reelTick, 1.2 + (i % 4) * 0.15, 0.2)
-					task.wait((d.rainSec or 2) / ticks)
-				end
 			end)
-		end)
-		cf = lastCF or lineShot
+		end
+		local s = math.clamp(t / math.max(beats.mvp, 0.01), 0, 1)
+		local a = if #line > 0 then line[1].Position else center
+		local b = if #line > 0 then line[#line].Position else center
+		local x = (a.X - 1.5) + ((b.X + 1.5) - (a.X - 1.5)) * s
+		cf = CFrame.lookAt(Vector3.new(x, 2.6, center.Z - (8 - 2 * s)), Vector3.new(x, 2.0, center.Z))
 	elseif t < beats.summary then
 		once("mvp", function()
 			showMvp(d)
@@ -437,8 +439,8 @@ local function step(_dt: number)
 		-- Tight 3/4 shot on the MVP, slow orbit.
 		local mvpRoot = if d.mvp then rootFor(d.mvp) else nil
 		local pos = if mvpRoot then mvpRoot.Position else center
-		local s = (t - beats.mvp) / math.max(d.mvpOrbitSec or 2, 0.1)
-		local a = 0.55 - 0.7 * math.clamp(s, 0, 1)
+		local s = (t - beats.mvp) / math.max(d.mvpOrbitSec or 2.5, 0.1)
+		local a = 0.55 - 0.8 * math.clamp(s, 0, 1)
 		cf = CFrame.lookAt(pos + Vector3.new(math.sin(a) * 4.6, 2.0, -math.cos(a) * 4.6), pos + Vector3.new(0, 1.7, 0))
 	else
 		once("summary", function()

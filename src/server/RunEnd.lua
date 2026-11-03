@@ -33,6 +33,7 @@ export type Row = {
 	downs: number,
 	selfRevives: number,
 	reviveAll: number,
+	jobs: number, -- side jobs + minigames completed
 	score: number,
 	lineIndex: number,
 	model: Model?, -- dummies only
@@ -187,6 +188,7 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 		downs = math.random(0, 2),
 		selfRevives = 0,
 		reviveAll = 0,
+		jobs = math.random(0, 3),
 		score = RunEnd.mvpScore(kills, cash, revives),
 		lineIndex = i,
 		model = d.model,
@@ -219,6 +221,7 @@ function RunEnd.play(): string
 			downs = s.downs,
 			selfRevives = s.selfRevives,
 			reviveAll = s.reviveAllUsed,
+			jobs = s.jobsDone + s.minigamesDone,
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}

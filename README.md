@@ -220,6 +220,12 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   removed over `VanExitSec`); the start and end line-ups fill up to `SquadSize` (4) with dummy crew (default R15 rigs
   with masks, poses, bags, tags and plausible summary rows under the best real player).
 
+- **Round 9c (3 Nov, feedback)** — a minigame panel closes as a cancel when you walk past `MinigameCloseDistance`
+  from its prop; the summary's POSE column is now JOBS (side jobs + minigames completed this run, both tracked per
+  player); the run start push-in goes from the team shot to a tight shot of the local player, then the orbit widens
+  from there into the gameplay camera; the run end is longer (`RunEndBeats` 0.6 / 1.4 / 4.0 / 7.0): one slow pan along
+  the whole team for 4s with poses and the cash rain inside it, then a 3s MVP beat (`MvpOrbitSec` 2.5).
+
 ## Open design notes (not built)
 
 - **Brief 2 assumptions to confirm.** A downed player keeps the run alive (self-revive is free), so "all players down"

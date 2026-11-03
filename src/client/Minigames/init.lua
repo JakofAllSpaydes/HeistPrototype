@@ -28,7 +28,13 @@ function Minigames.init()
 			warn("[GHS Minigame] no client module for " .. tostring(data.name))
 			return
 		end
-		Frame.open(tostring(data.name), spec, tonumber(data.tier) or 1, tonumber(data.token) or 0)
+		Frame.open(
+			tostring(data.name),
+			spec,
+			tonumber(data.tier) or 1,
+			tonumber(data.token) or 0,
+			if typeof(data.position) == "Vector3" then data.position else nil
+		)
 	end)
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "MinigameDone" then

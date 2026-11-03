@@ -177,23 +177,23 @@ local function step(_dt: number)
 			end
 			UI.sound(Theme.Sounds.reelLand, 1, 0.5)
 		end)
-		-- Slow push in on the line.
+		-- Push in from the team shot to a tight shot of the local player, so you find yourself in the line.
 		local s = easeOut((t - beats.poses) / math.max(beats.orbit - beats.poses, 0.01))
-		cf = CFrame.lookAt(
-			Vector3.new(lineCenter.X, 3.2 - 0.5 * s, lineCenter.Z - (10 - 3.5 * s)),
-			lineCenter + Vector3.new(0, 2, 0)
-		)
+		local from = Vector3.new(lineCenter.X, 3.0, lineCenter.Z - 9)
+		local to = myPos + Vector3.new(0, 2.2, -4.5)
+		local look = (lineCenter + Vector3.new(0, 2, 0)):Lerp(myPos + Vector3.new(0, 1.7, 0), s)
+		cf = CFrame.lookAt(from:Lerp(to, s), look)
 	elseif t < d.introSec then
-		-- Orbit 180 degrees from the front to behind the local player, easing into the gameplay camera.
+		-- Orbit 180 degrees from the tight front shot to behind the local player, widening into the gameplay camera.
 		local s = easeOut((t - beats.orbit) / math.max(d.introSec - beats.orbit, 0.01))
 		local theta = math.pi * (1 - s)
-		local r = Config.CameraZoomDefault
+		local r = 4.5 + (Config.CameraZoomDefault - 4.5) * s
 		local offset = Vector3.new(
 			math.sin(theta) * r + Config.CameraShoulder.X * s,
-			2.4 + Config.CameraShoulder.Y * s,
+			2.2 + (0.2 + Config.CameraShoulder.Y) * s,
 			math.cos(theta) * r
 		)
-		cf = CFrame.lookAt(myPos + offset, myPos + Vector3.new(0, 1.5, 0) + Vector3.new(0, 0, -6) * s)
+		cf = CFrame.lookAt(myPos + offset, myPos + Vector3.new(0, 1.7 - 0.2 * s, 0) + Vector3.new(0, 0, -6) * s)
 	else
 		finish()
 		return

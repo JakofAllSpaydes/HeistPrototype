@@ -53,6 +53,8 @@ export type State = {
 	downs: number,
 	selfRevives: number,
 	reviveAllUsed: number,
+	jobsDone: number, -- side jobs completed this run (everyone in the run gets the credit)
+	minigamesDone: number, -- minigames finished this run
 	pose: number, -- index into Config.Poses, rolled at run start
 	maskColor: string, -- hex, from Config.MaskColors by line position
 	joinIndex: number, -- order the player joined the server (ties, line-ups)
@@ -99,6 +101,8 @@ local function freshState(player: Player, joinIndex: number): State
 		downs = 0,
 		selfRevives = 0,
 		reviveAllUsed = 0,
+		jobsDone = 0,
+		minigamesDone = 0,
 		pose = 1,
 		maskColor = Config.MaskColors[1],
 		joinIndex = joinIndex,
