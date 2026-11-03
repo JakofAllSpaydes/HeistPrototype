@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local ClientState = require(Client:WaitForChild("ClientState"))
 local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rarity"))
 
 local WorldFx = {}
@@ -69,6 +70,49 @@ local function flashEnemy(model: Model)
 	end
 end
 
+-- Short glowing line between two world points (ricochet trail).
+local function trail(from: Vector3, to: Vector3, color: Color3, lifetime: number)
+	local a0 = Instance.new("Attachment")
+	a0.WorldPosition = from
+	a0.Parent = Workspace.Terrain
+	local a1 = Instance.new("Attachment")
+	a1.WorldPosition = to
+	a1.Parent = Workspace.Terrain
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = a0
+	beam.Attachment1 = a1
+	beam.Width0 = 0.35
+	beam.Width1 = 0.1
+	beam.FaceCamera = true
+	beam.LightEmission = 1
+	beam.Color = ColorSequence.new(color)
+	beam.Transparency = NumberSequence.new(0)
+	beam.Parent = a0
+	task.delay(lifetime, function()
+		a0:Destroy()
+		a1:Destroy()
+	end)
+end
+
+-- Expanding ring on the floor (splash blast).
+local function blastRing(position: Vector3, radius: number, color: Color3)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.3, 1, 1)
+	ring.CFrame = CFrame.new(position.X, 0.4, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.Color = color
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.2
+	ring.Parent = Workspace:FindFirstChild("Effects") or Workspace
+	UI.tween(ring, { Size = Vector3.new(0.3, radius * 2, radius * 2), Transparency = 1 }, 0.35)
+	task.delay(0.4, function()
+		ring:Destroy()
+	end)
+end
+
 local function killPop(position: Vector3)
 	local gui = billboard(position, 40, 40, 0.4)
 	local ring = UI.frame({
@@ -125,7 +169,7 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 				then Theme.Colors.red
 				elseif data.headshot then Theme.Colors.gold
 				else Theme.Colors.text
-			local size = if data.crit then 34 elseif data.headshot then 30 else 24
+			local size = if data.secondary then 18 elseif data.crit then 34 elseif data.headshot then 30 else 24
 			floatText(data.position, tostring(data.amount), color, size, 2.5, 0.7)
 			if typeof(data.model) == "Instance" then
 				flashEnemy(data.model)
@@ -149,6 +193,15 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			vignette.BackgroundTransparency = 0.55
 			UI.tween(vignette, { BackgroundTransparency = 1 }, 0.45)
 			UI.sound(Theme.Sounds.hurt, 1, 0.25)
+		elseif name == "Ricochet" then
+			trail(data.from, data.to, Theme.Colors.gold, 0.12)
+			UI.sound(Theme.Sounds.reelTick, 1.8, 0.45)
+		elseif name == "Splash" then
+			blastRing(data.position, data.radius or 8, Theme.Colors.malus)
+			UI.sound(Theme.Sounds.crate, 1.6, 0.5)
+			ClientState.Juice:Fire("Shake", { amp = 0.15, dur = 0.15 })
+		elseif name == "Multishot" then
+			UI.sound(Theme.Sounds.shot, 1.4, 0.25)
 		elseif name == "GunLanded" then
 			UI.sound(Theme.Sounds.crate, 1.3, 0.5)
 			local gui = billboard(data.position + Vector3.new(0, 1, 0), 60, 60, 0.5)

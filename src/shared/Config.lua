@@ -39,6 +39,10 @@ local Config = {
 	MaxOriginDriftStuds = 8, -- reject FireShot if origin is further than this from the head
 	MaxShotRange = 600,
 	FireRateTolerance = 1.5, -- server accepts shots up to this multiple of the weapon fire rate
+	RicochetRange = 22, -- studs a ricochet can jump to another enemy
+	RicochetDmgRatio = 0.75, -- ricochet damage as a share of the original hit
+	SplashRadius = 9, -- studs around a kill that Splash damages
+	MultishotSpread = 4, -- extra cone (degrees) on the multishot bullet
 
 	------------------------------------------------------------------ Player
 	PlayerMaxHP = 100,

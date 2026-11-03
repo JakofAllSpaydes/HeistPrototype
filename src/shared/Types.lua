@@ -43,6 +43,12 @@ export type Computed = {
 	critChance: number,
 	headshotMult: number,
 	greed: number,
+	spreadMult: number,
+	pierce: number,
+	ricochet: number,
+	splash: number,
+	multishot: number,
+	lifesteal: number,
 }
 
 export type Sync = {

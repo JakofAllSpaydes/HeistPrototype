@@ -105,6 +105,39 @@ function Enemy.fromPart(part: Instance): Model?
 	return nil
 end
 
+-- Nearest live enemy to a point within range, skipping `exclude`.
+function Enemy.nearest(position: Vector3, range: number, exclude: Model?): Model?
+	local best: Model? = nil
+	local bestDist = range
+	for model, d in active do
+		if d.dead or model == exclude then
+			continue
+		end
+		local dist = (d.root.Position - position).Magnitude
+		if dist < bestDist then
+			bestDist = dist
+			best = model
+		end
+	end
+	return best
+end
+
+-- Every live enemy within radius of a point, skipping `exclude`.
+function Enemy.within(position: Vector3, radius: number, exclude: Model?): { Model }
+	local out = {}
+	for model, d in active do
+		if not d.dead and model ~= exclude and (d.root.Position - position).Magnitude <= radius then
+			table.insert(out, model)
+		end
+	end
+	return out
+end
+
+function Enemy.rootPosition(model: Model): Vector3?
+	local d = active[model]
+	return if d then d.root.Position else nil
+end
+
 function Enemy.kill(model: Model, attacker: Player?)
 	local d = active[model]
 	if not d or d.dead then

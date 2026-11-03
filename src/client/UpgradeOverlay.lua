@@ -125,7 +125,7 @@ local function buildTrackerTile(
 		Text = string.format(
 			"%s · %s TOTAL\n%s",
 			string.upper(Upgrades.statName(statId)),
-			Upgrades.pctText(item.pct),
+			Upgrades.pctText(item.pct, statId),
 			Upgrades.tierTable(statId)
 		),
 		TextSize = S(11),
@@ -262,7 +262,7 @@ local function buildCard(index: number, card: Types.Card): CardUI
 	pill.Position = UDim2.new(0.5, 0, 0, S(120))
 	detail(pill)
 	detail(UI.text({
-		Text = Upgrades.pctText(card.pct),
+		Text = Upgrades.pctText(card.pct, card.stat),
 		Font = Theme.Fonts.display,
 		TextSize = S(46),
 		TextColor3 = Theme.Colors.cash,

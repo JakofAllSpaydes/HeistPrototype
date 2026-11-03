@@ -15,6 +15,12 @@ local function pct(upgrades: { [string]: Types.TrackerItem }, id: string): numbe
 	return if u then u.pct / 100 else 0
 end
 
+-- Raw points for an additive stat (chances in %, flat counts).
+local function points(upgrades: { [string]: Types.TrackerItem }, id: string): number
+	local u = upgrades[id]
+	return if u then u.pct else 0
+end
+
 -- Multiplier for a multiplicative stat, floored so a pile of maluses never hits zero or flips sign.
 local function mult(upgrades: { [string]: Types.TrackerItem }, id: string): number
 	return math.max(0.2, 1 + pct(upgrades, id))
@@ -39,6 +45,12 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		critChance = math.max(0, Config.BaseCritChancePct + (if crit then crit.pct else 0)),
 		headshotMult = Config.HeadshotMult * mult(upgrades, "HeadshotMult"),
 		greed = mult(upgrades, "Greed"),
+		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3),
+		pierce = math.max(0, math.floor(points(upgrades, "Pierce"))),
+		ricochet = math.max(0, points(upgrades, "Ricochet")),
+		splash = math.max(0, points(upgrades, "Splash")),
+		multishot = math.max(0, points(upgrades, "Multishot")),
+		lifesteal = math.max(0, points(upgrades, "Lifesteal")),
 	}
 end
 

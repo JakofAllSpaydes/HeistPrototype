@@ -220,7 +220,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 			fireRate = st.fireRate,
 			magSize = st.magSize,
 			reloadTime = st.reloadTime,
-			spread = w.spread,
+			spread = w.spread * st.spreadMult,
 			pellets = w.pellets,
 			auto = w.auto,
 			uid = state.held.uid,

@@ -15,10 +15,10 @@ local Log = require(script.Parent.Log)
 
 local UpgradeShop = {}
 
-local function randomStat(exclude: { [string]: boolean }): string
+local function randomStat(exclude: { [string]: boolean }, forMalus: boolean?): string
 	local pool = {}
 	for _, s in Upgrades.Stats do
-		if not exclude[s.id] then
+		if not exclude[s.id] and not (forMalus and s.noMalus) then
 			table.insert(pool, s.id)
 		end
 	end
@@ -46,7 +46,7 @@ function UpgradeShop.generate(state: PlayerState.State, wave: number): { Types.C
 		if isTradeoff then
 			-- Buff rolls one tier higher; malus on a different random stat at the ratio.
 			card.pct = Upgrades.magnitude(statId, math.min(tier + 1, 5))
-			card.malusStat = randomStat({ [statId] = true })
+			card.malusStat = randomStat({ [statId] = true }, true)
 			card.malusPct = math.round(card.pct * Config.TradeoffMalusRatio * 10) / 10
 		end
 		cards[i] = card
@@ -87,7 +87,7 @@ local function totalsText(state: PlayerState.State): string
 	local parts = {}
 	for _, statId in state.upgradeOrder do
 		local item = state.upgrades[statId]
-		table.insert(parts, string.format("%s %s x%d", statId, Upgrades.pctText(item.pct), item.count))
+		table.insert(parts, string.format("%s %s x%d", statId, Upgrades.pctText(item.pct, statId), item.count))
 	end
 	return table.concat(parts, ", ")
 end
