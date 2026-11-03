@@ -152,6 +152,44 @@ function Frame.drag(
 	end))
 end
 
+-- Straight line between two points in content-local px. Rotation pivots on the frame center, so the
+-- line is placed by its midpoint.
+function Frame.line(parent: Instance, a: Vector2, b: Vector2, thickness: number, color: Color3, zIndex: number?): Frame
+	local line = UI.frame({
+		BackgroundColor3 = color,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		ZIndex = zIndex or 3,
+		Parent = parent,
+	})
+	UI.corner(line, math.max(1, math.floor(thickness / 2)))
+	Frame.setLine(line, a, b, thickness)
+	return line
+end
+
+function Frame.setLine(line: Frame, a: Vector2, b: Vector2, thickness: number)
+	local d = b - a
+	local mid = (a + b) / 2
+	line.Position = UDim2.fromOffset(mid.X, mid.Y)
+	line.Size = UDim2.fromOffset(math.max(1, d.Magnitude), thickness)
+	line.Rotation = math.deg(math.atan2(d.Y, d.X))
+end
+
+-- Center of a GuiObject in content-local px.
+function Frame.centerOf(host: Host, gui: GuiObject): Vector2
+	return gui.AbsolutePosition + gui.AbsoluteSize / 2 - host.content.AbsolutePosition
+end
+
+-- The topmost GuiObject under a screen point that satisfies `match`, or nil.
+function Frame.hit(point: Vector2, match: (GuiObject) -> boolean): GuiObject?
+	local list = playerGui:GetGuiObjectsAtPosition(point.X, point.Y)
+	for _, gui in list do
+		if match(gui) then
+			return gui
+		end
+	end
+	return nil
+end
+
 local function sendResult(a: Active, outcome: string)
 	Remotes.MinigameResult:FireServer(a.token, outcome, a.misses)
 end

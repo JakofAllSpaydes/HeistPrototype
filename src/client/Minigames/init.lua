@@ -13,6 +13,9 @@ local Minigames = {}
 
 local specs: { [string]: Frame.GameSpec } = {
 	Lockpick = require(script.Lockpick),
+	Hotwire = require(script.Hotwire),
+	Keypad = require(script.Keypad),
+	Charges = require(script.Charges),
 }
 
 function Minigames.init()
