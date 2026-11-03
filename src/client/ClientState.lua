@@ -30,6 +30,14 @@ function ClientState.blocked(): boolean
 	return next(ClientState.blocks) ~= nil
 end
 
+-- Mouse unlocked by the player (Ctrl toggle, Alt hold). Camera stops following the mouse; the gun still fires.
+ClientState.mouseFree = false
+ClientState.mouseFreeHold = false
+
+function ClientState.isMouseFree(): boolean
+	return ClientState.mouseFree or ClientState.mouseFreeHold or ClientState.blocked()
+end
+
 function ClientState.serverNow(): number
 	return Workspace:GetServerTimeNow()
 end

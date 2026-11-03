@@ -10,7 +10,7 @@ infinite waves, cash, the weapon reel, ground loot, the big crate, the upgrade o
 3. In Studio: Rojo plugin → Connect. Press Play.
 
 Everything the designer tunes lives in `src/shared/Config.lua`. Change a number, Rojo syncs it, play again.
-Debug panel: press backtick in game. Hold Left Alt to free the mouse and click HUD tiles.
+Debug panel: press backtick in game. Ctrl toggles the camera lock so you can click HUD tiles; Left Alt frees the mouse while held.
 
 ## Layout
 

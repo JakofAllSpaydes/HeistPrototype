@@ -71,7 +71,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		for _, s in PlayerState.all() do
 			PlayerState.reset(s)
 		end
-		BigCrate.finishCurrent()
+		BigCrate.finishAll()
 		CrewCall.finish(false, true)
 		WeaponRoll.clearAll()
 		Enemy.killAll()

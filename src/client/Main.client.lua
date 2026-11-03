@@ -28,14 +28,20 @@ require(script.Parent:WaitForChild("GroundLoot")).init()
 require(script.Parent:WaitForChild("CrewCallUI")).init()
 require(script.Parent:WaitForChild("DebugPanel")).init()
 
--- Hold Left Alt to free the mouse and click HUD tiles.
+-- Ctrl toggles the camera lock (mouse free / locked). Hold Left Alt to free it temporarily.
 UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-	if input.KeyCode == Enum.KeyCode.LeftAlt and not gameProcessed then
-		ClientState.setBlock("alt", true)
+	if gameProcessed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+		ClientState.mouseFree = not ClientState.mouseFree
+		HUD.get("toast").show(if ClientState.mouseFree then "CAMERA UNLOCKED" else "CAMERA LOCKED", nil, 0.7)
+	elseif input.KeyCode == Enum.KeyCode.LeftAlt then
+		ClientState.mouseFreeHold = true
 	end
 end)
 UserInputService.InputEnded:Connect(function(input: InputObject)
 	if input.KeyCode == Enum.KeyCode.LeftAlt then
-		ClientState.setBlock("alt", false)
+		ClientState.mouseFreeHold = false
 	end
 end)

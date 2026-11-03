@@ -27,10 +27,11 @@ Theme.Fonts = {
 }
 
 -- Pixel sizes at the basis height; UI.S() scales them to the viewport.
+-- scaleBasis: the viewport height at which sizes render 1:1. Lower = bigger UI on the same screen.
 Theme.Desktop = {
-	scaleBasis = 1080,
+	scaleBasis = 760,
 	minScale = 0.6,
-	maxScale = 1.4,
+	maxScale = 2.2,
 	tile = Vector2.new(92, 104),
 	tilePad = 10,
 	card = Vector2.new(236, 288),

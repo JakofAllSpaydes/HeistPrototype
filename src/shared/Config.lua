@@ -23,11 +23,16 @@ local Config = {
 	RetargetSec = 0.5, -- how often an enemy re-picks the nearest player
 	EnemyMeleeReach = 4.5, -- studs, root-to-root distance that counts as a touch
 	EnemySwingCooldown = 1, -- seconds between melee hits
+	EnemyCollidesWithPlayers = false, -- false: enemies walk through players and each other, never body-block
+	EnemyStuckDetourSec = 1, -- no progress for this long -> sidestep + jump around the obstacle
+	EnemyStuckTeleportSec = 8, -- still stuck after this long -> re-spawn at a random spawn point
 	SpawnRingRadius = 90, -- studs from room center
 	SpawnPointCount = 8,
 
 	------------------------------------------------------------------ Combat
-	CashPerKill = 25,
+	StartingCash = 3000, -- Match Cash at run start (brief says 0; raised for testing)
+	CashPerKill = 40,
+	HoldToFire = true, -- true: every weapon fires while LMB is held; false: Weapons.auto decides
 	HeadshotMult = 1.5,
 	CritDmgMult = 2, -- damage multiplier when a crit lands (Crit Chance upgrade)
 	BaseCritChancePct = 0, -- crit chance before upgrades, in percentage points
@@ -76,7 +81,9 @@ local Config = {
 	RarityDmgMult = { 1, 1.15, 1.35, 1.6, 2.0 },
 
 	------------------------------------------------------------------ Big crate
-	BigCrateWaveInterval = 10,
+	BigCrateWaveInterval = 1, -- a crate at the start of every Nth wave (brief says 10; 1 for testing)
+	BigCrateIntroDrop = true, -- also drop one during the intro so there is a crate at the start
+	BigCrateIntroPosition = Vector3.new(0, 0, -14), -- where the intro crate lands
 	BigCrateWeaponCount = { plus = 1, min = 2 }, -- players + plus, never below min
 	BigCrateRarityFloorByBracket = { 2, 3, 3, 4 }, -- Uncommon / Rare / Rare / Epic
 	BigCrateDropHeight = 40,

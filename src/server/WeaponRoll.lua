@@ -63,6 +63,17 @@ function WeaponRoll.setLifetime(gun: BasePart, lifetime: number)
 	end
 end
 
+-- Keep the beam world-vertical whatever angle the gun lies at. Call again after moving a gun.
+function WeaponRoll.alignBeam(gun: BasePart)
+	local a0 = gun:FindFirstChild("BeamBottom") :: Attachment?
+	local a1 = gun:FindFirstChild("BeamTop") :: Attachment?
+	if not a0 or not a1 then
+		return
+	end
+	a0.Position = gun.CFrame:PointToObjectSpace(gun.Position + Vector3.new(0, 0.2, 0))
+	a1.Position = gun.CFrame:PointToObjectSpace(gun.Position + Vector3.new(0, 14, 0))
+end
+
 -- A ground gun: rarity-colored Part, vertical beam, ProximityPrompt. Tags are drawn by the client.
 function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	nextGunId += 1
@@ -83,12 +94,11 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 
 	local a0 = Instance.new("Attachment")
 	a0.Name = "BeamBottom"
-	a0.Position = Vector3.new(0, 0.2, 0)
 	a0.Parent = gun
 	local a1 = Instance.new("Attachment")
 	a1.Name = "BeamTop"
-	a1.WorldPosition = gun.Position + Vector3.new(0, 14, 0)
 	a1.Parent = gun
+	WeaponRoll.alignBeam(gun)
 	local beam = beamTemplate:Clone()
 	beam.Name = "Beam"
 	beam.Attachment0 = a0

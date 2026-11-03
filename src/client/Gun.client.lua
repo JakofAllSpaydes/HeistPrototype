@@ -171,7 +171,7 @@ RunService.Heartbeat:Connect(function()
 	if os.clock() - lastShot < 1 / h.fireRate then
 		return
 	end
-	if h.auto or not semiLatch then
+	if h.auto or Config.HoldToFire or not semiLatch then
 		lastShot = os.clock()
 		semiLatch = true
 		fire()

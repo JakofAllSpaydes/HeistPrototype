@@ -18,7 +18,7 @@ local PITCH_MIN, PITCH_MAX = -1.2, 0.9
 local SHOULDER = Vector3.new(2.6, 1.2, 8) -- right, up, back
 
 UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed: boolean)
-	if ClientState.blocked() then
+	if ClientState.isMouseFree() then
 		return
 	end
 	if input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -35,7 +35,7 @@ params.FilterType = Enum.RaycastFilterType.Exclude
 
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function()
 	camera.CameraType = Enum.CameraType.Scriptable
-	local free = ClientState.blocked()
+	local free = ClientState.isMouseFree()
 	UserInputService.MouseBehavior = if free then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
 	UserInputService.MouseIconEnabled = free
 

@@ -1,6 +1,7 @@
 --!strict
 -- Per-player authoritative state: cash, upgrades, held gun, pity, debug flags. Builds StateSync.
 local Players = game:GetService("Players")
+local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -40,7 +41,7 @@ local PlayerState = {}
 local function freshState(player: Player): State
 	return {
 		player = player,
-		cash = 0,
+		cash = Config.StartingCash,
 		upgradesBought = 0,
 		weaponsBought = 0,
 		upgrades = {},
@@ -239,9 +240,30 @@ function PlayerState.buildSync(state: State): Types.Sync
 	}
 end
 
+-- Collision groups: enemies never body-block players (or each other) unless Config says so.
+function PlayerState.setupCollisionGroups()
+	for _, name in { "Player", "Enemy" } do
+		pcall(function()
+			PhysicsService:RegisterCollisionGroup(name)
+		end)
+	end
+	PhysicsService:CollisionGroupSetCollidable("Enemy", "Player", Config.EnemyCollidesWithPlayers)
+	PhysicsService:CollisionGroupSetCollidable("Enemy", "Enemy", Config.EnemyCollidesWithPlayers)
+end
+
 local function onCharacter(player: Player, char: Model)
 	local state = PlayerState.get(player)
 	local hum = char:WaitForChild("Humanoid") :: Humanoid
+	for _, p in char:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.CollisionGroup = "Player"
+		end
+	end
+	char.DescendantAdded:Connect(function(p)
+		if p:IsA("BasePart") then
+			p.CollisionGroup = "Player"
+		end
+	end)
 	-- Kill the default regen script; HP Regen is an upgrade stat here.
 	local health = char:FindFirstChild("Health")
 	if health then
@@ -263,6 +285,7 @@ local function onCharacter(player: Player, char: Model)
 end
 
 function PlayerState.init()
+	PlayerState.setupCollisionGroups()
 	local function onPlayer(player: Player)
 		PlayerState.get(player)
 		player.CharacterAdded:Connect(function(char)

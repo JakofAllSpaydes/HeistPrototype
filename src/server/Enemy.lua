@@ -1,5 +1,6 @@
 --!strict
 -- One enemy archetype: body + red head Part with a Humanoid. Walks at the nearest player, melees on reach.
+-- No pathfinding: straight MoveTo, with a sidestep + jump when stuck and a re-spawn as a last resort.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local PlayerState = require(script.Parent.PlayerState)
+local Room = require(script.Parent.Room)
 
 type Data = {
 	model: Model,
@@ -19,6 +21,9 @@ type Data = {
 	target: BasePart?,
 	lastRetarget: number,
 	lastSwing: number,
+	lastPos: Vector3,
+	stuckFor: number,
+	detourUntil: number,
 	dead: boolean,
 }
 
@@ -56,6 +61,8 @@ function Enemy.spawn(wave: number, position: Vector3): Model
 	local head = model:WaitForChild("Head") :: BasePart
 	local hum = model:WaitForChild("Humanoid") :: Humanoid
 	model.PrimaryPart = root
+	root.CollisionGroup = "Enemy"
+	head.CollisionGroup = "Enemy"
 	head.CFrame = root.CFrame * CFrame.new(0, root.Size.Y / 2 + head.Size.Y / 2, 0)
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = root
@@ -80,6 +87,9 @@ function Enemy.spawn(wave: number, position: Vector3): Model
 		target = nil,
 		lastRetarget = -math.huge,
 		lastSwing = 0,
+		lastPos = root.Position,
+		stuckFor = 0,
+		detourUntil = 0,
 		dead = false,
 	}
 	count += 1
@@ -139,6 +149,49 @@ function Enemy.killAll()
 	end
 end
 
+-- Called every RetargetSec: re-pick the target and handle being stuck on a pillar.
+local function steer(d: Data, now: number)
+	local root = d.root
+	d.target = nearestPlayerRoot(root.Position)
+	local target = d.target
+	if not target then
+		return
+	end
+	local toTarget = target.Position - root.Position
+	local dist = toTarget.Magnitude
+	local moved = (root.Position - d.lastPos).Magnitude
+	d.lastPos = root.Position
+
+	if dist > Config.EnemyMeleeReach + 1 and moved < 0.5 then
+		d.stuckFor += Config.RetargetSec
+	else
+		d.stuckFor = 0
+	end
+
+	if d.stuckFor >= Config.EnemyStuckTeleportSec then
+		d.stuckFor = 0
+		d.detourUntil = 0
+		d.model:PivotTo(CFrame.new(Room.randomSpawnPoint() + Vector3.new(0, root.Size.Y / 2 + 1, 0)))
+		return
+	end
+
+	if now < d.detourUntil then
+		return -- keep walking the detour waypoint
+	end
+
+	if d.stuckFor >= Config.EnemyStuckDetourSec then
+		local flat = Vector3.new(toTarget.X, 0, toTarget.Z)
+		local dir = if flat.Magnitude > 0.1 then flat.Unit else Vector3.new(1, 0, 0)
+		local side = Vector3.new(-dir.Z, 0, dir.X) * (if math.random() < 0.5 then 1 else -1)
+		d.humanoid:MoveTo(root.Position + side * 10 + dir * 4)
+		d.humanoid.Jump = true
+		d.detourUntil = now + 1
+		return
+	end
+
+	d.humanoid:MoveTo(target.Position)
+end
+
 function Enemy.init()
 	RunService.Heartbeat:Connect(function()
 		local now = os.clock()
@@ -152,10 +205,7 @@ function Enemy.init()
 			end
 			if now - d.lastRetarget >= Config.RetargetSec then
 				d.lastRetarget = now
-				d.target = nearestPlayerRoot(d.root.Position)
-				if d.target then
-					d.humanoid:MoveTo(d.target.Position)
-				end
+				steer(d, now)
 			end
 			local target = d.target
 			if target and target.Parent and now - d.lastSwing >= Config.EnemySwingCooldown then

@@ -1,5 +1,6 @@
 --!strict
--- Shared arms drop: scheduled crate with N guns fanned around it, one take per player.
+-- Shared arms drop: a crate with N guns fanned around it, one take per player per crate.
+-- Several crates can be live at once (intro crate + per-wave crate); all close at wave end.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -30,7 +31,7 @@ local BigCrate = {}
 
 local template = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("CrateTemplate") :: Model
 local effects = Workspace:WaitForChild("Effects")
-local current: Crate? = nil
+local crates: { [string]: Crate } = {}
 local nextId = 0
 
 local function weaponCount(): number
@@ -63,19 +64,22 @@ local function dustRing(position: Vector3)
 	end)
 end
 
-function BigCrate.drop()
-	if current then
-		BigCrate.finish(current)
-	end
+-- Drop a crate. `at` overrides the landing spot (default: a random point BigCrateDistanceFromCenter out).
+function BigCrate.drop(at: Vector3?)
 	nextId += 1
 	local id = "crate" .. nextId
 	local n = weaponCount()
-	local angle = math.random() * math.pi * 2
-	local landPos = Vector3.new(
-		math.cos(angle) * Config.BigCrateDistanceFromCenter,
-		0,
-		math.sin(angle) * Config.BigCrateDistanceFromCenter
-	)
+	local landPos: Vector3
+	if at then
+		landPos = Vector3.new(at.X, 0, at.Z)
+	else
+		local angle = math.random() * math.pi * 2
+		landPos = Vector3.new(
+			math.cos(angle) * Config.BigCrateDistanceFromCenter,
+			0,
+			math.sin(angle) * Config.BigCrateDistanceFromCenter
+		)
+	end
 
 	local model = template:Clone()
 	model.Name = id
@@ -90,7 +94,7 @@ function BigCrate.drop()
 	model.Parent = effects
 
 	local crate: Crate = { id = id, model = model, glow = nil, guns = {}, left = n, takenBy = {}, active = true }
-	current = crate
+	crates[id] = crate
 	Remotes.Juice:FireAllClients("CrateIncoming", { crateId = id, left = n, total = n })
 	Log.event("Crate", "Arms drop %s incoming at wave %d with %d guns", id, World.wave, n)
 
@@ -109,7 +113,7 @@ function BigCrate.drop()
 		local glow = Instance.new("Part")
 		glow.Shape = Enum.PartType.Cylinder
 		glow.Size = Vector3.new(0.1, 16, 16)
-		glow.CFrame = CFrame.new(landPos + Vector3.new(0, 0.06, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		glow.CFrame = CFrame.new(landPos + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90))
 		glow.Anchored = true
 		glow.CanCollide = false
 		glow.CanQuery = false
@@ -122,9 +126,9 @@ function BigCrate.drop()
 		-- Lid swings open on its back hinge.
 		local hinge = bodyLand * CFrame.new(0, body.Size.Y / 2, -body.Size.Z / 2)
 		local openCF = hinge * CFrame.Angles(math.rad(-110), 0, 0) * CFrame.new(0, lid.Size.Y / 2, body.Size.Z / 2)
-		TweenService
-			:Create(lid, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = openCF })
-			:Play()
+		TweenService:Create(lid, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			CFrame = openCF,
+		}):Play()
 		Remotes.Juice:FireAllClients("CrateLand", { crateId = id, left = crate.left, total = n, position = landPos })
 
 		-- Guns eject in an arc and settle in a fan.
@@ -163,12 +167,18 @@ function BigCrate.drop()
 				)
 				up:Play()
 				up.Completed:Wait()
+				if not gun.Parent then
+					return
+				end
+				local down = TweenService:Create(
+					gun,
+					TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{ CFrame = settle }
+				)
+				down:Play()
+				down.Completed:Wait()
 				if gun.Parent then
-					TweenService:Create(
-						gun,
-						TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-						{ CFrame = settle }
-					):Play()
+					WeaponRoll.alignBeam(gun)
 				end
 			end)
 		end
@@ -184,8 +194,9 @@ function BigCrate.drop()
 end
 
 function BigCrate.take(player: Player, gun: BasePart)
-	local crate = current
-	if not crate or not crate.active or gun:GetAttribute("CrateId") ~= crate.id then
+	local crateId = gun:GetAttribute("CrateId")
+	local crate = if typeof(crateId) == "string" then crates[crateId] else nil
+	if not crate or not crate.active then
 		return
 	end
 	if crate.takenBy[player] then
@@ -230,9 +241,7 @@ function BigCrate.finish(crate: Crate)
 		return
 	end
 	crate.active = false
-	if current == crate then
-		current = nil
-	end
+	crates[crate.id] = nil
 	-- Leftover guns become ordinary ground loot with the normal lifetime.
 	for _, gun in crate.guns do
 		if gun.Parent then
@@ -263,13 +272,27 @@ function BigCrate.finish(crate: Crate)
 			glow:Destroy()
 		end
 	end)
-	Remotes.Juice:FireAllClients("CrateEnd", { crateId = crate.id })
+	Remotes.Juice:FireAllClients("CrateEnd", { crateId = crate.id, remaining = BigCrate.liveCount() })
 	Log.event("Crate", "%s closed", crate.id)
 end
 
-function BigCrate.finishCurrent()
-	if current then
-		BigCrate.finish(current)
+function BigCrate.liveCount(): number
+	local n = 0
+	for _ in crates do
+		n += 1
+	end
+	return n
+end
+
+function BigCrate.finishAll()
+	for _, crate in table.clone(crates) do
+		BigCrate.finish(crate)
+	end
+end
+
+function BigCrate.onIntro()
+	if Config.BigCrateIntroDrop then
+		BigCrate.drop(Config.BigCrateIntroPosition)
 	end
 end
 
@@ -280,14 +303,14 @@ function BigCrate.onWaveStart(wave: number)
 end
 
 function BigCrate.onWaveEnd()
-	BigCrate.finishCurrent()
+	BigCrate.finishAll()
 end
 
 function BigCrate.init()
 	WeaponRoll.CrateTakeHandler = BigCrate.take
 	Remotes.TakeCrateWeapon.OnServerEvent:Connect(function(player: Player, crateId: any, slot: any)
-		local crate = current
-		if not crate or crate.id ~= crateId or typeof(slot) ~= "number" then
+		local crate = if typeof(crateId) == "string" then crates[crateId] else nil
+		if not crate or typeof(slot) ~= "number" then
 			return
 		end
 		local gun = crate.guns[slot]

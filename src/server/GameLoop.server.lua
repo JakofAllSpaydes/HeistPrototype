@@ -52,6 +52,7 @@ task.spawn(function()
 	setState("Intro")
 	Remotes.Juice:FireAllClients("WaveStart", { wave = 1, intro = true })
 	Log.event("Wave", "Intro, first wave in %ds", Config.IntroSec)
+	BigCrate.onIntro()
 	task.wait(Config.IntroSec)
 
 	while true do

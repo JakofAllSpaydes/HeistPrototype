@@ -299,7 +299,9 @@ function CrewCallUI.init()
 		elseif name == "CrateCount" then
 			updateBanner(data.left, data.crateId)
 		elseif name == "CrateEnd" then
-			removeBanner()
+			if (data.remaining or 0) <= 0 then
+				removeBanner()
+			end
 		end
 	end)
 
