@@ -61,50 +61,52 @@ local function addTag(gun: BasePart)
 		end)
 		return
 	end
-	local S = UI.S
 	local rarity = gun:GetAttribute("Rarity") :: number? or 1
 	local color = Rarity.color(rarity)
+	-- Sized in studs so the tag grows as you walk up to it. Timer sits above the box.
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Tag"
 	gui.Adornee = gun
 	gui.AlwaysOnTop = true
-	gui.Size = UDim2.fromOffset(S(160), S(62))
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 3.8, 0)
+	gui.Size = UDim2.fromScale(5.5, 3)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 4.4, 0)
 	gui.MaxDistance = 60
 	gui.LightInfluence = 0
 	gui.Parent = gun
 
+	local timerLabel = UI.text({
+		Text = "",
+		Font = Theme.Fonts.display,
+		TextScaled = true,
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.fromScale(1, 0.36),
+		Parent = gui,
+	})
+	UI.stroke(timerLabel, Theme.Colors.black, 2, 0.3)
 	local frame = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.15,
-		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromScale(0, 0.4),
+		Size = UDim2.fromScale(1, 0.6),
 		Parent = gui,
 	})
-	UI.corner(frame, S(8))
-	UI.stroke(frame, color, S(2))
+	UI.new("UICorner", { CornerRadius = UDim.new(0.15, 0), Parent = frame })
+	UI.stroke(frame, color, 2)
 	local nameText = string.upper(tostring(gun:GetAttribute("DisplayName") or gun:GetAttribute("WeaponId")))
 	UI.text({
 		Text = nameText,
 		Font = Theme.Fonts.display,
-		TextSize = S(14),
+		TextScaled = true,
 		TextColor3 = color,
-		Size = UDim2.new(1, 0, 0, S(22)),
+		Position = UDim2.fromScale(0.05, 0.06),
+		Size = UDim2.fromScale(0.9, 0.5),
 		Parent = frame,
 	})
 	local dmgLabel = UI.text({
 		Text = "DMG",
-		TextSize = S(12),
-		Position = UDim2.fromOffset(0, S(22)),
-		Size = UDim2.new(1, 0, 0, S(18)),
-		Parent = frame,
-	})
-	local timerLabel = UI.text({
-		Text = "",
-		Font = Theme.Fonts.display,
-		TextSize = S(13),
-		TextColor3 = Theme.Colors.grey,
-		Position = UDim2.fromOffset(0, S(40)),
-		Size = UDim2.new(1, 0, 0, S(18)),
+		TextScaled = true,
+		Position = UDim2.fromScale(0.05, 0.56),
+		Size = UDim2.fromScale(0.9, 0.36),
 		Parent = frame,
 	})
 	local tag: Tag = {
@@ -174,7 +176,7 @@ function GroundLoot.init()
 				end
 				tag.frame.BackgroundTransparency = 0.15 + 0.4 * alpha
 				tag.timerLabel.Text = string.format("%ds", math.ceil(remaining))
-				tag.timerLabel.TextColor3 = if remaining < fade then Theme.Colors.malus else Theme.Colors.grey
+				tag.timerLabel.TextColor3 = if remaining < fade then Theme.Colors.malus else Theme.Colors.text
 			else
 				tag.timerLabel.Text = ""
 			end

@@ -33,9 +33,20 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 	end
 
 	local toastToken = 0
+	local hiddenByToast: { GuiObject } = {}
+	local function restoreHidden()
+		for _, c in hiddenByToast do
+			if c.Parent then
+				c.Visible = true
+			end
+		end
+		hiddenByToast = {}
+	end
 	function component.toast(text: string, color: Color3, duration: number)
 		toastToken += 1
 		local token = toastToken
+		-- A new toast replaces the old one; give back whatever the old one hid first.
+		restoreHidden()
 		local hidden: { GuiObject } = {}
 		for _, c in root:GetChildren() do
 			if c:IsA("GuiObject") and c.Visible and c.Name ~= "SlotToast" then
@@ -43,6 +54,7 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 				table.insert(hidden, c)
 			end
 		end
+		hiddenByToast = hidden
 		local old = root:FindFirstChild("SlotToast")
 		if old then
 			old:Destroy()
@@ -71,11 +83,7 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 				return
 			end
 			toast:Destroy()
-			for _, c in hidden do
-				if c.Parent then
-					c.Visible = true
-				end
-			end
+			restoreHidden()
 		end)
 	end
 

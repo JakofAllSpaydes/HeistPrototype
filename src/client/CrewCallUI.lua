@@ -34,11 +34,17 @@ local function fmtTime(seconds: number): string
 	return string.format("%d:%02d", s // 60, s % 60)
 end
 
+local resultCard: Frame? = nil
+
 local function clearCall()
 	if activeCall and activeCall.frame then
 		activeCall.frame:Destroy()
 	end
 	activeCall = nil
+	if resultCard then
+		resultCard:Destroy()
+		resultCard = nil
+	end
 end
 
 -- The timer pill lives top-right above the abilities so the center stays clear.
@@ -278,15 +284,18 @@ local function onCallEnd(data: any)
 		showTimer = false,
 	})
 	cs.add(card, 1)
+	resultCard = card
 	slideIn(card, UI.S(112))
 	UI.sound(if data.success then Theme.Sounds.legendary else Theme.Sounds.deny, if data.success then 1.1 else 0.8, 0.6)
 	if data.success then
 		UI.punch(card, 1.06, 0.4)
+		ClientState.Juice:Fire("Shake", { amp = 0.2, dur = 0.25 })
 	else
 		UI.shake(card, UI.S(3), 0.3)
 	end
+	-- Always collapse and remove the card, even if another call replaced it meanwhile.
 	task.delay(Config.CallHoldSec, function()
-		if token ~= callToken then
+		if not card.Parent then
 			return
 		end
 		local shrink = UI.tween(
@@ -298,6 +307,9 @@ local function onCallEnd(data: any)
 		)
 		shrink.Completed:Wait()
 		card:Destroy()
+		if resultCard == card then
+			resultCard = nil
+		end
 		if token == callToken then
 			cs.toast(tostring(data.toast), color, 0.8)
 		end

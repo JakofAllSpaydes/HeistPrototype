@@ -1,6 +1,7 @@
 --!strict
 -- Server entry point. Builds the room, wires every module, then runs the wave state machine forever:
 -- Intro (WAVE 1 banner) -> Wave -> Intermission -> Wave ... No game over.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -47,9 +48,24 @@ local function waitIntermission()
 	end
 end
 
+-- Hold the intro until the first player is standing in the room, so they see the crate land.
+local function waitForFirstPlayer()
+	while true do
+		for _, player in Players:GetPlayers() do
+			local char = player.Character
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				return
+			end
+		end
+		task.wait(0.25)
+	end
+end
+
 task.spawn(function()
 	World.wave = 1
 	setState("Intro")
+	waitForFirstPlayer()
+	task.wait(1)
 	Remotes.Juice:FireAllClients("WaveStart", { wave = 1, intro = true })
 	Log.event("Wave", "Intro, first wave in %ds", Config.IntroSec)
 	BigCrate.onIntro()
