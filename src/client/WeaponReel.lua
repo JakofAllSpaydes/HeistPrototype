@@ -23,6 +23,7 @@ local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera :: Camera
 local spinning = false
 local CELLS = 18
+local LAND = 14 -- the rolled gun sits here; the cells after it make the stop read as a stop
 
 local function tile()
 	local buy = HUD.get("buy")
@@ -134,7 +135,7 @@ end
 local function fillRow(p: any, weapon: any)
 	local S = UI.S
 	for i = 1, CELLS do
-		local isLast = i == CELLS
+		local isLast = i == LAND
 		local rarity = if isLast then weapon.rarity else math.random(1, 5)
 		local color = Rarity.color(rarity)
 		local cell = UI.frame({
@@ -178,7 +179,7 @@ local function spin(weapon: any)
 
 	-- Scroll so the last cell ends under the marker.
 	local startX = p.stripW / 2 - p.cellW / 2
-	local endX = p.stripW / 2 - (CELLS - 0.5) * p.cellW
+	local endX = p.stripW / 2 - (LAND - 0.5) * p.cellW
 	p.row.Position = UDim2.fromOffset(startX, 0)
 	local tween = UI.tween(
 		p.row,
@@ -197,7 +198,7 @@ local function spin(weapon: any)
 		local idx = math.floor((p.stripW / 2 - p.row.Position.X.Offset) / p.cellW + 0.5)
 		if idx > lastIdx then
 			lastIdx = idx
-			UI.sound(Theme.Sounds.reelTick, 0.7 + (idx / CELLS) * 1.1, 0.4)
+			UI.sound(Theme.Sounds.reelTick, 0.7 + (idx / LAND) * 1.1, 0.4)
 			UI.punch(p.marker, 1.06, 0.1)
 		end
 	end)

@@ -1,6 +1,7 @@
 --!strict
--- Crew call component in the slot under the wave bar: expanded card -> timer pill -> result card -> toast.
--- Also owns the ARMS DROP banner since it shares the slot.
+-- Crew call component. Everything lives in one box in the top-right corner: the call card slides in
+-- from the right edge, collapses in place to the timer pill, expands back for the result card, then
+-- slides out. Result and arms-drop toasts go to the center slot with the other system notices.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -22,11 +23,20 @@ local KIND_COLORS = {
 	legendary = Theme.Colors.gold,
 }
 
-local activeCall: any = nil -- { data, frame, timerLabel, stroke, pill: boolean, token }
+local CARD_H = 112
+local PILL_H = 38
+local SLIDE = 420 -- px (pre-scale) the box travels when sliding in from / out to the right edge
+
+-- One box at a time. { data, box, inner, timerLabel, stroke, token }
+local active: any = nil
 local callToken = 0
 
-local function slot()
+local function centerSlot()
 	return HUD.get("callSlot")
+end
+
+local function home()
+	return HUD.get("topRight")
 end
 
 local function fmtTime(seconds: number): string
@@ -34,34 +44,44 @@ local function fmtTime(seconds: number): string
 	return string.format("%d:%02d", s // 60, s % 60)
 end
 
-local resultCard: Frame? = nil
-
-local function clearCall()
-	if activeCall and activeCall.frame then
-		activeCall.frame:Destroy()
+local function destroyActive()
+	if active and active.box then
+		active.box:Destroy()
 	end
-	activeCall = nil
-	if resultCard then
-		resultCard:Destroy()
-		resultCard = nil
-	end
+	active = nil
 end
 
--- The timer pill lives top-right above the abilities so the center stays clear.
-local function pillHome()
-	return HUD.get("topRight")
-end
-
-local function buildPill(data: any): (Frame, TextLabel, UIStroke)
+-- The outer box clips; `inner` is what slides. Content frames are parented to inner.
+local function buildBox(height: number): (Frame, Frame)
 	local S = UI.S
-	local cs = pillHome()
+	local h = home()
+	local box = UI.frame({
+		Name = "CallBox",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(h.width, S(height)),
+		ClipsDescendants = true,
+	})
+	local inner = UI.frame({
+		Name = "Inner",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 1, 0),
+		Position = UDim2.fromOffset(0, 0),
+		Parent = box,
+	})
+	h.add(box, 1)
+	return box, inner
+end
+
+local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStroke)
+	local S = UI.S
 	local color = KIND_COLORS[data.kind] or Theme.Colors.blue
 	local pill = UI.frame({
 		Name = "CallPill",
 		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.fromOffset(cs.width, S(38)),
+		Size = UDim2.new(1, 0, 0, S(PILL_H)),
+		Parent = parent,
 	})
-	UI.corner(pill, S(19))
+	UI.corner(pill, S(PILL_H / 2))
 	local stroke = UI.stroke(pill, color, S(2))
 	local icon = UI.frame({
 		BackgroundColor3 = color,
@@ -95,7 +115,7 @@ local function buildPill(data: any): (Frame, TextLabel, UIStroke)
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -S(100), 0, 0),
-		Size = UDim2.fromOffset(S(70), S(38)),
+		Size = UDim2.fromOffset(S(70), S(PILL_H)),
 		Parent = pill,
 	})
 	UI.text({
@@ -105,13 +125,12 @@ local function buildPill(data: any): (Frame, TextLabel, UIStroke)
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -S(12), 0, 0),
-		Size = UDim2.fromOffset(S(84), S(38)),
+		Size = UDim2.fromOffset(S(84), S(PILL_H)),
 		Parent = pill,
 	})
 	return pill, timer, stroke
 end
 
--- Expanded card: portrait, name, type pill or title, timer (optional), 2 lines, reward line.
 type CardSpec = {
 	kind: string,
 	crewLead: string,
@@ -123,19 +142,18 @@ type CardSpec = {
 	duration: number?,
 }
 
-local function buildExpanded(spec: CardSpec): (Frame, TextLabel)
+local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, UIStroke)
 	local S = UI.S
-	local cs = slot()
 	local color = spec.labelColor or KIND_COLORS[spec.kind] or Theme.Colors.blue
-	local h = S(112)
+	local h = S(CARD_H)
 	local frame = UI.frame({
 		Name = "CallCard",
 		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.fromOffset(cs.width, h),
-		ClipsDescendants = true,
+		Size = UDim2.new(1, 0, 0, h),
+		Parent = parent,
 	})
 	UI.corner(frame, S(12))
-	UI.stroke(frame, color, S(2))
+	local stroke = UI.stroke(frame, color, S(2))
 	local portrait = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel2,
 		Position = UDim2.fromOffset(S(10), S(10)),
@@ -174,32 +192,32 @@ local function buildExpanded(spec: CardSpec): (Frame, TextLabel)
 		TextSize = S(18),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(textX, S(8)),
-		Size = UDim2.fromOffset(S(140), S(24)),
+		Size = UDim2.fromOffset(S(120), S(24)),
 		Parent = frame,
 	})
 	local labelPill = UI.pill(frame, spec.label, color, Theme.Colors.bg, S(16), S(10))
-	labelPill.Position = UDim2.fromOffset(textX + S(118), S(12))
+	labelPill.Position = UDim2.fromOffset(textX + S(96), S(12))
 	local timer = UI.text({
 		Text = if spec.duration then fmtTime(spec.duration) else "",
 		Font = Theme.Fonts.display,
-		TextSize = S(22),
+		TextSize = S(20),
 		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(12), 0, S(8)),
-		Size = UDim2.fromOffset(S(80), S(26)),
+		Position = UDim2.new(1, -S(10), 0, S(8)),
+		Size = UDim2.fromOffset(S(60), S(26)),
 		Visible = spec.showTimer,
 		Parent = frame,
 	})
 	UI.text({
 		Text = table.concat(spec.text, "\n"),
-		TextSize = S(12),
+		TextSize = S(11),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextWrapped = true,
 		Position = UDim2.fromOffset(textX, S(36)),
-		Size = UDim2.new(1, -textX - S(12), 0, S(44)),
+		Size = UDim2.new(1, -textX - S(10), 0, S(46)),
 		Parent = frame,
 	})
 	UI.text({
@@ -208,25 +226,44 @@ local function buildExpanded(spec: CardSpec): (Frame, TextLabel)
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.cash,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(textX, h - S(30)),
+		Position = UDim2.fromOffset(textX, h - S(28)),
 		Size = UDim2.new(1, -textX, 0, S(22)),
 		Parent = frame,
 	})
-	return frame, timer
+	return frame, timer, stroke
 end
 
-local function slideIn(frame: Frame, height: number)
-	local cs = slot()
-	frame.Size = UDim2.fromOffset(cs.width, 0)
-	UI.tween(frame, { Size = UDim2.fromOffset(cs.width, height) }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local function slideIn(inner: Frame)
+	inner.Position = UDim2.fromOffset(UI.S(SLIDE), 0)
+	UI.tween(inner, { Position = UDim2.fromOffset(0, 0) }, 0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+end
+
+local function slideOut(inner: Frame): Tween
+	return UI.tween(
+		inner,
+		{ Position = UDim2.fromOffset(UI.S(SLIDE), 0) },
+		0.3,
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.In
+	)
+end
+
+local function resizeBox(box: Frame, height: number): Tween
+	return UI.tween(
+		box,
+		{ Size = UDim2.fromOffset(home().width, UI.S(height)) },
+		0.25,
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.Out
+	)
 end
 
 local function onCallStart(data: any)
-	clearCall()
+	destroyActive()
 	callToken += 1
 	local token = callToken
-	local cs = slot()
-	local expanded, expandedTimer = buildExpanded({
+	local box, inner = buildBox(CARD_H)
+	local card, timer, stroke = buildCard(inner, {
 		kind = data.kind,
 		crewLead = data.crewLead,
 		label = data.typeLabel,
@@ -235,46 +272,59 @@ local function onCallStart(data: any)
 		showTimer = true,
 		duration = data.duration,
 	})
-	activeCall =
-		{ data = data, frame = expanded, timerLabel = expandedTimer, stroke = nil, pill = false, token = token }
-	cs.add(expanded, 1)
-	slideIn(expanded, UI.S(112))
+	active = { data = data, box = box, inner = inner, timerLabel = timer, stroke = stroke, token = token }
+	slideIn(inner)
 	UI.sound(Theme.Sounds.call, 1, 0.6)
 
 	task.delay(Config.CallHoldSec, function()
-		if not activeCall or activeCall.token ~= token then
+		if not active or active.token ~= token then
 			return
 		end
-		local shrink = UI.tween(
-			expanded,
-			{ Size = UDim2.fromOffset(cs.width, 0) },
-			0.2,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.In
-		)
+		-- Collapse in place: shrink the box to pill height while the pill takes over.
+		local pill, pillTimer, pillStroke = buildPill(inner, data)
+		pill.BackgroundTransparency = 1
+		pill.ZIndex = 2
+		UI.tween(card, { BackgroundTransparency = 1 }, 0.15)
+		for _, d in card:GetDescendants() do
+			if d:IsA("TextLabel") then
+				UI.tween(d, { TextTransparency = 1 }, 0.12)
+			elseif d:IsA("Frame") then
+				UI.tween(d, { BackgroundTransparency = 1 }, 0.12)
+			elseif d:IsA("UIStroke") then
+				UI.tween(d, { Transparency = 1 }, 0.12)
+			end
+		end
+		UI.tween(pill, { BackgroundTransparency = 0 }, 0.2, nil, nil, 0.1)
+		local shrink = resizeBox(box, PILL_H)
 		shrink.Completed:Wait()
-		if not activeCall or activeCall.token ~= token then
+		if not active or active.token ~= token then
 			return
 		end
-		expanded:Destroy()
-		local pill, pillTimer, stroke = buildPill(data)
-		pillHome().add(pill, 1)
-		UI.punch(pill, 1.15, 0.3)
-		activeCall.frame = pill
-		activeCall.timerLabel = pillTimer
-		activeCall.stroke = stroke
-		activeCall.pill = true
+		card:Destroy()
+		UI.punch(pill, 1.1, 0.3)
+		active.timerLabel = pillTimer
+		active.stroke = pillStroke
 	end)
 end
 
--- Result: a "nice work" / "too slow" card from the crew lead, then the toast.
+-- Result: expand from the pill into a "nice work" / "too slow" card, hold, slide out. Toast in the center.
 local function onCallEnd(data: any)
-	clearCall()
 	callToken += 1
 	local token = callToken
-	local cs = slot()
 	local color = if data.success then Theme.Colors.cash else Theme.Colors.red
-	local card = buildExpanded({
+	local box: Frame
+	local inner: Frame
+	if active and active.box and active.box.Parent then
+		box = active.box
+		inner = active.inner
+		for _, c in inner:GetChildren() do
+			c:Destroy()
+		end
+	else
+		box, inner = buildBox(PILL_H)
+		slideIn(inner)
+	end
+	local card = buildCard(inner, {
 		kind = data.kind or "job",
 		crewLead = data.crewLead or Lines.job.crewLead,
 		label = data.title or (if data.success then Lines.job.doneTitle else Lines.failToast),
@@ -283,9 +333,8 @@ local function onCallEnd(data: any)
 		rewardLine = data.rewardLine or "",
 		showTimer = false,
 	})
-	cs.add(card, 1)
-	resultCard = card
-	slideIn(card, UI.S(112))
+	active = { data = data, box = box, inner = inner, timerLabel = nil, stroke = nil, token = token }
+	resizeBox(box, CARD_H)
 	UI.sound(if data.success then Theme.Sounds.legendary else Theme.Sounds.deny, if data.success then 1.1 else 0.8, 0.6)
 	if data.success then
 		UI.punch(card, 1.06, 0.4)
@@ -293,25 +342,18 @@ local function onCallEnd(data: any)
 	else
 		UI.shake(card, UI.S(3), 0.3)
 	end
-	-- Always collapse and remove the card, even if another call replaced it meanwhile.
+	centerSlot().toast(tostring(data.toast), color, 1.2)
+
 	task.delay(Config.CallHoldSec, function()
-		if not card.Parent then
+		if not box.Parent then
 			return
 		end
-		local shrink = UI.tween(
-			card,
-			{ Size = UDim2.fromOffset(cs.width, 0) },
-			0.2,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.In
-		)
-		shrink.Completed:Wait()
-		card:Destroy()
-		if resultCard == card then
-			resultCard = nil
-		end
-		if token == callToken then
-			cs.toast(tostring(data.toast), color, 0.8)
+		local out = slideOut(inner)
+		out.Completed:Wait()
+		if active and active.token == token then
+			destroyActive()
+		else
+			box:Destroy()
 		end
 	end)
 end
@@ -323,33 +365,36 @@ function CrewCallUI.init()
 		elseif name == "CallEnd" then
 			onCallEnd(data)
 		elseif name == "CrateIncoming" then
-			-- Transient only: no persistent arms-drop banner.
-			slot().toast("ARMS DROP INCOMING", Theme.Colors.gold, 1)
+			centerSlot().toast("ARMS DROP INCOMING", Theme.Colors.gold, 1)
 			UI.sound(Theme.Sounds.crate, 0.6, 0.6)
 		elseif name == "CrateLand" then
-			slot().toast(string.format("ARMS DROP · %d GUNS", data.total or data.left or 0), Theme.Colors.gold, 1.2)
+			centerSlot().toast(
+				string.format("ARMS DROP · %d GUNS", data.total or data.left or 0),
+				Theme.Colors.gold,
+				1.2
+			)
 			UI.sound(Theme.Sounds.crate, 0.9, 0.7)
 			ClientState.Juice:Fire("Shake", { amp = 0.35, dur = 0.3 })
 		end
 	end)
 
 	HUD.Rebuilt:Connect(function()
-		-- The HUD was rebuilt; re-add the live pill.
-		local call = activeCall
-		activeCall = nil
-		if call and call.data and call.data.endsAt then
-			local pill, timer, stroke = buildPill(call.data)
-			pillHome().add(pill, 1)
-			activeCall =
-				{ data = call.data, frame = pill, timerLabel = timer, stroke = stroke, pill = true, token = call.token }
+		-- The HUD was rebuilt; re-add the live pill if a job is running.
+		local call = active
+		active = nil
+		if call and call.data and call.data.endsAt and call.data.endsAt > ClientState.serverNow() then
+			local box, inner = buildBox(PILL_H)
+			local _, timer, stroke = buildPill(inner, call.data)
+			active =
+				{ data = call.data, box = box, inner = inner, timerLabel = timer, stroke = stroke, token = call.token }
 		end
 	end)
 
 	-- Timer tick.
 	local pulse = 0
 	RunService.Heartbeat:Connect(function(dt)
-		local call = activeCall
-		if not call or not call.frame.Parent or not call.data.endsAt then
+		local call = active
+		if not call or not call.timerLabel or not call.box.Parent or not call.data.endsAt then
 			return
 		end
 		local remaining = call.data.endsAt - ClientState.serverNow()

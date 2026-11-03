@@ -68,8 +68,8 @@ local Config = {
 	PanelShakePx = 2,
 	CardDealStagger = 0.08,
 	CardFlipStagger = 0.07, -- unused by the slot roll, kept for the flip variant
-	CardRollSec = 0.8, -- each card's mini slot roll
-	CardRollStagger = 0.22, -- gap between card rolls starting
+	CardRollSec = 0.45, -- each card's mini slot roll; starts as the card deals in
+	CardRollStagger = 0.07, -- gap between card rolls starting
 	TradeoffChance = { 0, 0.1, 0.25, 0.4, 0.5 }, -- per tier 1..5
 	TradeoffMalusRatio = 0.5, -- malus = one other stat at this ratio of the buff
 	TrackerCols = 10,
@@ -99,7 +99,7 @@ local Config = {
 	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never (brief says 10)
 	BigCrateIntroDrop = true, -- one crate during the intro; after that only Side Job completion drops one
 	BigCrateIntroPosition = Vector3.new(0, 0, -14), -- where the intro crate lands
-	BigCrateLifetime = 60, -- crate (and its guns) clear after this many seconds
+	BigCrateLifetime = 30, -- crate clears after this, or as soon as all its guns are gone
 	BigCrateDespawnOnWaveEnd = false, -- true restores the brief's "crate closes at wave end"
 	BigCrateWeaponCount = { plus = 1, min = 2 }, -- players + plus, never below min
 	BigCrateRarityFloorByBracket = { 2, 3, 3, 4 }, -- Uncommon / Rare / Rare / Epic
@@ -119,8 +119,14 @@ local Config = {
 	SideJobRewardCrate = true, -- a crate drops at the beacon on completion
 	CallPillWarnSec = 10, -- pill turns red under this many seconds
 
+	------------------------------------------------------------------ Heat (stars, 0..5)
+	HeatStart = 2.5,
+	HeatWaveClear = 0.5, -- per wave cleared
+	HeatSideJobDone = 1, -- per Side Job completed
+	HeatSideJobFail = -0.5,
+	HeatDowned = -0.5, -- per time health hits 0
+
 	------------------------------------------------------------------ HUD
-	HeatStarsFixed = 2.5,
 	DebugEnabled = true,
 
 	------------------------------------------------------------------ Room

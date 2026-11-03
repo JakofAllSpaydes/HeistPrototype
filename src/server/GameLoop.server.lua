@@ -94,6 +94,9 @@ task.spawn(function()
 
 		BigCrate.onWaveEnd()
 		Log.event("Wave", "Wave %d clear", wave)
+		if not World.skipRequested then
+			World.addHeat(Config.HeatWaveClear, "wave " .. wave .. " clear")
+		end
 		if World.pendingWave then
 			continue
 		end

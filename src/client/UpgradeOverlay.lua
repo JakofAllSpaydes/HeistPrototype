@@ -36,6 +36,7 @@ local currentCards: { Types.Card }? = nil
 local cardInners: { Frame } = {}
 local trackerTiles: { [string]: Frame } = {}
 local REEL_CELLS = 12
+local REEL_LAND = 9 -- the card's stat sits here; cells after it make the stop read as a stop
 
 local function tierColor(tier: number): Color3
 	return Rarity.color(math.clamp(tier, 1, 5))
@@ -222,7 +223,7 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		Parent = reelWindow,
 	})
 	for i = 1, REEL_CELLS do
-		local isLast = i == REEL_CELLS
+		local isLast = i == REEL_LAND
 		local statId = if isLast then card.stat else Upgrades.Stats[math.random(#Upgrades.Stats)].id
 		local cellColor = if isLast then color else tierColor(math.random(1, 5))
 		local cell = UI.frame({
@@ -355,7 +356,7 @@ local function reveal(ui: CardUI, card: Types.Card)
 end
 
 local function rollCard(ui: CardUI, card: Types.Card)
-	local travel = (REEL_CELLS - 1) * ui.cellH
+	local travel = (REEL_LAND - 1) * ui.cellH
 	ui.reelColumn.Position = UDim2.fromOffset(0, 0)
 	local tween = UI.tween(
 		ui.reelColumn,
@@ -374,7 +375,7 @@ local function rollCard(ui: CardUI, card: Types.Card)
 		local idx = math.floor(-ui.reelColumn.Position.Y.Offset / ui.cellH + 0.5)
 		if idx > lastIdx then
 			lastIdx = idx
-			UI.sound(Theme.Sounds.reelTick, 0.8 + (idx / REEL_CELLS) * 1.0, 0.3)
+			UI.sound(Theme.Sounds.reelTick, 0.8 + (idx / REEL_LAND) * 1.0, 0.3)
 		end
 	end)
 	tween.Completed:Wait()
@@ -525,7 +526,7 @@ local function show(cards: { Types.Card }, reopened: boolean)
 	local S = UI.S
 	local p = HUD.profile()
 	local w, h = S(p.card.X), S(p.card.Y)
-	local dealTotal = Config.CardDealStagger * 3 + 0.25
+	local dealTotal = 0 -- rolls start as the cards deal in
 	local uis: { CardUI } = {}
 	for i, card in cards do
 		local ui = buildCard(i, card)
@@ -533,7 +534,7 @@ local function show(cards: { Types.Card }, reopened: boolean)
 		cardInners[i] = ui.inner
 		if reopened then
 			-- Already rolled last time: show the landed state straight away.
-			ui.reelColumn.Position = UDim2.fromOffset(0, -(REEL_CELLS - 1) * ui.cellH)
+			ui.reelColumn.Position = UDim2.fromOffset(0, -(REEL_LAND - 1) * ui.cellH)
 			ui.stroke.Color = tierColor(card.tier)
 			ui.reelStroke.Color = tierColor(card.tier)
 			for _, obj in ui.details do

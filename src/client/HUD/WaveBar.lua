@@ -96,10 +96,17 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end))
 
-	local function setHeat(value: number)
+	local shownHeat = -1
+	local function setHeat(value: number, animate: boolean?)
 		for i, clip in clips do
-			clip.Size = UDim2.fromScale(math.clamp(value - (i - 1), 0, 1), 1)
+			local target = UDim2.fromScale(math.clamp(value - (i - 1), 0, 1), 1)
+			if animate then
+				UI.tween(clip, { Size = target }, 0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+			else
+				clip.Size = target
+			end
 		end
+		shownHeat = value
 	end
 
 	local component = {}
@@ -113,7 +120,9 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			wave.TextColor3 = Theme.Colors.text
 			lastShown = -1
 		end
-		setHeat(sync.heat)
+		if shownHeat < 0 then
+			setHeat(sync.heat)
+		end
 		local players = sync.playerCount or 1
 		local votesLabel = votes:FindFirstChildOfClass("TextLabel")
 		if votesLabel then
@@ -133,6 +142,17 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			state = "Intermission"
 			endsAt = data.endsAt
 			lastShown = -1
+		elseif name == "HeatChanged" then
+			local up = (data.delta or 0) > 0
+			setHeat(data.value, true)
+			UI.punch(stars, if up then 1.35 else 0.85, 0.45)
+			-- Flash the star that changed.
+			local idx = math.clamp(math.ceil(if up then data.value else data.value + 0.5), 1, 5)
+			local cell = clips[idx] and clips[idx].Parent
+			if cell then
+				UI.punch(cell :: GuiObject, if up then 1.8 else 0.6, 0.5)
+			end
+			UI.sound(if up then Theme.Sounds.legendary else Theme.Sounds.deny, if up then 1.3 else 0.7, 0.5)
 		end
 	end
 

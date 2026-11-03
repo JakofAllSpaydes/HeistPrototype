@@ -186,6 +186,7 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 		hum.Health = hum.MaxHealth
 		Log.event("Player", "%s reached 0 HP (downed flow is stubbed): health reset to %d", player.Name, hum.MaxHealth)
 		Remotes.Juice:FireClient(player, "Downed", {})
+		World.addHeat(Config.HeatDowned, player.Name .. " downed")
 	else
 		hum.Health = newHP
 	end
@@ -206,7 +207,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		wave = World.wave,
 		waveState = World.state,
 		intermissionEndsAt = World.intermissionEndsAt,
-		heat = Config.HeatStarsFixed,
+		heat = World.heat,
 		cash = state.cash,
 		gold = 0,
 		maxHP = st.maxHP,
@@ -323,9 +324,10 @@ function PlayerState.init()
 		end
 		acc = 0
 		-- A full resend every 2s covers a client that loaded after its first sync.
-		local force = forceAcc >= 2
+		local force = forceAcc >= 2 or World.heatDirty
 		if force then
 			forceAcc = 0
+			World.heatDirty = false
 		end
 		for player, state in states do
 			if state.dirty or force then

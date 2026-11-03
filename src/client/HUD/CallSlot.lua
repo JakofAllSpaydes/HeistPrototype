@@ -87,6 +87,20 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 		end)
 	end
 
+	-- System notices that belong in the center: heat changes (wave and crate notices come from their owners).
+	function component.onJuice(name: string, data: any)
+		if name == "HeatChanged" then
+			local up = (data.delta or 0) > 0
+			local amount = math.abs(data.delta or 0)
+			local half = if amount == 0.5 then "½" else tostring(amount)
+			component.toast(
+				string.format("%s%s★ · HEAT %.1f", if up then "HEAT UP +" else "HEAT DOWN -", half, data.value),
+				if up then Theme.Colors.gold else Theme.Colors.red,
+				1.2
+			)
+		end
+	end
+
 	return component
 end
 

@@ -14,6 +14,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Room = require(script.Parent.Room)
 local BigCrate = require(script.Parent.BigCrate)
+local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 
 type Job = { id: number, endsAt: number, beacon: Model, active: boolean, position: Vector3 }
@@ -147,6 +148,9 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 		if Config.SideJobRewardCrate then
 			BigCrate.drop(j.position)
 		end
+		World.addHeat(Config.HeatSideJobDone, "side job done")
+	elseif not silent then
+		World.addHeat(Config.HeatSideJobFail, "side job failed")
 	end
 	if not silent then
 		Remotes.Juice:FireAllClients("CallEnd", {

@@ -158,6 +158,9 @@ function BigCrate.drop(at: Vector3?)
 				promptText = "SWAP",
 			})
 			crate.guns[slot] = gun
+			gun.Destroying:Connect(function()
+				BigCrate.onGunGone(id, slot, nil)
+			end)
 			local settle = CFrame.new(target)
 				* CFrame.Angles(0, a, 0)
 				* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
@@ -201,18 +204,28 @@ end
 
 -- Crate guns are ordinary swaps (you only hold one gun, so the old one lands on the floor anyway).
 -- WeaponRoll calls this after a crate gun is picked up so the banner count and the crate follow.
-function BigCrate.onGunTaken(player: Player, crateId: string, slot: number)
+-- A crate gun left the floor (taken or expired). The crate closes once none are left.
+function BigCrate.onGunGone(crateId: string, slot: number, takenBy: Player?)
 	local crate = crates[crateId]
-	if not crate or not crate.active then
+	if not crate or not crate.active or not crate.guns[slot] then
 		return
 	end
 	crate.guns[slot] = nil
-	crate.left -= 1
+	crate.left = 0
+	for _ in crate.guns do
+		crate.left += 1
+	end
 	Remotes.Juice:FireAllClients("CrateCount", { crateId = crate.id, left = crate.left })
-	Log.event("Crate", "%s took a gun from %s, %d left", player.Name, crate.id, crate.left)
+	if takenBy then
+		Log.event("Crate", "%s took a gun from %s, %d left", takenBy.Name, crate.id, crate.left)
+	end
 	if crate.left <= 0 then
 		BigCrate.finish(crate)
 	end
+end
+
+function BigCrate.onGunTaken(player: Player, crateId: string, slot: number)
+	BigCrate.onGunGone(crateId, slot, player)
 end
 
 function BigCrate.finish(crate: Crate)
