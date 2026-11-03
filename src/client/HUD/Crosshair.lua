@@ -1,12 +1,15 @@
 --!strict
 -- Center crosshair with fire kick and a hitmarker that flashes on Hit (gold on headshot, red on kill).
+local RunService = game:GetService("RunService")
+
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local ClientState = require(Client:WaitForChild("ClientState"))
 
 local Crosshair = {}
 
-function Crosshair.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
+function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S
 	local root = UI.frame({
 		Name = "Crosshair",
@@ -46,6 +49,56 @@ function Crosshair.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 		Parent = root,
 	})
 	UI.corner(dot, S(2))
+
+	-- Reload ring: 24 ticks around the crosshair that light up clockwise as the reload progresses.
+	local TICKS = 24
+	local ringRadius = S(26)
+	local ticks: { Frame } = {}
+	for i = 1, TICKS do
+		local angle = (i - 1) / TICKS * math.pi * 2 - math.pi / 2
+		local tick = UI.frame({
+			BackgroundColor3 = Theme.Colors.gold,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, math.cos(angle) * ringRadius, 0.5, math.sin(angle) * ringRadius),
+			Size = UDim2.fromOffset(S(3), S(6)),
+			Rotation = math.deg(angle) + 90,
+			Visible = false,
+			Parent = root,
+		})
+		UI.corner(tick, S(2))
+		ticks[i] = tick
+	end
+	local ringShown = false
+	track(RunService.Heartbeat:Connect(function()
+		local a = ClientState.ammo
+		if a.reloading and a.reloadEndsAt > a.reloadStartedAt then
+			ringShown = true
+			local progress = math.clamp((os.clock() - a.reloadStartedAt) / (a.reloadEndsAt - a.reloadStartedAt), 0, 1)
+			local lit = math.floor(progress * TICKS + 0.5)
+			for i, tick in ticks do
+				tick.Visible = true
+				tick.BackgroundColor3 = if i <= lit then Theme.Colors.gold else Theme.Colors.panel2
+				tick.BackgroundTransparency = if i <= lit then 0 else 0.4
+			end
+		elseif ringShown then
+			-- Reload done: flash full, then hide.
+			ringShown = false
+			for _, tick in ticks do
+				tick.BackgroundColor3 = Theme.Colors.cash
+				tick.BackgroundTransparency = 0
+				UI.tween(tick, { BackgroundTransparency = 1 }, 0.25)
+			end
+			UI.punch(root, 1.3, 0.25)
+			task.delay(0.26, function()
+				if not ringShown then
+					for _, tick in ticks do
+						tick.Visible = false
+						tick.BackgroundTransparency = 0
+					end
+				end
+			end)
+		end
+	end))
 
 	local marker = UI.frame({
 		Name = "Hitmarker",

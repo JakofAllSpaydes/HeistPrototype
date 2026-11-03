@@ -206,7 +206,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		pill.BackgroundColor3 = color
 		slotStroke.Color = color
 		UI.recolorIcon(icon, color)
-		dmg.Text = string.format("DMG %d", math.round(held.dmg))
+		dmg.Text = string.format("DMG %d · DPS %d", math.round(held.dmg), math.round(held.dps or 0))
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then

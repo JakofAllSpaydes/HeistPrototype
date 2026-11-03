@@ -21,6 +21,7 @@ export type SpawnOpts = {
 	rarity: number,
 	cframe: CFrame,
 	dmg: number,
+	dps: number?, -- shown on the tag; defaults to the weapon at no upgrades
 	lifetime: number?, -- nil = Config.GroundWeaponLifetime, 0 = never
 	crateId: string?,
 	slot: number?,
@@ -111,6 +112,7 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	gun:SetAttribute("DisplayName", weapon.displayName)
 	gun:SetAttribute("Rarity", opts.rarity)
 	gun:SetAttribute("Dmg", math.round(opts.dmg))
+	gun:SetAttribute("Dps", math.round(opts.dps or Stats.weaponDps(opts.weaponId, opts.rarity, {})))
 	if opts.crateId then
 		gun:SetAttribute("CrateId", opts.crateId)
 		gun:SetAttribute("Slot", opts.slot)
@@ -195,6 +197,7 @@ function WeaponRoll.dropHeld(state: PlayerState.State, cframe: CFrame): BasePart
 		rarity = held.rarity,
 		cframe = cframe,
 		dmg = Stats.weaponDamage(held.weaponId, held.rarity, PlayerState.damagePct(state)),
+		dps = Stats.weaponDps(held.weaponId, held.rarity, state.upgrades),
 	})
 end
 
@@ -271,6 +274,7 @@ function WeaponRoll.buy(player: Player): any
 	local weapon = Weapons.List[math.random(#Weapons.List)]
 	local rarity, note = WeaponRoll.rollRarity(state, World.wave, weapon.rarityWeights)
 	local dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state))
+	local dps = Stats.weaponDps(weapon.id, rarity, state.upgrades)
 	state.dirty = true
 	Log.event(
 		"Roll",
@@ -296,6 +300,7 @@ function WeaponRoll.buy(player: Player): any
 			rarity = rarity,
 			cframe = WeaponRoll.groundCFrameInFront(char, 4),
 			dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state)),
+			dps = Stats.weaponDps(weapon.id, rarity, state.upgrades),
 			dropFrom = Config.GunDropHeight,
 		})
 	end)
@@ -309,6 +314,7 @@ function WeaponRoll.buy(player: Player): any
 			rarity = rarity,
 			rarityName = Rarity.name(rarity),
 			dmg = math.round(dmg),
+			dps = math.round(dps),
 		},
 		pityStreak = state.pityStreak,
 	}

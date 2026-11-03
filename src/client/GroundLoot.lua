@@ -26,18 +26,20 @@ local GroundLoot = {}
 local lootFolder = Workspace:WaitForChild("GroundLoot")
 local tags: { [BasePart]: Tag } = {}
 
-local function heldDmg(): number
+local function heldDps(): number
 	local sync = ClientState.sync
-	return if sync then sync.held.dmg else 0
+	return if sync then (sync.held.dps or 0) else 0
 end
 
+-- DMG per shot and DPS; the color compares DPS against the held gun so slow heavy guns don't always win.
 local function refreshTag(gun: BasePart, tag: Tag)
 	local dmg = gun:GetAttribute("Dmg") :: number? or 0
-	local held = heldDmg()
-	tag.dmgLabel.Text = string.format("DMG %d", dmg)
-	tag.dmgLabel.TextColor3 = if dmg > held
+	local dps = gun:GetAttribute("Dps") :: number? or 0
+	local held = heldDps()
+	tag.dmgLabel.Text = string.format("DMG %d  ·  DPS %d", dmg, dps)
+	tag.dmgLabel.TextColor3 = if dps > held
 		then Theme.Colors.cash
-		elseif dmg < held then Theme.Colors.malus
+		elseif dps < held then Theme.Colors.malus
 		else Theme.Colors.text
 	local sync = ClientState.sync
 	local crateId = gun:GetAttribute("CrateId")

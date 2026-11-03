@@ -27,8 +27,17 @@ local lastShot = 0
 local firing = false
 local semiLatch = false
 
+local reloadStartedAt = 0
+local reloadEndsAt = 0
+
 local function publishAmmo()
-	ClientState.ammo = { mag = mag, max = if held then held.magSize else 0, reloading = reloading }
+	ClientState.ammo = {
+		mag = mag,
+		max = if held then held.magSize else 0,
+		reloading = reloading,
+		reloadStartedAt = reloadStartedAt,
+		reloadEndsAt = reloadEndsAt,
+	}
 	ClientState.Ammo:Fire(ClientState.ammo)
 end
 
@@ -39,6 +48,8 @@ local function reload()
 	reloading = true
 	reloadToken += 1
 	local token = reloadToken
+	reloadStartedAt = os.clock()
+	reloadEndsAt = reloadStartedAt + held.reloadTime
 	publishAmmo()
 	UI.sound(Theme.Sounds.reload, 1, 0.4)
 	task.delay(held.reloadTime, function()

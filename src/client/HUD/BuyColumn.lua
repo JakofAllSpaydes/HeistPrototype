@@ -46,14 +46,7 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			profile.tile,
 			profile.hotkeyChips
 		),
-		airstrike = Tile.build(
-			root,
-			{ name = "AIRSTRIKE", hotkey = "3", order = 3, iconKind = "air", stub = true, showPrice = false },
-			profile.tile,
-			profile.hotkeyChips
-		),
 	}
-	tiles.airstrike.stroke.Color = Theme.Colors.grey
 
 	track(UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 		if gameProcessed then
@@ -62,12 +55,9 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local tile = if input.KeyCode == Enum.KeyCode.One
 			then tiles.weapon
 			elseif input.KeyCode == Enum.KeyCode.Two then tiles.upgrade
-			elseif input.KeyCode == Enum.KeyCode.Three then tiles.airstrike
 			else nil
 		if tile and tile.enabled and tile.onPress then
 			tile.onPress()
-		elseif tile == tiles.airstrike then
-			tile.showTooltip("STUB")
 		end
 	end))
 

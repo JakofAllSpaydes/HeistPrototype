@@ -13,6 +13,7 @@ local Enemy = require(script.Parent.Enemy)
 local WeaponRoll = require(script.Parent.WeaponRoll)
 local BigCrate = require(script.Parent.BigCrate)
 local CrewCall = require(script.Parent.CrewCall)
+local Abilities = require(script.Parent.Abilities)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 
@@ -74,6 +75,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		BigCrate.finishAll()
 		CrewCall.finish(false, true)
 		WeaponRoll.clearAll()
+		Abilities.clearAll()
 		Enemy.killAll()
 		World.spawnsPaused = false
 		World.pendingWave = 1

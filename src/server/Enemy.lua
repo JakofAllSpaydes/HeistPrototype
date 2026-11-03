@@ -29,6 +29,10 @@ type Data = {
 
 local Enemy = {}
 
+-- Abilities installs these so enemies can target and hit turrets / barricades without a require cycle.
+Enemy.extraTargets = nil :: (() -> { BasePart })?
+Enemy.onStructureHit = nil :: ((BasePart, number) -> ())?
+
 local template = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("EnemyTemplate") :: Model
 local active: { [Model]: Data } = {}
 local count = 0
@@ -37,7 +41,8 @@ function Enemy.count(): number
 	return count
 end
 
-local function nearestPlayerRoot(from: Vector3): BasePart?
+-- Nearest thing worth walking at: a living player's root or a structure part.
+local function nearestTarget(from: Vector3): BasePart?
 	local best: BasePart? = nil
 	local bestDist = math.huge
 	for _, player in Players:GetPlayers() do
@@ -49,6 +54,18 @@ local function nearestPlayerRoot(from: Vector3): BasePart?
 			if d < bestDist then
 				bestDist = d
 				best = root
+			end
+		end
+	end
+	local extra = Enemy.extraTargets
+	if extra then
+		for _, part in extra() do
+			if part.Parent then
+				local d = (part.Position - from).Magnitude
+				if d < bestDist then
+					bestDist = d
+					best = part
+				end
 			end
 		end
 	end
@@ -185,7 +202,7 @@ end
 -- Called every RetargetSec: re-pick the target and handle being stuck on a pillar.
 local function steer(d: Data, now: number)
 	local root = d.root
-	d.target = nearestPlayerRoot(root.Position)
+	d.target = nearestTarget(root.Position)
 	local target = d.target
 	if not target then
 		return
@@ -242,11 +259,15 @@ function Enemy.init()
 			end
 			local target = d.target
 			if target and target.Parent and now - d.lastSwing >= Config.EnemySwingCooldown then
-				if (target.Position - d.root.Position).Magnitude <= Config.EnemyMeleeReach then
+				-- Structures are wide; measure to their surface rather than their center.
+				local reach = Config.EnemyMeleeReach + math.max(target.Size.X, target.Size.Z) / 2
+				if (target.Position - d.root.Position).Magnitude <= reach then
 					d.lastSwing = now
 					local player = Players:GetPlayerFromCharacter(target.Parent)
 					if player then
 						PlayerState.damage(player, d.dmg, "melee")
+					elseif Enemy.onStructureHit then
+						Enemy.onStructureHit(target, d.dmg)
 					end
 				end
 			end

@@ -14,6 +14,7 @@ local DEFS: { [string]: string } = {
 	StateSync = "RemoteEvent", -- server -> client: Types.Sync
 	Juice = "RemoteEvent", -- server -> client: event name, data
 	Debug = "RemoteEvent", -- client -> server: command, args
+	UseAbility = "RemoteEvent", -- client -> server: abilityId (turret | barricade | stim)
 }
 
 local folder: Instance

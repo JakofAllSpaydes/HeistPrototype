@@ -1,6 +1,6 @@
 --!strict
--- Pick-3 overlay: world dims, each card runs a mini slot roll of stat icons and lands on its stat with
--- tier-scaled juice. Take flies the card to the run tracker. Esc / X / 2 keeps the cards for next time.
+-- Pick-3 overlay: world dims, each whole card spins like a slot reel through random upgrades and lands
+-- on its real one with tier-scaled juice. Take flies the card to the run tracker. Esc / X / 2 keeps the cards.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -36,7 +36,7 @@ local currentCards: { Types.Card }? = nil
 local cardInners: { Frame } = {}
 local trackerTiles: { [string]: Frame } = {}
 local REEL_CELLS = 12
-local REEL_LAND = 9 -- the card's stat sits here; cells after it make the stop read as a stop
+local REEL_LAND = 9 -- the real card sits here; faces after it make the stop read as a stop
 
 local function tierColor(tier: number): Color3
 	return Rarity.color(math.clamp(tier, 1, 5))
@@ -169,22 +169,99 @@ local function refreshTracker()
 	end
 end
 
-type CardUI = {
-	holder: Frame,
-	inner: Frame,
-	stroke: UIStroke,
-	reelWindow: Frame,
-	reelColumn: Frame,
-	reelStroke: UIStroke,
-	details: { GuiObject },
-	cellH: number,
-}
+type CardUI = { holder: Frame, inner: Frame, stroke: UIStroke, column: Frame, cellH: number }
+
+-- One card face: name, tier pill, big value, stat name; real faces also carry the malus line and TAKE.
+local function buildFace(
+	parent: Instance,
+	y: number,
+	w: number,
+	h: number,
+	statId: string,
+	tier: number,
+	value: number,
+	name: string,
+	real: Types.Card?
+)
+	local S = UI.S
+	local color = tierColor(tier)
+	local face = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, y),
+		Size = UDim2.fromOffset(w, h),
+		Parent = parent,
+	})
+	UI.text({
+		Text = string.upper(name),
+		Font = Theme.Fonts.display,
+		TextSize = S(20),
+		TextWrapped = true,
+		Position = UDim2.fromOffset(S(8), S(18)),
+		Size = UDim2.new(1, -S(16), 0, S(30)),
+		Parent = face,
+	})
+	local pill = UI.pill(face, string.upper(Rarity.name(tier)), color, Theme.Colors.bg, S(18), S(11))
+	pill.AnchorPoint = Vector2.new(0.5, 0)
+	pill.Position = UDim2.new(0.5, 0, 0, S(54))
+	UI.text({
+		Text = Upgrades.pctText(value, statId),
+		Font = Theme.Fonts.display,
+		TextSize = S(50),
+		TextColor3 = Theme.Colors.cash,
+		Position = UDim2.fromOffset(0, S(82)),
+		Size = UDim2.new(1, 0, 0, S(58)),
+		Parent = face,
+	})
+	UI.text({
+		Text = string.upper(Upgrades.statName(statId)),
+		TextSize = S(15),
+		TextColor3 = Theme.Colors.cash,
+		Position = UDim2.fromOffset(0, S(140)),
+		Size = UDim2.new(1, 0, 0, S(20)),
+		Parent = face,
+	})
+	if real then
+		if real.isTradeoff and real.malusStat and real.malusPct then
+			local malus = UI.frame({
+				BackgroundColor3 = Theme.Colors.malus,
+				BackgroundTransparency = 0.85,
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, S(176)),
+				Size = UDim2.new(1, -S(24), 0, S(28)),
+				Parent = face,
+			})
+			UI.corner(malus, S(8))
+			UI.stroke(malus, Theme.Colors.malus, S(1), 0.4)
+			UI.text({
+				Text = Upgrades.effectLine(real.malusStat, -real.malusPct),
+				TextSize = S(13),
+				TextColor3 = Theme.Colors.malus,
+				Size = UDim2.fromScale(1, 1),
+				Parent = malus,
+			})
+		end
+		UI.text({
+			Text = "TAKE",
+			TextSize = S(12),
+			TextColor3 = Theme.Colors.grey,
+			Position = UDim2.new(0, 0, 1, -S(26)),
+			Size = UDim2.new(1, 0, 0, S(20)),
+			Parent = face,
+		})
+	else
+		-- Fakes read slightly ghosted so the real one pops when it lands.
+		for _, d in face:GetDescendants() do
+			if d:IsA("TextLabel") then
+				d.TextTransparency = 0.2
+			end
+		end
+	end
+end
 
 local function buildCard(index: number, card: Types.Card): CardUI
 	local S = UI.S
 	local p = HUD.profile()
 	local w, h = S(p.card.X), S(p.card.Y)
-	local color = tierColor(card.tier)
 
 	local holder = UI.frame({
 		Name = "Card" .. index,
@@ -199,114 +276,46 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, S(10)),
 		Size = UDim2.fromOffset(w, h),
+		ClipsDescendants = true,
 		Parent = holder,
 	})
 	UI.corner(inner, S(14))
 	local stroke = UI.stroke(inner, Theme.Colors.grey, S(3))
 
-	-- Slot window: cells of stat short-names scroll past, the last one is this card's stat.
-	local cellH = S(64)
-	local reelWindow = UI.frame({
-		Name = "Reel",
-		BackgroundColor3 = Theme.Colors.bg,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, S(14)),
-		Size = UDim2.fromOffset(S(110), cellH),
-		ClipsDescendants = true,
+	-- The whole card is a vertical strip of faces; the real one sits at REEL_LAND.
+	local column = UI.frame({
+		Name = "Column",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(w, h * REEL_CELLS),
 		Parent = inner,
 	})
-	UI.corner(reelWindow, S(10))
-	local reelStroke = UI.stroke(reelWindow, Theme.Colors.grey, S(2))
-	local reelColumn = UI.frame({
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, cellH * REEL_CELLS),
-		Parent = reelWindow,
-	})
 	for i = 1, REEL_CELLS do
-		local isLast = i == REEL_LAND
-		local statId = if isLast then card.stat else Upgrades.Stats[math.random(#Upgrades.Stats)].id
-		local cellColor = if isLast then color else tierColor(math.random(1, 5))
-		local cell = UI.frame({
-			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(0, (i - 1) * cellH),
-			Size = UDim2.new(1, 0, 0, cellH),
-			Parent = reelColumn,
-		})
-		UI.text({
-			Text = Upgrades.shortName(statId),
-			Font = Theme.Fonts.display,
-			TextSize = S(26),
-			TextColor3 = cellColor,
-			TextTransparency = if isLast then 0 else 0.25,
-			Size = UDim2.fromScale(1, 1),
-			Parent = cell,
+		if i == REEL_LAND then
+			buildFace(column, (i - 1) * h, w, h, card.stat, card.tier, card.pct, card.name, card)
+		else
+			local stat = Upgrades.Stats[math.random(#Upgrades.Stats)]
+			local tier = math.random(1, 5)
+			buildFace(
+				column,
+				(i - 1) * h,
+				w,
+				h,
+				stat.id,
+				tier,
+				Upgrades.magnitude(stat.id, tier),
+				Upgrades.cardName(stat.id, tier),
+				nil
+			)
+		end
+		-- Thin divider between faces so the scroll reads as a strip.
+		UI.frame({
+			BackgroundColor3 = Theme.Colors.panel2,
+			Position = UDim2.fromOffset(0, i * h - S(1)),
+			Size = UDim2.new(1, 0, 0, S(2)),
+			Parent = column,
 		})
 	end
 
-	local details: { GuiObject } = {}
-	local function detail(obj: GuiObject): GuiObject
-		obj.Visible = false
-		table.insert(details, obj)
-		return obj
-	end
-	detail(UI.text({
-		Text = string.upper(card.name),
-		Font = Theme.Fonts.display,
-		TextSize = S(20),
-		TextWrapped = true,
-		Position = UDim2.fromOffset(S(8), S(86)),
-		Size = UDim2.new(1, -S(16), 0, S(30)),
-		Parent = inner,
-	}))
-	local pill = UI.pill(inner, string.upper(Rarity.name(card.tier)), color, Theme.Colors.bg, S(18), S(11))
-	pill.AnchorPoint = Vector2.new(0.5, 0)
-	pill.Position = UDim2.new(0.5, 0, 0, S(120))
-	detail(pill)
-	detail(UI.text({
-		Text = Upgrades.pctText(card.pct, card.stat),
-		Font = Theme.Fonts.display,
-		TextSize = S(46),
-		TextColor3 = Theme.Colors.cash,
-		Position = UDim2.fromOffset(0, S(144)),
-		Size = UDim2.new(1, 0, 0, S(52)),
-		Parent = inner,
-	}))
-	detail(UI.text({
-		Text = string.upper(Upgrades.statName(card.stat)),
-		TextSize = S(15),
-		TextColor3 = Theme.Colors.cash,
-		Position = UDim2.fromOffset(0, S(196)),
-		Size = UDim2.new(1, 0, 0, S(20)),
-		Parent = inner,
-	}))
-	if card.isTradeoff and card.malusStat and card.malusPct then
-		local malus = UI.frame({
-			BackgroundColor3 = Theme.Colors.malus,
-			BackgroundTransparency = 0.85,
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, S(222)),
-			Size = UDim2.new(1, -S(24), 0, S(28)),
-			Parent = inner,
-		})
-		UI.corner(malus, S(8))
-		UI.stroke(malus, Theme.Colors.malus, S(1), 0.4)
-		UI.text({
-			Text = Upgrades.effectLine(card.malusStat, -card.malusPct),
-			TextSize = S(13),
-			TextColor3 = Theme.Colors.malus,
-			Size = UDim2.fromScale(1, 1),
-			Parent = malus,
-		})
-		detail(malus)
-	end
-	detail(UI.text({
-		Text = "TAKE",
-		TextSize = S(12),
-		TextColor3 = Theme.Colors.grey,
-		Position = UDim2.new(0, 0, 1, -S(26)),
-		Size = UDim2.new(1, 0, 0, S(20)),
-		Parent = inner,
-	}))
 	local button = UI.button({
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
@@ -321,33 +330,19 @@ local function buildCard(index: number, card: Types.Card): CardUI
 			UI.punch(inner, 1.05, 0.2)
 		end
 	end)
-	return {
-		holder = holder,
-		inner = inner,
-		stroke = stroke,
-		reelWindow = reelWindow,
-		reelColumn = reelColumn,
-		reelStroke = reelStroke,
-		details = details,
-		cellH = cellH,
-	}
+	return { holder = holder, inner = inner, stroke = stroke, column = column, cellH = h }
+end
+
+local function landedOffset(ui: CardUI): number
+	return -(REEL_LAND - 1) * ui.cellH
 end
 
 local function reveal(ui: CardUI, card: Types.Card)
 	local color = tierColor(card.tier)
 	ui.stroke.Color = color
-	ui.reelStroke.Color = color
-	for i, obj in ui.details do
-		obj.Visible = true
-		UI.punch(obj, 1.25, 0.3)
-		if i == 3 then
-			-- The big percent gets an extra pop.
-			UI.punch(obj, 1.5 + card.tier * 0.1, 0.45)
-		end
-	end
 	local center = ui.inner.AbsolutePosition + ui.inner.AbsoluteSize / 2
 	local j = Juice.burst(card.tier, color, center)
-	UI.punch(ui.inner, j.punch, 0.4)
+	UI.punch(ui.inner, j.punch + 0.04, 0.45)
 	UI.sound(Theme.Sounds.reelLand, j.pitch, j.volume)
 	if j.tier >= 4 then
 		ui.stroke.Thickness = UI.S(6)
@@ -356,11 +351,10 @@ local function reveal(ui: CardUI, card: Types.Card)
 end
 
 local function rollCard(ui: CardUI, card: Types.Card)
-	local travel = (REEL_LAND - 1) * ui.cellH
-	ui.reelColumn.Position = UDim2.fromOffset(0, 0)
+	ui.column.Position = UDim2.fromOffset(0, 0)
 	local tween = UI.tween(
-		ui.reelColumn,
-		{ Position = UDim2.fromOffset(0, -travel) },
+		ui.column,
+		{ Position = UDim2.fromOffset(0, landedOffset(ui)) },
 		Config.CardRollSec,
 		Enum.EasingStyle.Quart,
 		Enum.EasingDirection.Out
@@ -368,11 +362,11 @@ local function rollCard(ui: CardUI, card: Types.Card)
 	local lastIdx = 0
 	local conn: RBXScriptConnection
 	conn = RunService.Heartbeat:Connect(function()
-		if not ui.reelColumn.Parent then
+		if not ui.column.Parent then
 			conn:Disconnect()
 			return
 		end
-		local idx = math.floor(-ui.reelColumn.Position.Y.Offset / ui.cellH + 0.5)
+		local idx = math.floor(-ui.column.Position.Y.Offset / ui.cellH + 0.5)
 		if idx > lastIdx then
 			lastIdx = idx
 			UI.sound(Theme.Sounds.reelTick, 0.8 + (idx / REEL_LAND) * 1.0, 0.3)
@@ -526,20 +520,14 @@ local function show(cards: { Types.Card }, reopened: boolean)
 	local S = UI.S
 	local p = HUD.profile()
 	local w, h = S(p.card.X), S(p.card.Y)
-	local dealTotal = 0 -- rolls start as the cards deal in
 	local uis: { CardUI } = {}
 	for i, card in cards do
 		local ui = buildCard(i, card)
 		uis[i] = ui
 		cardInners[i] = ui.inner
 		if reopened then
-			-- Already rolled last time: show the landed state straight away.
-			ui.reelColumn.Position = UDim2.fromOffset(0, -(REEL_LAND - 1) * ui.cellH)
+			ui.column.Position = UDim2.fromOffset(0, landedOffset(ui))
 			ui.stroke.Color = tierColor(card.tier)
-			ui.reelStroke.Color = tierColor(card.tier)
-			for _, obj in ui.details do
-				obj.Visible = true
-			end
 		else
 			ui.inner.Size = UDim2.fromOffset(math.floor(w * 0.5), math.floor(h * 0.5))
 			ui.inner.BackgroundTransparency = 1
@@ -559,7 +547,7 @@ local function show(cards: { Types.Card }, reopened: boolean)
 	rolling = true
 	local last = #cards
 	for i, card in cards do
-		task.delay(dealTotal + Config.CardRollStagger * (i - 1), function()
+		task.delay(Config.CardDealStagger * (i - 1) + Config.CardRollStagger * (i - 1), function()
 			if not uis[i].inner.Parent then
 				return
 			end

@@ -144,15 +144,47 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			lastShown = -1
 		elseif name == "HeatChanged" then
 			local up = (data.delta or 0) > 0
-			setHeat(data.value, true)
-			UI.punch(stars, if up then 1.35 else 0.85, 0.45)
-			-- Flash the star that changed.
-			local idx = math.clamp(math.ceil(if up then data.value else data.value + 0.5), 1, 5)
-			local cell = clips[idx] and clips[idx].Parent
-			if cell then
-				UI.punch(cell :: GuiObject, if up then 1.8 else 0.6, 0.5)
+			local color = if up then Theme.Colors.gold else Theme.Colors.red
+			-- The row stretches wide and settles, each star pops in sequence, the changed star flashes.
+			UI.punch(stars, if up then 1.9 else 0.5, 0.7)
+			local changed = math.clamp(math.ceil(if up then data.value else data.value + 0.5), 1, 5)
+			for i, clip in clips do
+				local cell = clip.Parent :: GuiObject
+				task.delay((i - 1) * 0.06, function()
+					if not cell.Parent then
+						return
+					end
+					UI.punch(cell, if i == changed then 2.4 else 1.5, 0.5)
+					local goldStar = clip:FindFirstChildOfClass("TextLabel")
+					if goldStar then
+						goldStar.TextColor3 = if up then Theme.Colors.white else Theme.Colors.red
+						UI.tween(goldStar, { TextColor3 = Theme.Colors.gold }, 0.5, nil, nil, 0.1)
+					end
+				end)
 			end
-			UI.sound(if up then Theme.Sounds.legendary else Theme.Sounds.deny, if up then 1.3 else 0.7, 0.5)
+			task.delay(0.2, function()
+				setHeat(data.value, true)
+			end)
+			-- Big label under the stars, then a screen flash and shake.
+			local label = UI.text({
+				Text = if up then "HEAT UP" else "HEAT DOWN",
+				Font = Theme.Fonts.display,
+				TextSize = S(26),
+				TextColor3 = color,
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, S(78)),
+				Size = UDim2.fromOffset(S(240), S(32)),
+				Parent = root,
+			})
+			UI.stroke(label, Theme.Colors.black, S(2), 0.3)
+			UI.punch(label, 1.6, 0.5)
+			UI.tween(label, { Position = UDim2.new(0.5, 0, 0, S(96)), TextTransparency = 1 }, 0.6, nil, nil, 0.6)
+			task.delay(1.3, function()
+				label:Destroy()
+			end)
+			ClientState.Juice:Fire("RarityFlash", { color = color, alpha = 0.25 })
+			ClientState.Juice:Fire("Shake", { amp = if up then 0.2 else 0.35, dur = 0.25 })
+			UI.sound(if up then Theme.Sounds.legendary else Theme.Sounds.deny, if up then 1.3 else 0.7, 0.6)
 		end
 	end
 

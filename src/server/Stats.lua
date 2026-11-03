@@ -31,17 +31,29 @@ function Stats.weaponDamage(weaponId: string, rarity: number, dmgPct: number): n
 	return w.baseDmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
 end
 
-function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.Held): Types.Computed
+export type Buffs = { fireRateMult: number, moveSpeedMult: number }
+
+-- DPS as shown on tags and the held slot: damage x shots per second x pellets.
+function Stats.weaponDps(weaponId: string, rarity: number, upgrades: { [string]: Types.TrackerItem }): number
+	local w = Weapons.ById[weaponId]
+	return Stats.weaponDamage(weaponId, rarity, pct(upgrades, "Damage"))
+		* w.fireRate
+		* mult(upgrades, "FireRate")
+		* w.pellets
+end
+
+function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.Held, buffs: Buffs?): Types.Computed
 	local w = Weapons.ById[held.weaponId]
 	local crit = upgrades.CritChance
+	local b = buffs or { fireRateMult = 1, moveSpeedMult = 1 }
 	return {
 		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage")),
-		fireRate = w.fireRate * mult(upgrades, "FireRate"),
+		fireRate = w.fireRate * mult(upgrades, "FireRate") * b.fireRateMult,
 		magSize = math.max(1, math.round(w.magSize * mult(upgrades, "MagSize"))),
 		reloadTime = w.reloadTime / mult(upgrades, "ReloadSpeed"),
 		maxHP = math.max(1, math.round(Config.PlayerMaxHP * mult(upgrades, "MaxHP"))),
 		hpRegen = Config.PlayerHPRegenPerSec * mult(upgrades, "HPRegen"),
-		moveSpeed = Config.PlayerWalkSpeed * mult(upgrades, "MoveSpeed"),
+		moveSpeed = Config.PlayerWalkSpeed * mult(upgrades, "MoveSpeed") * b.moveSpeedMult,
 		critChance = math.max(0, Config.BaseCritChancePct + (if crit then crit.pct else 0)),
 		headshotMult = Config.HeadshotMult * mult(upgrades, "HeadshotMult"),
 		greed = mult(upgrades, "Greed"),

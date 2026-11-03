@@ -216,7 +216,8 @@ local function spin(weapon: any)
 	p.markerStroke.Transparency = 0
 	p.title.Text = string.upper(weapon.rarityName)
 	p.title.TextColor3 = color
-	p.result.Text = string.format("%s  ·  DMG %d", string.upper(weapon.displayName), weapon.dmg)
+	p.result.Text =
+		string.format("%s  ·  DMG %d  ·  DPS %d", string.upper(weapon.displayName), weapon.dmg, weapon.dps or 0)
 	p.result.TextColor3 = color
 	local center = p.panel.AbsolutePosition + p.panel.AbsoluteSize / 2
 	local j = Juice.burst(weapon.rarity, color, center)

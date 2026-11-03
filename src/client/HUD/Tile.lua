@@ -49,6 +49,7 @@ local function makeIcon(kind: string, parent: Frame, size: number): GuiObject
 		elseif kind == "turret" then "TRT"
 		elseif kind == "wall" then "WAL"
 		elseif kind == "boom" then "BOM"
+		elseif kind == "stim" then "STM"
 		elseif kind == "melee" then "V"
 		else "?"
 	local label = UI.text({

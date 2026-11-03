@@ -202,6 +202,24 @@ function WorldFx.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			ClientState.Juice:Fire("Shake", { amp = 0.15, dur = 0.15 })
 		elseif name == "Multishot" then
 			UI.sound(Theme.Sounds.shot, 1.4, 0.25)
+		elseif name == "TurretShot" then
+			trail(data.from, data.to, Theme.Colors.gold, 0.06)
+			UI.sound(Theme.Sounds.shot, 1.6, 0.15)
+		elseif name == "StructurePlaced" then
+			blastRing(data.position, 5, Theme.Colors.gold)
+			UI.sound(Theme.Sounds.crate, 1.2, 0.5)
+		elseif name == "StructureHit" then
+			UI.sound(Theme.Sounds.kill, 0.8, 0.2)
+		elseif name == "StructureGone" then
+			blastRing(data.position, 6, Theme.Colors.malus)
+			UI.sound(Theme.Sounds.deny, 0.9, 0.4)
+		elseif name == "StimStart" then
+			vignette.BackgroundColor3 = Theme.Colors.gold
+			vignette.BackgroundTransparency = 0.5
+			UI.tween(vignette, { BackgroundTransparency = 1 }, 0.6)
+			task.delay(0.65, function()
+				vignette.BackgroundColor3 = Theme.Colors.red
+			end)
 		elseif name == "GunLanded" then
 			UI.sound(Theme.Sounds.crate, 1.3, 0.5)
 			local gui = billboard(data.position + Vector3.new(0, 1, 0), 60, 60, 0.5)

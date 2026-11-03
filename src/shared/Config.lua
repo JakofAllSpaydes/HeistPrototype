@@ -75,7 +75,7 @@ local Config = {
 	TrackerCols = 10,
 
 	------------------------------------------------------------------ Weapon reel / ground loot
-	RollDurationSec = 1.2,
+	RollDurationSec = 2.0,
 	RollLandHoldSec = 0.5, -- reel shows the result this long before the gun ejects
 	RollEjectSec = 0.4,
 	GunDropHeight = 14, -- rolled guns fall in from this height
@@ -118,6 +118,23 @@ local Config = {
 	SideJobHoldSec = 2, -- hold the HACK prompt on the beacon this long to complete
 	SideJobRewardCrate = true, -- a crate drops at the beacon on completion
 	CallPillWarnSec = 10, -- pill turns red under this many seconds
+
+	------------------------------------------------------------------ Abilities (Q turret, E barricade, Z stim)
+	StructurePlaceDistance = 5, -- studs in front of the player
+	TurretHP = 150,
+	TurretDmg = 12,
+	TurretFireRate = 3, -- shots per second
+	TurretRange = 45,
+	TurretLifetime = 30,
+	TurretCooldown = 20,
+	BarricadeHP = 300,
+	BarricadeSize = Vector3.new(8, 4, 1),
+	BarricadeLifetime = 45,
+	BarricadeCooldown = 15,
+	StimDuration = 6,
+	StimMoveMult = 1.5,
+	StimFireRateMult = 1.6,
+	StimCooldown = 20,
 
 	------------------------------------------------------------------ Heat (stars, 0..5)
 	HeatStart = 2.5,

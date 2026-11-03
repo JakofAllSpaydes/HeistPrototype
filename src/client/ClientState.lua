@@ -15,7 +15,7 @@ local ClientState = {
 	Juice = Signal.new(), -- (name, data) from the server, plus local events (LocalFire, LocalReload)
 	Ammo = Signal.new(), -- ({ mag, max, reloading })
 	BlockChanged = Signal.new(),
-	ammo = { mag = 0, max = 0, reloading = false },
+	ammo = { mag = 0, max = 0, reloading = false, reloadStartedAt = 0, reloadEndsAt = 0 },
 	blocks = {} :: { [string]: boolean }, -- reasons the gun is held and the mouse is free
 	touchFire = false, -- mobile fire button held
 	isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,

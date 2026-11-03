@@ -29,7 +29,7 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.stroke(ammo, Theme.Colors.black, S(1.5), 0.4)
 	local hint = UI.text({
 		Name = "Hint",
-		Text = "R RELOAD · F INTERACT · CTRL CAMERA LOCK · ` DEBUG",
+		Text = "R RELOAD · F INTERACT · Q E Z ABILITIES · CTRL CAMERA · ` DEBUG",
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Right,

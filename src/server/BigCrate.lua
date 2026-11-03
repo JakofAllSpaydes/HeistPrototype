@@ -37,6 +37,11 @@ local function weaponCount(): number
 	return math.max(Config.BigCrateWeaponCount.min, #Players:GetPlayers() + Config.BigCrateWeaponCount.plus)
 end
 
+local function tagUpgrades(): { [string]: any }
+	local first = Players:GetPlayers()[1]
+	return if first then PlayerState.get(first).upgrades else {}
+end
+
 local function tagDamagePct(): number
 	local first = Players:GetPlayers()[1]
 	return if first then PlayerState.damagePct(PlayerState.get(first)) else 0
@@ -152,6 +157,7 @@ function BigCrate.drop(at: Vector3?)
 				rarity = rarity,
 				cframe = CFrame.new(landPos + Vector3.new(0, body.Size.Y + 0.5, 0)),
 				dmg = Stats.weaponDamage(weapon.id, rarity, dmgPct),
+				dps = Stats.weaponDps(weapon.id, rarity, tagUpgrades()),
 				lifetime = Config.GroundWeaponLifetime,
 				crateId = id,
 				slot = slot,

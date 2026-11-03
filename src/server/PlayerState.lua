@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -32,6 +33,8 @@ export type State = {
 	lastShotAt: number,
 	nextUid: number,
 	dirty: boolean,
+	cooldowns: { [string]: number }, -- ability id -> server time the cooldown ends
+	stimUntil: number, -- server time the stim buff ends, 0 = inactive
 }
 
 local states: { [Player]: State } = {}
@@ -56,6 +59,8 @@ local function freshState(player: Player): State
 		lastShotAt = 0,
 		nextUid = 2,
 		dirty = true,
+		cooldowns = {},
+		stimUntil = 0,
 	}
 end
 
@@ -85,8 +90,16 @@ function PlayerState.markAllDirty()
 	end
 end
 
+function PlayerState.stimActive(state: State): boolean
+	return state.stimUntil > Workspace:GetServerTimeNow()
+end
+
 function PlayerState.computed(state: State): Types.Computed
-	return Stats.compute(state.upgrades, state.held)
+	local buffs: Stats.Buffs? = nil
+	if PlayerState.stimActive(state) then
+		buffs = { fireRateMult = Config.StimFireRateMult, moveSpeedMult = Config.StimMoveMult }
+	end
+	return Stats.compute(state.upgrades, state.held, buffs)
 end
 
 function PlayerState.damagePct(state: State): number
@@ -218,6 +231,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 			rarity = state.held.rarity,
 			rarityName = Rarity.name(state.held.rarity),
 			dmg = st.damage,
+			dps = Stats.weaponDps(w.id, state.held.rarity, state.upgrades),
 			fireRate = st.fireRate,
 			magSize = st.magSize,
 			reloadTime = st.reloadTime,
@@ -235,6 +249,15 @@ function PlayerState.buildSync(state: State): Types.Sync
 		openPick3 = state.openPick3,
 		cratesTaken = cratesTaken,
 		god = state.god,
+		abilities = {
+			turret = { cooldown = Config.TurretCooldown, cooldownEndsAt = state.cooldowns.turret or 0 },
+			barricade = { cooldown = Config.BarricadeCooldown, cooldownEndsAt = state.cooldowns.barricade or 0 },
+			stim = {
+				cooldown = Config.StimCooldown,
+				cooldownEndsAt = state.cooldowns.stim or 0,
+				activeUntil = state.stimUntil,
+			},
+		},
 		spawnsPaused = World.spawnsPaused,
 		debugEnabled = Config.DebugEnabled or RunService:IsStudio(),
 		playerCount = #Players:GetPlayers(),

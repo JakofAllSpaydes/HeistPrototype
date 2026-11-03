@@ -45,13 +45,18 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		shakeAmp = math.max(shakeAmp, data.amp or 0)
 		shakeTotal = data.dur or 0.2
 		shakeLeft = shakeTotal
+	elseif name == "StimStart" then
+		stimFov = 6
+	elseif name == "StimEnd" then
+		stimFov = 0
 	end
 end)
+local stimFov = 0
 
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
 	fovKick = math.max(0, fovKick - dt * 18)
-	camera.FieldOfView = Config.CameraFov + fovKick
+	camera.FieldOfView = Config.CameraFov + fovKick + stimFov
 	local free = ClientState.isMouseFree()
 	UserInputService.MouseBehavior = if free then Enum.MouseBehavior.Default else Enum.MouseBehavior.LockCenter
 	UserInputService.MouseIconEnabled = free

@@ -23,6 +23,7 @@ export type HeldView = {
 	rarity: number,
 	rarityName: string,
 	dmg: number,
+	dps: number,
 	fireRate: number,
 	magSize: number,
 	reloadTime: number,
@@ -51,7 +52,10 @@ export type Computed = {
 	lifesteal: number,
 }
 
+export type Ability = { cooldown: number, cooldownEndsAt: number, activeUntil: number? }
+
 export type Sync = {
+	abilities: { [string]: Ability },
 	wave: number,
 	waveState: string,
 	intermissionEndsAt: number,
