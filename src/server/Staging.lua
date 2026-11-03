@@ -129,12 +129,6 @@ local function decorate()
 	end
 end
 
-local function teleport(char: Model, cf: CFrame)
-	if char:FindFirstChild("HumanoidRootPart") then
-		char:PivotTo(cf)
-	end
-end
-
 -- Everything hostile or left over from the last run goes away.
 function Staging.clearArena()
 	Enemy.killAll()
@@ -146,12 +140,6 @@ function Staging.clearArena()
 	World.enemiesLeft = 0
 end
 
--- Line positions in front of the arena spawn, facing north into the arena: slot i of n.
-function Staging.lineCFrame(i: number, n: number): CFrame
-	local x = (i - (n + 1) / 2) * 3
-	return CFrame.new(Room.arenaSpawn + Vector3.new(x, 3, 6))
-end
-
 -- Where a freshly loaded character belongs. nil = the SpawnLocation in the yard; mid-run late joiners
 -- skip the yard and land at the arena spawn.
 function Staging.spawnCFrame(_player: Player): CFrame?
@@ -161,7 +149,8 @@ function Staging.spawnCFrame(_player: Player): CFrame?
 	return CFrame.new(Room.arenaSpawn + Vector3.new((math.random() - 0.5) * 8, 3, 6))
 end
 
--- Back to the yard: clean arena, van parked, fresh state with StagingCash, everyone teleported out.
+-- Back to the yard: clean arena, van parked, fresh state with StagingCash, and a fresh character for
+-- everyone at the yard spawn (masks off, nothing anchored, bled-out players back).
 function Staging.enter()
 	Staging.clearArena()
 	local van = Room.van
@@ -173,29 +162,19 @@ function Staging.enter()
 	end
 	for player, state in PlayerState.all() do
 		PlayerState.reset(state, Config.StagingCash)
-		local char = player.Character
-		if char then
-			teleport(char, Room.yardSpawn * CFrame.new((math.random() - 0.5) * 8, 0, (math.random() - 0.5) * 4))
-		else
-			-- Bled out last run: a fresh character at the yard spawn.
-			player:LoadCharacter()
-		end
+		player:LoadCharacter()
 	end
 end
 
--- Bare run start: fresh run state, everyone lined up on the arena spawn. The drive-in sequence
--- replaces the teleport once it exists.
+-- Run start: fresh run state for everyone where they stand; RunStart moves them.
 function Staging.beginRun()
 	if startPrompt then
 		startPrompt.Enabled = false
 	end
-	local players = Players:GetPlayers()
-	for i, player in players do
-		local state = PlayerState.get(player)
+	for player, state in PlayerState.all() do
 		PlayerState.reset(state, Config.StartingCash)
-		local char = player.Character
-		if char then
-			teleport(char, Staging.lineCFrame(i, #players))
+		if not player.Character then
+			player:LoadCharacter()
 		end
 	end
 end

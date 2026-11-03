@@ -133,6 +133,13 @@ end
 
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
+	local requested = ClientState.requestCameraYaw
+	if requested then
+		-- A sequence just ended behind the player: pick up facing the same way.
+		yaw = requested
+		pitch = -0.12
+		ClientState.requestCameraYaw = nil
+	end
 	fovKick = math.max(0, fovKick - dt * 18)
 	local adsGoal = if ClientState.ads then 1 else 0
 	local adsRate = dt / math.max(Config.AdsBlendSec, 0.01)

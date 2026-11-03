@@ -295,6 +295,10 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			flash.BackgroundTransparency = 0.8
 			UI.tween(flash, { BackgroundTransparency = 1 }, 0.5)
 			ClientState.Juice:Fire("Shake", { amp = 0.25, dur = 0.3 })
+		elseif name == "VanBrake" and typeof(data.position) == "Vector3" then
+			blastRing(data.position, 14, Color3.fromRGB(160, 150, 130))
+			UI.sound(Theme.Sounds.crate, 0.7, 0.7)
+			ClientState.Juice:Fire("Shake", { amp = 0.3, dur = 0.3 })
 		elseif name == "RunOver" then
 			-- Slow-mo read: the world drains of color and tints red for the stamp, then recovers.
 			local existing = Lighting:FindFirstChild("GHSSlowMo")

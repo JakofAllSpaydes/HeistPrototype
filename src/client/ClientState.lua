@@ -28,6 +28,7 @@ local ClientState = {
 	reviveProgress = 0, -- 0..1 while this player holds a revive on a teammate (ring on the crosshair)
 	reviveNearby = false, -- a downed teammate is within ReviveRadius: F means revive, gun prompts step aside
 	downedPlayers = {} :: { [number]: boolean }, -- userId -> currently down (any player)
+	requestCameraYaw = nil :: number?, -- a sequence hands the gameplay camera back facing this yaw
 }
 
 function ClientState.setAds(on: boolean)

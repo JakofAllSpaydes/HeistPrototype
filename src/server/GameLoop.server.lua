@@ -27,6 +27,7 @@ local SkipVote = require(script.Parent.SkipVote)
 local Staging = require(script.Parent.Staging)
 local Minigames = require(script.Parent.Minigames)
 local Downed = require(script.Parent.Downed)
+local RunStart = require(script.Parent.RunStart)
 
 PlayerState.init()
 Downed.init()
@@ -139,16 +140,15 @@ task.spawn(function()
 		World.runRequested = false
 		World.runId += 1
 
-		-- Run start. Bare teleport-in for now; the drive-in sequence takes this slot.
+		-- Run start: fresh run state, then the drive-in sequence (IntroSec); WAVE 1 follows straight after.
 		World.wave = 1
 		World.heat = Config.HeatStart
 		World.heatDirty = true
 		Staging.beginRun()
 		setState("Intro")
-		Remotes.Juice:FireAllClients("WaveStart", { wave = 1, intro = true })
 		Log.event("Run", "Run %d start, first wave in %.1fs", World.runId, Config.IntroSec)
+		RunStart.play()
 		BigCrate.onIntro()
-		task.wait(Config.IntroSec)
 
 		runWaves()
 

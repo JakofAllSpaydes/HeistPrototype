@@ -30,6 +30,7 @@ require(script.Parent:WaitForChild("Markers")).init()
 require(script.Parent:WaitForChild("Minigames")).init()
 require(script.Parent:WaitForChild("DownedUI")).init()
 require(script.Parent:WaitForChild("Spectate")).init()
+require(script.Parent:WaitForChild("RunStartUI")).init()
 require(script.Parent:WaitForChild("DebugPanel")).init()
 
 -- Ctrl toggles the camera lock (mouse free / locked). Hold Left Alt to free it temporarily.
