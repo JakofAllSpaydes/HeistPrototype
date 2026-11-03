@@ -26,7 +26,26 @@ local function coneSpread(direction: Vector3, halfAngleDeg: number): Vector3
 	return offset.LookVector
 end
 
-type Shooter = { player: Player, state: PlayerState.State, stats: Types.Computed, char: Model }
+type Shooter = {
+	player: Player,
+	state: PlayerState.State,
+	stats: Types.Computed,
+	char: Model,
+	weapon: Weapons.Weapon,
+}
+
+-- Distance falloff multiplier for the shooter's archetype (Config.FalloffByArchetype).
+local function falloff(shooter: Shooter, distance: number): number
+	local f = Config.FalloffByArchetype[shooter.weapon.archetype]
+	if not f or distance <= f.start then
+		return 1
+	end
+	if distance >= f.finish then
+		return f.min
+	end
+	local t = (distance - f.start) / math.max(f.finish - f.start, 0.01)
+	return 1 + (f.min - 1) * t
+end
 
 local function heal(shooter: Shooter, amount: number)
 	if amount <= 0 then
@@ -76,12 +95,15 @@ local function dealDamage(
 	end
 end
 
--- A direct bullet hit on an enemy part: crit/headshot roll, then ricochet.
-local function bulletHit(shooter: Shooter, model: Model, part: BasePart, position: Vector3)
+-- A direct bullet hit on an enemy part: falloff by distance from the muzzle, crit/headshot roll, then ricochet.
+local function bulletHit(shooter: Shooter, model: Model, part: BasePart, position: Vector3, origin: Vector3)
 	local st = shooter.stats
 	local headshot = part.Name == "Head"
 	local crit = math.random() * 100 < st.critChance
-	local dmg = st.damage * (if headshot then st.headshotMult else 1) * (if crit then Config.CritDmgMult else 1)
+	local dmg = st.damage
+		* falloff(shooter, (position - origin).Magnitude)
+		* (if headshot then st.headshotMult else 1)
+		* (if crit then Config.CritDmgMult else 1)
 	dealDamage(shooter, model, dmg, position, { headshot = headshot, crit = crit }, true)
 
 	if st.ricochet > 0 and math.random() * 100 < st.ricochet then
@@ -111,7 +133,7 @@ local function fireBullet(shooter: Shooter, origin: Vector3, dir: Vector3, baseF
 		if not model then
 			return -- wall, pillar, floor: the bullet stops
 		end
-		bulletHit(shooter, model, result.Instance :: BasePart, result.Position)
+		bulletHit(shooter, model, result.Instance :: BasePart, result.Position, origin)
 		table.insert(filter, model)
 		remaining -= (result.Position - from).Magnitude
 		from = result.Position
@@ -150,7 +172,7 @@ function Combat.init()
 		state.lastShotAt = now
 
 		local weapon = Weapons.ById[state.held.weaponId]
-		local shooter: Shooter = { player = player, state = state, stats = st, char = char }
+		local shooter: Shooter = { player = player, state = state, stats = st, char = char, weapon = weapon }
 		local dir = direction.Unit
 		local baseFilter: { Instance } = { char, groundLoot, effects }
 		local spread = weapon.spread * st.spreadMult

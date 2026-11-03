@@ -170,11 +170,26 @@ local function spin(weapon: any)
 	local t = tile()
 	local p = buildPanel()
 	fillRow(p, weapon)
+	local pulsing = true
 	if t then
 		t.icon.Visible = false
 		t.name.Text = "ROLLING"
 		t.pricePill.Visible = false
 		t.setGreyed(true)
+		-- Gold stroke breathes on the tile for as long as the reel runs.
+		task.spawn(function()
+			local tt = 0
+			while pulsing and t.button.Parent do
+				tt += 6 * task.wait()
+				t.stroke.Color = Theme.Colors.gold
+				t.stroke.Transparency = 0.2 + 0.3 * (0.5 + 0.5 * math.sin(tt))
+				t.stroke.Thickness = UI.S(2) + UI.S(2) * (0.5 + 0.5 * math.sin(tt))
+			end
+			if t.button.Parent then
+				t.stroke.Transparency = 0
+				t.stroke.Thickness = UI.S(2)
+			end
+		end)
 	end
 
 	-- Scroll so the last cell ends under the marker.
@@ -204,6 +219,7 @@ local function spin(weapon: any)
 	end)
 	tween.Completed:Wait()
 	conn:Disconnect()
+	pulsing = false
 	if not p.panel.Parent then
 		spinning = false
 		return
@@ -216,7 +232,12 @@ local function spin(weapon: any)
 	p.markerStroke.Transparency = 0
 	p.title.Text = string.upper(weapon.rarityName)
 	p.title.TextColor3 = color
-	p.result.Text = string.format("%s  ·  DPS %d", string.upper(weapon.displayName), weapon.dps or 0)
+	p.result.Text = string.format(
+		"%s  ·  DMG %s  ·  %s",
+		string.upper(weapon.displayName),
+		UI.fmtDmg(weapon.dmg or 0, weapon.pellets or 1),
+		UI.fmtRate((weapon.fireRate or 0) * ClientState.rateMult())
+	)
 	p.result.TextColor3 = color
 	local center = p.panel.AbsolutePosition + p.panel.AbsoluteSize / 2
 	local j = Juice.burst(weapon.rarity, color, center)

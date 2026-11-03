@@ -1,5 +1,6 @@
 --!strict
 -- Wave state shared by every server module. GameLoop writes, everyone else reads.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -12,7 +13,40 @@ local World = {
 	pendingWave = nil :: number?, -- set by debug: next loop iteration jumps here
 	skipRequested = false, -- set by debug: end the current wave / intermission now
 	spawnsPaused = false,
+	enemiesLeft = 0, -- unspawned budget + alive, kept current by Spawner during a wave
+	waveStartedAt = 0, -- server time the current wave started
+	skipVotes = {} :: { [number]: boolean }, -- userId -> voted to skip this intermission
+	autoSkip = {} :: { [number]: boolean }, -- userId -> votes automatically every intermission
 }
+
+function World.skipNeeded(): number
+	return math.max(1, math.ceil(#Players:GetPlayers() * Config.SkipVoteFraction))
+end
+
+function World.skipVoteCount(): number
+	local n = 0
+	for _, p in Players:GetPlayers() do
+		if World.skipVotes[p.UserId] or World.autoSkip[p.UserId] then
+			n += 1
+		end
+	end
+	return n
+end
+
+function World.skipVotePassed(): boolean
+	return World.state == "Intermission" and World.skipVoteCount() >= World.skipNeeded()
+end
+
+-- Enough players have AUTO SKIP on for waves to roll into each other.
+function World.autoSkipActive(): boolean
+	local n = 0
+	for _, p in Players:GetPlayers() do
+		if World.autoSkip[p.UserId] then
+			n += 1
+		end
+	end
+	return n > 0 and n >= World.skipNeeded()
+end
 
 -- Heat moves in half-star steps. Everyone sees the change; PlayerState resends on the next flush.
 World.heatDirty = false

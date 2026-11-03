@@ -9,6 +9,7 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rarity"))
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
 local WorldFx = {}
 
@@ -170,6 +171,76 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end))
 	end
 
+	-- Multi-kill counter beside the crosshair: kills inside Config.ComboWindowSec chain, pitch climbs.
+	local S = UI.S
+	local comboLabel = UI.text({
+		Name = "Combo",
+		Text = "",
+		Font = Theme.Fonts.display,
+		TextSize = S(18),
+		TextColor3 = Theme.Colors.gold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0.5, S(44), 0.5, -S(30)),
+		Size = UDim2.fromOffset(S(200), S(40)),
+		Visible = false,
+		ZIndex = 4,
+		Parent = gui,
+	})
+	local comboStroke = UI.stroke(comboLabel, Theme.Colors.black, S(2), 0.2)
+	local combo = 0
+	local lastKillAt = -100
+	local comboToken = 0
+	local function onKill()
+		local now = os.clock()
+		combo = if now - lastKillAt <= Config.ComboWindowSec then combo + 1 else 1
+		lastKillAt = now
+		-- The count climbs with every kill from x2; the word only changes when a tier count is reached.
+		if combo < 2 then
+			return
+		end
+		local reached = 0
+		local hit = false
+		for i, tier in Config.ComboTiers do
+			if combo >= tier.at then
+				reached = i
+			end
+			if combo == tier.at then
+				hit = true
+			end
+		end
+		local word = if reached > 0 then " " .. Config.ComboTiers[reached].name else ""
+		comboLabel.Text = string.format("x%d%s", combo, word)
+		comboLabel.TextColor3 = if reached >= 5 then Theme.Colors.red else Theme.Colors.gold
+		comboLabel.TextSize = S(16 + reached * 2)
+		comboLabel.TextTransparency = 0
+		comboStroke.Transparency = 0.2
+		comboLabel.Visible = true
+		if hit then
+			UI.punch(comboLabel, 1.4 + reached * 0.08, 0.3)
+			UI.sound(Theme.Sounds.kill, math.min(2.4, 1.3 + reached * 0.15), 0.25)
+			if reached >= 4 then
+				ClientState.Juice:Fire("Shake", { amp = 0.15, dur = 0.2 })
+			end
+		else
+			UI.punch(comboLabel, 1.15, 0.15)
+		end
+		comboToken += 1
+		local token = comboToken
+		task.delay(Config.ComboWindowSec, function()
+			if token ~= comboToken then
+				return
+			end
+			UI.tween(comboLabel, { TextTransparency = 1 }, 0.3)
+			UI.tween(comboStroke, { Transparency = 1 }, 0.3)
+			task.delay(0.32, function()
+				if token == comboToken then
+					comboLabel.Visible = false
+				end
+			end)
+		end)
+	end
+
 	local component = {}
 
 	function component.onJuice(name: string, data: any)
@@ -191,6 +262,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			if data.killed then
 				killPop(data.position)
 				UI.sound(Theme.Sounds.kill, 1.2, 0.12)
+				onKill()
 				if data.cash and data.cash > 0 then
 					floatText(
 						data.position + Vector3.new(0, 1, 0),
@@ -215,6 +287,8 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			ClientState.Juice:Fire("Shake", { amp = 0.15, dur = 0.15 })
 		elseif name == "Swap" and typeof(data.position) == "Vector3" then
 			blastRing(data.position, 6, Rarity.color(data.rarity or 1))
+		elseif name == "CallEnd" and typeof(data.position) == "Vector3" then
+			blastRing(data.position, 10, if data.success then Theme.Colors.cash else Theme.Colors.red)
 		elseif name == "WaveStart" then
 			flash.BackgroundColor3 = Theme.Colors.text
 			flash.BackgroundTransparency = 0.8

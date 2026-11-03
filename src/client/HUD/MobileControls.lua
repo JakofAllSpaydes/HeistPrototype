@@ -1,5 +1,5 @@
 --!strict
--- Mobile landscape: fire + ADS stub bottom-right, reload tap button beside the weapon slot.
+-- Mobile landscape: fire + ADS toggle bottom-right, reload tap button beside the weapon slot.
 -- The joystick is Roblox's default dynamic thumbstick.
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -63,19 +63,28 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Parent = gui,
 	})
 	UI.corner(ads, S(28))
-	UI.stroke(ads, Theme.Colors.grey, S(2))
+	local adsStroke = UI.stroke(ads, Theme.Colors.grey, S(2))
+	local function paintAds(on: boolean)
+		ads.TextColor3 = if on then Theme.Colors.gold else Theme.Colors.grey
+		adsStroke.Color = if on then Theme.Colors.gold else Theme.Colors.grey
+		ads.BackgroundTransparency = if on then 0 else 0.25
+	end
+	paintAds(ClientState.ads)
 	ads.Activated:Connect(function()
-		ads.Text = "STUB"
-		task.delay(0.8, function()
-			ads.Text = "ADS"
-		end)
+		ClientState.setAds(not ClientState.ads)
+		UI.punch(ads, 0.9, 0.15)
 	end)
+	_track(ClientState.Juice:Connect(function(name: string, data: any)
+		if name == "Ads" then
+			paintAds(data.on == true)
+		end
+	end))
 
 	local reload = UI.button({
 		Name = "ReloadButton",
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0.5, S(150), 1, -S(18)),
+		Position = UDim2.new(0.5, S(120), 1, -S(18)),
 		Size = UDim2.fromOffset(S(56), S(56)),
 		Text = "R",
 		Font = Theme.Fonts.display,

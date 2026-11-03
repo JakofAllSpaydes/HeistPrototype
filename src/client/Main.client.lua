@@ -26,6 +26,7 @@ require(script.Parent:WaitForChild("UpgradeOverlay")).init()
 require(script.Parent:WaitForChild("WeaponReel")).init()
 require(script.Parent:WaitForChild("GroundLoot")).init()
 require(script.Parent:WaitForChild("CrewCallUI")).init()
+require(script.Parent:WaitForChild("Markers")).init()
 require(script.Parent:WaitForChild("DebugPanel")).init()
 
 -- Ctrl toggles the camera lock (mouse free / locked). Hold Left Alt to free it temporarily.

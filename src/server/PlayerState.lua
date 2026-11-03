@@ -99,7 +99,11 @@ end
 function PlayerState.computed(state: State): Types.Computed
 	local buffs: Stats.Buffs? = nil
 	if PlayerState.stimActive(state) then
-		buffs = { fireRateMult = Config.StimFireRateMult, moveSpeedMult = Config.StimMoveMult }
+		buffs = {
+			fireRateMult = Config.StimFireRateMult,
+			moveSpeedMult = Config.StimMoveMult,
+			reloadSpeedMult = Config.StimReloadSpeedMult,
+		}
 	end
 	return Stats.compute(state.upgrades, state.held, buffs)
 end
@@ -240,6 +244,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 			spread = w.spread * st.spreadMult,
 			pellets = w.pellets,
 			auto = w.auto,
+			shellReload = w.shellReload,
 			uid = state.held.uid,
 		},
 		stats = st,
@@ -263,6 +268,12 @@ function PlayerState.buildSync(state: State): Types.Sync
 		spawnsPaused = World.spawnsPaused,
 		debugEnabled = Config.DebugEnabled or RunService:IsStudio(),
 		playerCount = #Players:GetPlayers(),
+		enemiesLeft = World.enemiesLeft,
+		waveStartedAt = World.waveStartedAt,
+		skipVotes = World.skipVoteCount(),
+		skipNeeded = World.skipNeeded(),
+		myVote = World.skipVotes[state.player.UserId] == true,
+		autoSkip = World.autoSkip[state.player.UserId] == true,
 	}
 end
 

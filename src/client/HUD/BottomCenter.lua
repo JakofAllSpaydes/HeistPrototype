@@ -1,5 +1,5 @@
 --!strict
--- Bottom-center: health bar with cur / max, held weapon slot (icon, name, rarity pill, DMG), melee slot (V, stub).
+-- Bottom-center: health bar with cur / max and the held weapon slot (icon, name, rarity pill, DMG + RATE).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -58,7 +58,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Name = "WeaponSlot",
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, -S(34), 0, slotY),
+		Position = UDim2.new(0.5, 0, 0, slotY),
 		Size = UDim2.fromOffset(S(220), slotH),
 		Parent = root,
 	})
@@ -85,84 +85,27 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	local pill, pillLabel = UI.pill(slot, "COMMON", Theme.Colors.grey, Theme.Colors.bg, S(16), S(10))
 	pill.Position = UDim2.fromOffset(slotH + S(2), S(30))
+	-- Right column: damage per shot over fire rate, the same two numbers the floor tags compare.
 	local dmg = UI.text({
 		Text = "DMG 22",
-		TextSize = S(12),
+		TextSize = S(11),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(8), 0, S(30)),
-		Size = UDim2.fromOffset(S(80), S(18)),
+		Position = UDim2.new(1, -S(8), 0, S(22)),
+		Size = UDim2.fromOffset(S(90), S(16)),
 		Parent = slot,
 	})
-
-	-- Melee slot (stub)
-	local melee = UI.button({
-		Name = "MeleeSlot",
-		BackgroundColor3 = Theme.Colors.panel,
-		AnchorPoint = Vector2.new(0, 0),
-		Position = UDim2.new(0.5, S(82), 0, slotY),
-		Size = UDim2.fromOffset(slotH, slotH),
-		Parent = root,
-	})
-	UI.corner(melee, S(10))
-	UI.stroke(melee, Theme.Colors.grey, S(2))
-	local chip = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel2,
-		Position = UDim2.fromOffset(-S(4), -S(6)),
-		Size = UDim2.fromOffset(S(20), S(18)),
-		ZIndex = 2,
-		Parent = melee,
-	})
-	UI.corner(chip, S(5))
-	UI.text({ Text = "V", TextSize = S(11), Size = UDim2.fromScale(1, 1), ZIndex = 2, Parent = chip })
-	UI.text({
-		Text = "MELEE",
-		Font = Theme.Fonts.display,
+	local rate = UI.text({
+		Text = "RATE 4.0/s",
 		TextSize = S(11),
-		TextColor3 = Theme.Colors.grey,
-		Size = UDim2.new(1, 0, 0, S(16)),
-		Position = UDim2.new(0, 0, 1, -S(18)),
-		Parent = melee,
+		TextColor3 = Theme.Colors.text,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(8), 0, S(37)),
+		Size = UDim2.fromOffset(S(90), S(16)),
+		Parent = slot,
 	})
-	UI.text({
-		Text = "/",
-		Font = Theme.Fonts.display,
-		TextSize = S(26),
-		TextColor3 = Theme.Colors.grey,
-		Size = UDim2.new(1, 0, 0, S(34)),
-		Parent = melee,
-	})
-	local stubTip = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel2,
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0, -S(10)),
-		Size = UDim2.fromOffset(S(60), S(22)),
-		Visible = false,
-		ZIndex = 5,
-		Parent = melee,
-	})
-	UI.corner(stubTip, S(6))
-	UI.text({
-		Text = "STUB",
-		TextSize = S(11),
-		TextColor3 = Theme.Colors.grey,
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 5,
-		Parent = stubTip,
-	})
-	melee.MouseEnter:Connect(function()
-		stubTip.Visible = true
-	end)
-	melee.MouseLeave:Connect(function()
-		stubTip.Visible = false
-	end)
-	melee.Activated:Connect(function()
-		stubTip.Visible = true
-		task.delay(1, function()
-			stubTip.Visible = false
-		end)
-	end)
 
 	-- Health binding
 	local maxHP = 100
@@ -200,6 +143,33 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.frame = root
 	component.slot = slot
 
+	-- Any DPS change (upgrade, swap, tradeoff) floats the delta off the slot.
+	local lastDps = -1
+	local function floatDps(delta: number)
+		local up = delta > 0
+		local label = UI.text({
+			Text = string.format("%s%d DPS", if up then "+" else "", delta),
+			Font = Theme.Fonts.display,
+			TextSize = S(18),
+			TextColor3 = if up then Theme.Colors.cash else Theme.Colors.malus,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -S(8), 0, S(4)),
+			Size = UDim2.fromOffset(S(120), S(24)),
+			ZIndex = 6,
+			Parent = slot,
+		})
+		UI.stroke(label, Theme.Colors.black, S(1.5), 0.3)
+		UI.punch(label, 1.5, 0.3)
+		UI.tween(label, { Position = UDim2.new(1, -S(8), 0, -S(26)), TextTransparency = 1 }, 0.9, nil, nil, 0.3)
+		task.delay(1.25, function()
+			label:Destroy()
+		end)
+		dmg.TextColor3 = if up then Theme.Colors.cash else Theme.Colors.malus
+		UI.punch(dmg, if up then 1.4 else 1.2, 0.35)
+		UI.tween(dmg, { TextColor3 = Theme.Colors.text }, 0.8)
+	end
+
 	function component.update(sync: any)
 		maxHP = sync.maxHP
 		local held = sync.held
@@ -209,7 +179,13 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		pill.BackgroundColor3 = color
 		slotStroke.Color = color
 		UI.recolorIcon(icon, color)
-		dmg.Text = string.format("DPS %d", math.round(held.dps or 0))
+		local dps = math.round(held.dps or 0)
+		if lastDps >= 0 and dps ~= lastDps then
+			floatDps(dps - lastDps)
+		end
+		lastDps = dps
+		dmg.Text = "DMG " .. UI.fmtDmg(held.dmg or 0, held.pellets or 1)
+		rate.Text = "RATE " .. UI.fmtRate(held.fireRate or 0)
 		local char = player.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if hum then
@@ -234,6 +210,10 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				dmg.TextColor3 = Theme.Colors.cash
 				UI.punch(dmg, 1.5, 0.4)
 				UI.tween(dmg, { TextColor3 = Theme.Colors.text }, 0.8)
+			elseif statId == "FireRate" then
+				rate.TextColor3 = Theme.Colors.cash
+				UI.punch(rate, 1.5, 0.4)
+				UI.tween(rate, { TextColor3 = Theme.Colors.text }, 0.8)
 			end
 		elseif juiceName == "PlayerHit" then
 			UI.shake(health, S(2), 0.15)

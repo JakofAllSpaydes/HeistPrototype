@@ -286,4 +286,26 @@ function UI.fmtNum(n: number): string
 	return if n == math.floor(n) then string.format("%d", n) else string.format("%.1f", n)
 end
 
+-- Damage per shot: "33", or "33x8" for multi-pellet guns.
+function UI.fmtDmg(dmg: number, pellets: number): string
+	return if pellets > 1
+		then string.format("%dx%d", math.round(dmg), pellets)
+		else string.format("%d", math.round(dmg))
+end
+
+-- Shots per second: "1.6/s" under ten, "12/s" above.
+function UI.fmtRate(rate: number): string
+	return if rate >= 10 then string.format("%d/s", math.round(rate)) else string.format("%.1f/s", rate)
+end
+
+-- " ▲" / " ▼" / "" comparing a to b, and the matching color.
+function UI.arrow(a: number, b: number): (string, Color3)
+	if a > b + 0.01 then
+		return " ▲", Theme.Colors.cash
+	elseif a < b - 0.01 then
+		return " ▼", Theme.Colors.malus
+	end
+	return "", Theme.Colors.text
+end
+
 return UI

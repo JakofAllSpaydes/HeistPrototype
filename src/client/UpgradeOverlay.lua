@@ -280,25 +280,23 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		Size = UDim2.new(1, -S(16), 0, S(28)),
 		Parent = inner,
 	}))
-	local pill = UI.pill(inner, string.upper(Rarity.name(card.tier)), color, Theme.Colors.bg, S(18), S(11))
-	pill.AnchorPoint = Vector2.new(0.5, 0)
-	pill.Position = UDim2.new(0.5, 0, 0, S(152))
-	detail(pill)
+	-- Rarity reads from the card color alone; no pill, no TAKE hint.
 	detail(UI.text({
 		Text = Upgrades.pctText(card.pct, card.stat),
 		Font = Theme.Fonts.display,
-		TextSize = S(44),
+		TextSize = S(48),
 		TextColor3 = Theme.Colors.cash,
-		Position = UDim2.fromOffset(0, S(172)),
-		Size = UDim2.new(1, 0, 0, S(48)),
+		Position = UDim2.fromOffset(0, S(160)),
+		Size = UDim2.new(1, 0, 0, S(52)),
 		Parent = inner,
 	}))
 	detail(UI.text({
 		Text = string.upper(Upgrades.statName(card.stat)),
-		TextSize = S(14),
+		Font = Theme.Fonts.display,
+		TextSize = S(16),
 		TextColor3 = Theme.Colors.cash,
-		Position = UDim2.fromOffset(0, S(218)),
-		Size = UDim2.new(1, 0, 0, S(18)),
+		Position = UDim2.fromOffset(0, S(210)),
+		Size = UDim2.new(1, 0, 0, S(20)),
 		Parent = inner,
 	}))
 	if card.isTradeoff and card.malusStat and card.malusPct then
@@ -321,14 +319,6 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		})
 		detail(malus)
 	end
-	detail(UI.text({
-		Text = "TAKE",
-		TextSize = S(12),
-		TextColor3 = Theme.Colors.grey,
-		Position = UDim2.new(0, 0, 1, -S(22)),
-		Size = UDim2.new(1, 0, 0, S(18)),
-		Parent = inner,
-	}))
 
 	local button = UI.button({
 		BackgroundTransparency = 1,
@@ -366,7 +356,7 @@ local function showDetails(ui: CardUI, animate: boolean)
 		if animate then
 			task.delay((i - 1) * 0.04, function()
 				if obj.Parent then
-					UI.punch(obj, if i == 3 then 1.6 else 1.25, 0.35)
+					UI.punch(obj, if i == 2 then 1.6 else 1.25, 0.35)
 				end
 			end)
 		end
@@ -558,6 +548,17 @@ local function show(cards: { Types.Card }, reopened: boolean)
 	refreshTracker()
 
 	local S = UI.S
+	if not reopened then
+		-- The panel drops in from above as the cards deal.
+		panel.Position = UDim2.new(0.5, 0, 0.5, -S(50))
+		UI.tween(
+			panel,
+			{ Position = UDim2.new(0.5, 0, 0.5, -S(10)) },
+			0.3,
+			Enum.EasingStyle.Back,
+			Enum.EasingDirection.Out
+		)
+	end
 	local p = HUD.profile()
 	local w, h = S(p.card.X), S(p.card.Y)
 	local uis: { CardUI } = {}
@@ -739,7 +740,14 @@ function UpgradeOverlay.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "UpgradeApplied" then
 			local card = data.card
-			HUD.get("toast").show(Upgrades.effectLine(card.stat, card.pct), tierColor(card.tier), 1.2)
+			local text = Upgrades.effectLine(card.stat, card.pct)
+			if typeof(data.totalPct) == "number" and math.abs(data.totalPct - card.pct) > 0.01 then
+				text ..= string.format("  ·  %s TOTAL", Upgrades.pctText(data.totalPct, card.stat))
+			end
+			if card.isTradeoff and card.malusStat and card.malusPct then
+				text ..= "   /   " .. Upgrades.effectLine(card.malusStat, -card.malusPct)
+			end
+			HUD.get("toast").show(text, tierColor(card.tier), 1.5)
 		elseif name == "PlayerHit" and isOpen then
 			UI.shake(panel, UI.S(Config.PanelShakePx), 0.2)
 			for _, v in vignettes do

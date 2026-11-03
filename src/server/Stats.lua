@@ -31,7 +31,7 @@ function Stats.weaponDamage(weaponId: string, rarity: number, dmgPct: number): n
 	return w.baseDmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
 end
 
-export type Buffs = { fireRateMult: number, moveSpeedMult: number }
+export type Buffs = { fireRateMult: number, moveSpeedMult: number, reloadSpeedMult: number }
 
 -- DPS as shown on tags and the held slot: damage x shots per second x pellets.
 function Stats.weaponDps(weaponId: string, rarity: number, upgrades: { [string]: Types.TrackerItem }): number
@@ -45,12 +45,12 @@ end
 function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.Held, buffs: Buffs?): Types.Computed
 	local w = Weapons.ById[held.weaponId]
 	local crit = upgrades.CritChance
-	local b = buffs or { fireRateMult = 1, moveSpeedMult = 1 }
+	local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1 }
 	return {
 		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage")),
 		fireRate = w.fireRate * mult(upgrades, "FireRate") * b.fireRateMult,
 		magSize = math.max(1, math.round(w.magSize * mult(upgrades, "MagSize"))),
-		reloadTime = w.reloadTime / mult(upgrades, "ReloadSpeed"),
+		reloadTime = w.reloadTime / (mult(upgrades, "ReloadSpeed") * b.reloadSpeedMult),
 		maxHP = math.max(1, math.round(Config.PlayerMaxHP * mult(upgrades, "MaxHP"))),
 		hpRegen = Config.PlayerHPRegenPerSec * mult(upgrades, "HPRegen"),
 		moveSpeed = Config.PlayerWalkSpeed * mult(upgrades, "MoveSpeed") * b.moveSpeedMult,

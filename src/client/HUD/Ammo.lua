@@ -40,7 +40,12 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 
 	local function render(a: any)
-		if a.reloading then
+		if a.reloading and a.shell then
+			-- Shell by shell: the count ticks up live; the hint says you can stop.
+			ammo.Text = string.format("%d / %d  LOADING", a.mag, a.max)
+			ammo.TextColor3 = if a.mag > 0 then Theme.Colors.gold else Theme.Colors.malus
+			UI.punch(ammo, 1.08, 0.15)
+		elseif a.reloading then
 			ammo.Text = "RELOADING"
 			ammo.TextColor3 = Theme.Colors.gold
 		else

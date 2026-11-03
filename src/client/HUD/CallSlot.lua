@@ -1,6 +1,8 @@
 --!strict
 -- The one slot under the wave bar. Crew call frames, the timer pill and the ARMS DROP banner live here.
 -- A toast temporarily hides whatever else is in the slot.
+local Players = game:GetService("Players")
+
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
@@ -87,7 +89,8 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 		end)
 	end
 
-	-- System notices that belong in the center: heat changes (wave and crate notices come from their owners).
+	-- System notices that belong in the center: heat changes and skip votes (wave and crate notices come
+	-- from their owners).
 	function component.onJuice(name: string, data: any)
 		if name == "HeatChanged" then
 			local up = (data.delta or 0) > 0
@@ -96,6 +99,34 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 				if up then Theme.Colors.gold else Theme.Colors.red,
 				1
 			)
+		elseif name == "SkipVote" then
+			local me = data.userId == Players.LocalPlayer.UserId
+			local who = if me then "YOU" else string.upper(tostring(data.name))
+			if data.auto then
+				if me then
+					component.toast(if data.on then "AUTO SKIP ON" else "AUTO SKIP OFF", Theme.Colors.gold, 0.9)
+				elseif data.intermission then
+					component.toast(
+						string.format("%s AUTO SKIP · %d / %d", who, data.votes or 0, data.needed or 1),
+						Theme.Colors.gold,
+						1
+					)
+				end
+			elseif data.on then
+				component.toast(
+					string.format("%s VOTED TO SKIP · %d / %d", who, data.votes or 0, data.needed or 1),
+					Theme.Colors.gold,
+					1.1
+				)
+			else
+				component.toast(
+					string.format("%s WITHDREW · %d / %d", who, data.votes or 0, data.needed or 1),
+					Theme.Colors.grey,
+					0.9
+				)
+			end
+		elseif name == "SkipPassed" then
+			component.toast("SKIP VOTE PASSED", Theme.Colors.cash, 1)
 		end
 	end
 

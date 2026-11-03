@@ -238,11 +238,12 @@ local function stim(player: Player, state: PlayerState.State)
 	Remotes.Juice:FireClient(player, "StimStart", { duration = Config.StimDuration, until_ = state.stimUntil })
 	Log.event(
 		"Ability",
-		"%s used stim (%ds, x%.1f speed, x%.1f fire rate)",
+		"%s used stim (%ds, x%.1f speed, x%.1f fire rate, x%.1f reload)",
 		player.Name,
 		Config.StimDuration,
 		Config.StimMoveMult,
-		Config.StimFireRateMult
+		Config.StimFireRateMult,
+		Config.StimReloadSpeedMult
 	)
 end
 

@@ -128,7 +128,64 @@ local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStro
 		Size = UDim2.fromOffset(S(84), S(PILL_H)),
 		Parent = pill,
 	})
+	-- Capture point: a thin progress bar along the bottom of the pill.
+	if data.jobKind == "capture" then
+		local bar = UI.frame({
+			Name = "Progress",
+			BackgroundColor3 = Theme.Colors.bg,
+			Position = UDim2.new(0, S(14), 1, -S(7)),
+			Size = UDim2.new(1, -S(28), 0, S(4)),
+			ZIndex = 3,
+			Parent = pill,
+		})
+		UI.corner(bar, S(2))
+		local fill = UI.frame({
+			Name = "Fill",
+			BackgroundColor3 = Theme.Colors.cash,
+			Size = UDim2.fromScale(active and active.progress or 0, 1),
+			ZIndex = 3,
+			Parent = bar,
+		})
+		UI.corner(fill, S(2))
+	end
 	return pill, timer, stroke
+end
+
+local function setPillProgress(progress: number, inside: boolean)
+	if not active or not active.box then
+		return
+	end
+	local bar = active.box:FindFirstChild("Progress", true)
+	local fill = bar and bar:FindFirstChild("Fill")
+	if fill and fill:IsA("Frame") then
+		fill.Size = UDim2.fromScale(math.clamp(progress, 0, 1), 1)
+		fill.BackgroundColor3 = if inside then Theme.Colors.cash else Theme.Colors.malus
+	end
+end
+
+-- Dialogue types out character by character with a soft tick; the portrait head bobs while "talking".
+local function typewrite(label: TextLabel, head: GuiObject)
+	local text = label.Text
+	local total = utf8.len(text) or #text
+	label.MaxVisibleGraphemes = 0
+	task.spawn(function()
+		local shown = 0
+		local perChar = 1 / math.max(Config.CallTypeCharsPerSec, 1)
+		while shown < total and label.Parent do
+			shown += 1
+			label.MaxVisibleGraphemes = shown
+			if shown % 3 == 0 and string.sub(text, shown, shown) ~= " " then
+				UI.sound(Theme.Sounds.reelTick, 1.5 + math.random() * 0.5, 0.06)
+			end
+			if shown % 5 == 0 and head.Parent then
+				UI.punch(head, 1.12, 0.14)
+			end
+			task.wait(perChar)
+		end
+		if label.Parent then
+			label.MaxVisibleGraphemes = -1
+		end
+	end)
 end
 
 type CardSpec = {
@@ -209,7 +266,7 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 		Visible = spec.showTimer,
 		Parent = frame,
 	})
-	UI.text({
+	local body = UI.text({
 		Text = table.concat(spec.text, "\n"),
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.text,
@@ -220,6 +277,7 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 		Size = UDim2.new(1, -textX - S(10), 0, S(46)),
 		Parent = frame,
 	})
+	typewrite(body, head)
 	UI.text({
 		Text = spec.rewardLine,
 		Font = Theme.Fonts.display,
@@ -272,7 +330,16 @@ local function onCallStart(data: any)
 		showTimer = true,
 		duration = data.duration,
 	})
-	active = { data = data, box = box, inner = inner, timerLabel = timer, stroke = stroke, token = token }
+	active = {
+		data = data,
+		box = box,
+		inner = inner,
+		timerLabel = timer,
+		stroke = stroke,
+		token = token,
+		progress = 0,
+		lastTick = 0,
+	}
 	slideIn(inner)
 	UI.sound(Theme.Sounds.call, 1, 0.6)
 
@@ -362,6 +429,22 @@ function CrewCallUI.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "CallStart" then
 			onCallStart(data)
+		elseif name == "JobProgress" then
+			local call = active
+			if call and call.data and call.data.id == data.id then
+				local progress = data.progress or 0
+				call.progress = progress
+				setPillProgress(progress, data.inside == true)
+				-- A tick every 10% while holding, pitch climbing; a low buzz when you step off.
+				local step = math.floor(progress * 10)
+				if data.inside and step > (call.lastTick or 0) then
+					call.lastTick = step
+					UI.sound(Theme.Sounds.reelTick, 0.9 + step * 0.08, 0.35)
+				elseif not data.inside and progress > 0 and progress < 1 and call.wasInside then
+					UI.sound(Theme.Sounds.deny, 0.8, 0.3)
+				end
+				call.wasInside = data.inside == true
+			end
 		elseif name == "CallEnd" then
 			onCallEnd(data)
 		elseif name == "CrateIncoming" then
@@ -375,6 +458,14 @@ function CrewCallUI.init()
 			)
 			UI.sound(Theme.Sounds.crate, 0.9, 0.7)
 			ClientState.Juice:Fire("Shake", { amp = 0.35, dur = 0.3 })
+		elseif name == "CrateCount" then
+			local left = data.left or 0
+			if left > 0 then
+				centerSlot().toast(string.format("ARMS DROP · %d LEFT", left), Theme.Colors.gold, 0.8)
+			end
+		elseif name == "CrateEnd" then
+			centerSlot().toast("ARMS DROP CLOSED", Theme.Colors.grey, 1)
+			UI.sound(Theme.Sounds.crate, 0.5, 0.4)
 		end
 	end)
 

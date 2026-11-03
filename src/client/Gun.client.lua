@@ -15,7 +15,6 @@ local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 
 local player = Players.LocalPlayer
-local camera = Workspace.CurrentCamera :: Camera
 local effects = Workspace:WaitForChild("Effects")
 local groundLoot = Workspace:WaitForChild("GroundLoot")
 
@@ -35,10 +34,39 @@ local function publishAmmo()
 		mag = mag,
 		max = if held then held.magSize else 0,
 		reloading = reloading,
+		shell = held ~= nil and held.shellReload,
 		reloadStartedAt = reloadStartedAt,
 		reloadEndsAt = reloadEndsAt,
 	}
 	ClientState.Ammo:Fire(ClientState.ammo)
+end
+
+-- Tube-fed guns load one shell per reloadTime; the ring fills once per shell. Firing cancels the rest.
+local function shellReload(token: number)
+	task.spawn(function()
+		while true do
+			local h = held
+			if token ~= reloadToken or not h then
+				return
+			end
+			reloadStartedAt = os.clock()
+			reloadEndsAt = reloadStartedAt + h.reloadTime
+			publishAmmo()
+			task.wait(h.reloadTime)
+			h = held
+			if token ~= reloadToken or not h then
+				return
+			end
+			mag = math.min(h.magSize, mag + 1)
+			UI.sound(Theme.Sounds.take, 1.1 + (mag / h.magSize) * 0.4, 0.35)
+			if mag >= h.magSize then
+				reloading = false
+				publishAmmo()
+				return
+			end
+			publishAmmo()
+		end
+	end)
 end
 
 local function reload()
@@ -48,10 +76,14 @@ local function reload()
 	reloading = true
 	reloadToken += 1
 	local token = reloadToken
+	UI.sound(Theme.Sounds.reload, 1, 0.4)
+	if held.shellReload then
+		shellReload(token)
+		return
+	end
 	reloadStartedAt = os.clock()
 	reloadEndsAt = reloadStartedAt + held.reloadTime
 	publishAmmo()
-	UI.sound(Theme.Sounds.reload, 1, 0.4)
 	task.delay(held.reloadTime, function()
 		if token == reloadToken and held then
 			mag = held.magSize
@@ -59,6 +91,18 @@ local function reload()
 			publishAmmo()
 		end
 	end)
+end
+
+-- Stop a shell reload where it is (only when there is something in the tube to shoot).
+local function cancelReload(): boolean
+	local h = held
+	if not reloading or not h or not h.shellReload or mag <= 0 then
+		return false
+	end
+	reloadToken += 1
+	reloading = false
+	publishAmmo()
+	return true
 end
 
 ClientState.Changed:Connect(function(sync: Types.Sync)
@@ -92,11 +136,9 @@ local function rayParams(char: Model): RaycastParams
 	return params
 end
 
+-- Screen center when locked, the cursor when unlocked (Ctrl / Alt).
 local function aimPoint(char: Model): Vector3
-	local vp = camera.ViewportSize
-	local ray = camera:ViewportPointToRay(vp.X / 2, vp.Y / 2)
-	local result = Workspace:Raycast(ray.Origin, ray.Direction * Config.MaxShotRange, rayParams(char))
-	return if result then result.Position else ray.Origin + ray.Direction * Config.MaxShotRange
+	return ClientState.cursorAimPoint(char)
 end
 
 local function tracer(from: Vector3, to: Vector3, color: Color3)
@@ -129,7 +171,7 @@ local function fire()
 	if not h or not char or not head then
 		return
 	end
-	if reloading then
+	if reloading and not cancelReload() then
 		return
 	end
 	if mag <= 0 then
@@ -142,7 +184,8 @@ local function fire()
 	local target = aimPoint(char)
 	local headPos = head.Position
 	local dir = (target - headPos).Unit
-	local sendDir = if h.pellets > 1 then dir else coneSpread(dir, h.spread)
+	local spread = h.spread * (if ClientState.ads then Config.AdsSpreadMult else 1)
+	local sendDir = if h.pellets > 1 then dir else coneSpread(dir, spread)
 	Remotes.FireShot:FireServer(headPos, sendDir, Workspace:GetServerTimeNow())
 
 	local heldGun = char:FindFirstChild("HeldGun")
@@ -151,7 +194,7 @@ local function fire()
 	local color = Color3.fromHex("FFE2A0")
 	local params = rayParams(char)
 	for i = 1, h.pellets do
-		local d = if h.pellets > 1 then coneSpread(dir, h.spread) else sendDir
+		local d = if h.pellets > 1 then coneSpread(dir, spread) else sendDir
 		local result = Workspace:Raycast(headPos, d * Config.MaxShotRange, params)
 		local endPoint = if result then result.Position else headPos + d * Config.MaxShotRange
 		tracer(muzzle, endPoint, color)
@@ -195,8 +238,15 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	end
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		firing = true
+	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+		if not ClientState.blocked() then
+			ClientState.setAds(true)
+		end
 	elseif input.KeyCode == Enum.KeyCode.R then
-		reload()
+		-- R mid shell-reload stops it; otherwise starts one.
+		if not cancelReload() then
+			reload()
+		end
 	end
 end)
 
@@ -204,12 +254,23 @@ UserInputService.InputEnded:Connect(function(input: InputObject)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		firing = false
 		semiLatch = false
+	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+		ClientState.setAds(false)
+	end
+end)
+
+-- Opening the overlay or losing the mouse drops ADS so the camera never stays pulled in.
+ClientState.BlockChanged:Connect(function()
+	if ClientState.blocked() then
+		ClientState.setAds(false)
 	end
 end)
 
 ClientState.Juice:Connect(function(name: string)
 	if name == "LocalReload" then
-		reload()
+		if not cancelReload() then
+			reload()
+		end
 	elseif name == "TouchFireReleased" then
 		semiLatch = false
 	end

@@ -99,6 +99,7 @@ function BigCrate.drop(at: Vector3?)
 
 	local crate: Crate = { id = id, model = model, glow = nil, guns = {}, left = n, active = true }
 	crates[id] = crate
+	local endsAt = if Config.BigCrateLifetime > 0 then Workspace:GetServerTimeNow() + Config.BigCrateLifetime else 0
 	if Config.BigCrateLifetime > 0 then
 		task.delay(Config.BigCrateLifetime, function()
 			if crate.active then
@@ -140,7 +141,10 @@ function BigCrate.drop(at: Vector3?)
 		TweenService:Create(lid, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			CFrame = openCF,
 		}):Play()
-		Remotes.Juice:FireAllClients("CrateLand", { crateId = id, left = crate.left, total = n, position = landPos })
+		Remotes.Juice:FireAllClients(
+			"CrateLand",
+			{ crateId = id, left = crate.left, total = n, position = landPos, endsAt = endsAt }
+		)
 
 		-- Guns eject in an arc and settle in a fan.
 		local wave = World.wave

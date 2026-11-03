@@ -320,6 +320,8 @@ function WeaponRoll.buy(player: Player): any
 			rarityName = Rarity.name(rarity),
 			dmg = math.round(dmg),
 			dps = math.round(dps),
+			pellets = weapon.pellets,
+			fireRate = weapon.fireRate, -- base; the client applies its own fire-rate multiplier
 		},
 		pityStreak = state.pityStreak,
 	}

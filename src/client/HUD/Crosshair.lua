@@ -1,6 +1,7 @@
 --!strict
 -- Center crosshair with fire kick and a hitmarker that flashes on Hit (gold on headshot, red on kill).
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -19,8 +20,10 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Size = UDim2.fromOffset(S(40), S(40)),
 		Parent = gui,
 	})
-	local gap = S(5)
-	local len = S(9)
+	local HIP_GAP, ADS_GAP = S(5), S(2)
+	local HIP_LEN, ADS_LEN = S(9), S(6)
+	local gap = HIP_GAP
+	local len = HIP_LEN
 	local thick = S(2)
 	local lines: { Frame } = {}
 	local offsets = {
@@ -69,7 +72,17 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		ticks[i] = tick
 	end
 	local ringShown = false
+	local followingCursor = false
 	track(RunService.Heartbeat:Connect(function()
+		-- Cursor unlocked (Ctrl / Alt): the crosshair rides the cursor, since that is where shots go.
+		if ClientState.isMouseFree() and not ClientState.blocked() then
+			local m = UserInputService:GetMouseLocation()
+			root.Position = UDim2.fromOffset(m.X, m.Y)
+			followingCursor = true
+		elseif followingCursor then
+			root.Position = UDim2.fromScale(0.5, 0.5)
+			followingCursor = false
+		end
 		local a = ClientState.ammo
 		if a.reloading and a.reloadEndsAt > a.reloadStartedAt then
 			ringShown = true
@@ -164,12 +177,29 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end
 
+	-- ADS: lines pull in and shorten, dot goes gold.
+	local function setAds(on: boolean)
+		gap = if on then ADS_GAP else HIP_GAP
+		len = if on then ADS_LEN else HIP_LEN
+		for i, line in lines do
+			local dir = offsets[i][1] :: Vector2
+			local size = if dir.X == 0 then UDim2.fromOffset(thick, len) else UDim2.fromOffset(len, thick)
+			UI.tween(line, { Position = UDim2.new(0.5, dir.X * gap, 0.5, dir.Y * gap), Size = size }, 0.12)
+		end
+		UI.tween(dot, { BackgroundColor3 = if on then Theme.Colors.gold else Theme.Colors.text }, 0.12)
+	end
+	if ClientState.ads then
+		setAds(true)
+	end
+
 	local component = {}
 	component.frame = root
 
 	function component.onJuice(name: string, data: any)
 		if name == "LocalFire" then
 			kick()
+		elseif name == "Ads" then
+			setAds(data.on == true)
 		elseif name == "Hit" then
 			flash(
 				if data.killed then Theme.Colors.red elseif data.headshot then Theme.Colors.gold else Theme.Colors.text

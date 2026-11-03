@@ -1,5 +1,6 @@
 --!strict
--- Billboard tags over dropped guns (name + DMG vs held), beam fade near despawn, crate prompt hiding.
+-- Billboard tags over dropped guns (name, DMG per shot and RATE each with a ▲ / ▼ vs held), beam fade near
+-- despawn, crate prompt hiding.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -7,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -15,6 +17,7 @@ local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 type Tag = {
 	gui: BillboardGui,
 	dmgLabel: TextLabel,
+	rateLabel: TextLabel,
 	timerLabel: TextLabel,
 	frame: Frame,
 	beam: Beam?,
@@ -26,22 +29,23 @@ local GroundLoot = {}
 local lootFolder = Workspace:WaitForChild("GroundLoot")
 local tags: { [BasePart]: Tag } = {}
 
-local function heldDps(): number
-	local sync = ClientState.sync
-	return if sync then (sync.held.dps or 0) else 0
-end
-
--- DMG per shot and DPS; the color compares DPS against the held gun so slow heavy guns don't always win.
+-- Two rows against the held gun: damage per shot ("33x8" for pellets) and fire rate, each with its own
+-- arrow, so a slow heavy gun and a fast light one read as a trade instead of one number.
 local function refreshTag(gun: BasePart, tag: Tag)
 	local dmg = gun:GetAttribute("Dmg") :: number? or 0
-	local dps = gun:GetAttribute("Dps") :: number? or 0
-	local held = heldDps()
-	tag.dmgLabel.Text = string.format("DPS %d", dps)
-	tag.dmgLabel.TextColor3 = if dps > held
-		then Theme.Colors.cash
-		elseif dps < held then Theme.Colors.malus
-		else Theme.Colors.text
+	local w = Weapons.ById[tostring(gun:GetAttribute("WeaponId"))]
+	local pellets = if w then w.pellets else 1
+	local rate = (if w then w.fireRate else 0) * ClientState.rateMult()
 	local sync = ClientState.sync
+	local held = sync and sync.held
+	local heldShot = if held then held.dmg * held.pellets else 0
+	local heldRate = if held then held.fireRate else 0
+	local dmgArrow, dmgColor = UI.arrow(dmg * pellets, heldShot)
+	local rateArrow, rateColor = UI.arrow(rate, heldRate)
+	tag.dmgLabel.Text = "DMG " .. UI.fmtDmg(dmg, pellets) .. dmgArrow
+	tag.dmgLabel.TextColor3 = dmgColor
+	tag.rateLabel.Text = "RATE " .. UI.fmtRate(rate) .. rateArrow
+	tag.rateLabel.TextColor3 = rateColor
 	local crateId = gun:GetAttribute("CrateId")
 	local prompt = tag.prompt
 	if prompt then
@@ -70,8 +74,8 @@ local function addTag(gun: BasePart)
 	gui.Name = "Tag"
 	gui.Adornee = gun
 	gui.AlwaysOnTop = true
-	gui.Size = UDim2.fromScale(5.5, 3)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 4.4, 0)
+	gui.Size = UDim2.fromScale(5.5, 3.6)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 4.7, 0)
 	gui.MaxDistance = 60
 	gui.LightInfluence = 0
 	gui.Parent = gun
@@ -81,15 +85,15 @@ local function addTag(gun: BasePart)
 		Font = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = Theme.Colors.grey,
-		Size = UDim2.fromScale(1, 0.36),
+		Size = UDim2.fromScale(1, 0.28),
 		Parent = gui,
 	})
 	UI.stroke(timerLabel, Theme.Colors.black, 2, 0.3)
 	local frame = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.15,
-		Position = UDim2.fromScale(0, 0.4),
-		Size = UDim2.fromScale(1, 0.6),
+		Position = UDim2.fromScale(0, 0.3),
+		Size = UDim2.fromScale(1, 0.7),
 		Parent = gui,
 	})
 	UI.new("UICorner", { CornerRadius = UDim.new(0.15, 0), Parent = frame })
@@ -100,20 +104,28 @@ local function addTag(gun: BasePart)
 		Font = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = color,
-		Position = UDim2.fromScale(0.05, 0.06),
-		Size = UDim2.fromScale(0.9, 0.5),
+		Position = UDim2.fromScale(0.05, 0.04),
+		Size = UDim2.fromScale(0.9, 0.36),
 		Parent = frame,
 	})
 	local dmgLabel = UI.text({
 		Text = "DMG",
 		TextScaled = true,
-		Position = UDim2.fromScale(0.05, 0.56),
-		Size = UDim2.fromScale(0.9, 0.36),
+		Position = UDim2.fromScale(0.05, 0.4),
+		Size = UDim2.fromScale(0.9, 0.27),
+		Parent = frame,
+	})
+	local rateLabel = UI.text({
+		Text = "RATE",
+		TextScaled = true,
+		Position = UDim2.fromScale(0.05, 0.68),
+		Size = UDim2.fromScale(0.9, 0.27),
 		Parent = frame,
 	})
 	local tag: Tag = {
 		gui = gui,
 		dmgLabel = dmgLabel,
+		rateLabel = rateLabel,
 		timerLabel = timerLabel,
 		frame = frame,
 		beam = gun:FindFirstChild("Beam") :: Beam?,

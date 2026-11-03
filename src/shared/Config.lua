@@ -13,6 +13,9 @@ local Config = {
 	MaxActiveEnemies = 50, -- hard cap on alive enemies, backfilled as they die
 	IntermissionSec = 5, -- NEXT WAVE IN countdown
 	IntroSec = 3, -- WAVE 1 banner hold before the first wave
+	SkipVoteFraction = 0.5, -- share of players that must vote (or have AUTO SKIP on) to end the intermission early
+	SkipMinIntermissionSec = 1, -- the intermission always lasts at least this long, even with every vote in
+	AutoSkipWaveSec = 10, -- with AUTO SKIP on, the next wave starts this long into the current one (once it has all spawned)
 
 	------------------------------------------------------------------ Enemy
 	EnemyHP = 60,
@@ -43,6 +46,15 @@ local Config = {
 	RicochetDmgRatio = 0.75, -- ricochet damage as a share of the original hit
 	SplashRadius = 9, -- studs around a kill that Splash damages
 	MultishotSpread = 4, -- extra cone (degrees) on the multishot bullet
+	-- Damage falloff by archetype: full damage out to `start` studs, scaling down to `min` at `finish`,
+	-- flat `min` beyond. The room is 200 studs across; the spawn ring is 90 out.
+	FalloffByArchetype = {
+		Pistol = { start = 40, finish = 90, min = 0.55 },
+		SMG = { start = 30, finish = 70, min = 0.4 },
+		Rifle = { start = 60, finish = 130, min = 0.6 },
+		Shotgun = { start = 15, finish = 45, min = 0.25 },
+		Sniper = { start = 600, finish = 600, min = 1 }, -- never falls off
+	},
 
 	------------------------------------------------------------------ Player
 	PlayerMaxHP = 100,
@@ -50,8 +62,23 @@ local Config = {
 	PlayerHPRegenPerSec = 1, -- base regen, scaled by the HP Regen upgrade
 	MouseSensitivity = 0.0022, -- radians per mouse pixel
 	TouchSensitivity = 0.006, -- radians per touch pixel
+	-- Cursor unlocked (Ctrl / Alt): the camera stays put and the character turns to face the cursor's
+	-- world point, so you can aim all the way around. Shots go where the cursor is.
 	CameraFov = 70,
 	FireFovKick = 2.5, -- degrees of FOV punch per shot
+	-- Zoom: scroll wheel / pinch changes the camera distance (studs behind the head).
+	CameraZoomDefault = 8,
+	CameraZoomMax = 16, -- outer limit
+	CameraZoomStep = 1.5, -- studs per scroll-wheel tick
+	CameraFirstPersonBelow = 2, -- zooming under this snaps to first person (character hidden locally)
+	CameraShoulder = Vector2.new(2.6, 1.2), -- right / up offset at CameraZoomDefault; shrinks as you zoom in
+	CameraZoomSmoothing = 12, -- higher = snappier zoom
+	-- ADS: hold RMB (tap the ADS button on mobile).
+	AdsFovMult = 0.8, -- FOV while aiming, as a share of CameraFov
+	AdsZoomMult = 0.7, -- third-person camera distance while aiming, as a share of the current zoom
+	AdsSpreadMult = 0.5, -- bullet spread while aiming
+	AdsSensitivityMult = 0.7, -- look sensitivity while aiming
+	AdsBlendSec = 0.12, -- seconds to ease in / out of ADS
 	-- Rarity juice, indexed by tier 1..5: camera shake amplitude (studs) and duration, screen flash alpha.
 	JuiceShakeByTier = { 0, 0.1, 0.25, 0.45, 0.8 },
 	JuiceShakeDurByTier = { 0, 0.15, 0.2, 0.3, 0.45 },
@@ -94,7 +121,7 @@ local Config = {
 		{ maxWave = 20, odds = { 18, 28, 30, 17, 7 } },
 		{ maxWave = math.huge, odds = { 10, 22, 30, 25, 13 } },
 	},
-	RarityDmgMult = { 1, 1.15, 1.35, 1.6, 2.0 },
+	RarityDmgMult = { 1, 1.3, 1.7, 2.3, 3.0 }, -- a legendary of any gun out-DPSes an epic of any other
 
 	------------------------------------------------------------------ Big crate
 	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never (brief says 10)
@@ -117,6 +144,10 @@ local Config = {
 	SideJobReward = 600,
 	SideJobBeaconRadius = 6,
 	SideJobHoldSec = 2, -- hold the HACK prompt on the beacon this long to complete
+	-- Job type is rolled per job from these weights (equal = 50/50). hack | capture
+	SideJobKindWeights = { hack = 1, capture = 1 },
+	SideJobCaptureSec = 10, -- seconds a player must stand in the circle; pauses while nobody is inside
+	SideJobCaptureRadius = 7, -- studs
 	SideJobRewardCrate = true, -- a crate drops at the beacon on completion
 	CallPillWarnSec = 10, -- pill turns red under this many seconds
 
@@ -135,6 +166,7 @@ local Config = {
 	StimDuration = 6,
 	StimMoveMult = 1.5,
 	StimFireRateMult = 1.6,
+	StimReloadSpeedMult = 1.6, -- reloads this much faster while stimmed
 	StimCooldown = 20,
 
 	------------------------------------------------------------------ Heat (stars, 0..5)
@@ -146,6 +178,20 @@ local Config = {
 
 	------------------------------------------------------------------ HUD
 	DebugEnabled = true,
+	ComboWindowSec = 3, -- kills this close together chain into the multi-kill counter; the label fades this long after the last kill
+	-- Combo words: the counter climbs every kill from x2; the word attaches at these counts ("x5 NICE").
+	ComboTiers = {
+		{ at = 5, name = "NICE" },
+		{ at = 7, name = "GREAT" },
+		{ at = 10, name = "AWESOME" },
+		{ at = 15, name = "INSANE" },
+		{ at = 20, name = "UNREAL" },
+		{ at = 30, name = "GODLIKE" },
+	},
+	CallTypeCharsPerSec = 45, -- crew call dialogue typewriter speed
+	WaveBannerHoldSec = 0.9, -- center WAVE N / WAVE CLEAR banner hold before it fades
+	CountdownTickFrom = 3, -- the last N seconds of the intermission tick big in the center
+	MarkerCompactDistance = 45, -- studs; further than this the beacon marker shrinks to an icon with distance + timer
 
 	------------------------------------------------------------------ Room
 	RoomSize = 200,

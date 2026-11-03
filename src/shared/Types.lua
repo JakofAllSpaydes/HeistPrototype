@@ -30,6 +30,7 @@ export type HeldView = {
 	spread: number,
 	pellets: number,
 	auto: boolean,
+	shellReload: boolean, -- reloadTime is per shell; firing cancels the rest
 	uid: number,
 }
 
@@ -73,6 +74,12 @@ export type Sync = {
 	spawnsPaused: boolean,
 	debugEnabled: boolean,
 	playerCount: number,
+	enemiesLeft: number, -- unspawned budget + alive, 0 outside a wave
+	waveStartedAt: number, -- server time the current wave started
+	skipVotes: number, -- votes in (auto-skip players count)
+	skipNeeded: number,
+	myVote: boolean,
+	autoSkip: boolean,
 }
 
 return {}

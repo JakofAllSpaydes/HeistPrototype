@@ -24,8 +24,10 @@ local BigCrate = require(script.Parent.BigCrate)
 local CrewCall = require(script.Parent.CrewCall)
 local Debug = require(script.Parent.Debug)
 local Abilities = require(script.Parent.Abilities)
+local SkipVote = require(script.Parent.SkipVote)
 
 PlayerState.init()
+SkipVote.init()
 Abilities.init()
 Enemy.init()
 Combat.init()
@@ -44,6 +46,11 @@ local function waitIntermission()
 	local t0 = os.clock()
 	while os.clock() - t0 < Config.IntermissionSec do
 		if World.skipRequested or World.pendingWave then
+			break
+		end
+		if os.clock() - t0 >= Config.SkipMinIntermissionSec and World.skipVotePassed() then
+			Log.event("Wave", "Intermission skipped by vote (%d/%d)", World.skipVoteCount(), World.skipNeeded())
+			Remotes.Juice:FireAllClients("SkipPassed", { votes = World.skipVoteCount(), needed = World.skipNeeded() })
 			break
 		end
 		task.wait(0.1)
@@ -80,6 +87,8 @@ task.spawn(function()
 		end
 		local wave = World.wave
 		World.skipRequested = false
+		World.waveStartedAt = Workspace:GetServerTimeNow()
+		SkipVote.reset()
 		setState("Wave")
 		Remotes.Juice:FireAllClients("WaveStart", { wave = wave })
 		Log.event(
@@ -92,19 +101,29 @@ task.spawn(function()
 		BigCrate.onWaveStart(wave)
 		CrewCall.onWaveStart(wave)
 
-		Spawner.runWave(wave)
+		local advanced = Spawner.runWave(wave)
 
 		BigCrate.onWaveEnd()
-		Log.event("Wave", "Wave %d clear", wave)
+		if advanced then
+			Log.event("Wave", "Wave %d rolled into the next by AUTO SKIP, %d still alive", wave, Enemy.count())
+		else
+			Log.event("Wave", "Wave %d clear", wave)
+		end
 		if not World.skipRequested then
 			World.addHeat(Config.HeatWaveClear, "wave " .. wave .. " clear")
 		end
 		if World.pendingWave then
 			continue
 		end
+		if advanced then
+			-- No intermission: the next wave starts on top of what is left.
+			World.wave = wave + 1
+			continue
+		end
 
 		World.skipRequested = false
 		World.intermissionEndsAt = Workspace:GetServerTimeNow() + Config.IntermissionSec
+		SkipVote.reset()
 		setState("Intermission")
 		Remotes.Juice:FireAllClients("Intermission", { wave = wave, endsAt = World.intermissionEndsAt })
 		waitIntermission()

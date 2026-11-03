@@ -15,6 +15,8 @@ local DEFS: { [string]: string } = {
 	Juice = "RemoteEvent", -- server -> client: event name, data
 	Debug = "RemoteEvent", -- client -> server: command, args
 	UseAbility = "RemoteEvent", -- client -> server: abilityId (turret | barricade | stim)
+	VoteSkip = "RemoteEvent", -- client -> server: on (boolean); only counts during an intermission
+	SetAutoSkip = "RemoteEvent", -- client -> server: on (boolean); votes to skip every intermission
 }
 
 local folder: Instance
