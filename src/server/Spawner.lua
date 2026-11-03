@@ -30,7 +30,9 @@ function Spawner.runWave(wave: number)
 			remaining -= 1
 			spawned += 1
 		end
-		local interval = if spawned <= surge then Config.SpawnInterval * Config.OpeningSurgeIntervalMult else Config.SpawnInterval
+		local interval = if spawned <= surge
+			then Config.SpawnInterval * Config.OpeningSurgeIntervalMult
+			else Config.SpawnInterval
 		task.wait(interval)
 	end
 

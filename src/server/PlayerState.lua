@@ -281,6 +281,7 @@ function PlayerState.init()
 	end)
 
 	local acc = 0
+	local forceAcc = 0
 	RunService.Heartbeat:Connect(function(dt)
 		-- Regen
 		for player, state in states do
@@ -293,12 +294,18 @@ function PlayerState.init()
 		end
 		-- Flush dirty syncs at most 10x per second.
 		acc += dt
+		forceAcc += dt
 		if acc < 0.1 then
 			return
 		end
 		acc = 0
+		-- A full resend every 2s covers a client that loaded after its first sync.
+		local force = forceAcc >= 2
+		if force then
+			forceAcc = 0
+		end
 		for player, state in states do
-			if state.dirty then
+			if state.dirty or force then
 				state.dirty = false
 				Remotes.StateSync:FireClient(player, PlayerState.buildSync(state))
 			end

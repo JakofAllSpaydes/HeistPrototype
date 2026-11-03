@@ -61,7 +61,7 @@ function Enemy.spawn(wave: number, position: Vector3): Model
 	weld.Part0 = root
 	weld.Part1 = head
 	weld.Parent = head
-	model:PivotTo(CFrame.new(position + Vector3.new(0, root.Size.Y / 2 + Config.EnemyHP * 0 + 1, 0)))
+	model:PivotTo(CFrame.new(position + Vector3.new(0, root.Size.Y / 2 + 1, 0)))
 	hum.WalkSpeed = Config.EnemyWalkSpeed
 	model.Parent = Workspace:WaitForChild("Enemies")
 	root:SetNetworkOwner(nil)

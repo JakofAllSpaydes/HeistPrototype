@@ -13,7 +13,14 @@ local Room = {
 	folder = nil :: Folder?,
 }
 
-local function part(name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material, parent: Instance): Part
+local function part(
+	name: string,
+	size: Vector3,
+	cframe: CFrame,
+	color: Color3,
+	material: Enum.Material,
+	parent: Instance
+): Part
 	local p = Instance.new("Part")
 	p.Name = name
 	p.Size = size
@@ -56,10 +63,38 @@ function Room.build()
 
 	part("Floor", Vector3.new(size, 1, size), CFrame.new(0, -0.5, 0), darker, Enum.Material.Concrete, room)
 	local half = size / 2
-	part("WallN", Vector3.new(size + 2, wallH, 1), CFrame.new(0, wallH / 2, -half - 0.5), dark, Enum.Material.Concrete, room)
-	part("WallS", Vector3.new(size + 2, wallH, 1), CFrame.new(0, wallH / 2, half + 0.5), dark, Enum.Material.Concrete, room)
-	part("WallE", Vector3.new(1, wallH, size + 2), CFrame.new(half + 0.5, wallH / 2, 0), dark, Enum.Material.Concrete, room)
-	part("WallW", Vector3.new(1, wallH, size + 2), CFrame.new(-half - 0.5, wallH / 2, 0), dark, Enum.Material.Concrete, room)
+	part(
+		"WallN",
+		Vector3.new(size + 2, wallH, 1),
+		CFrame.new(0, wallH / 2, -half - 0.5),
+		dark,
+		Enum.Material.Concrete,
+		room
+	)
+	part(
+		"WallS",
+		Vector3.new(size + 2, wallH, 1),
+		CFrame.new(0, wallH / 2, half + 0.5),
+		dark,
+		Enum.Material.Concrete,
+		room
+	)
+	part(
+		"WallE",
+		Vector3.new(1, wallH, size + 2),
+		CFrame.new(half + 0.5, wallH / 2, 0),
+		dark,
+		Enum.Material.Concrete,
+		room
+	)
+	part(
+		"WallW",
+		Vector3.new(1, wallH, size + 2),
+		CFrame.new(-half - 0.5, wallH / 2, 0),
+		dark,
+		Enum.Material.Concrete,
+		room
+	)
 
 	-- Pillar grid. Symmetric around the center; the center pillar is skipped so the spawn is clear.
 	Room.pillars = {}
