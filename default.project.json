@@ -13,6 +13,10 @@
       "StarterPlayerScripts": {
         "Client": { "$path": "src/client" }
       }
+    },
+    "Workspace": {
+      "$ignoreUnknownInstances": true,
+      "Room": { "$path": "src/map/Room.model.json" }
     }
   }
 }
