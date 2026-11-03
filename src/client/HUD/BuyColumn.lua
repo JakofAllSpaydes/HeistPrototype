@@ -1,5 +1,5 @@
 --!strict
--- Left column: header BUY, tiles New Weapon (1), New Upgrade (2), Airstrike (3, stub).
+-- Left column: header BUY, tiles New Weapon (1), New Upgrade (2).
 local UserInputService = game:GetService("UserInputService")
 
 local Client = script.Parent.Parent

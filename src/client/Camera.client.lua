@@ -35,6 +35,7 @@ params.FilterType = Enum.RaycastFilterType.Exclude
 
 -- FOV kick on fire and camera shake, both decay each frame.
 local fovKick = 0
+local stimFov = 0
 local shakeAmp = 0
 local shakeLeft = 0
 local shakeTotal = 0
@@ -51,7 +52,6 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		stimFov = 0
 	end
 end)
-local stimFov = 0
 
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
