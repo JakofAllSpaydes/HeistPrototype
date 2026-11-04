@@ -59,7 +59,6 @@ local function closeCreate()
 	if createGui then
 		createGui:Destroy()
 		createGui = nil
-		ClientState.lockMovement("queue", false)
 	end
 	ClientState.setBlock("queue", false)
 end
@@ -138,7 +137,6 @@ local function openCreate(v: any)
 	chosen.mapIndex = 1
 	chosen.diffIndex = 1
 	ClientState.setBlock("queue", true)
-	ClientState.lockMovement("queue", true)
 	local g = UI.new("ScreenGui", {
 		Name = "CreateMatch",
 		IgnoreGuiInset = true,

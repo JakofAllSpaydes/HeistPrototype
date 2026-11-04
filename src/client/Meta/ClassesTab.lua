@@ -123,10 +123,16 @@ local function abilityRow(
 	pricePill.Position = UDim2.new(0.5, 0, 1, -S(6))
 	pricePill.BackgroundTransparency = 0.15
 	priceLabel.Font = Theme.Fonts.display
+	-- Hotkey on the icon's top-left corner.
+	local hotkey, hotkeyLabel = UI.pill(well, a.hotkey, Theme.Colors.bg, Theme.Colors.white, S(22), S(13))
+	hotkey.Position = UDim2.fromOffset(S(5), S(5))
+	hotkey.ZIndex = 3
+	hotkeyLabel.ZIndex = 3
+	hotkeyLabel.Font = Theme.Fonts.display
 	local textX = pad + wellSize + S(14)
 	local rightW = S(170)
 	UI.text({
-		Text = string.format("%s", a.name),
+		Text = a.name .. (if a.live then "" else "  ·  STUB · PHASE 2"),
 		Font = Theme.Fonts.body,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.white,
@@ -135,21 +141,20 @@ local function abilityRow(
 		Size = UDim2.new(1, -textX - rightW, 0, S(24)),
 		Parent = row,
 	})
-	local hotkey, hotkeyLabel = UI.pill(row, a.hotkey, Theme.Colors.panel2, Theme.Colors.white, S(20), S(12))
-	hotkey.Position = UDim2.fromOffset(textX, pad + S(28))
-	hotkeyLabel.Font = Theme.Fonts.display
+	-- The whole description, wrapped onto up to two lines under the name.
 	UI.text({
-		Text = a.description .. (if a.live then "" else "   ·   STUB · PHASE 2"),
+		Text = a.description,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.fromOffset(textX + S(40), pad + S(28)),
-		Size = UDim2.new(1, -textX - S(40) - rightW, 0, S(20)),
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true,
+		Position = UDim2.fromOffset(textX, pad + S(26)),
+		Size = UDim2.new(1, -textX - rightW, 0, S(32)),
 		Parent = row,
 	})
 	-- Stats fill the rest of the middle column.
-	local statsY = pad + S(54)
+	local statsY = pad + S(62)
 	local stats = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(textX, statsY),
@@ -163,7 +168,7 @@ local function abilityRow(
 		MetaUI.statRow(stats, k, v.label, fmtVar(v, cur), if isOwned then fmtVar(v, nxt) else nil)
 	end
 	-- Right: level on top, UPGRADE at the bottom.
-	local lv, lvLabel = UI.pill(row, string.format("LV %d", level), Theme.Colors.bg, Theme.Colors.gold, S(22), S(12))
+	local lv, lvLabel = UI.pill(row, string.format("LV %d", level), Theme.Colors.gold, Theme.Colors.bg, S(30), S(16))
 	lv.AnchorPoint = Vector2.new(1, 0)
 	lv.Position = UDim2.new(1, -pad, 0, pad)
 	lvLabel.Font = Theme.Fonts.display

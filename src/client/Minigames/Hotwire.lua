@@ -120,6 +120,19 @@ function Hotwire.open(host: Frame.Host)
 				return sockets[g] ~= nil or (g.Parent ~= nil and sockets[g.Parent :: any] ~= nil)
 			end)
 			local socket: GuiObject? = if hit and sockets[hit] then hit elseif hit then hit.Parent :: GuiObject else nil
+			if not socket then
+				-- Lenient drop: the nearest socket within HotwireSnapPx (design px) counts, so a release that
+				-- lands just beside the socket still connects.
+				local bestDist = u(Config.HotwireSnapPx)
+				for g in sockets do
+					local center = g.AbsolutePosition + g.AbsoluteSize / 2
+					local d = (center - p).Magnitude
+					if d <= bestDist then
+						bestDist = d
+						socket = g
+					end
+				end
+			end
 			if socket and sockets[socket] == w.index then
 				-- Right socket: the wire locks in and the socket lights.
 				w.locked = true

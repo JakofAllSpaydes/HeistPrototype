@@ -282,6 +282,7 @@ local Config = {
 	LockpickPinSpeed = 150, -- degrees per second at the start
 	LockpickSliverDeg = 10, -- width of the +2 pink sliver in the middle of the zone
 	HotwireCountByTier = { 3, 4, 5 }, -- wires
+	HotwireSnapPx = 48, -- a wire released within this many design px (400-wide basis) of a socket still connects
 	KeypadShowSec = 1.2, -- the code shows this long before the pad lights
 	KeypadReshowSec = 0.8, -- the code shows again this long after a wrong digit
 	KeypadDigitsByTier = { 3, 4, 5 },

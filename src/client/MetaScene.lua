@@ -213,7 +213,9 @@ local function shot(push: boolean): CFrame
 	-- the space beside the panel.
 	local d = Config.MetaCameraDistance
 	local look = base.Position + Vector3.new(0, 0.3, 0)
-	local side = right * (d * Config.MetaCameraSideShare)
+	-- The camera looks back at the character, so its screen-right is the character's left: stand off to the
+	-- character's LEFT so the avatar reads on the left of the screen, beside the panel.
+	local side = right * (-d * Config.MetaCameraSideShare)
 	local pos = look + forward * d + side + Vector3.new(0, 1.0, 0)
 	return CFrame.lookAt(pos, look + side)
 end
@@ -602,8 +604,14 @@ local function build()
 		Parent = gold,
 	})
 	UI.corner(bar, S(3))
+	local syncNow = ClientState.sync
+	local goldNow = if syncNow
+			and syncNow.profile
+			and typeof(syncNow.profile.gold) == "number"
+		then syncNow.profile.gold
+		else 0
 	goldLabel = UI.text({
-		Text = "0",
+		Text = UI.fmtNum(goldNow),
 		Font = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.text,
