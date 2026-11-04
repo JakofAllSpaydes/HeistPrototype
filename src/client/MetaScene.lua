@@ -488,7 +488,7 @@ local function dockTile(
 	local l = UI.text({
 		Text = label,
 		Font = Theme.Fonts.display,
-		TextSize = S(11),
+		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, size + S(1)),
 		Size = UDim2.new(1, 0, 0, S(14)),
@@ -611,17 +611,17 @@ local function build()
 	UI.stroke(toastLabel :: TextLabel, Theme.Colors.black, S(2), 0.2)
 
 	-- Gold pill and dock, bottom-left (reference layout). The dock never hides.
-	local tile = if mobile then S(52) else S(60)
+	local tile = if mobile then S(64) else S(96) -- the dock fills the bottom-left corner (reference box)
 	local dock = UI.frame({
 		Name = "Dock",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, S(20), 1, -S(16)),
-		Size = UDim2.fromOffset(tile * 4 + S(30), tile + S(16)),
+		Size = UDim2.fromOffset(tile * 4 + S(36), tile + S(18)),
 		ZIndex = 6,
 		Parent = g,
 	})
-	UI.list(dock, Enum.FillDirection.Horizontal, S(10))
+	UI.list(dock, Enum.FillDirection.Horizontal, S(12))
 	local leave = dockTile(dock, 0, "Leave", "X", Theme.Colors.red, Theme.Colors.white, tile)
 	leave.Activated:Connect(function()
 		UI.punch(leave, 0.9, 0.15)
@@ -642,8 +642,8 @@ local function build()
 		Name = "Gold",
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, S(20), 1, -S(16) - tile - S(26)),
-		Size = UDim2.fromOffset(tile * 4 + S(30), S(36)),
+		Position = UDim2.new(0, S(20), 1, -S(16) - tile - S(30)),
+		Size = UDim2.fromOffset(tile * 4 + S(36), S(46)),
 		ZIndex = 6,
 		Parent = g,
 	})
@@ -651,8 +651,8 @@ local function build()
 	UI.stroke(gold, Theme.Colors.black, S(1.5), 0.3)
 	local bar = UI.frame({
 		BackgroundColor3 = Theme.Colors.gold,
-		Size = UDim2.fromOffset(S(24), S(12)),
-		Position = UDim2.fromOffset(S(10), S(12)),
+		Size = UDim2.fromOffset(S(30), S(15)),
+		Position = UDim2.fromOffset(S(12), S(16)),
 		Rotation = -8,
 		ZIndex = 7,
 		Parent = gold,
@@ -667,23 +667,23 @@ local function build()
 	goldLabel = UI.text({
 		Text = UI.fmtNum(goldNow),
 		Font = Theme.Fonts.display,
-		TextSize = S(20),
+		TextSize = S(26),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(42), 0),
-		Size = UDim2.new(1, -S(84), 1, 0),
+		Position = UDim2.fromOffset(S(50), 0),
+		Size = UDim2.new(1, -S(100), 1, 0),
 		ZIndex = 7,
 		Parent = gold,
 	})
 	local plus = UI.button({
 		Text = "+",
 		Font = Theme.Fonts.display,
-		TextSize = S(18),
+		TextSize = S(22),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = Theme.Colors.cash,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -S(6), 0.5, 0),
-		Size = UDim2.fromOffset(S(26), S(26)),
+		Size = UDim2.fromOffset(S(34), S(34)),
 		ZIndex = 7,
 		Parent = gold,
 	})
@@ -729,6 +729,7 @@ function MetaScene.open(tab: string?)
 	RunService:BindToRenderStep("GHSMetaCamera", Enum.RenderPriority.Camera.Value + 1, function()
 		if open then
 			faceCamera()
+			setHubTagVisible(false) -- the server rebuilds the tag on class changes; keep it off while the scene is up
 			stepCamera()
 		end
 	end)

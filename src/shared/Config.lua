@@ -257,9 +257,9 @@ local Config = {
 		SHARPSHOOTER = "rbxassetid://507766388",
 		TORCH = "rbxassetid://507766388",
 	},
-	MetaCameraDistance = 5.5, -- studs from the character in the customization scene (closer = bigger avatar)
+	MetaCameraDistance = 7, -- studs from the character in the customization scene (closer = bigger avatar)
 	MetaCameraSideShare = 0.72, -- the camera sits this x distance to the character's left, so the avatar reads about a fifth in from the left edge
-	MetaCameraHeight = 0.3, -- camera height above the character's center in the scene
+	MetaCameraHeight = -0.5, -- camera height relative to the character's center in the scene (lower = head sits higher on screen)
 	MetaDragSensitivity = 0.012, -- radians per pixel when dragging the avatar round in the scene
 	MetaCameraTweenSec = 0.45,
 	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE pushes the camera in on the gun to this distance
