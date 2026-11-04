@@ -4,15 +4,14 @@
 -- the door and brakes beside the arena spawn, the crew steps out in a line in join order, heads recolor to
 -- their mask color, control returns, the van drives off and is removed. Clients run the camera and the
 -- animations off the same clock (RunStartUI).
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
-local Remotes = require(Shared.Remotes)
 local Room = require(script.Parent.Room)
+local World = require(script.Parent.World)
 local PlayerState = require(script.Parent.PlayerState)
 local Squad = require(script.Parent.Squad)
 local Log = require(script.Parent.Log)
@@ -35,9 +34,9 @@ function RunStart.vanBrake(n: number): CFrame
 	return CFrame.new(westEnd - VAN_GAP, Room.vanHome.Position.Y, Room.arenaSpawn.Z + LINE_Z)
 end
 
--- Players in join order: the line, the MVP tie-break, the summary rows.
+-- The party in join order: the line, the MVP tie-break, the summary rows.
 function RunStart.roster(): { Player }
-	local players = Players:GetPlayers()
+	local players = World.partyPlayers()
 	table.sort(players, function(a, b)
 		return PlayerState.get(a).joinIndex < PlayerState.get(b).joinIndex
 	end)
@@ -45,7 +44,7 @@ function RunStart.roster(): { Player }
 end
 
 function RunStart.dummyCount(): number
-	return math.max(0, Config.SquadSize - #Players:GetPlayers())
+	return math.max(0, Config.SquadSize - #World.partyPlayers())
 end
 
 local function driveVan(from: CFrame, to: CFrame, sec: number)
@@ -103,7 +102,8 @@ function RunStart.play()
 	for i, p in players do
 		local state = PlayerState.get(p)
 		state.pose = math.random(#Config.Poses)
-		state.maskColor = Config.MaskColors[((i - 1) % #Config.MaskColors) + 1]
+		-- The mask color is the equipped mask's (PlayerState.applyMask); dummies use Config.MaskColors.
+		state.maskColor = PlayerState.maskOf(state).color
 		roster[i] = { userId = p.UserId, name = p.Name, pose = state.pose, maskColor = state.maskColor, lineIndex = i }
 		line[i] = RunStart.lineCFrame(i, n)
 		models[i] = p.Character
@@ -148,7 +148,7 @@ function RunStart.play()
 		char:PivotTo(Room.vanHome)
 	end
 
-	Remotes.Juice:FireAllClients("RunStartBegin", {
+	World.fireRun("RunStartBegin", {
 		startedAt = startedAt,
 		players = roster,
 		vanFrom = Room.vanHome,
@@ -163,7 +163,7 @@ function RunStart.play()
 	-- Beat 0: the van drives in and brakes as the doors beat lands.
 	task.spawn(driveVan, Room.vanHome, vanTo, beats.doors)
 	task.wait(beats.doors)
-	Remotes.Juice:FireAllClients("VanBrake", { position = vanTo.Position })
+	World.fireRun("VanBrake", { position = vanTo.Position })
 
 	-- Doors: the crew steps out in a line, join order, facing the arena.
 	for i, char in models do
@@ -183,7 +183,7 @@ function RunStart.play()
 	end
 	task.wait(beats.masks - beats.doors)
 
-	-- Masks on: heads recolor to the mask color.
+	-- Masks on: heads recolor to the mask color (players already wear their mask part from the hub).
 	for i, char in models do
 		local head = char and char:FindFirstChild("Head")
 		if head and head:IsA("BasePart") then

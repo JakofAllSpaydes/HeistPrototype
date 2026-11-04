@@ -15,8 +15,9 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
 local RunStart = require(script.Parent.RunStart)
-local Staging = require(script.Parent.Staging)
+local Hub = require(script.Parent.Hub)
 local Squad = require(script.Parent.Squad)
+local Profiles = require(script.Parent.Profiles)
 
 local RunEnd = {}
 
@@ -34,7 +35,8 @@ export type Row = {
 	selfRevives: number,
 	reviveAll: number,
 	jobs: number, -- side jobs + minigames completed
-	gold: number, -- this player's meta currency from the run: banked cash share plus side job gold
+	gold: number, -- GOLD EARNED: the run payout (GDD_7 formula) plus this player's side job Gold
+	newBest: boolean, -- the run's wave beat this player's top wave
 	score: number,
 	lineIndex: number,
 	model: Model?, -- dummies only
@@ -190,7 +192,8 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 		selfRevives = 0,
 		reviveAll = 0,
 		jobs = math.random(0, 3),
-		gold = math.floor(cash * Config.GoldPerBanked),
+		gold = World.payoutBase(),
+		newBest = false,
 		score = RunEnd.mvpScore(kills, cash, revives),
 		lineIndex = i,
 		model = d.model,
@@ -198,13 +201,45 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 	}
 end
 
+-- Payout at the final summary (GDD_7): base = (sum over cleared waves + GoldPerObjective x objectives) x
+-- DiffGoldMult, plus the side job Gold already granted per job. Lands in the profile at once, with the
+-- top wave and the lifetime stats. Players who left before the summary earn nothing.
+local function payout(p: Player, s: PlayerState.State, base: number): (number, boolean)
+	local earned = base + s.gold
+	local profile = s.profile or Profiles.get(p)
+	local newBest = false
+	if profile then
+		local key = World.partyKey()
+		local top = profile.topWave[key] or 0
+		if World.wave > top then
+			profile.topWave[key] = World.wave
+			newBest = true
+		end
+		profile.stats.kills += s.kills
+		profile.stats.matchesPlayed += 1
+		Profiles.grantPayout(p, earned, "run payout")
+	end
+	Log.event(
+		"Payout",
+		"%s earned %d gold (base %d + %d side job), wave %d%s",
+		p.Name,
+		earned,
+		base,
+		s.gold,
+		World.wave,
+		if newBest then ", NEW PERSONAL BEST" else ""
+	)
+	return earned, newBest
+end
+
 -- Yields through the sequence and the summary. Returns "again" | "lobby".
 function RunEnd.play(): string
-	Staging.clearArena()
+	Hub.clearArena()
 	local players = RunStart.roster()
 	local dummyCount = RunStart.dummyCount()
 	local n = #players + dummyCount
 	local beats = Config.RunEndBeats
+	local base = World.payoutBase()
 
 	-- Real rows and totals.
 	local rows: { Row } = {}
@@ -212,6 +247,7 @@ function RunEnd.play(): string
 	local topKills, topCash = 0, 0
 	for i, p in players do
 		local s = PlayerState.get(p)
+		local earned, newBest = payout(p, s, base)
 		rows[i] = {
 			userId = p.UserId,
 			name = p.Name,
@@ -224,7 +260,8 @@ function RunEnd.play(): string
 			selfRevives = s.selfRevives,
 			reviveAll = s.reviveAllUsed,
 			jobs = s.jobsDone + s.minigamesDone,
-			gold = math.floor(s.cashCollected * Config.GoldPerBanked) + s.gold,
+			gold = earned,
+			newBest = newBest,
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}
@@ -275,10 +312,10 @@ function RunEnd.play(): string
 		end
 	end
 	local rainCount = math.clamp(math.floor(total * Config.CashRainPerBanked), 0, Config.CashRainMax)
-	local gold = math.floor(total * Config.GoldPerBanked)
+	local gold = base
 
 	local startedAt = Workspace:GetServerTimeNow()
-	Remotes.Juice:FireAllClients("RunEndBegin", {
+	World.fireRun("RunEndBegin", {
 		startedAt = startedAt,
 		players = rows,
 		mvp = if mvp
@@ -297,7 +334,7 @@ function RunEnd.play(): string
 	})
 	Log.event(
 		"Run",
-		"run end: wave %d, total banked $%d, gold %d, %d bills, MVP %s (%s)",
+		"run end: wave %d, total banked $%d, payout base %d gold, %d bills, MVP %s (%s)",
 		World.wave,
 		total,
 		gold,
@@ -327,7 +364,7 @@ end
 
 function RunEnd.init()
 	Remotes.SummaryChoice.OnServerEvent:Connect(function(player: Player, choice: any)
-		if World.state ~= "Summary" or World.summaryChoice then
+		if World.state ~= "Summary" or World.summaryChoice or not World.isInParty(player) then
 			return
 		end
 		World.summaryChoice = if choice == "again" then "again" else "lobby"

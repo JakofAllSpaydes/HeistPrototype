@@ -16,9 +16,11 @@ local CrewCall = require(script.Parent.CrewCall)
 local Abilities = require(script.Parent.Abilities)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
-local Staging = require(script.Parent.Staging)
+local Hub = require(script.Parent.Hub)
 local Minigames = require(script.Parent.Minigames)
 local Downed = require(script.Parent.Downed)
+local Profiles = require(script.Parent.Profiles)
+local Queue = require(script.Parent.Queue)
 
 local Debug = {}
 
@@ -73,7 +75,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	ResetRun = function(_player, _state, _args)
 		for _, s in PlayerState.all() do
-			PlayerState.reset(s, if World.inRun() then Config.StartingCash else Config.StagingCash)
+			PlayerState.reset(s, if World.inRun() then Config.StartingCash else Config.HubCash)
 		end
 		BigCrate.finishAll()
 		CrewCall.finish(false, true)
@@ -84,12 +86,26 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		World.pendingWave = 1
 		World.skipRequested = true
 	end,
+	-- Force a run: the player's party (or a party of just them) starts now, whatever the countdown says.
 	StartRun = function(player, _state, _args)
-		if World.state == "Staging" then
-			Staging.requestRun(player)
+		if World.state == "Hub" then
+			Queue.forceStart(player)
 		else
 			toast(player, "ALREADY IN A RUN")
 		end
+	end,
+	AddGold = function(player, _state, args)
+		Profiles.addGold(player, tonumber(args) or 1000, "debug")
+	end,
+	ResetProfile = function(player, state, _args)
+		Profiles.reset(player)
+		PlayerState.applyProfile(state)
+		toast(player, "PROFILE RESET")
+	end,
+	UnlockAll = function(player, state, _args)
+		Profiles.unlockAll(player)
+		PlayerState.applyProfile(state)
+		toast(player, "EVERYTHING UNLOCKED")
 	end,
 	EndRun = function(player, _state, _args)
 		if World.inRun() then
@@ -100,7 +116,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		end
 	end,
 	SetTier = function(player, _state, args)
-		Staging.setTier(tonumber(args) or 1, player.Name)
+		Hub.setTier(tonumber(args) or 1, player.Name)
 	end,
 	OpenMinigame = function(player, _state, args)
 		Minigames.open(player, tostring(args))

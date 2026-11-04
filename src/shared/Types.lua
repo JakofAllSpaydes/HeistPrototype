@@ -14,7 +14,7 @@ export type Card = {
 export type TrackerItem = { count: number, pct: number, highestTier: number, everMalus: boolean }
 export type Tracker = { order: { string }, items: { [string]: TrackerItem }, total: number }
 
-export type Held = { weaponId: string, rarity: number, uid: number }
+export type Held = { weaponId: string, rarity: number, level: number, uid: number }
 
 export type HeldView = {
 	weaponId: string,
@@ -36,6 +36,10 @@ export type HeldView = {
 	displayRate: number, -- shots per second as delivered (bursts count the pause): what RATE shows
 	builtInPierce: number, -- the gun's own pierce at this rarity (snipers)
 	uid: number,
+	level: number, -- Armory level
+	sidearm: boolean, -- the downed pistol; the real gun is stowed
+	wrapColor: string?, -- hex of the equipped wrap on this gun
+	levelRateMult: number, -- fire-rate multiplier from the level (so tags compare like with like)
 }
 
 export type Computed = {
@@ -60,9 +64,12 @@ export type Computed = {
 export type Ability = { cooldown: number, cooldownEndsAt: number, activeUntil: number? }
 
 export type Sync = {
-	abilities: { [string]: Ability },
+	abilities: { [string]: Ability }, -- keyed by the equipped class's ability ids
+	classId: string, -- equipped class
+	profile: any, -- Profiles.Profile (gold, weapons, classes, abilities, masks, wraps, topWave, stats)
+	inParty: boolean, -- in the party of the current / forming run
 	wave: number,
-	waveState: string,
+	waveState: string, -- Hub | Intro | Wave | Intermission | RunOver | RunEnd | Summary (always Hub outside the party)
 	intermissionEndsAt: number,
 	heat: number,
 	cash: number,

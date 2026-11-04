@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local PlayerState = require(script.Parent.PlayerState)
 local Room = require(script.Parent.Room)
+local World = require(script.Parent.World)
 
 type Data = {
 	model: Model,
@@ -45,7 +46,7 @@ end
 local function nearestTarget(from: Vector3): BasePart?
 	local best: BasePart? = nil
 	local bestDist = math.huge
-	for _, player in Players:GetPlayers() do
+	for _, player in World.runAudience() do
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = char and char:FindFirstChildOfClass("Humanoid")

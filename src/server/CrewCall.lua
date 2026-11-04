@@ -3,7 +3,6 @@
 --   hack     - hold the HACK prompt on a terminal.
 --   capture  - stand inside the circle for SideJobCaptureSec; progress pauses while nobody is in it.
 -- Completing pays, plays a crew line and drops a crate at the beacon.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -186,11 +185,11 @@ local function sendProgress(j: Job, force: boolean)
 		return
 	end
 	j.lastSent = now
-	Remotes.Juice:FireAllClients("JobProgress", { id = j.id, progress = j.progress, inside = j.inside })
+	World.fireRun("JobProgress", { id = j.id, progress = j.progress, inside = j.inside })
 end
 
 local function anyoneInside(position: Vector3, radius: number): boolean
-	for _, player in Players:GetPlayers() do
+	for _, player in World.runAudience() do
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -266,7 +265,7 @@ function CrewCall.trigger()
 	}
 	job = thisJob
 
-	Remotes.Juice:FireAllClients("CallStart", {
+	World.fireRun("CallStart", {
 		id = thisJob.id,
 		jobKind = kind,
 		kind = copy.kind,
@@ -305,11 +304,13 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	j.beacon:Destroy()
 	local copy = copyFor(j.kind)
 	if success then
-		for _, state in PlayerState.all() do
+		for _, p in World.runAudience() do
+			local state = PlayerState.get(p)
 			Economy.addCash(state, Config.SideJobReward)
 			state.gold += Config.SideJobGold
 			state.jobsDone += 1
 		end
+		World.addObjective()
 		if Config.SideJobRewardCrate then
 			BigCrate.drop(j.position)
 		end
@@ -319,9 +320,9 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	end
 	if silent then
 		-- Run ended or debug reset: the card, pill and marker just go away on every client.
-		Remotes.Juice:FireAllClients("CallCleared", { id = j.id })
+		World.fireRun("CallCleared", { id = j.id })
 	else
-		Remotes.Juice:FireAllClients("CallEnd", {
+		World.fireRun("CallEnd", {
 			id = j.id,
 			jobKind = j.kind,
 			success = success,

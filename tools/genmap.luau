@@ -1,5 +1,5 @@
 --!strict
--- Generates src/map/Room.model.json from Config: the arena plus the staging yard on its south wall.
+-- Generates src/map/Room.model.json from Config: the arena plus the hub yard on its south wall.
 -- Run with: lune run tools/genmap.luau   (then let Rojo sync, or `rojo build`)
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -134,26 +134,44 @@ for k = 1, count do
 	)
 end
 
------------------------------------------------------------------- Staging yard (south of the arena)
+------------------------------------------------------------------ Hub (the yard, south of the arena)
 local yw = Config.YardWidth
 local yd = Config.YardDepth
 local yardNorth = half + 1 -- just past the arena's south wall
 local yardZ = yardNorth + yd / 2
 local asphalt = { 0.2, 0.2, 0.23 }
 local yardWall = { 0.22, 0.22, 0.26 }
+local blue = { 0.3, 0.62, 0.91 }
+local panelGrey = { 0.26, 0.28, 0.34 }
+local labelDark = { 0.1, 0.1, 0.12 }
 
 part("YardFloor", { yw, 2, yd }, { 0, floorTop - 1, yardZ }, asphalt, "Asphalt")
 part("YardWallS", { yw + 2, wallH, 1 }, { 0, wallH / 2, yardNorth + yd + 0.5 }, yardWall, "Concrete")
 part("YardWallE", { 1, wallH, yd }, { yw / 2 + 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
 part("YardWallW", { 1, wallH, yd }, { -yw / 2 - 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
 
--- Players spawn behind the van, facing the arena door.
+-- Planning table in the middle of the yard: dark top with a gold edge, four legs. Players spawn just south
+-- of it, facing the arena door.
+local tableZ = yardZ
+part("Table", { 10, 0.5, 5 }, { 0, floorTop + 2.75, tableZ }, { 0.13, 0.13, 0.16 }, "SmoothPlastic")
+part("TableEdge", { 10.4, 0.2, 5.4 }, { 0, floorTop + 2.5, tableZ }, amber, "Neon", { CanCollide = false })
+for _, sx in { -1, 1 } do
+	for _, sz in { -1, 1 } do
+		part(
+			string.format("TableLeg_%d_%d", sx, sz),
+			{ 0.5, 2.5, 0.5 },
+			{ sx * 4.5, floorTop + 1.25, tableZ + sz * 2 },
+			{ 0.3, 0.3, 0.34 },
+			"Metal"
+		)
+	end
+end
 table.insert(children, {
 	name = "Spawn",
 	className = "SpawnLocation",
 	properties = {
 		Size = { 8, 0.4, 8 },
-		CFrame = cframe({ 0, floorTop + 0.25, yardNorth + yd * 0.75 }),
+		CFrame = cframe({ 0, floorTop + 0.25, tableZ + 9 }),
 		Color = { 0.31, 0.31, 0.35 },
 		Material = "SmoothPlastic",
 		Anchored = true,
@@ -166,11 +184,33 @@ table.insert(children, {
 	},
 })
 
--- Floor marker in front of the door; the server puts the START RUN prompt on it.
-part("StartRunMarker", { Config.DoorWidth, 0.2, 6 }, { 0, floorTop + 0.1, yardNorth + 4 }, amber, "Neon", {
-	CanCollide = false,
-	Transparency = 0.45,
-})
+-- Queue zone(s): a QueueZoneSize square pad in front of the arena door with a blue gate frame on its north
+-- edge and a billboard anchor above the lintel. The server reads QueueZone<N>, QueueGate<N> and QueueBillboard<N>.
+local qz = Config.QueueZoneSize
+for i = 1, Config.QueueZoneCount do
+	-- Several zones fan out along the door wall, the first centered on the door.
+	local zx = (i - 1 - (Config.QueueZoneCount - 1) / 2) * (qz + 6)
+	local zz = yardNorth + 2 + qz / 2
+	part("QueueZone" .. i, { qz, 0.2, qz }, { zx, floorTop + 0.1, zz }, blue, "Neon", {
+		CanCollide = false,
+		Transparency = 0.7,
+	})
+	for _, sx in { -1, 1 } do
+		part(
+			string.format("QueueGate%dPost%s", i, if sx < 0 then "L" else "R"),
+			{ 0.8, 11, 0.8 },
+			{ zx + sx * (qz / 2 - 0.4), 5.5, yardNorth + 2.4 },
+			blue,
+			"Neon",
+			{ CanCollide = false }
+		)
+	end
+	part("QueueGate" .. i, { qz, 0.8, 0.8 }, { zx, 11.4, yardNorth + 2.4 }, blue, "Neon", { CanCollide = false })
+	part("QueueBillboard" .. i, { 1, 1, 1 }, { zx, 14.5, yardNorth + 2.4 }, blue, "Neon", {
+		CanCollide = false,
+		Transparency = 1,
+	})
+end
 
 -- Lamps in the yard corners so it reads as lit and outside.
 for _, sx in { -1, 1 } do
@@ -190,20 +230,30 @@ for _, sx in { -1, 1 } do
 	end
 end
 
--- Van: a Parts box with wheels, parked at the yard center facing the arena door (-Z).
+-- Van: a Parts box with wheels, parked beside the planning table facing the arena door (-Z). It only shows
+-- inside the start animation (the server parks it away otherwise).
 local vanParts: { Child } = {}
+local vanX = 14
 local vanY = floorTop + 1.4 -- body bottom sits on the wheels, wheels on the floor
-part("Body", { 6, 4.2, 11 }, { 0, vanY + 2.1, yardZ }, { 0.2, 0.24, 0.36 }, "SmoothPlastic", nil, vanParts)
-part("Windshield", { 5.4, 1.5, 0.2 }, { 0, vanY + 3.1, yardZ - 5.45 }, { 0.55, 0.7, 0.85 }, "Glass", {
+part("Body", { 6, 4.2, 11 }, { vanX, vanY + 2.1, yardZ }, { 0.2, 0.24, 0.36 }, "SmoothPlastic", nil, vanParts)
+part("Windshield", { 5.4, 1.5, 0.2 }, { vanX, vanY + 3.1, yardZ - 5.45 }, { 0.55, 0.7, 0.85 }, "Glass", {
 	CanCollide = false,
 	Transparency = 0.3,
 }, vanParts)
-part("Stripe", { 6.05, 0.5, 8 }, { 0, vanY + 1.4, yardZ + 1 }, amber, "SmoothPlastic", { CanCollide = false }, vanParts)
+part(
+	"Stripe",
+	{ 6.05, 0.5, 8 },
+	{ vanX, vanY + 1.4, yardZ + 1 },
+	amber,
+	"SmoothPlastic",
+	{ CanCollide = false },
+	vanParts
+)
 for _, sx in { -1, 1 } do
 	part(
 		if sx < 0 then "HeadlightL" else "HeadlightR",
 		{ 1.2, 0.6, 0.2 },
-		{ sx * 2, vanY + 1, yardZ - 5.55 },
+		{ vanX + sx * 2, vanY + 1, yardZ - 5.55 },
 		{ 1, 0.95, 0.8 },
 		"Neon",
 		{ CanCollide = false },
@@ -213,7 +263,7 @@ for _, sx in { -1, 1 } do
 		part(
 			string.format("Wheel_%s%s", if sx < 0 then "L" else "R", if sz < 0 then "F" else "B"),
 			{ 0.8, 2.2, 2.2 },
-			{ sx * 3.2, floorTop + 1.1, yardZ + sz * 3.6 },
+			{ vanX + sx * 3.2, floorTop + 1.1, yardZ + sz * 3.6 },
 			{ 0.08, 0.08, 0.09 },
 			"Rubber",
 			{ Shape = "Cylinder", CanCollide = false },
@@ -223,31 +273,74 @@ for _, sx in { -1, 1 } do
 end
 table.insert(children, { name = "Van", className = "Model", properties = {}, children = vanParts })
 
--- Minigame props along the west wall, PropSpacing apart, each a 4x6 panel with a floor label in front.
--- The server adds the labels' text and the prompts.
+-- Customization stations along the west wall: gun rack (WEAPONS), podium (CLASSES), mask wall (AVATAR).
+-- Each is a panel with a floor label in front; the server adds the text and the prompt.
+local stationX = -yw / 2 + 1.3
+local stationZ0 = yardNorth + 18
+local stations = { "WEAPONS", "CLASSES", "AVATAR" }
+for i, name in stations do
+	local z = stationZ0 + (i - 1) * Config.StationSpacing
+	part("Station_" .. name, { 0.6, 7, 7 }, { stationX, 3.5, z }, panelGrey, "Metal")
+	part("StationLabel_" .. name, { 7, 0.2, 3 }, { stationX + 5.2, floorTop + 0.1, z }, labelDark, "SmoothPlastic", {
+		CanCollide = false,
+		Yaw = 90,
+	})
+	if name == "WEAPONS" then
+		-- Rack bars: three gun silhouettes.
+		for k = 1, 3 do
+			part(
+				"RackGun" .. k,
+				{ 0.4, 0.5, 2.4 },
+				{ stationX + 0.5, 1.6 + k * 1.4, z - 2.2 + (k - 1) * 2.2 },
+				{ 0.6, 0.63, 0.66 },
+				"Metal",
+				{ CanCollide = false }
+			)
+		end
+	elseif name == "CLASSES" then
+		part("Podium", { 3, 1.2, 3 }, { stationX + 3, floorTop + 0.6, z }, { 0.3, 0.3, 0.34 }, "Metal")
+		part("PodiumTop", { 3.2, 0.2, 3.2 }, { stationX + 3, floorTop + 1.3, z }, amber, "Neon", { CanCollide = false })
+	else
+		-- Mask wall: a row of small colored cubes.
+		local colors = { { 0.91, 0.33, 0.3 }, { 0.3, 0.62, 0.91 }, { 0.56, 0.89, 0.63 }, { 0.91, 0.71, 0.3 } }
+		for k, c in colors do
+			part(
+				"MaskCube" .. k,
+				{ 0.5, 1, 1 },
+				{ stationX + 0.55, 4.5, z - 2.4 + (k - 1) * 1.6 },
+				c,
+				"SmoothPlastic",
+				{ CanCollide = false }
+			)
+		end
+	end
+end
+
+-- Minigame props along the east wall, PropSpacing apart, each a 4x6 panel with a floor label in front.
+-- Out of the main path but still testable. The server adds the labels' text and the prompts.
 local props = { "Lockpick", "Hotwire", "Keypad", "Charges", "Safe", "Freq" }
-local propX = -yw / 2 + 1.3
+local propX = yw / 2 - 1.3
 local propZ0 = yardNorth + 11
 for i, name in props do
 	local z = propZ0 + (i - 1) * Config.PropSpacing
-	part("Prop_" .. name, { 0.6, 6, 4 }, { propX, 3, z }, { 0.26, 0.28, 0.34 }, "Metal")
-	part("PropLabel_" .. name, { 6, 0.2, 3 }, { propX + 4.6, floorTop + 0.1, z }, { 0.1, 0.1, 0.12 }, "SmoothPlastic", {
+	part("Prop_" .. name, { 0.6, 6, 4 }, { propX, 3, z }, panelGrey, "Metal")
+	part("PropLabel_" .. name, { 6, 0.2, 3 }, { propX - 4.6, floorTop + 0.1, z }, labelDark, "SmoothPlastic", {
 		CanCollide = false,
-		Yaw = 90,
+		Yaw = -90,
 	})
 end
 
 -- Tier pad past the last prop: three buttons that set the minigame tier for the session.
 local padZ = propZ0 + #props * Config.PropSpacing + 2
-part("TierPad", { 10, 0.4, 4 }, { propX + 4.6, floorTop + 0.2, padZ }, { 0.1, 0.1, 0.12 }, "SmoothPlastic", {
+part("TierPad", { 10, 0.4, 4 }, { propX - 4.6, floorTop + 0.2, padZ }, labelDark, "SmoothPlastic", {
 	CanCollide = false,
-	Yaw = 90,
+	Yaw = -90,
 })
 for t = 1, 3 do
 	part(
 		"TierPad" .. t,
 		{ 2.4, 0.6, 2.4 },
-		{ propX + 4.6, floorTop + 0.7, padZ + (t - 2) * 3 },
+		{ propX - 4.6, floorTop + 0.7, padZ + (t - 2) * 3 },
 		{ 0.3, 0.3, 0.34 },
 		"Metal",
 		{

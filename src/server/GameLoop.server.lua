@@ -1,18 +1,20 @@
 --!strict
 -- Server entry point. Builds the map, wires every module, then runs the run state machine forever:
--- Staging (yard, nothing hostile) -> START RUN -> Intro -> Wave -> Intermission -> Wave ... -> RunOver -> Staging.
+-- Hub (yard, nothing hostile) -> Queue start -> Intro -> Wave -> Intermission -> Wave ... -> RunOver ->
+-- RunEnd -> Summary -> Hub. The party (World.party, set by Queue) is the run's player set; everyone else
+-- stays in the hub.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
-local Remotes = require(Shared.Remotes)
 
 local Room = require(script.Parent.Room)
 Room.build()
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
 local Enemy = require(script.Parent.Enemy)
 local Spawner = require(script.Parent.Spawner)
@@ -24,12 +26,15 @@ local CrewCall = require(script.Parent.CrewCall)
 local Debug = require(script.Parent.Debug)
 local Abilities = require(script.Parent.Abilities)
 local SkipVote = require(script.Parent.SkipVote)
-local Staging = require(script.Parent.Staging)
+local Hub = require(script.Parent.Hub)
+local Queue = require(script.Parent.Queue)
+local Meta = require(script.Parent.Meta)
 local Minigames = require(script.Parent.Minigames)
 local Downed = require(script.Parent.Downed)
 local RunStart = require(script.Parent.RunStart)
 local RunEnd = require(script.Parent.RunEnd)
 
+Profiles.init()
 PlayerState.init()
 Downed.init()
 SkipVote.init()
@@ -40,7 +45,9 @@ UpgradeShop.init()
 WeaponRoll.init()
 BigCrate.init()
 CrewCall.init()
-Staging.init()
+Hub.init()
+Queue.init()
+Meta.init()
 Minigames.init()
 RunEnd.init()
 Debug.init()
@@ -58,7 +65,7 @@ local function waitIntermission()
 		end
 		if os.clock() - t0 >= Config.SkipMinIntermissionSec and World.skipVotePassed() then
 			Log.event("Wave", "Intermission skipped by vote (%d/%d)", World.skipVoteCount(), World.skipNeeded())
-			Remotes.Juice:FireAllClients("SkipPassed", { votes = World.skipVoteCount(), needed = World.skipNeeded() })
+			World.fireRun("SkipPassed", { votes = World.skipVoteCount(), needed = World.skipNeeded() })
 			break
 		end
 		task.wait(0.1)
@@ -77,7 +84,7 @@ local function runWaves()
 		World.waveStartedAt = Workspace:GetServerTimeNow()
 		SkipVote.reset()
 		setState("Wave")
-		Remotes.Juice:FireAllClients("WaveStart", { wave = wave })
+		World.fireRun("WaveStart", { wave = wave })
 		Log.event(
 			"Wave",
 			"Wave %d start, budget %d, server time %.1f",
@@ -101,6 +108,7 @@ local function runWaves()
 		end
 		if not World.skipRequested then
 			World.addHeat(Config.HeatWaveClear, "wave " .. wave .. " clear")
+			World.addWaveGold(wave)
 		end
 		if World.pendingWave then
 			continue
@@ -115,7 +123,7 @@ local function runWaves()
 		World.intermissionEndsAt = Workspace:GetServerTimeNow() + Config.IntermissionSec
 		SkipVote.reset()
 		setState("Intermission")
-		Remotes.Juice:FireAllClients("Intermission", { wave = wave, endsAt = World.intermissionEndsAt })
+		World.fireRun("Intermission", { wave = wave, endsAt = World.intermissionEndsAt })
 		waitIntermission()
 		if not World.pendingWave then
 			World.wave = wave + 1
@@ -125,38 +133,50 @@ end
 
 task.spawn(function()
 	while true do
-		-- Staging: everyone in the yard, nothing hostile, until someone presses START RUN.
+		-- Hub: the last run's party comes back to the yard; the arena is cleared; the zone reopens.
+		local lastParty = World.partyPlayers()
+		local choice = World.lastChoice
+		World.lastChoice = nil
 		World.wave = 1
 		World.runOver = false
 		World.runRequested = false
 		World.pendingWave = nil
 		World.skipRequested = false
 		World.summaryChoice = nil
-		setState("Staging")
-		Staging.enter()
-		Remotes.Juice:FireAllClients("StagingEnter", {})
-		if World.lastChoice == "again" then
-			-- PLAY AGAIN: a beat for the fresh characters to land, then straight into the next run.
-			World.lastChoice = nil
-			Log.event("Run", "PLAY AGAIN: starting the next run")
-			task.wait(1.5)
-			Staging.requestRun(nil)
-		else
-			Log.event("Run", "Staging: waiting for START RUN")
-		end
+		setState("Hub")
+		Queue.onRunEnded(choice)
+		Hub.enter(lastParty)
+		World.fireRun("HubEnter", {})
+		World.party = {}
+		PlayerState.markAllDirty()
+		Log.event(
+			"Run",
+			"Hub: waiting for a party (%d queue zone%s)",
+			Queue.zoneCount(),
+			if Queue.zoneCount() == 1 then "" else "s"
+		)
 		while not World.runRequested do
 			task.wait(0.1)
 		end
 		World.runRequested = false
 		World.runId += 1
+		World.runGold = 0
+		World.objectivesDone = 0
 
-		-- Run start: fresh run state, then the drive-in sequence (IntroSec); WAVE 1 follows straight after.
+		-- Run start: fresh run state for the party, then the drive-in sequence (IntroSec); WAVE 1 follows.
 		World.wave = 1
 		World.heat = Config.HeatStart
 		World.heatDirty = true
-		Staging.beginRun()
+		Hub.beginRun()
 		setState("Intro")
-		Log.event("Run", "Run %d start, first wave in %.1fs", World.runId, Config.IntroSec)
+		Log.event(
+			"Run",
+			"Run %d start for a party of %d (%s), first wave in %.1fs",
+			World.runId,
+			#World.party,
+			World.partyKey(),
+			Config.IntroSec
+		)
 		RunStart.play()
 		BigCrate.onIntro()
 
@@ -167,7 +187,7 @@ task.spawn(function()
 		local window = Config.RunOverSlowSec + Config.RunOverHoldSec
 		while true do
 			setState("RunOver")
-			Remotes.Juice:FireAllClients("RunOver", {
+			World.fireRun("RunOver", {
 				wave = World.wave,
 				slowSec = Config.RunOverSlowSec,
 				holdSec = Config.RunOverHoldSec,
@@ -184,17 +204,17 @@ task.spawn(function()
 				break
 			end
 			Enemy.killAll()
-			Remotes.Juice:FireAllClients("RunResumed", { wave = World.wave })
+			World.fireRun("RunResumed", { wave = World.wave })
 			Log.event("Run", "second chance: wave %d restarts", World.wave)
 			task.wait(1.5)
 			runWaves()
 		end
 		Enemy.killAll()
 
-		-- Run end sequence, MVP, summary (PLAY AGAIN / TO LOBBY both lead back to the yard).
+		-- Run end sequence, MVP, payout, summary (PLAY AGAIN re-forms the party, TO LOBBY returns to the hub).
 		setState("RunEnd")
-		local choice = RunEnd.play()
-		World.lastChoice = choice
-		Log.event("Run", "summary closed (%s), back to the yard", choice)
+		local result = RunEnd.play()
+		World.lastChoice = result
+		Log.event("Run", "summary closed (%s), back to the hub", result)
 	end
 end)

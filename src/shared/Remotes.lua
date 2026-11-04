@@ -24,6 +24,10 @@ local DEFS: { [string]: string } = {
 	GiveUp = "RemoteEvent", -- client -> server: none; the GIVE UP button while downed (bleed out now)
 	ReviveEverybody = "RemoteEvent", -- client -> server: none; the spectate screen button
 	SummaryChoice = "RemoteEvent", -- client -> server: "again" | "lobby" from the summary panel
+	-- Brief 3: hub, queue, meta
+	QueueAction = "RemoteEvent", -- client -> server: "create" { settings } | "cancel" | "leave"
+	QueueState = "RemoteEvent", -- server -> client: the zone / party view for the local player (Queue.lua)
+	Meta = "RemoteFunction", -- client -> server: action, args; returns { ok, reason?, toast? } (unlock / upgrade / equip)
 }
 
 local folder: Instance

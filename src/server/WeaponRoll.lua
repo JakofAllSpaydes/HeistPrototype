@@ -10,6 +10,7 @@ local Config = require(Shared.Config)
 local Weapons = require(Shared.Weapons)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
+local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Stats = require(script.Parent.Stats)
@@ -19,6 +20,7 @@ local Log = require(script.Parent.Log)
 export type SpawnOpts = {
 	weaponId: string,
 	rarity: number,
+	level: number?, -- Armory level the gun carries (nil = 0)
 	cframe: CFrame,
 	dmg: number,
 	dps: number?, -- shown on the tag; defaults to the weapon at no upgrades
@@ -112,7 +114,9 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	gun:SetAttribute("DisplayName", weapon.displayName)
 	gun:SetAttribute("Rarity", opts.rarity)
 	gun:SetAttribute("Dmg", math.round(opts.dmg))
-	gun:SetAttribute("Dps", math.round(opts.dps or Stats.weaponDps(opts.weaponId, opts.rarity, {})))
+	gun:SetAttribute("Dps", math.round(opts.dps or Stats.weaponDps(opts.weaponId, opts.rarity, {}, opts.level)))
+	gun:SetAttribute("Level", opts.level or 0)
+	gun:SetAttribute("RateMult", Weapons.levelRateMult(opts.level or 0))
 	if opts.crateId then
 		gun:SetAttribute("CrateId", opts.crateId)
 		gun:SetAttribute("Slot", opts.slot)
@@ -166,7 +170,7 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 		fall.Completed:Once(function()
 			if gun.Parent then
 				WeaponRoll.dustRing(final.Position, 8, Rarity.color(opts.rarity))
-				Remotes.Juice:FireAllClients("GunLanded", { position = final.Position, rarity = opts.rarity })
+				World.fireRun("GunLanded", { position = final.Position, rarity = opts.rarity })
 			end
 		end)
 	end
@@ -191,13 +195,18 @@ end
 
 -- Drop the held gun as ground loot at a CFrame (used by swap and crate take).
 function WeaponRoll.dropHeld(state: PlayerState.State, cframe: CFrame): BasePart
-	local held = state.held
+	return WeaponRoll.dropGun(state, state.held, cframe)
+end
+
+-- Drop any gun record (held or stowed) as ground loot at a CFrame.
+function WeaponRoll.dropGun(state: PlayerState.State, gun: Types.Held, cframe: CFrame): BasePart
 	return WeaponRoll.spawnGun({
-		weaponId = held.weaponId,
-		rarity = held.rarity,
+		weaponId = gun.weaponId,
+		rarity = gun.rarity,
+		level = gun.level,
 		cframe = cframe,
-		dmg = Stats.weaponDamage(held.weaponId, held.rarity, PlayerState.damagePct(state)),
-		dps = Stats.weaponDps(held.weaponId, held.rarity, state.upgrades),
+		dmg = Stats.weaponDamage(gun.weaponId, gun.rarity, PlayerState.damagePct(state), gun.level),
+		dps = Stats.weaponDps(gun.weaponId, gun.rarity, state.upgrades, gun.level),
 	})
 end
 
@@ -217,6 +226,7 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	local cf = gun.CFrame
 	local newId = gun:GetAttribute("WeaponId") :: string
 	local newRarity = gun:GetAttribute("Rarity") :: number
+	local newLevel = tonumber(gun:GetAttribute("Level")) or 0
 	local crateId = gun:GetAttribute("CrateId")
 	local slot = gun:GetAttribute("Slot")
 	local oldId, oldRarity = state.held.weaponId, state.held.rarity
@@ -224,7 +234,7 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	gun:Destroy()
 	-- The old gun lands where the new one was, with a fresh timer.
 	WeaponRoll.dropHeld(state, cf)
-	PlayerState.setHeld(state, newId, newRarity)
+	PlayerState.setHeld(state, newId, newRarity, newLevel)
 	local handler = WeaponRoll.CrateGunTakenHandler
 	if handler and typeof(crateId) == "string" and typeof(slot) == "number" then
 		handler(player, crateId, slot)
@@ -279,10 +289,13 @@ function WeaponRoll.buy(player: Player): any
 		return { ok = false, reason = "cash", price = price }
 	end
 	state.weaponsBought += 1
-	local weapon = Weapons.List[math.random(#Weapons.List)]
+	-- The roll pool is the owned set and nothing else; the gun carries its Armory level.
+	local pool = PlayerState.ownedWeapons(state)
+	local weapon = pool[math.random(#pool)]
+	local level = PlayerState.weaponLevel(state, weapon.id)
 	local rarity, note = WeaponRoll.rollRarity(state, World.wave, weapon.rarityWeights)
-	local dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state))
-	local dps = Stats.weaponDps(weapon.id, rarity, state.upgrades)
+	local dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state), level)
+	local dps = Stats.weaponDps(weapon.id, rarity, state.upgrades, level)
 	state.dirty = true
 	Log.event(
 		"Roll",
@@ -306,9 +319,10 @@ function WeaponRoll.buy(player: Player): any
 		WeaponRoll.spawnGun({
 			weaponId = weapon.id,
 			rarity = rarity,
+			level = level,
 			cframe = WeaponRoll.groundCFrameInFront(char, 4),
-			dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state)),
-			dps = Stats.weaponDps(weapon.id, rarity, state.upgrades),
+			dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state), level),
+			dps = Stats.weaponDps(weapon.id, rarity, state.upgrades, level),
 			dropFrom = Config.GunDropHeight,
 		})
 	end)
@@ -325,6 +339,8 @@ function WeaponRoll.buy(player: Player): any
 			dps = math.round(dps),
 			pellets = weapon.pellets,
 			fireRate = weapon.fireRate, -- base; the client applies its own fire-rate multiplier
+			level = level,
+			levelRateMult = Weapons.levelRateMult(level),
 		},
 		pityStreak = state.pityStreak,
 	}

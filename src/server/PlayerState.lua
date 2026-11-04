@@ -1,5 +1,6 @@
 --!strict
--- Per-player authoritative state: cash, upgrades, held gun, pity, debug flags. Builds StateSync.
+-- Per-player authoritative state: cash, upgrades, held gun, pity, debug flags, plus the profile (Gold,
+-- Armory, class, mask) once loaded. Builds StateSync.
 local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
 local RunService = game:GetService("RunService")
@@ -12,12 +13,18 @@ local Weapons = require(Shared.Weapons)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 local Types = require(Shared.Types)
+local Masks = require(Shared.Masks)
+local Wraps = require(Shared.Wraps)
+local Classes = require(Shared.Classes)
+local AbilityGrowth = require(Shared.AbilityGrowth)
 local Stats = require(script.Parent.Stats)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Profiles = require(script.Parent.Profiles)
 
 export type State = {
 	player: Player,
+	profile: Profiles.Profile?, -- nil until loaded
 	cash: number,
 	upgradesBought: number,
 	weaponsBought: number,
@@ -25,6 +32,7 @@ export type State = {
 	upgradeOrder: { string },
 	openPick3: { Types.Card }?,
 	held: Types.Held,
+	stowed: Types.Held?, -- the real gun while downed with the sidearm
 	pityStreak: number,
 	forcedRarity: number?,
 	forceTradeoff: boolean,
@@ -53,11 +61,11 @@ export type State = {
 	downs: number,
 	selfRevives: number,
 	reviveAllUsed: number,
-	gold: number, -- meta currency earned this run (side jobs); display only, no persistence
+	gold: number, -- side job Gold earned this run, paid with the payout
 	jobsDone: number, -- side jobs completed this run (everyone in the run gets the credit)
 	minigamesDone: number, -- minigames finished this run
 	pose: number, -- index into Config.Poses, rolled at run start
-	maskColor: string, -- hex, from Config.MaskColors by line position
+	maskColor: string, -- hex, the equipped mask's color
 	joinIndex: number, -- order the player joined the server (ties, line-ups)
 }
 
@@ -69,13 +77,15 @@ local PlayerState = {}
 local function freshState(player: Player, joinIndex: number): State
 	return {
 		player = player,
+		profile = nil,
 		cash = Config.StartingCash,
 		upgradesBought = 0,
 		weaponsBought = 0,
 		upgrades = {},
 		upgradeOrder = {},
 		openPick3 = nil,
-		held = { weaponId = Weapons.Starter, rarity = Rarity.Common, uid = 1 },
+		held = { weaponId = Weapons.Starter, rarity = Rarity.Common, level = 0, uid = 1 },
+		stowed = nil,
 		pityStreak = 0,
 		forcedRarity = nil,
 		forceTradeoff = false,
@@ -106,7 +116,7 @@ local function freshState(player: Player, joinIndex: number): State
 		jobsDone = 0,
 		minigamesDone = 0,
 		pose = 1,
-		maskColor = Config.MaskColors[1],
+		maskColor = Masks.ById[Masks.Default].color,
 		joinIndex = joinIndex,
 	}
 end
@@ -116,6 +126,7 @@ function PlayerState.get(player: Player): State
 	if not s then
 		joinCounter += 1
 		s = freshState(player, joinCounter)
+		s.profile = Profiles.get(player)
 		states[player] = s
 	end
 	return s
@@ -149,14 +160,80 @@ function PlayerState.stimActive(state: State): boolean
 	return state.stimUntil > Workspace:GetServerTimeNow()
 end
 
+------------------------------------------------------------------ Profile-derived
+function PlayerState.weaponLevel(state: State, weaponId: string): number
+	local p = state.profile
+	local entry = p and p.weapons[weaponId]
+	return if entry then entry.level else 0
+end
+
+function PlayerState.wrapOf(state: State, weaponId: string): string?
+	local p = state.profile
+	local entry = p and p.weapons[weaponId]
+	return if entry then entry.wrap else nil
+end
+
+function PlayerState.maskOf(state: State): Masks.Mask
+	local p = state.profile
+	local id = if p then p.masks.equipped else Masks.Default
+	return Masks.ById[id] or Masks.ById[Masks.Default]
+end
+
+function PlayerState.classOf(state: State): string
+	local p = state.profile
+	return if p then p.classes.equipped else Classes.Default
+end
+
+function PlayerState.abilityLevel(state: State, abilityId: string): number
+	local p = state.profile
+	return if p then (p.abilities[abilityId] or 0) else 0
+end
+
+-- The starter gun from the profile: Common, at its Armory level.
+function PlayerState.starterHeld(state: State): Types.Held
+	local p = state.profile
+	local id = if p then p.starterWeaponId else Weapons.Starter
+	if not Weapons.ById[id] then
+		id = Weapons.Starter
+	end
+	local held =
+		{ weaponId = id, rarity = Rarity.Common, level = PlayerState.weaponLevel(state, id), uid = state.nextUid }
+	state.nextUid += 1
+	return held
+end
+
+-- Owned weapon ids, in Weapons.List order (the roll pool).
+function PlayerState.ownedWeapons(state: State): { Weapons.Weapon }
+	local out = {}
+	local p = state.profile
+	for _, w in Weapons.List do
+		if not p or p.weapons[w.id] then
+			table.insert(out, w)
+		end
+	end
+	if #out == 0 then
+		table.insert(out, Weapons.ById[Weapons.Starter])
+	end
+	return out
+end
+
+------------------------------------------------------------------ Computed stats
+-- Stim multipliers at the player's Stim level (AbilityGrowth on the fire-rate and reload percentages).
+function PlayerState.stimBuffs(state: State): Stats.Buffs
+	local level = PlayerState.abilityLevel(state, "stim")
+	local firePct = AbilityGrowth.at("stim", "FireRatePct", (Config.StimFireRateMult - 1) * 100, level)
+	local reloadPct = AbilityGrowth.at("stim", "ReloadPct", (Config.StimReloadSpeedMult - 1) * 100, level)
+	return {
+		fireRateMult = 1 + firePct / 100,
+		moveSpeedMult = Config.StimMoveMult,
+		reloadSpeedMult = 1 + reloadPct / 100,
+	}
+end
+
 function PlayerState.computed(state: State): Types.Computed
 	local buffs: Stats.Buffs? = nil
 	if PlayerState.stimActive(state) then
-		buffs = {
-			fireRateMult = Config.StimFireRateMult,
-			moveSpeedMult = Config.StimMoveMult,
-			reloadSpeedMult = Config.StimReloadSpeedMult,
-		}
+		buffs = PlayerState.stimBuffs(state)
 	end
 	return Stats.compute(state.upgrades, state.held, buffs)
 end
@@ -166,7 +243,9 @@ function PlayerState.damagePct(state: State): number
 	return if u then u.pct / 100 else 0
 end
 
--- Held gun visual: a Part welded to the right hand so tracers have a muzzle. Rarity color only.
+------------------------------------------------------------------ Character dressing
+-- Held gun visual: a Part welded to the right hand so tracers have a muzzle. Body = rarity color,
+-- grip = the equipped wrap (or dark).
 function PlayerState.refreshHeldVisual(state: State)
 	local char = state.player.Character
 	if not char then
@@ -175,6 +254,10 @@ function PlayerState.refreshHeldVisual(state: State)
 	local old = char:FindFirstChild("HeldGun")
 	if old then
 		old:Destroy()
+	end
+	local oldGrip = char:FindFirstChild("HeldGunWrap")
+	if oldGrip then
+		oldGrip:Destroy()
 	end
 	local hand = (char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")) :: BasePart?
 	if not hand then
@@ -199,10 +282,92 @@ function PlayerState.refreshHeldVisual(state: State)
 	muzzle.Position = Vector3.new(0, 0, -0.8)
 	muzzle.Parent = gun
 	gun.Parent = char
+	-- Wrappable part: the grip / stock band under the body.
+	local wrapId = PlayerState.wrapOf(state, state.held.weaponId)
+	local wrap = wrapId and Wraps.ById[wrapId]
+	local grip = Instance.new("Part")
+	grip.Name = "HeldGunWrap"
+	grip.Size = Vector3.new(0.38, 0.22, 0.7)
+	grip.Color = if wrap then Color3.fromHex(wrap.color) else Color3.fromRGB(40, 40, 46)
+	grip.Material = if wrap then Enum.Material.SmoothPlastic else Enum.Material.Metal
+	grip.CanCollide = false
+	grip.CanQuery = false
+	grip.CanTouch = false
+	grip.Massless = true
+	grip.CFrame = gun.CFrame * CFrame.new(0, -0.3, 0.3)
+	local weld2 = Instance.new("WeldConstraint")
+	weld2.Part0 = gun
+	weld2.Part1 = grip
+	weld2.Parent = grip
+	grip.Parent = char
 end
 
-function PlayerState.setHeld(state: State, weaponId: string, rarity: number)
-	state.held = { weaponId = weaponId, rarity = rarity, uid = state.nextUid }
+-- Mask: head recolor plus a simple accessory Part welded to the head (visor or bandana), from the profile.
+function PlayerState.applyMask(state: State)
+	local char = state.player.Character
+	local head = char and char:FindFirstChild("Head")
+	if not char or not head or not head:IsA("BasePart") then
+		return
+	end
+	local mask = PlayerState.maskOf(state)
+	state.maskColor = mask.color
+	head.Color = Color3.fromHex(mask.color)
+	local old = char:FindFirstChild("MaskPart")
+	if old then
+		old:Destroy()
+	end
+	if mask.shape == "none" then
+		return
+	end
+	local part = Instance.new("Part")
+	part.Name = "MaskPart"
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Massless = true
+	part.Color = Color3.fromHex(mask.color)
+	if mask.shape == "visor" then
+		part.Size = Vector3.new(1.3, 0.35, 0.3)
+		part.Material = Enum.Material.Neon
+		part.CFrame = head.CFrame * CFrame.new(0, 0.1, -0.55)
+	else
+		part.Size = Vector3.new(1.25, 0.5, 1.25)
+		part.Material = Enum.Material.Fabric
+		part.CFrame = head.CFrame * CFrame.new(0, -0.25, 0)
+	end
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = head
+	weld.Part1 = part
+	weld.Parent = part
+	part.Parent = char
+end
+
+-- Hats, hair and face accessories go on join so the mask reads; everything else stays.
+local STRIPPED = {
+	[Enum.AccessoryType.Hat] = true,
+	[Enum.AccessoryType.Hair] = true,
+	[Enum.AccessoryType.Face] = true,
+	[Enum.AccessoryType.Eyebrow] = true,
+	[Enum.AccessoryType.Eyelash] = true,
+}
+local function stripAccessories(char: Model)
+	for _, acc in char:GetChildren() do
+		if acc:IsA("Accessory") then
+			local kind = acc.AccessoryType
+			if STRIPPED[kind] or kind == Enum.AccessoryType.Unknown then
+				acc:Destroy()
+			end
+		end
+	end
+end
+
+function PlayerState.setHeld(state: State, weaponId: string, rarity: number, level: number?)
+	state.held = {
+		weaponId = weaponId,
+		rarity = rarity,
+		level = level or PlayerState.weaponLevel(state, weaponId),
+		uid = state.nextUid,
+	}
 	state.nextUid += 1
 	PlayerState.refreshHeldVisual(state)
 	state.dirty = true
@@ -222,18 +387,30 @@ function PlayerState.applyCharacterStats(state: State)
 	else
 		hum.Health = math.clamp(hum.Health, 1, st.maxHP)
 	end
-	hum.WalkSpeed = st.moveSpeed
+	hum.WalkSpeed = if state.downed then Config.DownedWalkSpeed else st.moveSpeed
 end
 
--- Installed by Staging: where a freshly loaded character goes (nil = the SpawnLocation).
+-- Installed by Hub: where a freshly loaded character goes (nil = the SpawnLocation).
 PlayerState.spawnCFrame = nil :: ((Player) -> CFrame?)?
+
+-- The profile arrived or changed its equips: starter, mask, wrap.
+function PlayerState.applyProfile(state: State)
+	state.profile = Profiles.get(state.player)
+	state.held = PlayerState.starterHeld(state)
+	state.stowed = nil
+	PlayerState.applyMask(state)
+	PlayerState.refreshHeldVisual(state)
+	state.dirty = true
+end
 
 function PlayerState.reset(state: State, cash: number?)
 	local fresh = freshState(state.player, state.joinIndex)
 	for k, v in fresh do
 		(state :: any)[k] = v
 	end
+	state.profile = Profiles.get(state.player)
 	state.cash = cash or Config.StartingCash
+	state.held = PlayerState.starterHeld(state)
 	local char = state.player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if hum then
@@ -244,6 +421,7 @@ function PlayerState.reset(state: State, cash: number?)
 		hum.JumpHeight = 7.2
 	end
 	PlayerState.applyCharacterStats(state)
+	PlayerState.applyMask(state)
 	PlayerState.refreshHeldVisual(state)
 	state.dirty = true
 end
@@ -280,6 +458,28 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 	end
 end
 
+function PlayerState.inParty(state: State): boolean
+	return World.isInParty(state.player)
+end
+
+local function abilityView(state: State): { [string]: Types.Ability }
+	local out: { [string]: Types.Ability } = {}
+	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
+	for _, a in class.abilities do
+		local cd = if a.id == "turret"
+			then Config.TurretCooldown
+			elseif a.id == "barricade" then Config.BarricadeCooldown
+			elseif a.id == "stim" then Config.StimCooldown
+			else 10
+		out[a.id] = {
+			cooldown = cd,
+			cooldownEndsAt = state.cooldowns[a.id] or 0,
+			activeUntil = if a.id == "stim" then state.stimUntil else nil,
+		}
+	end
+	return out
+end
+
 function PlayerState.buildSync(state: State): Types.Sync
 	local st = PlayerState.computed(state)
 	local w = Weapons.ById[state.held.weaponId]
@@ -291,9 +491,15 @@ function PlayerState.buildSync(state: State): Types.Sync
 	for _, item in state.upgrades do
 		total += item.count
 	end
+	local inParty = PlayerState.inParty(state)
+	local levelRate = Weapons.levelRateMult(state.held.level)
+	local wrapId = PlayerState.wrapOf(state, state.held.weaponId)
+	local wrap = wrapId and Wraps.ById[wrapId]
 	return {
 		wave = World.wave,
-		waveState = World.state,
+		-- Players outside the party only ever see the hub, whatever the arena is doing.
+		waveState = if inParty or not World.inRunCycle() then World.state else "Hub",
+		inParty = inParty,
 		intermissionEndsAt = World.intermissionEndsAt,
 		heat = World.heat,
 		cash = state.cash,
@@ -305,12 +511,13 @@ function PlayerState.buildSync(state: State): Types.Sync
 			archetype = w.archetype,
 			rarity = state.held.rarity,
 			rarityName = Rarity.name(state.held.rarity),
+			level = state.held.level,
 			dmg = st.damage,
-			dps = Stats.weaponDps(w.id, state.held.rarity, state.upgrades),
+			dps = Stats.weaponDps(w.id, state.held.rarity, state.upgrades, state.held.level),
 			fireRate = st.fireRate,
 			magSize = st.magSize,
 			reloadTime = st.reloadTime,
-			spread = w.spread * st.spreadMult,
+			spread = w.spread * st.spreadMult * (if state.downed then Config.DownedSpreadMult else 1),
 			pellets = w.pellets,
 			auto = w.auto,
 			shellReload = w.shellReload,
@@ -319,6 +526,9 @@ function PlayerState.buildSync(state: State): Types.Sync
 			displayRate = Weapons.effectiveRate(w, if w.fireRate > 0 then st.fireRate / w.fireRate else 1),
 			builtInPierce = Weapons.builtInPierce(w, state.held.rarity),
 			uid = state.held.uid,
+			sidearm = state.stowed ~= nil,
+			wrapColor = if wrap then wrap.color else nil,
+			levelRateMult = levelRate,
 		},
 		stats = st,
 		prices = {
@@ -329,15 +539,9 @@ function PlayerState.buildSync(state: State): Types.Sync
 		openPick3 = state.openPick3,
 		cratesTaken = cratesTaken,
 		god = state.god,
-		abilities = {
-			turret = { cooldown = Config.TurretCooldown, cooldownEndsAt = state.cooldowns.turret or 0 },
-			barricade = { cooldown = Config.BarricadeCooldown, cooldownEndsAt = state.cooldowns.barricade or 0 },
-			stim = {
-				cooldown = Config.StimCooldown,
-				cooldownEndsAt = state.cooldowns.stim or 0,
-				activeUntil = state.stimUntil,
-			},
-		},
+		abilities = abilityView(state),
+		classId = PlayerState.classOf(state),
+		profile = state.profile,
 		spawnsPaused = World.spawnsPaused,
 		debugEnabled = Config.DebugEnabled or RunService:IsStudio(),
 		playerCount = #Players:GetPlayers(),
@@ -378,8 +582,15 @@ local function onCharacter(player: Player, char: Model)
 	char.DescendantAdded:Connect(function(p)
 		if p:IsA("BasePart") then
 			p.CollisionGroup = "Player"
+		elseif p:IsA("Accessory") then
+			task.defer(function()
+				if p.Parent and (STRIPPED[p.AccessoryType] or p.AccessoryType == Enum.AccessoryType.Unknown) then
+					p:Destroy()
+				end
+			end)
 		end
 	end)
+	stripAccessories(char)
 	-- Kill the default regen script; HP Regen is an upgrade stat here.
 	local health = char:FindFirstChild("Health")
 	if health then
@@ -395,7 +606,9 @@ local function onCharacter(player: Player, char: Model)
 	PlayerState.applyCharacterStats(state)
 	task.spawn(function()
 		char:WaitForChild("RightHand", 5)
+		char:WaitForChild("Head", 5)
 		PlayerState.refreshHeldVisual(state)
+		PlayerState.applyMask(state)
 	end)
 	local hook = PlayerState.spawnCFrame
 	local cf = state.pendingSpawnCFrame or (if hook then hook(player) else nil)
@@ -412,8 +625,15 @@ end
 
 function PlayerState.init()
 	PlayerState.setupCollisionGroups()
-	-- Characters are loaded by hand: a bled-out player has none until revived or the run ends.
+	-- Characters are loaded by hand: a bled-out player has none until revived or the run ends, and the
+	-- first character waits for the profile so the starter, mask and wrap are right from the first frame.
 	Players.CharacterAutoLoads = false
+	Profiles.Loaded:Connect(function(player: Player)
+		local state = states[player]
+		if state then
+			PlayerState.applyProfile(state)
+		end
+	end)
 	local function onPlayer(player: Player)
 		local state = PlayerState.get(player)
 		player.CharacterAdded:Connect(function(char)
@@ -428,11 +648,18 @@ function PlayerState.init()
 				end)
 			end)
 		end)
-		if player.Character then
-			onCharacter(player, player.Character)
-		else
-			player:LoadCharacter()
-		end
+		task.spawn(function()
+			Profiles.waitFor(player)
+			if not player.Parent then
+				return
+			end
+			PlayerState.applyProfile(state)
+			if player.Character then
+				onCharacter(player, player.Character)
+			else
+				player:LoadCharacter()
+			end
+		end)
 	end
 	Players.PlayerAdded:Connect(onPlayer)
 	for _, p in Players:GetPlayers() do

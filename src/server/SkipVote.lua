@@ -13,7 +13,7 @@ local Log = require(script.Parent.Log)
 local SkipVote = {}
 
 local function announce(player: Player, on: boolean, auto: boolean)
-	Remotes.Juice:FireAllClients("SkipVote", {
+	World.fireRun("SkipVote", {
 		userId = player.UserId,
 		name = player.Name,
 		on = on,

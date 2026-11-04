@@ -21,7 +21,14 @@ export type Weapon = {
 	burst: number, -- shots per trigger pull (1 = normal); fireRate is the rate inside the burst
 	burstDelay: number, -- seconds between bursts
 	pierceByRarity: { number }?, -- built-in pierce per rarity tier (snipers)
+	-- Meta (Armory): how the gun is acquired and what its levels cost. Prices.lua holds the numbers.
+	saleType: string, -- Direct | Crate | Event
+	unlockCost: number?, -- nil = Prices.weaponUnlock
+	upgBaseCost: number?, -- nil = Prices.weaponUpgrade
 }
+
+local Config = require(script.Parent.Config)
+local Prices = require(script.Parent.Prices)
 
 local Weapons = {}
 
@@ -32,6 +39,7 @@ local function def(t: { [string]: any }): Weapon
 	t.rarityWeights = t.rarityWeights or { 1, 1, 1, 1, 1 }
 	t.burst = t.burst or 1
 	t.burstDelay = t.burstDelay or 0
+	t.saleType = t.saleType or "Direct"
 	return t :: Weapon
 end
 
@@ -152,6 +160,7 @@ Weapons.List = {
 		id = "P90",
 		displayName = "P90",
 		archetype = "SMG",
+		saleType = "Crate",
 		baseDmg = 10,
 		fireRate = 17,
 		magSize = 50,
@@ -186,6 +195,7 @@ Weapons.List = {
 		id = "M82",
 		displayName = "Barrett M82",
 		archetype = "Sniper",
+		saleType = "Crate",
 		baseDmg = 110,
 		fireRate = 1.3,
 		magSize = 10,
@@ -208,6 +218,7 @@ Weapons.List = {
 		id = "RPK",
 		displayName = "RPK",
 		archetype = "LMG",
+		saleType = "Event",
 		baseDmg = 18,
 		fireRate = 9.5,
 		magSize = 75,
@@ -223,5 +234,45 @@ for _, w in Weapons.List do
 end
 
 Weapons.Starter = "M1911"
+
+-- Armory level math (Config.Upg*Pct): applied to the base stats before rarity and in-run upgrades,
+-- everywhere the weapon appears (starter, rolls, crate deals, floor tags).
+function Weapons.levelDmgMult(level: number): number
+	return 1 + Config.UpgDmgPct * math.max(0, level)
+end
+
+function Weapons.levelMagMult(level: number): number
+	return 1 + Config.UpgMagPct * math.max(0, level)
+end
+
+function Weapons.levelReloadDiv(level: number): number
+	return 1 + Config.UpgReloadPct * math.max(0, level)
+end
+
+function Weapons.levelRateMult(level: number): number
+	return 1 + Config.UpgFireRatePct * math.max(0, level)
+end
+
+-- Base stats at an Armory level, before rarity and in-run upgrades.
+function Weapons.atLevel(
+	w: Weapon,
+	level: number
+): { dmg: number, fireRate: number, magSize: number, reloadTime: number }
+	return {
+		dmg = w.baseDmg * Weapons.levelDmgMult(level),
+		fireRate = w.fireRate * Weapons.levelRateMult(level),
+		magSize = math.max(1, math.round(w.magSize * Weapons.levelMagMult(level))),
+		reloadTime = w.reloadTime / Weapons.levelReloadDiv(level),
+	}
+end
+
+-- Gold cost of the next level: upgBaseCost x RarityUpgCostMult ^ level (both 100 / 1.0 in the prototype).
+function Weapons.upgradeCost(w: Weapon, level: number): number
+	return math.round((w.upgBaseCost or Prices.weaponUpgrade) * Config.RarityUpgCostMult ^ math.max(0, level))
+end
+
+function Weapons.unlockCost(w: Weapon): number
+	return w.unlockCost or Prices.weaponUnlock
+end
 
 return Weapons

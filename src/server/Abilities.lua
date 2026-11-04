@@ -9,10 +9,13 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
+local Classes = require(Shared.Classes)
+local AbilityGrowth = require(Shared.AbilityGrowth)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local Log = require(script.Parent.Log)
+local World = require(script.Parent.World)
 
 type Structure = {
 	kind: string, -- turret | barricade
@@ -25,6 +28,7 @@ type Structure = {
 	fill: Frame,
 	lastShot: number,
 	head: BasePart?,
+	dmg: number, -- turret damage per shot at the owner's ability level
 }
 
 local Abilities = {}
@@ -83,7 +87,7 @@ local function destroyStructure(s: Structure, reason: string)
 		return
 	end
 	structures[s.hitPart] = nil
-	Remotes.Juice:FireAllClients("StructureGone", { kind = s.kind, position = s.hitPart.Position, reason = reason })
+	World.fireRun("StructureGone", { kind = s.kind, position = s.hitPart.Position, reason = reason })
 	for _, p in s.model:GetDescendants() do
 		if p:IsA("BasePart") then
 			p.CanCollide = false
@@ -108,7 +112,7 @@ function Abilities.damageStructure(part: BasePart, amount: number)
 	s.hp -= amount
 	part:SetAttribute("StructureHP", s.hp)
 	s.fill.Size = UDim2.fromScale(math.clamp(s.hp / s.maxHP, 0, 1), 1)
-	Remotes.Juice:FireAllClients("StructureHit", { kind = s.kind, position = part.Position })
+	World.fireRun("StructureHit", { kind = s.kind, position = part.Position })
 	if s.hp <= 0 then
 		destroyStructure(s, "destroyed")
 	end
@@ -168,21 +172,33 @@ local function placeTurret(player: Player, state: PlayerState.State, char: Model
 	weld.Parent = barrel
 	model.PrimaryPart = base
 	model.Parent = folder
+	local level = PlayerState.abilityLevel(state, "turret")
+	local hp = math.round(AbilityGrowth.at("turret", "Hp", Config.TurretHP, level))
+	local dmg = AbilityGrowth.at("turret", "Damage", Config.TurretDmg, level)
 	local s: Structure = {
 		kind = "turret",
 		owner = player,
 		model = model,
 		hitPart = base,
-		hp = Config.TurretHP,
-		maxHP = Config.TurretHP,
+		hp = hp,
+		maxHP = hp,
 		expiresAt = now() + Config.TurretLifetime,
 		fill = hpBar(base, Color3.fromHex("E8B64C")),
 		lastShot = 0,
 		head = head,
+		dmg = dmg,
 	}
 	register(s)
-	Remotes.Juice:FireAllClients("StructurePlaced", { kind = "turret", position = base.Position })
-	Log.event("Ability", "%s placed a turret (%d HP, %ds)", player.Name, Config.TurretHP, Config.TurretLifetime)
+	World.fireRun("StructurePlaced", { kind = "turret", position = base.Position })
+	Log.event(
+		"Ability",
+		"%s placed a turret (LV %d: %d HP, %d dmg, %ds)",
+		player.Name,
+		level,
+		hp,
+		math.round(dmg),
+		Config.TurretLifetime
+	)
 end
 
 local function placeBarricade(player: Player, state: PlayerState.State, char: Model)
@@ -208,42 +224,49 @@ local function placeBarricade(player: Player, state: PlayerState.State, char: Mo
 	stripe.Parent = model
 	model.PrimaryPart = wall
 	model.Parent = folder
+	local level = PlayerState.abilityLevel(state, "barricade")
+	local hp = math.round(AbilityGrowth.at("barricade", "Hp", Config.BarricadeHP, level))
 	local s: Structure = {
 		kind = "barricade",
 		owner = player,
 		model = model,
 		hitPart = wall,
-		hp = Config.BarricadeHP,
-		maxHP = Config.BarricadeHP,
+		hp = hp,
+		maxHP = hp,
 		expiresAt = now() + Config.BarricadeLifetime,
 		fill = hpBar(wall, Color3.fromHex("9BA0A8")),
 		lastShot = 0,
 		head = nil,
+		dmg = 0,
 	}
 	register(s)
-	Remotes.Juice:FireAllClients("StructurePlaced", { kind = "barricade", position = wall.Position })
-	Log.event(
-		"Ability",
-		"%s placed a barricade (%d HP, %ds)",
-		player.Name,
-		Config.BarricadeHP,
-		Config.BarricadeLifetime
-	)
+	World.fireRun("StructurePlaced", { kind = "barricade", position = wall.Position })
+	Log.event("Ability", "%s placed a barricade (LV %d: %d HP, %ds)", player.Name, level, hp, Config.BarricadeLifetime)
 end
 
 local function stim(player: Player, state: PlayerState.State)
+	local level = PlayerState.abilityLevel(state, "stim")
 	state.stimUntil = now() + Config.StimDuration
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local heal = AbilityGrowth.at("stim", "Heal", Config.StimHeal, level)
+	if hum and hum.Health > 0 then
+		hum.Health = math.min(hum.MaxHealth, hum.Health + heal)
+	end
 	PlayerState.applyCharacterStats(state)
 	state.dirty = true
+	local b = PlayerState.stimBuffs(state)
 	Remotes.Juice:FireClient(player, "StimStart", { duration = Config.StimDuration, until_ = state.stimUntil })
 	Log.event(
 		"Ability",
-		"%s used stim (%ds, x%.1f speed, x%.1f fire rate, x%.1f reload)",
+		"%s used stim (LV %d: +%d HP, %ds, x%.1f speed, x%.2f fire rate, x%.2f reload)",
 		player.Name,
+		level,
+		math.round(heal),
 		Config.StimDuration,
-		Config.StimMoveMult,
-		Config.StimFireRateMult,
-		Config.StimReloadSpeedMult
+		b.moveSpeedMult,
+		b.fireRateMult,
+		b.reloadSpeedMult
 	)
 end
 
@@ -254,6 +277,17 @@ function Abilities.use(player: Player, id: any)
 	local state = PlayerState.get(player)
 	local char = player.Character
 	if not char or state.downed or state.bledOut then
+		return
+	end
+	-- Only the equipped class's abilities can fire; the non-INITIATE kits are Phase 2 stubs.
+	local ability = Classes.AbilityById[id]
+	if not ability or Classes.ClassOfAbility[id] ~= PlayerState.classOf(state) then
+		return
+	end
+	if not ability.live then
+		print(string.format("[GHS Ability] STUB: %s used %s (%s) - Phase 2", player.Name, ability.name, id))
+		Remotes.Juice:FireClient(player, "Toast", { text = "STUB · PHASE 2 · " .. string.upper(ability.name) })
+		Remotes.Juice:FireClient(player, "AbilityDenied", { id = id, stub = true })
 		return
 	end
 	if onCooldown(state, id) then
@@ -293,16 +327,17 @@ local function turretTick(s: Structure, t: number)
 	local muzzle = (head.CFrame * CFrame.new(0, 0, -2.1)).Position
 	local state = PlayerState.get(s.owner)
 	local st = PlayerState.computed(state)
-	local killed = Enemy.damage(target, Config.TurretDmg, s.owner)
+	local dmg = math.max(1, math.round(s.dmg))
+	local killed = Enemy.damage(target, dmg, s.owner)
 	local cash = 0
 	if killed then
 		cash = math.round(Config.CashPerKill * st.greed)
 		Economy.addCash(state, cash)
 	end
-	Remotes.Juice:FireAllClients("TurretShot", { from = muzzle, to = tp })
+	World.fireRun("TurretShot", { from = muzzle, to = tp })
 	Remotes.Juice:FireClient(s.owner, "Hit", {
 		position = tp,
-		amount = Config.TurretDmg,
+		amount = dmg,
 		headshot = false,
 		crit = false,
 		killed = killed,

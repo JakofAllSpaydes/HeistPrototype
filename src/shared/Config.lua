@@ -146,7 +146,7 @@ local Config = {
 	SideJobEveryWaves = 2,
 	SideJobDurationSec = 75,
 	SideJobReward = 600,
-	SideJobGold = 5, -- meta currency per completed side job, per player (display only, no persistence)
+	SideJobGold = 5, -- Gold per completed side job, per player, paid with the run payout
 	SideJobBeaconRadius = 6,
 	SideJobHoldSec = 2, -- hold the HACK prompt on the beacon this long to complete
 	-- Job type is rolled per job from these weights. hack | capture | one of the six minigames (played at the beacon
@@ -182,6 +182,7 @@ local Config = {
 	StimMoveMult = 1.5,
 	StimFireRateMult = 1.6,
 	StimReloadSpeedMult = 1.6, -- reloads this much faster while stimmed
+	StimHeal = 20, -- HP healed on use ("patch yourself up"); grows with the ability level
 	StimCooldown = 20,
 
 	------------------------------------------------------------------ Heat (stars, 0..5)
@@ -217,12 +218,52 @@ local Config = {
 	PillarGrid = 5, -- NxN pillars, the center one is skipped so the spawn stays clear
 	PillarSize = 4,
 
-	------------------------------------------------------------------ Staging yard (regenerate the map after changing sizes)
-	StagingCash = 5000, -- Match Cash while in the yard so the buy tiles can be tested there; START RUN resets to StartingCash
+	------------------------------------------------------------------ Hub (the yard; regenerate the map after changing sizes)
+	MatchMode = "local", -- "local": the party plays in this server's arena. Reserved servers / TeleportService are out of scope.
 	YardWidth = 120, -- studs east-west, attached to the arena's south wall
 	YardDepth = 80, -- studs north-south
-	DoorWidth = 12, -- run start door opening in the south wall
-	PropSpacing = 10, -- studs between the minigame props along the yard's west wall
+	DoorWidth = 12, -- arena door opening in the south wall
+	PropSpacing = 10, -- studs between the minigame props along the yard's east wall
+	QueueZoneSize = 16, -- the queue pad is this many studs square, in front of the arena door
+	StationSpacing = 16, -- studs between the three customization stations along the west wall
+	HubCash = 0, -- Match Cash shown in the hub (nothing to buy there)
+
+	------------------------------------------------------------------ Queue zone / Create Match
+	QueueZoneCount = 1, -- zones in the hub (QueueZone1..N parts in the map); the code never assumes 1
+	MaxPartySize = 4,
+	QueueCountdownSec = 15, -- from CREATE; a full party or a party of 1 starts at once
+	QueueMaps = { { id = "TheBank", name = "THE BANK" } }, -- one entry in the prototype
+	QueueDifficulties = { { id = "Normal", name = "NORMAL" } },
+	DiffHpMult = 1.0,
+	DiffDamageMult = 1.0,
+	DiffGoldMult = 1.0,
+
+	------------------------------------------------------------------ Meta (profiles, Armory levels, classes, masks)
+	StartingGold = 10000, -- fresh profile
+	ProfileAutosaveSec = 60,
+	ProfileSaveDebounceSec = 2, -- purchases / equips within this window write once
+	UpgDmgPct = 0.05, -- weapon base damage x (1 + UpgDmgPct x level)
+	UpgMagPct = 0.05, -- mag x (1 + UpgMagPct x level)
+	UpgReloadPct = 0.05, -- reload time / (1 + UpgReloadPct x level)
+	UpgFireRatePct = 0.03, -- fire rate x (1 + UpgFireRatePct x level)
+	RarityUpgCostMult = 1.0, -- upgrade cost = upgBaseCost x this ^ level
+	AbilityGrowthPct = 0.1, -- default growth per ability level for every upgradeable variable (AbilityGrowth.lua)
+	-- Character idle in the customization scene, per equipped class (default R15 idles stand in).
+	ClassIdleAnimationId = {
+		INITIATE = "rbxassetid://507766388",
+		DOC = "rbxassetid://507766666",
+		SHARPSHOOTER = "rbxassetid://507766388",
+		TORCH = "rbxassetid://507766388",
+	},
+	MetaCameraDistance = 9, -- studs from the character in the customization scene
+	MetaCameraTweenSec = 0.45,
+	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE pushes the camera in on the gun to this distance
+
+	------------------------------------------------------------------ Payout (GDD_7)
+	GoldPerWaveBase = 20, -- per cleared wave
+	GoldPerWaveAdd = 5, -- x (wave - 1)
+	GoldPerObjective = 50, -- per side job completed
+	-- GoldEarned = (sum over cleared waves + GoldPerObjective x objectives) x DiffGoldMult, plus SideJobGold per job.
 
 	------------------------------------------------------------------ Minigames (test props in the yard)
 	MinigameTier = 1, -- starting tier for every game (1..3); the tier pad and the debug panel change it per session
@@ -268,6 +309,11 @@ local Config = {
 	-- same wave restarts.
 	RunOverHoldSec = 4,
 	RunOverTimeScale = 0.3, -- player and enemy speed during the slow-mo
+	-- Downed sidearm: the held gun is stowed and a Common pistol takes its place until revive (back exactly
+	-- as it was) or bleed-out (the stowed gun drops as ground loot).
+	DownedCanShoot = true, -- false restores the Round 9 "no fire while downed" rule
+	DownedPistolId = "M1911",
+	DownedSpreadMult = 1.5,
 
 	------------------------------------------------------------------ Run start (IntroSec is the total length)
 	RunStartBeats = { doors = 1.4, masks = 2.2, poses = 2.8, orbit = 4.2 }, -- seconds from START RUN
@@ -295,8 +341,7 @@ local Config = {
 	MvpCashWeight = 0.05,
 	MvpReviveWeight = 40,
 	SummaryAutoLobbySec = 30, -- TO LOBBY fires on its own after this
-	SummaryCountUpSec = 1, -- TOTAL BANKED / GOLD count-up length
-	GoldPerBanked = 0.01, -- display only, no persistence
+	SummaryCountUpSec = 1, -- GOLD EARNED count-up length
 }
 
 return Config

@@ -1,7 +1,6 @@
 --!strict
 -- Shared arms drop: a crate with N guns fanned around it, one take per player per crate.
 -- Several crates can be live at once (intro crate + per-wave crate); all close at wave end.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -34,17 +33,38 @@ local crates: { [string]: Crate } = {}
 local nextId = 0
 
 local function weaponCount(): number
-	return math.max(Config.BigCrateWeaponCount.min, #Players:GetPlayers() + Config.BigCrateWeaponCount.plus)
+	return math.max(Config.BigCrateWeaponCount.min, #World.runAudience() + Config.BigCrateWeaponCount.plus)
 end
 
 local function tagUpgrades(): { [string]: any }
-	local first = Players:GetPlayers()[1]
+	local first = World.runAudience()[1]
 	return if first then PlayerState.get(first).upgrades else {}
 end
 
 local function tagDamagePct(): number
-	local first = Players:GetPlayers()[1]
+	local first = World.runAudience()[1]
 	return if first then PlayerState.damagePct(PlayerState.get(first)) else 0
+end
+
+-- The crate pool: every weapon owned by someone in the run, carrying the highest Armory level among its owners.
+local function partyPool(): { { weapon: Weapons.Weapon, level: number } }
+	local levels: { [string]: number } = {}
+	for _, p in World.runAudience() do
+		local state = PlayerState.get(p)
+		for _, w in PlayerState.ownedWeapons(state) do
+			levels[w.id] = math.max(levels[w.id] or 0, PlayerState.weaponLevel(state, w.id))
+		end
+	end
+	local out = {}
+	for _, w in Weapons.List do
+		if levels[w.id] then
+			table.insert(out, { weapon = w, level = levels[w.id] })
+		end
+	end
+	if #out == 0 then
+		table.insert(out, { weapon = Weapons.ById[Weapons.Starter], level = 0 })
+	end
+	return out
 end
 
 local function dustRing(position: Vector3)
@@ -107,7 +127,7 @@ function BigCrate.drop(at: Vector3?)
 			end
 		end)
 	end
-	Remotes.Juice:FireAllClients("CrateIncoming", { crateId = id, left = n, total = n })
+	World.fireRun("CrateIncoming", { crateId = id, left = n, total = n })
 	Log.event("Crate", "Arms drop %s incoming at wave %d with %d guns", id, World.wave, n)
 
 	task.spawn(function()
@@ -141,23 +161,21 @@ function BigCrate.drop(at: Vector3?)
 		TweenService:Create(lid, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			CFrame = openCF,
 		}):Play()
-		Remotes.Juice:FireAllClients(
-			"CrateLand",
-			{ crateId = id, left = crate.left, total = n, position = landPos, endsAt = endsAt }
-		)
+		World.fireRun("CrateLand", { crateId = id, left = crate.left, total = n, position = landPos, endsAt = endsAt })
 
 		-- Guns eject in an arc and settle in a fan.
 		local wave = World.wave
 		local floor = Config.BigCrateRarityFloorByBracket[Rarity.bracketIndex(wave)]
 		local dmgPct = tagDamagePct()
-		-- Distinct weapon types per crate: shuffle the pool and deal from the top.
-		local deck = table.clone(Weapons.List)
+		-- Distinct weapon types per crate: shuffle the owned pool and deal from the top.
+		local deck = partyPool()
 		for i = #deck, 2, -1 do
 			local k = math.random(i)
 			deck[i], deck[k] = deck[k], deck[i]
 		end
 		for slot = 1, n do
-			local weapon = deck[((slot - 1) % #deck) + 1]
+			local entry = deck[((slot - 1) % #deck) + 1]
+			local weapon = entry.weapon
 			local rarity = Rarity.roll(wave, floor, weapon.rarityWeights)
 			local a = (slot - 1) / n * math.pi * 2 + (math.random() - 0.5) * 0.4
 			local dist = Config.BigCrateFanMin + math.random() * (Config.BigCrateFanMax - Config.BigCrateFanMin)
@@ -165,9 +183,10 @@ function BigCrate.drop(at: Vector3?)
 			local gun = WeaponRoll.spawnGun({
 				weaponId = weapon.id,
 				rarity = rarity,
+				level = entry.level,
 				cframe = CFrame.new(landPos + Vector3.new(0, body.Size.Y + 0.5, 0)),
-				dmg = Stats.weaponDamage(weapon.id, rarity, dmgPct),
-				dps = Stats.weaponDps(weapon.id, rarity, tagUpgrades()),
+				dmg = Stats.weaponDamage(weapon.id, rarity, dmgPct, entry.level),
+				dps = Stats.weaponDps(weapon.id, rarity, tagUpgrades(), entry.level),
 				lifetime = Config.GroundWeaponLifetime,
 				crateId = id,
 				slot = slot,
@@ -231,7 +250,7 @@ function BigCrate.onGunGone(crateId: string, slot: number, takenBy: Player?)
 	for _ in crate.guns do
 		crate.left += 1
 	end
-	Remotes.Juice:FireAllClients("CrateCount", { crateId = crate.id, left = crate.left })
+	World.fireRun("CrateCount", { crateId = crate.id, left = crate.left })
 	if takenBy then
 		Log.event("Crate", "%s took a gun from %s, %d left", takenBy.Name, crate.id, crate.left)
 	end
@@ -279,7 +298,7 @@ function BigCrate.finish(crate: Crate)
 			glow:Destroy()
 		end
 	end)
-	Remotes.Juice:FireAllClients("CrateEnd", { crateId = crate.id, remaining = BigCrate.liveCount() })
+	World.fireRun("CrateEnd", { crateId = crate.id, remaining = BigCrate.liveCount() })
 	Log.event("Crate", "%s closed", crate.id)
 end
 

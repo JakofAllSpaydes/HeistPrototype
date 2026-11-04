@@ -12,6 +12,7 @@ local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
+local World = require(script.Parent.World)
 
 local Combat = {}
 
@@ -87,7 +88,7 @@ local function dealDamage(
 	if killed and allowSplash and shooter.stats.splash > 0 then
 		local splashDmg = dmg * shooter.stats.splash / 100
 		local victims = Enemy.within(position, Config.SplashRadius, model)
-		Remotes.Juice:FireAllClients("Splash", { position = position, radius = Config.SplashRadius, hits = #victims })
+		World.fireRun("Splash", { position = position, radius = Config.SplashRadius, hits = #victims })
 		for _, victim in victims do
 			local vp = Enemy.rootPosition(victim) or position
 			dealDamage(shooter, victim, splashDmg, vp, { secondary = true }, false)
@@ -110,7 +111,7 @@ local function bulletHit(shooter: Shooter, model: Model, part: BasePart, positio
 		local target = Enemy.nearest(position, Config.RicochetRange, model)
 		if target then
 			local tp = Enemy.rootPosition(target) or position
-			Remotes.Juice:FireAllClients("Ricochet", { from = position, to = tp })
+			World.fireRun("Ricochet", { from = position, to = tp })
 			dealDamage(shooter, target, dmg * Config.RicochetDmgRatio, tp, { secondary = true, crit = crit }, true)
 		end
 	end
@@ -164,7 +165,8 @@ function Combat.init()
 		end
 
 		local state = PlayerState.get(player)
-		if state.downed or state.bledOut then
+		-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire.
+		if state.bledOut or (state.downed and not Config.DownedCanShoot) then
 			return
 		end
 		local st = PlayerState.computed(state)
@@ -178,7 +180,7 @@ function Combat.init()
 		local shooter: Shooter = { player = player, state = state, stats = st, char = char, weapon = weapon }
 		local dir = direction.Unit
 		local baseFilter: { Instance } = { char, groundLoot, effects }
-		local spread = weapon.spread * st.spreadMult
+		local spread = weapon.spread * st.spreadMult * (if state.downed then Config.DownedSpreadMult else 1)
 
 		for _ = 1, weapon.pellets do
 			local d = if weapon.pellets > 1 then coneSpread(dir, spread) else dir

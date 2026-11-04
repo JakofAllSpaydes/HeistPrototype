@@ -15,8 +15,46 @@ local Remotes = require(Shared.Remotes)
 local PlayerState = require(script.Parent.PlayerState)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local WeaponRoll = require(script.Parent.WeaponRoll)
 
 local Downed = {}
+
+-- Sidearm: the held gun is stowed and a Common DownedPistolId (at its own Armory level, full mag) takes
+-- its place. Revive hands the stowed gun back exactly; bleed-out drops it on the floor.
+local function giveSidearm(state: PlayerState.State)
+	if not Config.DownedCanShoot or state.stowed then
+		return
+	end
+	state.stowed = state.held
+	local pistol = Config.DownedPistolId
+	PlayerState.setHeld(state, pistol, 1, PlayerState.weaponLevel(state, pistol))
+	Log.event("Downed", "%s stowed %s and drew the %s sidearm", state.player.Name, state.stowed.weaponId, pistol)
+end
+
+local function restoreStowed(state: PlayerState.State)
+	local stowed = state.stowed
+	if not stowed then
+		return
+	end
+	state.stowed = nil
+	state.held = stowed -- same uid: the client restores the mag it remembered
+	PlayerState.refreshHeldVisual(state)
+	state.dirty = true
+	Log.event("Downed", "%s has %s back", state.player.Name, stowed.weaponId)
+end
+
+local function dropStowed(state: PlayerState.State, position: Vector3)
+	local stowed = state.stowed
+	if not stowed then
+		return
+	end
+	state.stowed = nil
+	local cf = CFrame.new(position.X, Config.FloorTop + 0.35, position.Z)
+		* CFrame.Angles(0, math.random() * math.pi * 2, 0)
+		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
+	WeaponRoll.dropGun(state, stowed, cf)
+	Log.event("Downed", "%s's %s dropped on the floor", state.player.Name, stowed.weaponId)
+end
 
 local holding: { [Player]: boolean } = {}
 local lastSent: { [Player]: number } = {}
@@ -41,7 +79,7 @@ local function sendProgress(target: Player, reviver: Player?, progress: number, 
 		return
 	end
 	lastSent[target] = t
-	Remotes.Juice:FireAllClients("ReviveProgress", {
+	World.fireRun("ReviveProgress", {
 		userId = target.UserId,
 		name = target.Name,
 		reviverId = if reviver then reviver.UserId else nil,
@@ -55,7 +93,7 @@ function Downed.checkRunOver()
 	if not World.inRun() or World.runOver then
 		return
 	end
-	for _, player in Players:GetPlayers() do
+	for _, player in World.runAudience() do
 		local state = PlayerState.get(player)
 		if state.downed or PlayerState.isStanding(state) then
 			return
@@ -83,12 +121,14 @@ function Downed.down(player: Player)
 	hum.UseJumpPower = true
 	hum.JumpPower = 0
 	hum.WalkSpeed = Config.DownedWalkSpeed
+	giveSidearm(state)
 	state.dirty = true
-	Remotes.Juice:FireClient(player, "Downed", { bleedEndsAt = state.bleedEndsAt, selfRevives = state.selfRevives })
-	Remotes.Juice:FireAllClients(
-		"PlayerDowned",
-		{ userId = player.UserId, name = player.Name, bleedEndsAt = state.bleedEndsAt }
-	)
+	Remotes.Juice:FireClient(player, "Downed", {
+		bleedEndsAt = state.bleedEndsAt,
+		selfRevives = state.selfRevives,
+		canShoot = Config.DownedCanShoot,
+	})
+	World.fireRun("PlayerDowned", { userId = player.UserId, name = player.Name, bleedEndsAt = state.bleedEndsAt })
 	World.addHeat(Config.HeatDowned, player.Name .. " downed")
 	Log.event("Downed", "%s is down (down #%d), bleeds out in %ds", player.Name, state.downs, Config.BleedOutSec)
 end
@@ -114,11 +154,12 @@ function Downed.standUp(player: Player, hpPct: number, by: string)
 		hum.JumpHeight = 7.2
 	end
 	hum.Health = math.max(1, math.floor(hum.MaxHealth * hpPct / 100))
+	restoreStowed(state)
 	PlayerState.applyCharacterStats(state)
 	state.invulnUntil = now() + Config.ReviveInvulnSec
 	state.dirty = true
 	Remotes.Juice:FireClient(player, "Revived", { by = by, hpPct = hpPct })
-	Remotes.Juice:FireAllClients("PlayerRevived", { userId = player.UserId, name = player.Name, by = by })
+	World.fireRun("PlayerRevived", { userId = player.UserId, name = player.Name, by = by })
 	Log.event("Downed", "%s stood up (%s) at %d%% HP", player.Name, by, hpPct)
 end
 
@@ -135,9 +176,10 @@ function Downed.bleedOut(player: Player)
 	if root then
 		state.lastPosition = root.Position
 	end
+	dropStowed(state, state.lastPosition)
 	state.dirty = true
 	Remotes.Juice:FireClient(player, "BledOut", {})
-	Remotes.Juice:FireAllClients("PlayerBledOut", { userId = player.UserId, name = player.Name })
+	World.fireRun("PlayerBledOut", { userId = player.UserId, name = player.Name })
 	Log.event("Downed", "%s bled out", player.Name)
 	local char = player.Character
 	player.Character = nil
@@ -151,7 +193,7 @@ end
 function Downed.reviveEverybody(buyer: Player?)
 	local who = if buyer then buyer.Name else "DEBUG"
 	local count = 0
-	for _, player in Players:GetPlayers() do
+	for _, player in World.runAudience() do
 		local state = PlayerState.get(player)
 		if state.bledOut then
 			count += 1
@@ -175,7 +217,7 @@ function Downed.reviveEverybody(buyer: Player?)
 		bs.reviveAllUsed += 1
 		bs.dirty = true
 	end
-	Remotes.Juice:FireAllClients("CrewRevived", { name = who, count = count })
+	World.fireRun("CrewRevived", { name = who, count = count })
 	Log.event("Downed", "%s revived the crew (%d players)", who, count)
 end
 
@@ -221,7 +263,7 @@ end
 local function nearestDowned(from: Vector3, except: Player): Player?
 	local best: Player? = nil
 	local bestDist = Config.ReviveRadius
-	for _, player in Players:GetPlayers() do
+	for _, player in World.runAudience() do
 		if player == except then
 			continue
 		end
@@ -253,7 +295,7 @@ function Downed.init()
 	RunService.Heartbeat:Connect(function(dt)
 		local t = now()
 		-- Bleed timers.
-		for _, player in Players:GetPlayers() do
+		for _, player in World.runAudience() do
 			local state = PlayerState.get(player)
 			if state.downed and t >= state.bleedEndsAt then
 				Downed.bleedOut(player)
@@ -280,7 +322,7 @@ function Downed.init()
 				end
 			end
 		end
-		for _, player in Players:GetPlayers() do
+		for _, player in World.runAudience() do
 			local ts = PlayerState.get(player)
 			if not ts.downed then
 				continue

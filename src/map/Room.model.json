@@ -2091,6 +2091,283 @@
       }
     },
     {
+      "className": "Part",
+      "name": "Table",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              3.25,
+              141
+            ]
+          }
+        },
+        "Color": [
+          0.13,
+          0.13,
+          0.16
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          10,
+          0.5,
+          5
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "TableEdge",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              3,
+              141
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.91,
+          0.71,
+          0.3
+        ],
+        "Material": "Neon",
+        "Size": [
+          10.4,
+          0.2,
+          5.4
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "TableLeg_-1_-1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -4.5,
+              1.75,
+              139
+            ]
+          }
+        },
+        "Color": [
+          0.3,
+          0.3,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.5,
+          2.5,
+          0.5
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "TableLeg_-1_1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -4.5,
+              1.75,
+              143
+            ]
+          }
+        },
+        "Color": [
+          0.3,
+          0.3,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.5,
+          2.5,
+          0.5
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "TableLeg_1_-1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              4.5,
+              1.75,
+              139
+            ]
+          }
+        },
+        "Color": [
+          0.3,
+          0.3,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.5,
+          2.5,
+          0.5
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "TableLeg_1_1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              4.5,
+              1.75,
+              143
+            ]
+          }
+        },
+        "Color": [
+          0.3,
+          0.3,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.5,
+          2.5,
+          0.5
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
       "className": "SpawnLocation",
       "name": "Spawn",
       "properties": {
@@ -2118,7 +2395,7 @@
             "position": [
               0,
               0.75,
-              161
+              150
             ]
           }
         },
@@ -2142,7 +2419,7 @@
     },
     {
       "className": "Part",
-      "name": "StartRunMarker",
+      "name": "QueueZone1",
       "properties": {
         "Anchored": true,
         "BottomSurface": "Smooth",
@@ -2168,24 +2445,213 @@
             "position": [
               0,
               0.6,
-              105
+              111
             ]
           }
         },
         "CanCollide": false,
         "Color": [
-          0.91,
-          0.71,
-          0.3
+          0.3,
+          0.62,
+          0.91
         ],
         "Material": "Neon",
         "Size": [
-          12,
+          16,
           0.2,
-          6
+          16
         ],
         "TopSurface": "Smooth",
-        "Transparency": 0.45
+        "Transparency": 0.7
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueGate1PostL",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -7.6,
+              5.5,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          0.8,
+          11,
+          0.8
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueGate1PostR",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              7.6,
+              5.5,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          0.8,
+          11,
+          0.8
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueGate1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              11.4,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          16,
+          0.8,
+          0.8
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueBillboard1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              14.5,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "TopSurface": "Smooth",
+        "Transparency": 1
       }
     },
     {
@@ -2652,7 +3118,7 @@
                   ]
                 ],
                 "position": [
-                  0,
+                  14,
                   4,
                   141
                 ]
@@ -2698,7 +3164,7 @@
                   ]
                 ],
                 "position": [
-                  0,
+                  14,
                   5,
                   135.55
                 ]
@@ -2746,7 +3212,7 @@
                   ]
                 ],
                 "position": [
-                  0,
+                  14,
                   3.3,
                   142
                 ]
@@ -2793,7 +3259,7 @@
                   ]
                 ],
                 "position": [
-                  -2,
+                  12,
                   2.9,
                   135.45
                 ]
@@ -2840,7 +3306,7 @@
                   ]
                 ],
                 "position": [
-                  -3.2,
+                  10.8,
                   1.6,
                   137.4
                 ]
@@ -2888,7 +3354,7 @@
                   ]
                 ],
                 "position": [
-                  -3.2,
+                  10.8,
                   1.6,
                   144.6
                 ]
@@ -2936,7 +3402,7 @@
                   ]
                 ],
                 "position": [
-                  2,
+                  16,
                   2.9,
                   135.45
                 ]
@@ -2983,7 +3449,7 @@
                   ]
                 ],
                 "position": [
-                  3.2,
+                  17.2,
                   1.6,
                   137.4
                 ]
@@ -3031,7 +3497,7 @@
                   ]
                 ],
                 "position": [
-                  3.2,
+                  17.2,
                   1.6,
                   144.6
                 ]
@@ -3060,7 +3526,7 @@
     },
     {
       "className": "Part",
-      "name": "Prop_Lockpick",
+      "name": "Station_WEAPONS",
       "properties": {
         "Anchored": true,
         "BottomSurface": "Smooth",
@@ -3085,6 +3551,707 @@
             ],
             "position": [
               -58.7,
+              3.5,
+              119
+            ]
+          }
+        },
+        "Color": [
+          0.26,
+          0.28,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.6,
+          7,
+          7
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "StationLabel_WEAPONS",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                -1,
+                0,
+                0
+              ]
+            ],
+            "position": [
+              -53.5,
+              0.6,
+              119
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.1,
+          0.1,
+          0.12
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          7,
+          0.2,
+          3
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "RackGun1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.2,
+              3,
+              116.8
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.6,
+          0.63,
+          0.66
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.4,
+          0.5,
+          2.4
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "RackGun2",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.2,
+              4.4,
+              119
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.6,
+          0.63,
+          0.66
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.4,
+          0.5,
+          2.4
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "RackGun3",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.2,
+              5.799999999999999,
+              121.2
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.6,
+          0.63,
+          0.66
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.4,
+          0.5,
+          2.4
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "Station_CLASSES",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.7,
+              3.5,
+              135
+            ]
+          }
+        },
+        "Color": [
+          0.26,
+          0.28,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.6,
+          7,
+          7
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "StationLabel_CLASSES",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                -1,
+                0,
+                0
+              ]
+            ],
+            "position": [
+              -53.5,
+              0.6,
+              135
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.1,
+          0.1,
+          0.12
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          7,
+          0.2,
+          3
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "Podium",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -55.7,
+              1.1,
+              135
+            ]
+          }
+        },
+        "Color": [
+          0.3,
+          0.3,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          3,
+          1.2,
+          3
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "PodiumTop",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -55.7,
+              1.8,
+              135
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.91,
+          0.71,
+          0.3
+        ],
+        "Material": "Neon",
+        "Size": [
+          3.2,
+          0.2,
+          3.2
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "Station_AVATAR",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.7,
+              3.5,
+              151
+            ]
+          }
+        },
+        "Color": [
+          0.26,
+          0.28,
+          0.34
+        ],
+        "Material": "Metal",
+        "Size": [
+          0.6,
+          7,
+          7
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "StationLabel_AVATAR",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                -1,
+                0,
+                0
+              ]
+            ],
+            "position": [
+              -53.5,
+              0.6,
+              151
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.1,
+          0.1,
+          0.12
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          7,
+          0.2,
+          3
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "MaskCube1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.150000000000006,
+              4.5,
+              148.6
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.91,
+          0.33,
+          0.3
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          0.5,
+          1,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "MaskCube2",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.150000000000006,
+              4.5,
+              150.2
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          0.5,
+          1,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "MaskCube3",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.150000000000006,
+              4.5,
+              151.79999999999998
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.56,
+          0.89,
+          0.63
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          0.5,
+          1,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "MaskCube4",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -58.150000000000006,
+              4.5,
+              153.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.91,
+          0.71,
+          0.3
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          0.5,
+          1,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "Prop_Lockpick",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              58.7,
               3,
               112
             ]
@@ -3116,7 +4283,7 @@
               [
                 0,
                 0,
-                1
+                -1
               ],
               [
                 0,
@@ -3124,13 +4291,13 @@
                 0
               ],
               [
-                -1,
+                1,
                 0,
                 0
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               0.6,
               112
             ]
@@ -3177,7 +4344,7 @@
               ]
             ],
             "position": [
-              -58.7,
+              58.7,
               3,
               122
             ]
@@ -3209,7 +4376,7 @@
               [
                 0,
                 0,
-                1
+                -1
               ],
               [
                 0,
@@ -3217,13 +4384,13 @@
                 0
               ],
               [
-                -1,
+                1,
                 0,
                 0
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               0.6,
               122
             ]
@@ -3270,7 +4437,7 @@
               ]
             ],
             "position": [
-              -58.7,
+              58.7,
               3,
               132
             ]
@@ -3302,7 +4469,7 @@
               [
                 0,
                 0,
-                1
+                -1
               ],
               [
                 0,
@@ -3310,13 +4477,13 @@
                 0
               ],
               [
-                -1,
+                1,
                 0,
                 0
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               0.6,
               132
             ]
@@ -3363,7 +4530,7 @@
               ]
             ],
             "position": [
-              -58.7,
+              58.7,
               3,
               142
             ]
@@ -3395,7 +4562,7 @@
               [
                 0,
                 0,
-                1
+                -1
               ],
               [
                 0,
@@ -3403,13 +4570,13 @@
                 0
               ],
               [
-                -1,
+                1,
                 0,
                 0
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               0.6,
               142
             ]
@@ -3456,7 +4623,7 @@
               ]
             ],
             "position": [
-              -58.7,
+              58.7,
               3,
               152
             ]
@@ -3488,7 +4655,7 @@
               [
                 0,
                 0,
-                1
+                -1
               ],
               [
                 0,
@@ -3496,13 +4663,13 @@
                 0
               ],
               [
-                -1,
+                1,
                 0,
                 0
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               0.6,
               152
             ]
@@ -3549,7 +4716,7 @@
               ]
             ],
             "position": [
-              -58.7,
+              58.7,
               3,
               162
             ]
@@ -3581,7 +4748,7 @@
               [
                 0,
                 0,
-                1
+                -1
               ],
               [
                 0,
@@ -3589,13 +4756,13 @@
                 0
               ],
               [
-                -1,
+                1,
                 0,
                 0
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               0.6,
               162
             ]
@@ -3628,7 +4795,7 @@
               [
                 0,
                 0,
-                1
+                -1
               ],
               [
                 0,
@@ -3636,13 +4803,13 @@
                 0
               ],
               [
-                -1,
+                1,
                 0,
                 0
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               0.7,
               174
             ]
@@ -3689,7 +4856,7 @@
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               1.2,
               171
             ]
@@ -3736,7 +4903,7 @@
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               1.2,
               174
             ]
@@ -3783,7 +4950,7 @@
               ]
             ],
             "position": [
-              -54.1,
+              54.1,
               1.2,
               177
             ]
