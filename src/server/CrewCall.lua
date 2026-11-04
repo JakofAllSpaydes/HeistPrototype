@@ -158,7 +158,7 @@ local function buildHackBeacon(
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = actionText
 	prompt.ObjectText = objectText
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.KeyboardKeyCode = Enum.KeyCode.F -- F is the interact key everywhere (guns, props, door, beacons)
 	prompt.HoldDuration = holdSec
 	prompt.MaxActivationDistance = Config.SideJobBeaconRadius + 2
 	prompt.RequiresLineOfSight = false

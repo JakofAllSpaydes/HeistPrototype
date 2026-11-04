@@ -244,6 +244,54 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	local component = {}
 
+	-- Stragglers: with StragglerHighlightCount or fewer left in the wave, every survivor gets a red Highlight
+	-- that reads through walls, so the last few are findable.
+	local highlighting = false
+	local function highlight(model: Instance)
+		if not model:IsA("Model") or model:FindFirstChild("StragglerGlow") then
+			return
+		end
+		local h = Instance.new("Highlight")
+		h.Name = "StragglerGlow"
+		h.FillColor = Theme.Colors.red
+		h.FillTransparency = 0.55
+		h.OutlineColor = Theme.Colors.red
+		h.OutlineTransparency = 0
+		h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		h.Parent = model
+	end
+	local function setHighlighting(on: boolean)
+		if on == highlighting then
+			return
+		end
+		highlighting = on
+		if not enemies then
+			return
+		end
+		for _, model in enemies:GetChildren() do
+			if on then
+				highlight(model)
+			else
+				local h = model:FindFirstChild("StragglerGlow")
+				if h then
+					h:Destroy()
+				end
+			end
+		end
+	end
+	if enemies then
+		track(enemies.ChildAdded:Connect(function(model)
+			if highlighting then
+				task.defer(highlight, model)
+			end
+		end))
+	end
+
+	function component.update(sync: any)
+		local left = sync.enemiesLeft or 0
+		setHighlighting(sync.waveState == "Wave" and left > 0 and left <= Config.StragglerHighlightCount)
+	end
+
 	function component.onJuice(name: string, data: any)
 		if name == "RarityFlash" then
 			flash.BackgroundColor3 = data.color or Theme.Colors.gold

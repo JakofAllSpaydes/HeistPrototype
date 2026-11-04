@@ -38,10 +38,11 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	local rate = if w then Weapons.effectiveRate(w, ClientState.rateMult()) else 0
 	local sync = ClientState.sync
 	local held = sync and sync.held
-	local heldShot = if held then held.dmg * held.pellets else 0
-	local heldRate = if held then (held.displayRate or held.fireRate) else 0
-	local dmgArrow, dmgColor = UI.arrow(dmg * pellets, heldShot)
-	local rateArrow, rateColor = UI.arrow(rate, heldRate)
+	-- Compare at display precision (the tag's Dmg is rounded, the held one is not) so equal reads as equal.
+	local heldShot = if held then math.round(held.dmg) * held.pellets else 0
+	local heldRate = if held then math.round((held.displayRate or held.fireRate) * 10) / 10 else 0
+	local dmgArrow, dmgColor = UI.arrow(math.round(dmg) * pellets, heldShot)
+	local rateArrow, rateColor = UI.arrow(math.round(rate * 10) / 10, heldRate)
 	tag.dmgLabel.Text = "DMG " .. UI.fmtDmg(dmg, pellets) .. dmgArrow
 	tag.dmgLabel.TextColor3 = dmgColor
 	tag.rateLabel.Text = "RATE " .. UI.fmtRate(rate) .. rateArrow

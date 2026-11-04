@@ -38,7 +38,7 @@ arena door says `START RUN`. Downed / revive lines need Studio's Local Server wi
 | F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
 | Esc / X | Cancel an open minigame (counts as `cancel` in the log). |
 | ◀ ▶ / A D | Spectating (bled out): cycle living teammates. REVIVE EVERYBODY button bottom-center. |
-| E (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Minigame jobs: E opens the game at the beacon. Kind is rolled per job from `SideJobKindWeights` (eight kinds, equal odds by default). |
+| F (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Minigame jobs: F opens the game at the beacon. Kind is rolled per job from `SideJobKindWeights` (eight kinds, equal odds by default). |
 | Esc / X / 2 | Close the upgrade overlay. |
 | V | Vote to skip the intermission (or click the VOTES pill). `SkipVoteFraction` / `SkipMinIntermissionSec` in Config. |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
@@ -259,6 +259,9 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
 
 - **Round 10c (3 Nov, feedback)** — pierce and burst are no longer spelled out in weapon names; a finished minigame
   hands the gun and camera back the same frame and slides the panel off over `MinigameExitSec`; side jobs every 2 waves.
+- **Round 10d (3 Nov, feedback)** — F is the interact key on side job beacons too (was E); floor tags compare DMG and
+  RATE at display precision so an identical gun reads even, not ▲; with `StragglerHighlightCount` (5) or fewer enemies
+  left the survivors glow red through walls (client Highlights).
 
 ## Open design notes (not built)
 

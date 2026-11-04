@@ -207,6 +207,7 @@ local Config = {
 	WaveBannerHoldSec = 0.9, -- center WAVE N / WAVE CLEAR banner hold before it fades
 	CountdownTickFrom = 3, -- the last N seconds of the intermission tick big in the center
 	MarkerCompactDistance = 45, -- studs; further than this the beacon marker shrinks to an icon with distance + timer
+	StragglerHighlightCount = 5, -- with this many or fewer enemies left, the survivors glow red through walls
 
 	------------------------------------------------------------------ Room
 	RoomSize = 200,
