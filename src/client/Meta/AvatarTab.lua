@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Masks = require(Shared:WaitForChild("Masks"))
 local Emotes = require(Shared:WaitForChild("Emotes"))
 local Prices = require(Shared:WaitForChild("Prices"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -52,7 +53,7 @@ local function renderMasks(scene: any, panel: Frame)
 	scene.preview.mask(mask.color, mask.shape)
 
 	local rightW = if scene.mobile then S(200) else S(250)
-	local grid, card = MetaUI.columns(panel, rightW, S(44))
+	local grid, card = MetaUI.columns(panel, rightW, S(44), "masks")
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 	local perRow = 4
 	local tileW = MetaUI.tileWidth(grid, perRow)
@@ -81,13 +82,13 @@ local function renderMasks(scene: any, panel: Frame)
 				name = m.name,
 				pill = pill,
 				pillColor = pillColor,
-				color = Color3.fromHex(m.color),
+				color = Rarity.color(m.rarity), -- tile color is the rarity; the mask's own color is on the icon
 				owned = own,
 				selected = selectedMask == m.id,
 				tag = if own and m.saleType ~= "Direct" then string.upper(m.saleType) else nil,
 				tagColor = Theme.Colors.blue,
 				icon = "mask",
-				iconColor = Theme.Colors.white,
+				iconColor = Color3.fromHex(m.color),
 				size = tileW,
 				order = i,
 			})
@@ -101,16 +102,21 @@ local function renderMasks(scene: any, panel: Frame)
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
 
-	MetaUI.well(card, 1, Color3.fromHex(mask.color), "mask", nil, Theme.Colors.white)
+	MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color))
 	MetaUI.heading(
 		card,
 		2,
 		mask.name,
-		string.format("%s · %s", string.upper(mask.shape), if isOwned then "OWNED" else string.upper(mask.saleType)),
+		string.format(
+			"%s · %s · %s",
+			string.upper(mask.type),
+			string.upper(Rarity.name(mask.rarity)),
+			if isOwned then "OWNED" else string.upper(mask.saleType)
+		),
 		if isOwned then Theme.Colors.gold else Theme.Colors.grey
 	)
-	MetaUI.statRow(card, 10, "Shape", string.upper(mask.shape), nil)
-	MetaUI.statRow(card, 11, "Color", "#" .. mask.color, nil)
+	MetaUI.statRow(card, 10, "Type", string.upper(mask.type), nil)
+	MetaUI.statRow(card, 11, "Rarity", string.upper(Rarity.name(mask.rarity)), nil)
 	if equipped == mask.id then
 		MetaUI.button(card, 20, "EQUIPPED", "disabled", nil)
 	elseif isOwned then
@@ -155,7 +161,7 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 	local color = SLOT_COLORS[category] or Theme.Colors.grey
 
 	local rightW = if scene.mobile then S(200) else S(250)
-	local grid, card = MetaUI.columns(panel, rightW, S(44))
+	local grid, card = MetaUI.columns(panel, rightW, S(44), "emote:" .. slot)
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 	local perRow = 4
 	local tileW = MetaUI.tileWidth(grid, perRow)
@@ -184,7 +190,7 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 				name = e.name,
 				pill = pill,
 				pillColor = pillColor,
-				color = color,
+				color = Rarity.color(e.rarity),
 				owned = own,
 				selected = sel == e.id,
 				tag = if own and e.saleType ~= "Direct" then string.upper(e.saleType) else nil,
@@ -206,20 +212,20 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
 
-	MetaUI.well(card, 1, color, "class", "▶", Theme.Colors.white)
+	MetaUI.well(card, 1, Rarity.color(emote.rarity), "class", "▶", color)
 	MetaUI.heading(
 		card,
 		2,
 		emote.name,
 		string.format(
-			"%s · %s",
+			"%s · %s · %s",
 			if slot == "mvp" then "MVP FLEX" else "SQUAD POSE",
+			string.upper(Rarity.name(emote.rarity)),
 			if isOwned then "OWNED" else string.upper(emote.saleType)
 		),
 		if isOwned then Theme.Colors.gold else Theme.Colors.grey
 	)
-	MetaUI.statRow(card, 10, "Plays", if slot == "mvp" then "MVP beat" else "Line-ups", nil)
-	MetaUI.statRow(card, 11, "Hold", string.format("%.1fs", emote.holdSec), nil)
+	MetaUI.statRow(card, 10, "Rarity", string.upper(Rarity.name(emote.rarity)), nil)
 	MetaUI.button(card, 15, "▶ PREVIEW", "blue", function()
 		scene.preview.emote(emote.animationId, emote.holdSec)
 	end)

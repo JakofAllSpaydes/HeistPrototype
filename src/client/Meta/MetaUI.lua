@@ -297,8 +297,12 @@ function MetaUI.button(parent: Instance, order: number, text: string, kind: stri
 	return b
 end
 
+-- Every refresh rebuilds the grid, so the scroll offset is remembered per `scrollKey` (one per tab / category)
+-- and put back once the new canvas has its size. Only the player's own scrolling updates the memory.
+local scrollMemory: { [string]: number } = {}
+
 -- Two-column layout: scrolling grid left, detail card (vertical list) right.
-function MetaUI.columns(panel: Frame, rightW: number, topOffset: number?): (ScrollingFrame, Frame)
+function MetaUI.columns(panel: Frame, rightW: number, topOffset: number?, scrollKey: string?): (ScrollingFrame, Frame)
 	local S = UI.S
 	local y = topOffset or 0
 	local left = UI.new("ScrollingFrame", {
@@ -313,6 +317,28 @@ function MetaUI.columns(panel: Frame, rightW: number, topOffset: number?): (Scro
 		ScrollBarImageColor3 = Theme.Colors.grey,
 		Parent = panel,
 	}) :: ScrollingFrame
+	if scrollKey then
+		local armed = false
+		left:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+			if armed then
+				scrollMemory[scrollKey] = left.CanvasPosition.Y
+			end
+		end)
+		local remembered = scrollMemory[scrollKey] or 0
+		-- The canvas only knows its height after the tiles land; restore on the next frame and once more a
+		-- beat later, then start recording.
+		task.defer(function()
+			if left.Parent then
+				left.CanvasPosition = Vector2.new(0, remembered)
+			end
+			task.delay(0.05, function()
+				if left.Parent then
+					left.CanvasPosition = Vector2.new(0, remembered)
+					armed = true
+				end
+			end)
+		end)
+	end
 	local right = UI.frame({
 		Name = "Detail",
 		BackgroundTransparency = 1,

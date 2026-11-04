@@ -254,7 +254,7 @@ handlers.equipMask = function(player, state, p, args)
 end
 
 ------------------------------------------------------------------ Emotes (SQUAD pose, MVP flex)
-handlers.buyEmote = function(player, _state, p, args)
+handlers.buyEmote = function(player, state, p, args)
 	local e = Emotes.ById[tostring(args and args.emoteId)]
 	if not e then
 		return fail("no such emote")
@@ -277,15 +277,17 @@ handlers.buyEmote = function(player, _state, p, args)
 		p.emotes.squad = e.id
 	end
 	Profiles.markDirty(player)
+	state.dirty = true -- resync so the tab sees the purchase at once (it used to wait for the 2s full resend)
 	Log.event("Meta", "%s bought and equipped the %s emote (%s)", player.Name, e.id, e.slot)
 	return done(e.name .. " unlocked and equipped!", "celebrate")
 end
 
-handlers.equipEmote = function(player, _state, p, args)
+handlers.equipEmote = function(player, state, p, args)
 	local e = Emotes.ById[tostring(args and args.emoteId)]
 	if not e or not p.emotes.owned[e.id] then
 		return fail("not owned")
 	end
+	state.dirty = true
 	if e.slot == "mvp" then
 		p.emotes.mvp = e.id
 	else

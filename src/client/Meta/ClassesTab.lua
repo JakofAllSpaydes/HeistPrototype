@@ -25,6 +25,55 @@ local function fmtVar(v: Classes.Var, value: number): string
 	return s .. v.unit
 end
 
+-- The four classes plus the FUTURE pill share the row.
+local PILL_COUNT = #Classes.List + 1
+
+-- FUTURE: a greyed pill at the end of the row, so the four read as the first of more. Pressing it toasts.
+local function futurePill(parent: Instance, order: number, onPick: () -> ()): TextButton
+	local S = UI.S
+	local b = UI.button({
+		Text = "",
+		BackgroundColor3 = Theme.Colors.panel,
+		BackgroundTransparency = 0.4,
+		Size = UDim2.new(1 / PILL_COUNT, -S(5), 0, S(44)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UI.corner(b, S(4))
+	local circle = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel2,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, S(8), 0.5, 0),
+		Size = UDim2.fromOffset(S(30), S(30)),
+		Parent = b,
+	})
+	UI.corner(circle, 999)
+	UI.text({
+		Text = "+",
+		Font = Theme.Fonts.display,
+		TextSize = S(18),
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.fromScale(1, 1),
+		Parent = circle,
+	})
+	UI.text({
+		Text = "FUTURE",
+		Font = Theme.Fonts.body,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.grey,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Position = UDim2.fromOffset(S(46), 0),
+		Size = UDim2.new(1, -S(50), 1, 0),
+		Parent = b,
+	})
+	b.Activated:Connect(function()
+		UI.punch(b, 0.95, 0.15)
+		onPick()
+	end)
+	return b
+end
+
 -- Class pill: colored circle with the initial, name, lock when unowned, blue when selected.
 local function classPill(
 	parent: Instance,
@@ -39,7 +88,7 @@ local function classPill(
 	local b = UI.button({
 		Text = "",
 		BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,
-		Size = UDim2.new(0.25, -S(5), 0, S(44)),
+		Size = UDim2.new(1 / PILL_COUNT, -S(5), 0, S(44)),
 		LayoutOrder = order,
 		Parent = parent,
 	})
@@ -103,7 +152,7 @@ local function abilityRow(
 	local wellSize = math.min(rowH - pad * 2, S(110))
 	local well = UI.frame({
 		BackgroundColor3 = Color3.fromHex(class.color),
-		BackgroundTransparency = if a.live then 0 else 0.5,
+		BackgroundTransparency = 0,
 		Position = UDim2.fromOffset(pad, pad),
 		Size = UDim2.fromOffset(wellSize, wellSize),
 		Parent = row,
@@ -132,7 +181,7 @@ local function abilityRow(
 	local textX = pad + wellSize + S(14)
 	local rightW = S(170)
 	UI.text({
-		Text = a.name .. (if a.live then "" else "  ·  STUB · PHASE 2"),
+		Text = a.name,
 		Font = Theme.Fonts.body,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.white,
@@ -226,9 +275,12 @@ function ClassesTab.render(scene: any)
 			scene.refresh()
 		end)
 	end
+	futurePill(pills, #Classes.List + 1, function()
+		scene.toast("MORE CLASSES COMING", "click")
+	end)
 
 	local rightW = if scene.mobile then S(200) else S(260)
-	local grid, card = MetaUI.columns(panel, rightW, S(54))
+	local grid, card = MetaUI.columns(panel, rightW, S(54), "classes")
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 
 	-- Three rows share the column's height (no dead space), with a floor so stats never clip.

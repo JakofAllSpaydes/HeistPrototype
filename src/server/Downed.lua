@@ -115,7 +115,8 @@ function Downed.down(player: Player)
 	state.bleedEndsAt = now() + Config.BleedOutSec
 	state.reviveProgress = 0
 	state.reviver = nil
-	state.stimUntil = 0
+	state.buffId = nil
+	state.buffUntil = 0
 	state.savedJump = { useJumpPower = hum.UseJumpPower, jumpPower = hum.JumpPower, jumpHeight = hum.JumpHeight }
 	hum.Health = 1
 	hum.UseJumpPower = true

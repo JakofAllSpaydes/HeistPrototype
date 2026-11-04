@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Wraps = require(Shared:WaitForChild("Wraps"))
 local Prices = require(Shared:WaitForChild("Prices"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -80,8 +81,9 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 	local S = UI.S
 	local profile = scene.profile()
 	UI.list(card, Enum.FillDirection.Vertical, S(8))
-	local archetype = if w then w.archetype else (show and show.archetype or "Rifle")
-	local color = MetaUI.ArchetypeColors[archetype] or Theme.Colors.grey
+	-- Color is the Armory rarity, not the archetype.
+	local rarity = if w then w.rarity else (show and show.rarity or 1)
+	local color = Rarity.color(rarity)
 	local well = UI.frame({
 		BackgroundColor3 = color,
 		Size = UDim2.new(1, 0, 0, S(150)),
@@ -113,8 +115,9 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 	local level = if w then levelOf(profile, w.id) else 0
 	UI.text({
 		Text = string.format(
-			"%s · %s",
+			"%s · %s · %s",
 			if w then modeOf(w) else (show and show.hint or ""),
+			string.upper(Rarity.name(rarity)),
 			if isOwned then string.format("LV %d", level) else "LOCKED"
 		),
 		Font = Theme.Fonts.body,
@@ -150,10 +153,13 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 			fmtReload(cur.reloadTime),
 			if isOwned then fmtReload(nxt.reloadTime) else nil
 		)
-	else
-		for i, label in { "DPS", "Damage", "Rate", "Mag Size", "Reload" } do
-			MetaUI.statRow(card, 10 + i, label, "?", nil)
-		end
+	elseif show then
+		-- Showcase guns carry placeholder base stats so the card reads like a real one.
+		MetaUI.statRow(card, 10, "DPS", tostring(math.round(show.baseDmg * show.fireRate * show.pellets)), nil)
+		MetaUI.statRow(card, 11, "Damage", UI.fmtDmg(show.baseDmg, show.pellets), nil)
+		MetaUI.statRow(card, 12, "Rate", UI.fmtRate(show.fireRate), nil)
+		MetaUI.statRow(card, 13, "Mag Size", tostring(show.magSize), nil)
+		MetaUI.statRow(card, 14, "Reload", fmtReload(show.reloadTime), nil)
 	end
 
 	-- Buttons by state.
@@ -521,7 +527,7 @@ function WeaponsTab.render(scene: any)
 	end)
 
 	local rightW = if scene.mobile then S(200) else S(250)
-	local grid, card = MetaUI.columns(panel, rightW, S(44))
+	local grid, card = MetaUI.columns(panel, rightW, S(44), "weapons")
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 	local perRow = 4
 	local tileW = math.floor((grid.AbsoluteSize.X - S(8) * (perRow - 1) - S(12)) / perRow)
@@ -550,7 +556,7 @@ function WeaponsTab.render(scene: any)
 			local s: Weapons.Showcase? = e.showcase
 			local id = if w then w.id else (s :: Weapons.Showcase).id
 			local name = if w then w.displayName else (s :: Weapons.Showcase).displayName
-			local archetype = if w then w.archetype else (s :: Weapons.Showcase).archetype
+			local rarity = if w then w.rarity else (s :: Weapons.Showcase).rarity
 			local isOwned = w ~= nil and owned(profile, w.id)
 			local pill: string, pillColor: Color3
 			if isOwned and w then
@@ -569,7 +575,7 @@ function WeaponsTab.render(scene: any)
 				name = name,
 				pill = pill,
 				pillColor = pillColor,
-				color = MetaUI.ArchetypeColors[archetype] or Theme.Colors.grey,
+				color = Rarity.color(rarity),
 				owned = isOwned,
 				selected = selected == id,
 				tag = tag,

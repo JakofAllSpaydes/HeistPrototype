@@ -429,7 +429,10 @@ end
 
 local function onExit(z: Zone, player: Player)
 	if z.phase == "creating" and z.creator == player then
+		-- reset() only tells members and whoever is still on the pad; the creator has already stepped off,
+		-- so send the cleared view by hand or the Create Party card stays open.
 		reset(z, "creator walked out")
+		send(player, true)
 		return
 	end
 	if z.phase == "open" then

@@ -167,24 +167,81 @@ local Config = {
 	SideJobRewardCrate = true, -- a crate drops at the beacon on completion
 	CallPillWarnSec = 10, -- pill turns red under this many seconds
 
-	------------------------------------------------------------------ Abilities (Q turret, E barricade, Z stim)
-	StructurePlaceDistance = 5, -- studs in front of the player
+	------------------------------------------------------------------ Abilities (the four class kits, Classes.lua)
+	-- Cooldown per ability id, seconds. Abilities are free in a run (the $ on the Classes tab is a label).
+	AbilityCooldown = {
+		barricade = 15,
+		turret = 20,
+		stim = 20,
+		stimshot = 20,
+		medbag = 25,
+		healturret = 25,
+		claymore = 12,
+		deadeye = 25,
+		flashbang = 18,
+		molotov = 15,
+		flameturret = 20,
+		oildrum = 15,
+	},
+	StructurePlaceDistance = 5, -- studs in front of the player (placeables: turrets, barricade, oil drum, med bag, claymore)
+	ThrowDistance = 12, -- studs in front of the player a thrown ability lands (flashbang, molotov)
+	ThrowFlightSec = 0.6, -- the throw's arc takes this long, then it goes off
+	FieldTickSec = 0.5, -- ground fields (med bag, molotov, drum fire) apply their per-second numbers this often
+	-- INITIATE
 	TurretHP = 150,
 	TurretDmg = 12,
 	TurretFireRate = 3, -- shots per second
 	TurretRange = 45,
 	TurretLifetime = 30,
-	TurretCooldown = 20,
 	BarricadeHP = 300,
 	BarricadeSize = Vector3.new(8, 4, 1),
 	BarricadeLifetime = 45,
-	BarricadeCooldown = 15,
-	StimDuration = 6,
-	StimMoveMult = 1.5,
-	StimFireRateMult = 1.6,
-	StimReloadSpeedMult = 1.6, -- reloads this much faster while stimmed
-	StimHeal = 20, -- HP healed on use ("patch yourself up"); grows with the ability level
-	StimCooldown = 20,
+	-- Adrenaline (ability id "stim"): fire rate, reload and move speed; no heal (DOC's stim shot heals)
+	AdrenalineDuration = 6,
+	AdrenalineMoveMult = 1.5,
+	AdrenalineFireRateMult = 1.6,
+	AdrenalineReloadSpeedMult = 1.6, -- reloads this much faster while it runs
+	-- DOC
+	StimShotDuration = 6,
+	StimShotHeal = 40,
+	StimShotFireRateMult = 1.3,
+	StimShotReloadSpeedMult = 1.3,
+	MedBagHealPerSec = 8, -- every standing teammate inside the circle
+	MedBagRadius = 6,
+	MedBagLifetime = 15,
+	HealTurretHP = 150,
+	HealTurretBeamHeal = 6, -- HP per second on the beam
+	HealTurretRange = 30, -- picks the hurt teammate with the lowest HP share in range
+	HealTurretTickSec = 0.5,
+	HealTurretLifetime = 30,
+	-- SHARPSHOOTER
+	ClaymoreDamage = 220, -- to every enemy in the blast
+	ClaymoreTriggerRadius = 5, -- an enemy this close sets it off
+	ClaymoreBlastRadius = 8,
+	ClaymoreArmSec = 1, -- it cannot go off before this
+	ClaymoreLifetime = 60,
+	DeadEyeDuration = 8,
+	DeadEyeDmgPct = 25, -- weapon damage x (1 + this / 100)
+	DeadEyeSpeedPct = 20,
+	DeadEyePierce = 2, -- extra enemies every bullet passes through while it runs (on top of upgrades and sniper pierce)
+	FlashRadius = 12, -- enemies this close to the burst are stunned
+	StunDuration = 3, -- stunned enemies stop and do not swing
+	-- TORCH
+	MolotovRadius = 7,
+	MolotovLifetime = 8,
+	MolotovBurnPerSec = 15,
+	MolotovMoveSlowPct = 30, -- enemies in the fire walk this much slower
+	FlameTurretHP = 150,
+	FlameTurretDps = 30,
+	FlameTurretRange = 14, -- short: a stream, not a gun
+	FlameTurretTickSec = 0.25,
+	FlameTurretLifetime = 30,
+	OilDrumHP = 200,
+	OilDrumLifetime = 45,
+	OilDrumBurnPerSec = 20, -- the fire it leaves when enemies break it (not when it expires)
+	OilDrumMoveSlowPct = 30,
+	OilDrumBurnRadius = 7,
+	OilDrumBurnSec = 6,
 
 	------------------------------------------------------------------ Heat (stars, 0..5)
 	HeatStart = 2.5,

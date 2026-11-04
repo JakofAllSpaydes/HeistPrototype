@@ -97,11 +97,19 @@ local function dealDamage(
 end
 
 -- A direct bullet hit on an enemy part: falloff by distance from the muzzle, crit/headshot roll, then ricochet.
-local function bulletHit(shooter: Shooter, model: Model, part: BasePart, position: Vector3, origin: Vector3)
+local function bulletHit(
+	shooter: Shooter,
+	model: Model,
+	part: BasePart,
+	position: Vector3,
+	origin: Vector3,
+	scale: number
+)
 	local st = shooter.stats
 	local headshot = part.Name == "Head"
 	local crit = math.random() * 100 < st.critChance
 	local dmg = st.damage
+		* scale
 		* falloff(shooter, (position - origin).Magnitude)
 		* (if headshot then st.headshotMult else 1)
 		* (if crit then Config.CritDmgMult else 1)
@@ -117,12 +125,16 @@ local function bulletHit(shooter: Shooter, model: Model, part: BasePart, positio
 	end
 end
 
--- One bullet: raycast, hit, then keep going through up to `pierce` more enemies.
+-- One bullet: raycast, hit, then keep going through `pierce` more enemies. A fractional pierce adds one
+-- more enemy that only takes that fraction of the damage (2.2 = two full hits past the first, then one at 20%).
 local function fireBullet(shooter: Shooter, origin: Vector3, dir: Vector3, baseFilter: { Instance }, pierce: number)
 	local filter = table.clone(baseFilter)
 	local from = origin
 	local remaining = Config.MaxShotRange
-	for _ = 0, pierce do
+	local full = math.floor(pierce)
+	local frac = pierce - full
+	local extra = if frac > 0.001 then 1 else 0
+	for i = 0, full + extra do
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Exclude
 		params.FilterDescendantsInstances = filter
@@ -134,7 +146,7 @@ local function fireBullet(shooter: Shooter, origin: Vector3, dir: Vector3, baseF
 		if not model then
 			return -- wall, pillar, floor: the bullet stops
 		end
-		bulletHit(shooter, model, result.Instance :: BasePart, result.Position, origin)
+		bulletHit(shooter, model, result.Instance :: BasePart, result.Position, origin, if i > full then frac else 1)
 		table.insert(filter, model)
 		remaining -= (result.Position - from).Magnitude
 		from = result.Position

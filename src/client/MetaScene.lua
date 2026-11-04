@@ -885,8 +885,17 @@ function MetaScene.init()
 			for id in p.wraps.owned do
 				wr += #id
 			end
+			-- Emotes count too, or a bought / equipped emote never re-renders the Avatar tab.
+			local em = ""
+			if p.emotes then
+				local owned = 0
+				for id in p.emotes.owned do
+					owned += #id
+				end
+				em = string.format("%d:%s:%s", owned, tostring(p.emotes.squad), tostring(p.emotes.mvp))
+			end
 			stamp = string.format(
-				"%d|%d|%d|%d|%d|%s|%s|%s",
+				"%d|%d|%d|%d|%d|%s|%s|%s|%s",
 				n,
 				a,
 				m,
@@ -894,7 +903,8 @@ function MetaScene.init()
 				wr,
 				tostring(p.starterWeaponId),
 				tostring(p.classes.equipped),
-				tostring(p.masks.equipped)
+				tostring(p.masks.equipped),
+				em
 			)
 		end
 		if stamp ~= lastProfileStamp then

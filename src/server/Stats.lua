@@ -32,7 +32,14 @@ function Stats.weaponDamage(weaponId: string, rarity: number, dmgPct: number, le
 	return Weapons.atLevel(w, level or 0).dmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
 end
 
-export type Buffs = { fireRateMult: number, moveSpeedMult: number, reloadSpeedMult: number }
+-- A self buff (stim, stim shot, dead eye): multipliers on top of upgrades.
+export type Buffs = {
+	fireRateMult: number,
+	moveSpeedMult: number,
+	reloadSpeedMult: number,
+	damageMult: number,
+	pierceAdd: number, -- extra pierce (dead eye)
+}
 
 -- DPS as shown on tags and the held slot: damage x shots per second x pellets.
 function Stats.weaponDps(
@@ -51,9 +58,9 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 	local w = Weapons.ById[held.weaponId]
 	local base = Weapons.atLevel(w, held.level or 0)
 	local crit = upgrades.CritChance
-	local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1 }
+	local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
 	return {
-		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage"), held.level),
+		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage"), held.level) * b.damageMult,
 		fireRate = base.fireRate * mult(upgrades, "FireRate") * b.fireRateMult,
 		magSize = math.max(1, math.round(base.magSize * mult(upgrades, "MagSize"))),
 		reloadTime = base.reloadTime / (mult(upgrades, "ReloadSpeed") * b.reloadSpeedMult),
@@ -64,7 +71,9 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		headshotMult = Config.HeadshotMult * mult(upgrades, "HeadshotMult"),
 		greed = mult(upgrades, "Greed"),
 		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3),
-		pierce = math.max(0, math.floor(points(upgrades, "Pierce"))) + Weapons.builtInPierce(w, held.rarity),
+		pierce = math.max(0, math.floor(points(upgrades, "Pierce")))
+			+ Weapons.builtInPierce(w, held.rarity)
+			+ b.pierceAdd,
 		ricochet = math.max(0, points(upgrades, "Ricochet")),
 		splash = math.max(0, points(upgrades, "Splash")),
 		multishot = math.max(0, points(upgrades, "Multishot")),

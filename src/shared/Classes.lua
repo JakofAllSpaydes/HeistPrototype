@@ -1,6 +1,6 @@
 --!strict
--- The four classes and their three abilities (Q / E / Z), restated from GDD_7. Only INITIATE's abilities
--- are live (the prototype's barricade / turret / stim); the other nine are stubs that toast and print.
+-- The four classes and their three abilities (Q / E / Z), restated from GDD_7. All twelve are live
+-- (Abilities.lua); every number comes from Config so the designer tunes there.
 -- `vars` lists the upgradeable variables shown as current > next in the Classes tab; everything else is static.
 export type Var = { id: string, label: string, base: number, unit: string }
 export type Ability = {
@@ -11,7 +11,6 @@ export type Ability = {
 	price: number, -- in-match $ label
 	description: string,
 	vars: { Var },
-	live: boolean, -- false: STUB · PHASE 2
 	icon: string, -- short glyph for the tile
 }
 export type Class = { id: string, name: string, color: string, abilities: { Ability }, free: boolean? }
@@ -25,7 +24,6 @@ local function var(id: string, label: string, base: number, unit: string?): Var
 end
 
 local function ability(t: { [string]: any }): Ability
-	t.live = t.live == true
 	t.vars = t.vars or {}
 	return t :: Ability
 end
@@ -45,7 +43,6 @@ Classes.List = {
 				price = 150,
 				description = "Blocks a path. Enemies have to break it.",
 				vars = { var("Hp", "HP", Config.BarricadeHP) },
-				live = true,
 				icon = "WAL",
 			}),
 			ability({
@@ -56,23 +53,21 @@ Classes.List = {
 				price = 250,
 				description = "Hired muscle. Shoots anything that gets close.",
 				vars = { var("Damage", "DMG", Config.TurretDmg), var("Hp", "HP", Config.TurretHP) },
-				live = true,
 				icon = "TRT",
 			}),
 			ability({
-				id = "stim",
-				name = "Stim",
+				id = "stim", -- kept as the saved-level key; the player sees "Adrenaline"
+				name = "Adrenaline",
 				hotkey = "Z",
 				system = "self",
 				price = 100,
-				description = "Patch yourself up and speed up.",
+				description = "Shoot, reload and move faster for a while.",
 				vars = {
-					var("Heal", "HEAL", Config.StimHeal),
-					var("FireRatePct", "FIRE RATE", (Config.StimFireRateMult - 1) * 100, "%"),
-					var("ReloadPct", "RELOAD", (Config.StimReloadSpeedMult - 1) * 100, "%"),
+					var("FireRatePct", "FIRE RATE", (Config.AdrenalineFireRateMult - 1) * 100, "%"),
+					var("ReloadPct", "RELOAD", (Config.AdrenalineReloadSpeedMult - 1) * 100, "%"),
+					var("MovePct", "SPEED", (Config.AdrenalineMoveMult - 1) * 100, "%"),
 				},
-				live = true,
-				icon = "STM",
+				icon = "ADR",
 			}),
 		},
 	},
@@ -89,9 +84,9 @@ Classes.List = {
 				price = 100,
 				description = "Heal up, shoot and reload faster for a while.",
 				vars = {
-					var("Heal", "HEAL", 40),
-					var("FireRatePct", "FIRE RATE", 30, "%"),
-					var("ReloadPct", "RELOAD", 30, "%"),
+					var("Heal", "HEAL", Config.StimShotHeal),
+					var("FireRatePct", "FIRE RATE", (Config.StimShotFireRateMult - 1) * 100, "%"),
+					var("ReloadPct", "RELOAD", (Config.StimShotReloadSpeedMult - 1) * 100, "%"),
 				},
 				icon = "SHT",
 			}),
@@ -102,7 +97,7 @@ Classes.List = {
 				system = "C",
 				price = 200,
 				description = "Throw it down. Stand in it to heal.",
-				vars = { var("HealPerSec", "HEAL / S", 8) },
+				vars = { var("HealPerSec", "HEAL / S", Config.MedBagHealPerSec) },
 				icon = "BAG",
 			}),
 			ability({
@@ -112,7 +107,7 @@ Classes.List = {
 				system = "B",
 				price = 250,
 				description = "Beams the lowest teammate back to health.",
-				vars = { var("BeamHeal", "BEAM HEAL", 6), var("Hp", "HP", 150) },
+				vars = { var("BeamHeal", "BEAM HEAL", Config.HealTurretBeamHeal), var("Hp", "HP", Config.HealTurretHP) },
 				icon = "HTR",
 			}),
 		},
@@ -129,7 +124,7 @@ Classes.List = {
 				system = "trigger",
 				price = 150,
 				description = "Plant it. Wait for the boom.",
-				vars = { var("ClaymoreDamage", "DMG", 220) },
+				vars = { var("ClaymoreDamage", "DMG", Config.ClaymoreDamage) },
 				icon = "CLM",
 			}),
 			ability({
@@ -138,8 +133,12 @@ Classes.List = {
 				hotkey = "E",
 				system = "self",
 				price = 150,
-				description = "Hit harder, move faster.",
-				vars = { var("DmgPct", "DMG", 25, "%"), var("SpeedPct", "SPEED", 20, "%") },
+				description = "Hit harder, move faster, shoot through them.",
+				vars = {
+					var("DmgPct", "DMG", Config.DeadEyeDmgPct, "%"),
+					var("SpeedPct", "SPEED", Config.DeadEyeSpeedPct, "%"),
+					var("Pierce", "PIERCE", Config.DeadEyePierce),
+				},
 				icon = "EYE",
 			}),
 			ability({
@@ -149,7 +148,10 @@ Classes.List = {
 				system = "thrown",
 				price = 120,
 				description = "Freeze the room.",
-				vars = { var("StunDuration", "STUN", 3, "s"), var("FlashRadius", "RADIUS", 12) },
+				vars = {
+					var("StunDuration", "STUN", Config.StunDuration, "s"),
+					var("FlashRadius", "RADIUS", Config.FlashRadius),
+				},
 				icon = "FLS",
 			}),
 		},
@@ -166,7 +168,10 @@ Classes.List = {
 				system = "C",
 				price = 150,
 				description = "Light the floor. Slows and burns whatever walks in.",
-				vars = { var("BurnPerSec", "BURN / S", 15), var("MoveSlowPct", "SLOW", 30, "%") },
+				vars = {
+					var("BurnPerSec", "BURN / S", Config.MolotovBurnPerSec),
+					var("MoveSlowPct", "SLOW", Config.MolotovMoveSlowPct, "%"),
+				},
 				icon = "MOL",
 			}),
 			ability({
@@ -176,7 +181,7 @@ Classes.List = {
 				system = "B",
 				price = 250,
 				description = "A short, angry stream of fire.",
-				vars = { var("FlameDps", "FLAME DPS", 30), var("Hp", "HP", 150) },
+				vars = { var("FlameDps", "FLAME DPS", Config.FlameTurretDps), var("Hp", "HP", Config.FlameTurretHP) },
 				icon = "FTR",
 			}),
 			ability({
@@ -186,7 +191,10 @@ Classes.List = {
 				system = "A",
 				price = 150,
 				description = "Blocks like a barricade. Burns when it breaks.",
-				vars = { var("DrumBurnPerSec", "BURN / S", 20), var("DrumMoveSlowPct", "SLOW", 30, "%") },
+				vars = {
+					var("DrumBurnPerSec", "BURN / S", Config.OilDrumBurnPerSec),
+					var("DrumMoveSlowPct", "SLOW", Config.OilDrumMoveSlowPct, "%"),
+				},
 				icon = "OIL",
 			}),
 		},

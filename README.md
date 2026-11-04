@@ -7,9 +7,11 @@ as test props, the downed / revive loop, a run start sequence and a run end sequ
 and a summary. Brief 3 turns the yard into the hub: a DataStore profile with Gold, a queue zone with Create Match
 and a party-scoped run, a real Gold payout, the customization scene (Weapons / Classes / Avatar) and a downed sidearm.
 
-State as of **3 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
-slices (Round 9) and six feedback rounds on them (9b–10d below), and the brief 3 build (Round 11). Everything on `main`
-builds clean and is what Studio sees through Rojo. The "Brief 3 verify list" is the walk-through for a fresh Studio session.
+State as of **4 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
+slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
+and phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes: Adrenaline, Dead Eye pierce,
+rarity-colored collections, scroll memory). Everything on `main` builds clean and is what Studio sees through Rojo. The
+"Brief 3 verify list" and the "Round 12 verify list" are the walk-throughs for a fresh Studio session.
 
 ## Run it
 
@@ -37,7 +39,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | R | Reload. Tube-fed guns (`shellReload` in Weapons, currently the SPAS-12) load one shell per `reloadTime`; firing or R again stops at the current count. |
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 / 2 | Buy weapon roll / buy upgrade pick (also clickable tiles, left column). |
-| Q / E / Z | The equipped class's three abilities (INITIATE: barricade / turret / stim; the other classes' tiles are Phase 2 stubs that toast). |
+| Q / E / Z | The equipped class's three abilities, all twelve live (INITIATE barricade / turret / adrenaline, DOC stim shot / med bag / healing turret, SHARPSHOOTER claymore / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown`. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
 | Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
 | PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
@@ -85,9 +87,26 @@ Accuracy, Pierce, Ricochet, Splash, Multishot, Lifesteal), pick 1 of 3 cards. Ea
 top, lands on the stat, then the text reveals. Higher rarity = bigger punch/shake/flash/rays. Tradeoff cards carry
 a malus line. A tracker grid inside the overlay shows what you own.
 
-**Abilities.** Turret (auto-fires at nearest enemy, 150 HP, 30s), barricade (300 HP wall, 45s), stim (6s move,
-fire-rate and reload-speed buff with FOV push). Structures are enemy targets, have HP bars and can be destroyed. Cooldown sweeps on
-the ability tiles. Airstrike was removed.
+**Abilities.** All four class kits are live (`Abilities.lua`, numbers in Config's Abilities group, growth per
+ability level through `AbilityGrowth`). Placeables stand `StructurePlaceDistance` ahead; attackable ones (turret,
+barricade, healing turret, flame turret, oil drum) have HP bars and enemies walk to and hit them; a med bag and a
+claymore are not targeted. Ground fields (med bag, molotov, the fire a broken drum leaves) act every `FieldTickSec`
+on whoever stands in the circle. Thrown abilities (flashbang, molotov) arc `ThrowDistance` over `ThrowFlightSec`.
+Self buffs (stim, stim shot, dead eye) share one slot per player; the tile that fired shows the seconds left.
+- INITIATE: turret (auto-fires at the nearest enemy, 150 HP, 30s), barricade (300 HP wall, 45s), adrenaline (6s
+  move, fire-rate and reload-speed buff with FOV push; no heal. Ability id `stim`, `Adrenaline*` in Config).
+- DOC: stim shot (6s fire-rate and reload buff, +40 HP, no move speed), med bag (green circle, heals every standing
+  teammate inside `MedBagHealPerSec`, 15s; one quiet `+N` float a second), healing turret (150 HP, beams the hurt
+  teammate with the lowest HP share in `HealTurretRange` for `HealTurretBeamHeal` a second, 30s).
+- SHARPSHOOTER: claymore (planted, arms after `ClaymoreArmSec`, an enemy inside `ClaymoreTriggerRadius` sets it
+  off for `ClaymoreDamage` to everything in `ClaymoreBlastRadius`, 60s), dead eye (8s: weapon damage +25%, move
+  +20%, every bullet passes through `DeadEyePierce` more enemies; a fractional pierce like 2.2 is one more enemy
+  at 20% damage), flashbang (thrown; every enemy in `FlashRadius` stops and stops swinging for `StunDuration`, head goes white).
+- TORCH: molotov (thrown; a fire circle for `MolotovLifetime` that burns `MolotovBurnPerSec` and slows
+  `MolotovMoveSlowPct`), flame turret (150 HP, a `FlameTurretRange` stream at `FlameTurretDps`, 30s), oil drum
+  (200 HP drum that blocks like a barricade; when enemies break it, not when it expires, it burns for `OilDrumBurnSec`).
+Kills by turrets, fields and claymores pay the owner's kill cash. Abilities are free in a run (the Classes tab `$`
+is a label). Cooldown sweeps on the ability tiles. Airstrike was removed.
 
 **Crew call / side job.** A call from MARLOW on wave 1 and every `SideJobEveryWaves` (2) waves, kind rolled from
 `SideJobKindWeights` (eight kinds, equal odds): "VAULT PING" (hack the terminal, hold E), "HOLD THE FLOOR" (stand in
@@ -206,7 +225,7 @@ and marks the profile dirty.
   None swatch, the six wraps (`Wraps.lua`) with a lock and a `◆ 100` tag over the selection when unowned, a ✔ on the
   applied one, previewed live, BUY / APPLY / REMOVE WRAP on the right. A wrap is a Color3 on the gun's grip part
   (`HeldGunWrap`) in the hub and in-run.
-- **Classes tab.** `Classes.lua` lists INITIATE (Barricade Q, Turret E, Stim Z: the prototype abilities), DOC (Stim
+- **Classes tab.** `Classes.lua` lists INITIATE (Barricade Q, Turret E, Adrenaline Z: the prototype abilities), DOC (Stim
   Shot, Med Bag, Healing Turret), SHARPSHOOTER (Claymore, Dead Eye, Flashbang) and TORCH (Molotov, Flame Turret, Oil
   Drum) with the GDD copy, in-match `$` price and upgradeable variables. The category pills are the classes (colored
   circle with the initial, name, lock when unowned, ✔ when equipped); below them the selected class's three ability
@@ -215,13 +234,14 @@ and marks the profile dirty.
 
   `$` price, name and hotkey, description, stats as `current > next` and UPGRADE · ◆ 100 (greyed `NOT UNLOCKED` on an
   unowned class). EQUIP sets `profile.classes.equipped`; the in-run ability tiles rebuild with that class's three
-  abilities (Q / E / Z in order). Only INITIATE's abilities work; the other nine print and toast `STUB · PHASE 2`.
+  abilities (Q / E / Z in order). All twelve abilities work in a run (Round 12).
   Ability levels (`profile.abilities[id]`) persist across class switches, no cap; stat at level = base × (1 +
-  `GrowthPct` × level) from `AbilityGrowth.lua` (`AbilityGrowthPct` 0.1 everywhere). The three live abilities read
-  their numbers from it: barricade HP, turret damage and HP, stim heal (`StimHeal`) / fire-rate % / reload %.
-- **Avatar tab.** Category pills MASKS · SQUAD · MVP. Masks: eight in `Masks.lua` (name, color, shape visor /
-  bandana / none, `saleType`), OWNED then UNOWNED tiles 4 per row with the weapons tab's tile rules, live preview on
-  the character, and the detail column (mask well, name, shape · sale, EQUIP / UNLOCK / VIEW CRATE / EVENT ONLY); the
+  `GrowthPct` × level) from `AbilityGrowth.lua` (`AbilityGrowthPct` 0.1 everywhere). Every `vars` entry on the tab
+  is the number the ability really uses in-run, at that level.
+- **Avatar tab.** Category pills MASKS · SQUAD · MVP. Masks: eight in `Masks.lua` (name, color, `type` Head / Face,
+  `rarity`, shape visor / bandana / none for the geometry, `saleType`), OWNED then UNOWNED rarity-colored tiles 4 per
+  row with the weapons tab's tile rules, live preview on the character, and the detail column (rarity well with the
+  mask color on the icon, name, type · rarity · sale, EQUIP / UNLOCK / VIEW CRATE / EVENT ONLY); the
   equipped mask is applied by the server (`PlayerState.applyMask`) on every character: in the hub, in the line-ups
   and in the run. SQUAD and MVP: emotes from `Emotes.lua` (default R15 animations stand in; `slot` squad or mvp,
   `saleType`, `Prices.emote`). The SQUAD emote is the pose the player strikes in the run start and run end line-ups
@@ -323,9 +343,9 @@ Solo pass first, then a 2-player Local Server; anything that fails is a Config o
    Gold!` when short (reset profile and spend down, or set `StartingGold` 0), UPGRADE raises LV and the green
    `» next` values, CUSTOMIZE hides the panel and dock and zooms on the gun, WRAP opens the swatch row, a wrap
    previews on the grip, BUY applies it, Back tiles climb out, and the grip keeps the color in the next run. Classes:
-   the DOC pill → UNLOCK equips it, the in-run tiles read STIM SHOT / MED BAG / HEALING TURRET and each toasts
-   `STUB · PHASE 2`; per-ability UPGRADE raises LV and the `» next` line; INITIATE's barricade HP / turret damage /
-   stim heal grow in-run. Avatar: MASKS previews the mask on your head and `◆ 100` buys and wears it in the hub and
+   the DOC pill → UNLOCK equips it, the in-run tiles read STIM SHOT / MED BAG / HEALING TURRET and each fires (see
+   the Round 12 verify list); per-ability UPGRADE raises LV and the `» next` line; INITIATE's barricade HP / turret
+   damage / stim heal grow in-run. Avatar: MASKS previews the mask on your head and `◆ 100` buys and wears it in the hub and
    the run; SQUAD and MVP tiles play the emote on the avatar when tapped, EQUIP sets it, and the next run start /
    run end line-up plays your SQUAD pose while the MVP beat plays your MVP flex. LEAVE, the X and Esc return to the
    hub view.
@@ -456,12 +476,48 @@ poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   corner and the gold reads on open; the TOP WAVE tag stays hidden every frame in the scene; `Prices.emote` (its
   absence had broken the SQUAD / MVP grids after the owned tiles); the dock and gold pill hide on both customize
   layers so nothing overlaps the strip.
+- **Round 12 (4 Nov, phase 2: the nine class abilities)** — DOC, SHARPSHOOTER and TORCH kits are live; the
+  `STUB · PHASE 2` toast, greyed tiles and the `live` flag are gone. `Abilities.lua` rebuilt around one structure
+  registry (attackable or not, per-kind ticks), ground fields on a `FieldTickSec` clock and an arcing throw. Enemies
+  gain stun (`Enemy.stun`: stand still, no swings, white head) and slow (`Enemy.slow`: walk speed multiplier, the
+  stronger wins). The stim-only buff is a general self buff (`buffId` / `buffUntil`, `PlayerState.buffFor`) and
+  `Stats.Buffs` carries a damage multiplier for Dead Eye. Cooldowns moved into one `AbilityCooldown` table (the three
+  `*Cooldown` keys are gone); every Classes tab number now comes from Config. New juice: `AbilityBeam` (heal /
+  flame), `Blast` (claymore / flashbang / fire landing) and `Heal` (small green float); `StructurePlaced` takes a
+  color and radius. Built and linted, not yet run in Studio.
+
+  **Round 12 verify list.** Unlock DOC, start a run: Q heals 40 and the tile counts 6s down gold; E drops a green
+  circle with a bag, standing in it while hurt floats `+8` a second; Z plants a green turret that beams the hurt
+  teammate (solo: yourself when under full HP) with `+3` floats, enemies attack it. SHARPSHOOTER: Q plants a box
+  with a red light that detonates 1s+ after an enemy walks within 5 studs (red ring, big numbers, kill cash); E
+  shows bigger damage numbers and faster movement for 8s; Z throws a grey ball 12 studs ahead that bursts white and
+  freezes everything within 12 studs for 3s (white heads, no swings). TORCH: Q throws a burning ball that leaves a
+  fire circle for 8s (enemies inside slow and take `15` ticks); E plants a red turret with a pilot flame that streams
+  orange at anything within 14 studs; Z plants a drum enemies attack, and when they break it the floor burns for 6s
+  (an expired drum does not burn). Per-ability UPGRADE on the Classes tab raises the number used in-run.
+- **Round 12b (4 Nov, feedback on phase 2)** — the placeables crashed on `Enum.Surface` (now `Enum.SurfaceType`),
+  which is why no DOC / SHARPSHOOTER / TORCH placeable or throw fired; INITIATE's stim is **Adrenaline** (fire rate,
+  reload, move; no heal; id `stim`, Config `Adrenaline*`), DOC's stim shot keeps the heal; Dead Eye adds
+  `DeadEyePierce` bullet pierce (`Stats.Buffs.pierceAdd`). Weapons carry an Armory `rarity` (`Weapons.ArmoryRarity`)
+  and masks a `rarity`: tiles, wells and the detail line are colored by rarity, not archetype or mask color (the
+  mask's own color moves to the icon). Showcase guns carry placeholder base stats so a locked card reads like a
+  real one. Masks show `type` (Head / Face, the UGC accessory category) instead of shape; the emote detail drops
+  the Plays / Hold rows. A fifth greyed FUTURE pill ends the class row (toasts `MORE CLASSES COMING`). Walking off
+  the pad with the Create Party card open now closes it (the server reset without sending the creator the cleared
+  view).
+- **Round 12c (4 Nov, feedback)** — the grids keep their scroll offset across refreshes (selecting a tile no longer
+  jumps to the top; `MetaUI.columns` remembers it per tab / category). Fractional pierce is real in `Combat`: the
+  whole part is full-damage enemies, the fraction is one more enemy at that share of the damage (Dead Eye LV 1 =
+  2.2 → two full, one at 20%), so the `» next` on the Classes tab means what it says. Emotes carry a rarity
+  (`Emotes.Rarity`): rarity-colored tiles and well, the slot color on the icon, a RARITY row in the detail. Buying
+  or equipping an emote re-renders the tab at once (the handlers never marked the state dirty, and the scene's
+  profile stamp ignored emotes, so even the 2s resend did not redraw it).
 
 ## Open design notes (not built)
 
 - **Brief 3 assumptions to confirm.** The crate pool is the union of the party's owned guns, each at its highest
   owner level (a shared drop cannot be per-profile). INITIATE's hotkey order follows the GDD class table (Q barricade,
-  E turret, Z stim), which swaps Q / E from Round 9. Stim's "heal" is `StimHeal` (20 HP) so the GDD's upgradeable heal
+  E turret, Z stim), which swaps Q / E from Round 9. INITIATE's stim does not heal (Round 12b); DOC's stim shot carries the heal
   exists. Walking into a zone while someone else has the Create Match card open waits on the pad and joins on CREATE.
   The session lock is advisory (logged and taken over), not a hard refusal.
 - **Brief 2 assumptions to confirm.** A downed player keeps the run alive (self-revive is free), so "all players down"

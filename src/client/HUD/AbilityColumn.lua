@@ -1,7 +1,7 @@
 --!strict
 -- Right column: header ABILITIES, three tiles for the equipped class's abilities (Q / E / Z) with live
--- cooldown sweeps. The tiles rebuild when the class in the sync changes. Only INITIATE's abilities are
--- live; the rest fire a STUB · PHASE 2 toast from the server.
+-- cooldown sweeps. The tiles rebuild when the class in the sync changes. A running self buff shows its
+-- seconds left on its tile with a gold pulse.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -83,9 +83,6 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				profile.hotkeyChips
 			)
 			t.setAffordable(true)
-			if not a.live then
-				t.setGreyed(true)
-			end
 			tiles[a.id] = t
 			order[i] = a.id
 			-- Cooldown sweep: dark overlay that drains from the top, plus a seconds label.
@@ -194,7 +191,8 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				UI.sound(Theme.Sounds.deny, 1, 0.35)
 			end
 		elseif name == "StimStart" then
-			local t = tiles.stim
+			-- Any self buff (stim, stim shot, dead eye): the tile that fired it pops.
+			local t = tiles[data.id or "stim"]
 			if t then
 				UI.punch(t.button, 1.3, 0.4)
 			end

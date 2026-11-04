@@ -26,6 +26,10 @@ type Data = {
 	stuckFor: number,
 	detourUntil: number,
 	dead: boolean,
+	stunUntil: number, -- server clock the stun ends (flashbang): stands still, no swings
+	slowMult: number, -- walk speed multiplier while slowed (molotov / drum fire)
+	slowUntil: number,
+	headColor: Color3, -- the head's own color, restored when a stun ends
 }
 
 local Enemy = {}
@@ -111,9 +115,45 @@ function Enemy.spawn(wave: number, position: Vector3): Model
 		stuckFor = 0,
 		detourUntil = 0,
 		dead = false,
+		stunUntil = 0,
+		slowMult = 1,
+		slowUntil = 0,
+		headColor = head.Color,
 	}
 	count += 1
 	return model
+end
+
+-- Flashbang: the enemy stops where it stands and does not swing until the stun ends. Head goes white.
+function Enemy.stun(model: Model, seconds: number)
+	local d = active[model]
+	if not d or d.dead then
+		return
+	end
+	d.stunUntil = math.max(d.stunUntil, os.clock() + seconds)
+	d.humanoid:MoveTo(d.root.Position)
+	local head = model:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		head.Color = Color3.new(1, 1, 1)
+	end
+end
+
+-- Fire fields: walk speed x mult until the time runs out. The stronger slow wins while both apply.
+function Enemy.slow(model: Model, mult: number, seconds: number)
+	local d = active[model]
+	if not d or d.dead then
+		return
+	end
+	local untilT = os.clock() + seconds
+	if d.slowUntil <= os.clock() or mult < d.slowMult then
+		d.slowMult = mult
+	end
+	d.slowUntil = math.max(d.slowUntil, untilT)
+end
+
+function Enemy.stunned(model: Model): boolean
+	local d = active[model]
+	return d ~= nil and d.stunUntil > os.clock()
 end
 
 -- Resolve a hit part to its enemy model, or nil if the part is not an enemy.
@@ -282,6 +322,25 @@ function Enemy.init()
 			end
 			if not model.Parent or d.root.Position.Y < -50 then
 				Enemy.kill(model, nil)
+				continue
+			end
+			-- Stun and slow drive the walk speed; a stunned enemy neither steers nor swings.
+			local stunned = now < d.stunUntil
+			if d.slowUntil > 0 and now >= d.slowUntil then
+				d.slowUntil = 0
+				d.slowMult = 1
+			end
+			local speed = if stunned then 0 else Config.EnemyWalkSpeed * d.slowMult
+			if d.humanoid.WalkSpeed ~= speed then
+				d.humanoid.WalkSpeed = speed
+				if not stunned then
+					local head = model:FindFirstChild("Head")
+					if head and head:IsA("BasePart") and head.Color ~= d.headColor then
+						head.Color = d.headColor
+					end
+				end
+			end
+			if stunned then
 				continue
 			end
 			if now - d.lastRetarget >= Config.RetargetSec then

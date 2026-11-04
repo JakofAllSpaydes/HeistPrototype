@@ -25,6 +25,7 @@ export type Weapon = {
 	saleType: string, -- Direct | Crate | Event
 	unlockCost: number?, -- nil = Prices.weaponUnlock
 	upgBaseCost: number?, -- nil = Prices.weaponUpgrade
+	rarity: number, -- Armory rarity 1..5 (Weapons.ArmoryRarity): the collection tile color, not the drop roll
 }
 
 local Config = require(script.Parent.Config)
@@ -40,6 +41,7 @@ local function def(t: { [string]: any }): Weapon
 	t.burst = t.burst or 1
 	t.burstDelay = t.burstDelay or 0
 	t.saleType = t.saleType or "Direct"
+	t.rarity = t.rarity or 1
 	return t :: Weapon
 end
 
@@ -225,8 +227,29 @@ Weapons.List = {
 	}),
 } :: { Weapon }
 
+-- Armory rarity: the tile and detail color on the Weapons tab (Rarity.Colors). The in-run drop rarity is still
+-- rolled per instance and multiplies damage; this one is the gun's own tier in the collection.
+Weapons.ArmoryRarity = {
+	M1911 = 1,
+	Glock = 1,
+	UZI = 1,
+	MP5 = 2,
+	["AK-47"] = 1,
+	M4A1 = 2,
+	["SPAS-12"] = 1,
+	AWP = 2,
+	Deagle = 3,
+	P90 = 3,
+	["SCAR-H"] = 3,
+	SawedOff = 2,
+	M82 = 4,
+	M249 = 2,
+	RPK = 3,
+} :: { [string]: number }
+
 Weapons.ById = {} :: { [string]: Weapon }
 for _, w in Weapons.List do
+	w.rarity = Weapons.ArmoryRarity[w.id] or 1
 	Weapons.ById[w.id] = w
 end
 
@@ -236,13 +259,74 @@ Weapons.Starter = "M1911"
 Weapons.DefaultOwned = { "M1911", "UZI", "AK-47", "SPAS-12", "AWP", "M249" }
 
 -- Showcase entries for the Weapons tab only: fake Crate / Event guns that render with their acquisition
--- label and can never be unlocked, rolled or dealt (they are not in Weapons.List).
-export type Showcase = { id: string, displayName: string, archetype: string, saleType: string, hint: string }
+-- label and can never be unlocked, rolled or dealt (they are not in Weapons.List). Their stats are
+-- placeholders so the detail card reads like a real gun's.
+export type Showcase = {
+	id: string,
+	displayName: string,
+	archetype: string,
+	saleType: string,
+	hint: string,
+	rarity: number,
+	baseDmg: number,
+	fireRate: number,
+	magSize: number,
+	reloadTime: number,
+	pellets: number,
+}
 Weapons.Showcase = {
-	{ id = "Exogun", displayName = "Exogun", archetype = "Rifle", saleType = "Crate", hint = "Energy" },
-	{ id = "StormLinker", displayName = "StormLinker", archetype = "SMG", saleType = "Crate", hint = "Automatic" },
-	{ id = "Railcaster", displayName = "Railcaster", archetype = "Sniper", saleType = "Event", hint = "Charged" },
-	{ id = "Hornet", displayName = "Hornet", archetype = "Pistol", saleType = "Event", hint = "Burst" },
+	{
+		id = "Exogun",
+		displayName = "Exogun",
+		archetype = "Rifle",
+		saleType = "Crate",
+		hint = "Energy",
+		rarity = 5,
+		baseDmg = 24,
+		fireRate = 9,
+		magSize = 40,
+		reloadTime = 2.2,
+		pellets = 1,
+	},
+	{
+		id = "StormLinker",
+		displayName = "StormLinker",
+		archetype = "SMG",
+		saleType = "Crate",
+		hint = "Automatic",
+		rarity = 4,
+		baseDmg = 14,
+		fireRate = 15,
+		magSize = 45,
+		reloadTime = 1.8,
+		pellets = 1,
+	},
+	{
+		id = "Railcaster",
+		displayName = "Railcaster",
+		archetype = "Sniper",
+		saleType = "Event",
+		hint = "Charged",
+		rarity = 5,
+		baseDmg = 160,
+		fireRate = 0.9,
+		magSize = 4,
+		reloadTime = 3.0,
+		pellets = 1,
+	},
+	{
+		id = "Hornet",
+		displayName = "Hornet",
+		archetype = "Pistol",
+		saleType = "Event",
+		hint = "Burst",
+		rarity = 4,
+		baseDmg = 26,
+		fireRate = 6,
+		magSize = 15,
+		reloadTime = 1.4,
+		pellets = 1,
+	},
 } :: { Showcase }
 
 -- Armory level math (Config.Upg*Pct): applied to the base stats before rarity and in-run upgrades,

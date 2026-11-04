@@ -372,13 +372,27 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			trail(data.from, data.to, Theme.Colors.gold, 0.06)
 			UI.sound(Theme.Sounds.shot, 1.6, 0.15)
 		elseif name == "StructurePlaced" then
-			blastRing(data.position, 5, Theme.Colors.gold)
+			blastRing(data.position, data.radius or 5, data.color or Theme.Colors.gold)
 			UI.sound(Theme.Sounds.crate, 1.2, 0.5)
 		elseif name == "StructureHit" then
 			UI.sound(Theme.Sounds.kill, 0.8, 0.08)
 		elseif name == "StructureGone" then
 			blastRing(data.position, 6, Theme.Colors.malus)
 			UI.sound(Theme.Sounds.deny, 0.9, 0.15)
+		elseif name == "AbilityBeam" then
+			-- Heal turret beam (green) and flame turret stream (orange): a short line per tick.
+			trail(data.from, data.to, data.color or Theme.Colors.gold, data.life or 0.2)
+			if data.sound == "flame" then
+				UI.sound(Theme.Sounds.swap, 0.6, 0.12)
+			end
+		elseif name == "Blast" then
+			-- Claymore (red), flashbang (white) and a thrown fire landing (orange).
+			blastRing(data.position, data.radius or 8, data.color or Theme.Colors.red)
+			UI.sound(Theme.Sounds.crate, data.pitch or 1.5, 0.5)
+			ClientState.Juice:Fire("Shake", { amp = data.shake or 0.15, dur = 0.15 })
+		elseif name == "Heal" then
+			-- Small, quiet green number over the healed player.
+			floatText(data.position, "+" .. tostring(data.amount), Theme.Colors.health, 16, 2, 0.7)
 		elseif name == "StimStart" then
 			vignette.BackgroundColor3 = Theme.Colors.gold
 			vignette.BackgroundTransparency = 0.5

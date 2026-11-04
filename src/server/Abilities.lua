@@ -1,6 +1,11 @@
 --!strict
--- Q Auto Turret, E Barricade, Z Stim. Structures have HP, enemies attack them, they expire on a timer.
-local Players = game:GetService("Players")
+-- The twelve class abilities (Classes.lua), server side.
+--   Placeables stand StructurePlaceDistance in front of the player: turret, barricade, healing turret, flame
+--   turret and oil drum are attackable (HP bar, enemies walk to them and hit them); med bag and claymore are not.
+--   Ground fields (med bag, molotov, the fire a broken drum leaves) act on whoever stands in the circle every
+--   FieldTickSec. Thrown abilities (flashbang, molotov) arc ThrowDistance over ThrowFlightSec and go off where
+--   they land. Self buffs (stim, stim shot, dead eye) live in PlayerState as buffId / buffUntil.
+-- Every number is in Config; the owner's ability level scales the Classes.lua `vars` through AbilityGrowth.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -17,27 +22,67 @@ local Enemy = require(script.Parent.Enemy)
 local Log = require(script.Parent.Log)
 local World = require(script.Parent.World)
 
+local COLOR = {
+	gold = Color3.fromHex("E8B64C"),
+	grey = Color3.fromHex("9BA0A8"),
+	green = Color3.fromHex("8FE3A1"),
+	red = Color3.fromHex("E8554D"),
+	fire = Color3.fromRGB(255, 140, 40),
+	white = Color3.new(1, 1, 1),
+}
+
+-- Anything that stands in the arena: turret | barricade | healturret | flameturret | oildrum | claymore.
 type Structure = {
-	kind: string, -- turret | barricade
+	kind: string,
 	owner: Player,
 	model: Model,
-	hitPart: BasePart, -- what enemies walk to and hit
+	hitPart: BasePart, -- what enemies walk to and hit (attackable kinds)
+	attackable: boolean, -- enemies target it, it has an HP bar
 	hp: number,
 	maxHP: number,
 	expiresAt: number,
-	fill: Frame,
-	lastShot: number,
+	fill: Frame?,
+	lastTick: number, -- last shot / beam / flame tick
+	lastSound: number, -- flame turret: the stream sound is sent this often, not every tick
 	head: BasePart?,
-	dmg: number, -- turret damage per shot at the owner's ability level
+	dmg: number, -- turret damage per shot, flame damage per second, claymore blast, drum burn per second
+	heal: number, -- healing turret HP per second
+	slowMult: number, -- drum fire walk speed multiplier
+	armedAt: number, -- claymore: cannot go off before this
+}
+
+-- A circle on the floor that acts on whoever stands in it every FieldTickSec.
+type Field = {
+	kind: string, -- medbag | molotov | drumfire
+	owner: Player,
+	model: Model,
+	position: Vector3,
+	radius: number,
+	expiresAt: number,
+	lastTick: number,
+	perSec: number, -- heal (med bag) or burn (fire) per second
+	slowMult: number, -- enemy walk speed x this while inside (fire)
+	shown: { [Player]: number }, -- med bag: heal shown to this player so far (floats once a second)
+	shownAt: { [Player]: number },
 }
 
 local Abilities = {}
 
 local folder: Folder
 local structures: { [BasePart]: Structure } = {}
+local fields: { [Model]: Field } = {}
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
+end
+
+local function level(state: PlayerState.State, id: string): number
+	return PlayerState.abilityLevel(state, id)
+end
+
+-- Classes.lua var at the owner's level.
+local function grown(id: string, variable: string, base: number, lv: number): number
+	return AbilityGrowth.at(id, variable, base, lv)
 end
 
 local function hpBar(part: BasePart, color: Color3): Frame
@@ -76,11 +121,70 @@ local function placementCFrame(char: Model, distance: number): CFrame
 	return CFrame.new(pos.X, Config.FloorTop, pos.Z) * CFrame.Angles(0, yaw, 0)
 end
 
+local function part(props: { [string]: any }): Part
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in props do
+		(p :: any)[k] = v
+	end
+	return p
+end
+
+-- Damage one enemy on the owner's behalf: kill cash with the owner's greed, the Hit juice to the owner.
+local function hitEnemy(owner: Player, model: Model, dmg: number, position: Vector3, secondary: boolean): boolean
+	dmg = math.max(1, math.round(dmg))
+	local killed = Enemy.damage(model, dmg, if owner.Parent then owner else nil)
+	if not owner.Parent then
+		return killed
+	end
+	local state = PlayerState.get(owner)
+	local cash = 0
+	if killed then
+		cash = math.round(Config.CashPerKill * PlayerState.computed(state).greed)
+		Economy.addCash(state, cash)
+	end
+	Remotes.Juice:FireClient(owner, "Hit", {
+		position = position,
+		amount = dmg,
+		headshot = false,
+		crit = false,
+		killed = killed,
+		model = model,
+		cash = cash,
+		secondary = secondary,
+	})
+	return killed
+end
+
+local function healPlayer(player: Player, amount: number): number
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 or amount <= 0 then
+		return 0
+	end
+	local before = hum.Health
+	hum.Health = math.min(hum.MaxHealth, hum.Health + amount)
+	return hum.Health - before
+end
+
+local function headPosition(player: Player): Vector3?
+	local char = player.Character
+	local head = char and char:FindFirstChild("Head") :: BasePart?
+	return if head then head.Position else nil
+end
+
+------------------------------------------------------------------ Structures
 local function register(s: Structure)
 	structures[s.hitPart] = s
-	s.hitPart:SetAttribute("StructureHP", s.hp)
-	s.hitPart:SetAttribute("StructureMaxHP", s.maxHP)
+	if s.attackable then
+		s.hitPart:SetAttribute("StructureHP", s.hp)
+		s.hitPart:SetAttribute("StructureMaxHP", s.maxHP)
+	end
 end
+
+local placeField -- forward: a broken oil drum lights the floor
 
 local function destroyStructure(s: Structure, reason: string)
 	if not structures[s.hitPart] then
@@ -101,213 +205,718 @@ local function destroyStructure(s: Structure, reason: string)
 		s.model:Destroy()
 	end)
 	Log.event("Ability", "%s's %s %s", s.owner.Name, s.kind, reason)
+	-- An oil drum that enemies break (not one that times out) burns where it stood.
+	if s.kind == "oildrum" and reason == "destroyed" then
+		placeField(
+			"drumfire",
+			s.owner,
+			s.hitPart.Position,
+			Config.OilDrumBurnRadius,
+			Config.OilDrumBurnSec,
+			s.dmg,
+			s.slowMult
+		)
+		World.fireRun("Blast", { position = s.hitPart.Position, radius = Config.OilDrumBurnRadius, color = COLOR.fire })
+	end
 end
 
 -- Enemies call this through Enemy.onStructureHit.
-function Abilities.damageStructure(part: BasePart, amount: number)
-	local s = structures[part]
-	if not s then
+function Abilities.damageStructure(hit: BasePart, amount: number)
+	local s = structures[hit]
+	if not s or not s.attackable then
 		return
 	end
 	s.hp -= amount
-	part:SetAttribute("StructureHP", s.hp)
-	s.fill.Size = UDim2.fromScale(math.clamp(s.hp / s.maxHP, 0, 1), 1)
-	World.fireRun("StructureHit", { kind = s.kind, position = part.Position })
+	hit:SetAttribute("StructureHP", s.hp)
+	local fill = s.fill
+	if fill then
+		fill.Size = UDim2.fromScale(math.clamp(s.hp / s.maxHP, 0, 1), 1)
+	end
+	World.fireRun("StructureHit", { kind = s.kind, position = hit.Position })
 	if s.hp <= 0 then
 		destroyStructure(s, "destroyed")
 	end
 end
 
--- Parts enemies may target.
+-- Parts enemies may target: the attackable structures.
 function Abilities.targets(): { BasePart }
 	local out = {}
-	for part in structures do
-		table.insert(out, part)
+	for hit, s in structures do
+		if s.attackable then
+			table.insert(out, hit)
+		end
 	end
 	return out
 end
 
-local function onCooldown(state: PlayerState.State, id: string): boolean
-	return (state.cooldowns[id] or 0) > now()
+local function newStructure(kind: string, owner: Player, model: Model, hit: BasePart, lifetime: number): Structure
+	return {
+		kind = kind,
+		owner = owner,
+		model = model,
+		hitPart = hit,
+		attackable = false,
+		hp = 1,
+		maxHP = 1,
+		expiresAt = now() + lifetime,
+		fill = nil,
+		lastTick = 0,
+		lastSound = 0,
+		head = nil,
+		dmg = 0,
+		heal = 0,
+		slowMult = 1,
+		armedAt = 0,
+	}
 end
 
-local function startCooldown(state: PlayerState.State, id: string, seconds: number)
-	state.cooldowns[id] = now() + seconds
-	state.dirty = true
+local function placed(s: Structure, color: Color3, radius: number?)
+	register(s)
+	World.fireRun("StructurePlaced", { kind = s.kind, position = s.hitPart.Position, color = color, radius = radius })
 end
 
-local function placeTurret(player: Player, state: PlayerState.State, char: Model)
-	local cf = placementCFrame(char, Config.StructurePlaceDistance)
+-- Turret body shared by the three turret kinds: base (the hit part), head and a welded barrel.
+local function buildTurret(cf: CFrame, name: string, headColor: Color3): (Model, BasePart, BasePart, BasePart)
 	local model = Instance.new("Model")
-	model.Name = "Turret"
-	local base = Instance.new("Part")
-	base.Name = "Base"
-	base.Size = Vector3.new(2.4, 1, 2.4)
-	base.CFrame = cf * CFrame.new(0, 0.5, 0)
-	base.Anchored = true
-	base.Color = Color3.fromRGB(70, 72, 80)
-	base.Material = Enum.Material.Metal
-	base.Parent = model
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Size = Vector3.new(1.4, 1.2, 1.4)
-	head.CFrame = cf * CFrame.new(0, 1.6, 0)
-	head.Anchored = true
-	head.CanCollide = false
-	head.Color = Color3.fromHex("E8B64C")
-	head.Material = Enum.Material.SmoothPlastic
-	head.Parent = model
-	local barrel = Instance.new("Part")
-	barrel.Name = "Barrel"
-	barrel.Size = Vector3.new(0.35, 0.35, 1.8)
-	barrel.CFrame = head.CFrame * CFrame.new(0, 0, -1.2)
-	barrel.Anchored = true
-	barrel.CanCollide = false
-	barrel.Color = Color3.fromRGB(40, 40, 46)
-	barrel.Material = Enum.Material.Metal
-	barrel.Parent = model
+	model.Name = name
+	local base = part({
+		Name = "Base",
+		Size = Vector3.new(2.4, 1, 2.4),
+		CFrame = cf * CFrame.new(0, 0.5, 0),
+		Color = Color3.fromRGB(70, 72, 80),
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
+	local head = part({
+		Name = "Head",
+		Size = Vector3.new(1.4, 1.2, 1.4),
+		CFrame = cf * CFrame.new(0, 1.6, 0),
+		CanCollide = false,
+		Color = headColor,
+		Material = Enum.Material.SmoothPlastic,
+		Parent = model,
+	})
+	local barrel = part({
+		Name = "Barrel",
+		Size = Vector3.new(0.35, 0.35, 1.8),
+		CFrame = head.CFrame * CFrame.new(0, 0, -1.2),
+		CanCollide = false,
+		Color = Color3.fromRGB(40, 40, 46),
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = head
 	weld.Part1 = barrel
 	weld.Parent = barrel
 	model.PrimaryPart = base
 	model.Parent = folder
-	local level = PlayerState.abilityLevel(state, "turret")
-	local hp = math.round(AbilityGrowth.at("turret", "Hp", Config.TurretHP, level))
-	local dmg = AbilityGrowth.at("turret", "Damage", Config.TurretDmg, level)
-	local s: Structure = {
-		kind = "turret",
-		owner = player,
-		model = model,
-		hitPart = base,
-		hp = hp,
-		maxHP = hp,
-		expiresAt = now() + Config.TurretLifetime,
-		fill = hpBar(base, Color3.fromHex("E8B64C")),
-		lastShot = 0,
-		head = head,
-		dmg = dmg,
-	}
-	register(s)
-	World.fireRun("StructurePlaced", { kind = "turret", position = base.Position })
-	Log.event(
-		"Ability",
-		"%s placed a turret (LV %d: %d HP, %d dmg, %ds)",
-		player.Name,
-		level,
-		hp,
-		math.round(dmg),
-		Config.TurretLifetime
-	)
+	return model, base, head, barrel
+end
+
+local function aimHead(head: BasePart, at: Vector3)
+	head.CFrame = CFrame.lookAt(head.Position, Vector3.new(at.X, head.Position.Y, at.Z))
+end
+
+local function muzzleOf(head: BasePart): Vector3
+	return (head.CFrame * CFrame.new(0, 0, -2.1)).Position
+end
+
+------------------------------------------------------------------ INITIATE
+local function placeTurret(player: Player, state: PlayerState.State, char: Model)
+	local cf = placementCFrame(char, Config.StructurePlaceDistance)
+	local model, base, head = buildTurret(cf, "Turret", COLOR.gold)
+	local lv = level(state, "turret")
+	local s = newStructure("turret", player, model, base, Config.TurretLifetime)
+	s.attackable = true
+	s.hp = math.round(grown("turret", "Hp", Config.TurretHP, lv))
+	s.maxHP = s.hp
+	s.dmg = grown("turret", "Damage", Config.TurretDmg, lv)
+	s.head = head
+	s.fill = hpBar(base, COLOR.gold)
+	placed(s, COLOR.gold)
+	Log.event("Ability", "%s placed a turret (LV %d: %d HP, %d dmg)", player.Name, lv, s.hp, math.round(s.dmg))
 end
 
 local function placeBarricade(player: Player, state: PlayerState.State, char: Model)
 	local cf = placementCFrame(char, Config.StructurePlaceDistance)
 	local model = Instance.new("Model")
 	model.Name = "Barricade"
-	local wall = Instance.new("Part")
-	wall.Name = "Wall"
-	wall.Size = Config.BarricadeSize
-	wall.CFrame = cf * CFrame.new(0, Config.BarricadeSize.Y / 2, 0)
-	wall.Anchored = true
-	wall.Color = Color3.fromRGB(110, 112, 120)
-	wall.Material = Enum.Material.Metal
-	wall.Parent = model
-	local stripe = Instance.new("Part")
-	stripe.Name = "Stripe"
-	stripe.Size = Vector3.new(Config.BarricadeSize.X, 0.4, Config.BarricadeSize.Z + 0.05)
-	stripe.CFrame = wall.CFrame * CFrame.new(0, Config.BarricadeSize.Y / 2 - 0.4, 0)
-	stripe.Anchored = true
-	stripe.CanCollide = false
-	stripe.Color = Color3.fromHex("E8B64C")
-	stripe.Material = Enum.Material.Neon
-	stripe.Parent = model
+	local wall = part({
+		Name = "Wall",
+		Size = Config.BarricadeSize,
+		CFrame = cf * CFrame.new(0, Config.BarricadeSize.Y / 2, 0),
+		Color = Color3.fromRGB(110, 112, 120),
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
+	part({
+		Name = "Stripe",
+		Size = Vector3.new(Config.BarricadeSize.X, 0.4, Config.BarricadeSize.Z + 0.05),
+		CFrame = wall.CFrame * CFrame.new(0, Config.BarricadeSize.Y / 2 - 0.4, 0),
+		CanCollide = false,
+		Color = COLOR.gold,
+		Material = Enum.Material.Neon,
+		Parent = model,
+	})
 	model.PrimaryPart = wall
 	model.Parent = folder
-	local level = PlayerState.abilityLevel(state, "barricade")
-	local hp = math.round(AbilityGrowth.at("barricade", "Hp", Config.BarricadeHP, level))
-	local s: Structure = {
-		kind = "barricade",
-		owner = player,
-		model = model,
-		hitPart = wall,
-		hp = hp,
-		maxHP = hp,
-		expiresAt = now() + Config.BarricadeLifetime,
-		fill = hpBar(wall, Color3.fromHex("9BA0A8")),
-		lastShot = 0,
-		head = nil,
-		dmg = 0,
-	}
-	register(s)
-	World.fireRun("StructurePlaced", { kind = "barricade", position = wall.Position })
-	Log.event("Ability", "%s placed a barricade (LV %d: %d HP, %ds)", player.Name, level, hp, Config.BarricadeLifetime)
+	local lv = level(state, "barricade")
+	local s = newStructure("barricade", player, model, wall, Config.BarricadeLifetime)
+	s.attackable = true
+	s.hp = math.round(grown("barricade", "Hp", Config.BarricadeHP, lv))
+	s.maxHP = s.hp
+	s.fill = hpBar(wall, COLOR.grey)
+	placed(s, COLOR.gold)
+	Log.event("Ability", "%s placed a barricade (LV %d: %d HP)", player.Name, lv, s.hp)
 end
 
-local function stim(player: Player, state: PlayerState.State)
-	local level = PlayerState.abilityLevel(state, "stim")
-	state.stimUntil = now() + Config.StimDuration
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local heal = AbilityGrowth.at("stim", "Heal", Config.StimHeal, level)
-	if hum and hum.Health > 0 then
-		hum.Health = math.min(hum.MaxHealth, hum.Health + heal)
-	end
+-- A self buff: PlayerState.buffFor(id) supplies the multipliers while buffUntil runs.
+local function startBuff(player: Player, state: PlayerState.State, id: string, duration: number, heal: number)
+	state.buffId = id
+	state.buffUntil = now() + duration
+	local healed = healPlayer(player, heal)
 	PlayerState.applyCharacterStats(state)
 	state.dirty = true
-	local b = PlayerState.stimBuffs(state)
-	Remotes.Juice:FireClient(player, "StimStart", { duration = Config.StimDuration, until_ = state.stimUntil })
+	Remotes.Juice:FireClient(player, "StimStart", { id = id, duration = duration, until_ = state.buffUntil })
+	local b = PlayerState.buffFor(state, id)
 	Log.event(
 		"Ability",
-		"%s used stim (LV %d: +%d HP, %ds, x%.1f speed, x%.2f fire rate, x%.2f reload)",
+		"%s used %s (LV %d: +%d HP, %ds, x%.2f dmg, x%.2f speed, x%.2f fire rate, x%.2f reload)",
 		player.Name,
-		level,
-		math.round(heal),
-		Config.StimDuration,
+		id,
+		level(state, id),
+		math.round(healed),
+		duration,
+		b.damageMult,
 		b.moveSpeedMult,
 		b.fireRateMult,
 		b.reloadSpeedMult
 	)
 end
 
-function Abilities.use(player: Player, id: any)
-	if typeof(id) ~= "string" then
+-- INITIATE's Adrenaline (ability id "stim", kept so saved ability levels carry over): fire rate, reload and move.
+-- No heal (that is DOC's stim shot).
+local function adrenaline(player: Player, state: PlayerState.State, _char: Model)
+	startBuff(player, state, "stim", Config.AdrenalineDuration, 0)
+end
+
+------------------------------------------------------------------ Fields (med bag, molotov, drum fire)
+placeField = function(
+	kind: string,
+	owner: Player,
+	position: Vector3,
+	radius: number,
+	lifetime: number,
+	perSec: number,
+	slowMult: number
+)
+	local isFire = kind ~= "medbag"
+	local color = if isFire then COLOR.fire else COLOR.green
+	local model = Instance.new("Model")
+	model.Name = if isFire then "Fire" else "MedBag"
+	local disc = part({
+		Name = "Disc",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.2, radius * 2, radius * 2),
+		CFrame = CFrame.new(position.X, Config.FloorTop + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
+		CanCollide = false,
+		CanQuery = false,
+		Color = color,
+		Material = Enum.Material.Neon,
+		Transparency = if isFire then 0.55 else 0.7,
+		Parent = model,
+	})
+	if isFire then
+		-- One big flame in the middle and four round the edge, so the circle reads as burning.
+		for _, offset in
+			{
+				Vector3.zero,
+				Vector3.new(radius * 0.6, 0, 0),
+				Vector3.new(-radius * 0.6, 0, 0),
+				Vector3.new(0, 0, radius * 0.6),
+				Vector3.new(0, 0, -radius * 0.6),
+			}
+		do
+			local anchor = part({
+				Name = "Flame",
+				Size = Vector3.new(0.2, 0.2, 0.2),
+				CFrame = CFrame.new(position.X, Config.FloorTop + 0.3, position.Z) * CFrame.new(offset),
+				CanCollide = false,
+				CanQuery = false,
+				Transparency = 1,
+				Parent = model,
+			})
+			local fire = Instance.new("Fire")
+			fire.Size = if offset == Vector3.zero then radius * 1.4 else radius * 0.8
+			fire.Heat = 12
+			fire.Color = COLOR.fire
+			fire.SecondaryColor = COLOR.red
+			fire.Parent = anchor
+		end
+	else
+		-- The bag: a green box with a white cross.
+		local bag = part({
+			Name = "Bag",
+			Size = Vector3.new(1.6, 1, 1.2),
+			CFrame = CFrame.new(position.X, Config.FloorTop + 0.5, position.Z),
+			CanCollide = false,
+			CanQuery = false,
+			Color = COLOR.green,
+			Material = Enum.Material.SmoothPlastic,
+			Parent = model,
+		})
+		part({
+			Name = "CrossA",
+			Size = Vector3.new(1.0, 0.05, 0.3),
+			CFrame = bag.CFrame * CFrame.new(0, 0.52, 0),
+			CanCollide = false,
+			CanQuery = false,
+			Color = COLOR.white,
+			Material = Enum.Material.Neon,
+			Parent = model,
+		})
+		part({
+			Name = "CrossB",
+			Size = Vector3.new(0.3, 0.05, 1.0),
+			CFrame = bag.CFrame * CFrame.new(0, 0.52, 0),
+			CanCollide = false,
+			CanQuery = false,
+			Color = COLOR.white,
+			Material = Enum.Material.Neon,
+			Parent = model,
+		})
+	end
+	model.PrimaryPart = disc
+	model.Parent = folder
+	fields[model] = {
+		kind = kind,
+		owner = owner,
+		model = model,
+		position = Vector3.new(position.X, Config.FloorTop, position.Z),
+		radius = radius,
+		expiresAt = now() + lifetime,
+		lastTick = 0,
+		perSec = perSec,
+		slowMult = slowMult,
+		shown = {},
+		shownAt = {},
+	}
+	Log.event(
+		"Ability",
+		"%s's %s lit at (%d, %d): r%d, %d/s, %ds",
+		owner.Name,
+		kind,
+		math.round(position.X),
+		math.round(position.Z),
+		radius,
+		math.round(perSec),
+		lifetime
+	)
+end
+
+local function removeField(f: Field, reason: string)
+	if not fields[f.model] then
 		return
 	end
-	local state = PlayerState.get(player)
-	local char = player.Character
-	if not char or state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
+	fields[f.model] = nil
+	for _, p in f.model:GetDescendants() do
+		if p:IsA("BasePart") then
+			TweenService:Create(p, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Transparency = 1,
+			}):Play()
+		elseif p:IsA("Fire") then
+			p.Enabled = false
+		end
+	end
+	task.delay(0.45, function()
+		f.model:Destroy()
+	end)
+	Log.event("Ability", "%s's %s %s", f.owner.Name, f.kind, reason)
+end
+
+local function flatDistance(a: Vector3, b: Vector3): number
+	return (Vector3.new(a.X, 0, a.Z) - Vector3.new(b.X, 0, b.Z)).Magnitude
+end
+
+local function fieldTick(f: Field, t: number)
+	if t - f.lastTick < Config.FieldTickSec then
 		return
 	end
-	-- Only the equipped class's abilities can fire; the non-INITIATE kits are Phase 2 stubs.
-	local ability = Classes.AbilityById[id]
-	if not ability or Classes.ClassOfAbility[id] ~= PlayerState.classOf(state) then
-		return
-	end
-	if not ability.live then
-		print(string.format("[GHS Ability] STUB: %s used %s (%s) - Phase 2", player.Name, ability.name, id))
-		Remotes.Juice:FireClient(player, "Toast", { text = "STUB · PHASE 2 · " .. string.upper(ability.name) })
-		Remotes.Juice:FireClient(player, "AbilityDenied", { id = id, stub = true })
-		return
-	end
-	if onCooldown(state, id) then
-		Remotes.Juice:FireClient(player, "AbilityDenied", { id = id })
-		return
-	end
-	if id == "turret" then
-		placeTurret(player, state, char)
-		startCooldown(state, id, Config.TurretCooldown)
-	elseif id == "barricade" then
-		placeBarricade(player, state, char)
-		startCooldown(state, id, Config.BarricadeCooldown)
-	elseif id == "stim" then
-		stim(player, state)
-		startCooldown(state, id, Config.StimCooldown)
+	f.lastTick = t
+	local amount = f.perSec * Config.FieldTickSec
+	if f.kind == "medbag" then
+		for _, player in World.runAudience() do
+			local state = PlayerState.get(player)
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not root or not PlayerState.isStanding(state) then
+				continue
+			end
+			if flatDistance(root.Position, f.position) > f.radius then
+				continue
+			end
+			local healed = healPlayer(player, amount)
+			if healed <= 0 then
+				continue
+			end
+			-- Floats once a second per player, so the circle stays quiet.
+			f.shown[player] = (f.shown[player] or 0) + healed
+			if t - (f.shownAt[player] or 0) >= 1 then
+				f.shownAt[player] = t
+				local shown = math.round(f.shown[player])
+				f.shown[player] = 0
+				if shown > 0 then
+					local head = headPosition(player)
+					if head then
+						Remotes.Juice:FireClient(player, "Heal", { position = head, amount = shown })
+					end
+				end
+			end
+		end
+	else
+		for _, model in Enemy.within(f.position, f.radius) do
+			local ep = Enemy.rootPosition(model)
+			if not ep or flatDistance(ep, f.position) > f.radius then
+				continue
+			end
+			Enemy.slow(model, f.slowMult, Config.FieldTickSec + 0.25)
+			hitEnemy(f.owner, model, amount, ep, true)
+		end
 	end
 end
 
+------------------------------------------------------------------ Thrown
+-- A small part arcs from the hand to the floor ThrowDistance ahead over ThrowFlightSec, then `onLand` runs there.
+local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vector3) -> ())
+	local hand = (char:FindFirstChild("RightHand") or char:FindFirstChild("HumanoidRootPart")) :: BasePart?
+	local target = placementCFrame(char, Config.ThrowDistance).Position
+	local from = if hand then hand.Position else target + Vector3.new(0, 3, 0)
+	local to = Vector3.new(target.X, Config.FloorTop + 0.4, target.Z)
+	local p = part({
+		Name = "Thrown",
+		Size = Vector3.new(0.7, 0.7, 0.7),
+		CFrame = CFrame.new(from),
+		CanCollide = false,
+		CanQuery = false,
+		Color = color,
+		Material = Enum.Material.SmoothPlastic,
+		Parent = folder,
+	})
+	if burning then
+		local fire = Instance.new("Fire")
+		fire.Size = 2
+		fire.Heat = 6
+		fire.Parent = p
+	end
+	task.spawn(function()
+		local flight = math.max(0.05, Config.ThrowFlightSec)
+		local elapsed = 0
+		while elapsed < flight do
+			elapsed += RunService.Heartbeat:Wait()
+			local a = math.clamp(elapsed / flight, 0, 1)
+			local pos = from:Lerp(to, a) + Vector3.new(0, 6 * a * (1 - a), 0)
+			p.CFrame = CFrame.new(pos) * CFrame.Angles(a * 6, a * 4, 0)
+		end
+		p:Destroy()
+		onLand(to)
+	end)
+end
+
+------------------------------------------------------------------ DOC
+local function stimShot(player: Player, state: PlayerState.State, _char: Model)
+	startBuff(
+		player,
+		state,
+		"stimshot",
+		Config.StimShotDuration,
+		grown("stimshot", "Heal", Config.StimShotHeal, level(state, "stimshot"))
+	)
+end
+
+local function placeMedBag(player: Player, state: PlayerState.State, char: Model)
+	local lv = level(state, "medbag")
+	local pos = placementCFrame(char, Config.StructurePlaceDistance).Position
+	placeField(
+		"medbag",
+		player,
+		pos,
+		Config.MedBagRadius,
+		Config.MedBagLifetime,
+		grown("medbag", "HealPerSec", Config.MedBagHealPerSec, lv),
+		1
+	)
+	World.fireRun(
+		"StructurePlaced",
+		{ kind = "medbag", position = pos, color = COLOR.green, radius = Config.MedBagRadius }
+	)
+end
+
+local function placeHealTurret(player: Player, state: PlayerState.State, char: Model)
+	local cf = placementCFrame(char, Config.StructurePlaceDistance)
+	local model, base, head = buildTurret(cf, "HealTurret", COLOR.green)
+	local lv = level(state, "healturret")
+	local s = newStructure("healturret", player, model, base, Config.HealTurretLifetime)
+	s.attackable = true
+	s.hp = math.round(grown("healturret", "Hp", Config.HealTurretHP, lv))
+	s.maxHP = s.hp
+	s.heal = grown("healturret", "BeamHeal", Config.HealTurretBeamHeal, lv)
+	s.head = head
+	s.fill = hpBar(base, COLOR.green)
+	placed(s, COLOR.green)
+	Log.event("Ability", "%s placed a healing turret (LV %d: %d HP, %.1f HP/s)", player.Name, lv, s.hp, s.heal)
+end
+
+-- The hurt teammate in range with the lowest HP share.
+local function lowestTeammate(from: Vector3, range: number): Player?
+	local best: Player? = nil
+	local bestShare = 1
+	for _, player in World.runAudience() do
+		local state = PlayerState.get(player)
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not root or not hum or not PlayerState.isStanding(state) then
+			continue
+		end
+		if (root.Position - from).Magnitude > range then
+			continue
+		end
+		local share = hum.Health / math.max(1, hum.MaxHealth)
+		if share < bestShare then
+			bestShare = share
+			best = player
+		end
+	end
+	return best
+end
+
+local function healTurretTick(s: Structure, t: number)
+	if t - s.lastTick < Config.HealTurretTickSec then
+		return
+	end
+	local head = s.head
+	if not head then
+		return
+	end
+	local target = lowestTeammate(head.Position, Config.HealTurretRange)
+	if not target then
+		return
+	end
+	local at = headPosition(target)
+	if not at then
+		return
+	end
+	s.lastTick = t
+	aimHead(head, at)
+	local healed = healPlayer(target, s.heal * Config.HealTurretTickSec)
+	World.fireRun(
+		"AbilityBeam",
+		{ from = muzzleOf(head), to = at, color = COLOR.green, life = Config.HealTurretTickSec }
+	)
+	if healed >= 0.5 then
+		Remotes.Juice:FireClient(target, "Heal", { position = at, amount = math.round(healed) })
+	end
+end
+
+------------------------------------------------------------------ SHARPSHOOTER
+local function placeClaymore(player: Player, state: PlayerState.State, char: Model)
+	local cf = placementCFrame(char, Config.StructurePlaceDistance)
+	local model = Instance.new("Model")
+	model.Name = "Claymore"
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(1.2, 0.7, 0.3),
+		CFrame = cf * CFrame.new(0, 0.5, 0),
+		CanCollide = false,
+		CanQuery = false,
+		Color = Color3.fromRGB(70, 90, 60),
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
+	for _, x in { -0.4, 0.4 } do
+		part({
+			Name = "Leg",
+			Size = Vector3.new(0.1, 0.5, 0.1),
+			CFrame = cf * CFrame.new(x, 0.25, 0),
+			CanCollide = false,
+			CanQuery = false,
+			Color = Color3.fromRGB(40, 40, 46),
+			Material = Enum.Material.Metal,
+			Parent = model,
+		})
+	end
+	part({
+		Name = "Light",
+		Size = Vector3.new(0.2, 0.2, 0.1),
+		CFrame = body.CFrame * CFrame.new(0, 0.2, -0.18),
+		CanCollide = false,
+		CanQuery = false,
+		Color = COLOR.red,
+		Material = Enum.Material.Neon,
+		Parent = model,
+	})
+	model.PrimaryPart = body
+	model.Parent = folder
+	local lv = level(state, "claymore")
+	local s = newStructure("claymore", player, model, body, Config.ClaymoreLifetime)
+	s.dmg = grown("claymore", "ClaymoreDamage", Config.ClaymoreDamage, lv)
+	s.armedAt = now() + Config.ClaymoreArmSec
+	placed(s, Color3.fromHex("4D9FE8"), 3)
+	Log.event("Ability", "%s planted a claymore (LV %d: %d dmg)", player.Name, lv, math.round(s.dmg))
+end
+
+local function claymoreTick(s: Structure, t: number)
+	if t < s.armedAt then
+		return
+	end
+	local pos = s.hitPart.Position
+	if not Enemy.nearest(pos, Config.ClaymoreTriggerRadius, nil) then
+		return
+	end
+	local victims = Enemy.within(pos, Config.ClaymoreBlastRadius)
+	World.fireRun(
+		"Blast",
+		{ position = pos, radius = Config.ClaymoreBlastRadius, color = COLOR.red, shake = 0.3, pitch = 0.8 }
+	)
+	local kills = 0
+	for _, model in victims do
+		local ep = Enemy.rootPosition(model) or pos
+		if hitEnemy(s.owner, model, s.dmg, ep, false) then
+			kills += 1
+		end
+	end
+	Log.event("Ability", "%s's claymore went off: %d hit, %d killed", s.owner.Name, #victims, kills)
+	destroyStructure(s, "detonated")
+end
+
+local function deadEye(player: Player, state: PlayerState.State, _char: Model)
+	startBuff(player, state, "deadeye", Config.DeadEyeDuration, 0)
+end
+
+local function throwFlashbang(player: Player, state: PlayerState.State, char: Model)
+	local lv = level(state, "flashbang")
+	local radius = grown("flashbang", "FlashRadius", Config.FlashRadius, lv)
+	local stunSec = grown("flashbang", "StunDuration", Config.StunDuration, lv)
+	throw(char, COLOR.grey, false, function(pos: Vector3)
+		local victims = Enemy.within(pos, radius)
+		for _, model in victims do
+			Enemy.stun(model, stunSec)
+		end
+		World.fireRun("Blast", { position = pos, radius = radius, color = COLOR.white, shake = 0.2, pitch = 1.8 })
+		Log.event("Ability", "%s's flashbang: %d stunned for %.1fs (r%d)", player.Name, #victims, stunSec, radius)
+	end)
+end
+
+------------------------------------------------------------------ TORCH
+local function throwMolotov(player: Player, state: PlayerState.State, char: Model)
+	local lv = level(state, "molotov")
+	local burn = grown("molotov", "BurnPerSec", Config.MolotovBurnPerSec, lv)
+	local slowPct = math.min(90, grown("molotov", "MoveSlowPct", Config.MolotovMoveSlowPct, lv))
+	throw(char, COLOR.fire, true, function(pos: Vector3)
+		placeField("molotov", player, pos, Config.MolotovRadius, Config.MolotovLifetime, burn, 1 - slowPct / 100)
+		World.fireRun(
+			"Blast",
+			{ position = pos, radius = Config.MolotovRadius, color = COLOR.fire, shake = 0.1, pitch = 1.2 }
+		)
+	end)
+end
+
+local function placeFlameTurret(player: Player, state: PlayerState.State, char: Model)
+	local cf = placementCFrame(char, Config.StructurePlaceDistance)
+	local model, base, head, barrel = buildTurret(cf, "FlameTurret", COLOR.red)
+	barrel.Size = Vector3.new(0.5, 0.5, 1.6)
+	local pilot = Instance.new("Fire")
+	pilot.Size = 1.5
+	pilot.Heat = 4
+	pilot.Parent = barrel
+	local lv = level(state, "flameturret")
+	local s = newStructure("flameturret", player, model, base, Config.FlameTurretLifetime)
+	s.attackable = true
+	s.hp = math.round(grown("flameturret", "Hp", Config.FlameTurretHP, lv))
+	s.maxHP = s.hp
+	s.dmg = grown("flameturret", "FlameDps", Config.FlameTurretDps, lv)
+	s.head = head
+	s.fill = hpBar(base, COLOR.red)
+	placed(s, COLOR.fire)
+	Log.event("Ability", "%s placed a flame turret (LV %d: %d HP, %d dps)", player.Name, lv, s.hp, math.round(s.dmg))
+end
+
+local function flameTurretTick(s: Structure, t: number)
+	if t - s.lastTick < Config.FlameTurretTickSec then
+		return
+	end
+	local head = s.head
+	if not head then
+		return
+	end
+	local target = Enemy.nearest(head.Position, Config.FlameTurretRange, nil)
+	if not target then
+		return
+	end
+	local tp = Enemy.rootPosition(target)
+	if not tp then
+		return
+	end
+	s.lastTick = t
+	aimHead(head, tp)
+	local sound = t - s.lastSound >= 1
+	if sound then
+		s.lastSound = t
+	end
+	World.fireRun("AbilityBeam", {
+		from = muzzleOf(head),
+		to = tp,
+		color = COLOR.fire,
+		life = Config.FlameTurretTickSec,
+		sound = if sound then "flame" else nil,
+	})
+	hitEnemy(s.owner, target, s.dmg * Config.FlameTurretTickSec, tp, true)
+end
+
+local function placeOilDrum(player: Player, state: PlayerState.State, char: Model)
+	local cf = placementCFrame(char, Config.StructurePlaceDistance)
+	local model = Instance.new("Model")
+	model.Name = "OilDrum"
+	local drum = part({
+		Name = "Drum",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(3.2, 2.6, 2.6),
+		CFrame = cf * CFrame.new(0, 1.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = Color3.fromRGB(120, 50, 40),
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
+	for _, y in { -1.0, 0, 1.0 } do
+		part({
+			Name = "Ring",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.15, 2.75, 2.75),
+			CFrame = drum.CFrame * CFrame.new(y, 0, 0),
+			CanCollide = false,
+			CanQuery = false,
+			Color = COLOR.fire,
+			Material = Enum.Material.Neon,
+			Parent = model,
+		})
+	end
+	model.PrimaryPart = drum
+	model.Parent = folder
+	local lv = level(state, "oildrum")
+	local s = newStructure("oildrum", player, model, drum, Config.OilDrumLifetime)
+	s.attackable = true
+	s.hp = Config.OilDrumHP
+	s.maxHP = s.hp
+	s.dmg = grown("oildrum", "DrumBurnPerSec", Config.OilDrumBurnPerSec, lv)
+	s.slowMult = 1 - math.min(90, grown("oildrum", "DrumMoveSlowPct", Config.OilDrumMoveSlowPct, lv)) / 100
+	s.fill = hpBar(drum, COLOR.fire)
+	placed(s, COLOR.fire)
+	Log.event("Ability", "%s placed an oil drum (LV %d: %d HP, %d burn/s)", player.Name, lv, s.hp, math.round(s.dmg))
+end
+
+------------------------------------------------------------------ Turret (INITIATE) tick
 local function turretTick(s: Structure, t: number)
-	if t - s.lastShot < 1 / Config.TurretFireRate then
+	if t - s.lastTick < 1 / Config.TurretFireRate then
 		return
 	end
 	local head = s.head
@@ -322,29 +931,61 @@ local function turretTick(s: Structure, t: number)
 	if not tp then
 		return
 	end
-	s.lastShot = t
-	head.CFrame = CFrame.lookAt(head.Position, Vector3.new(tp.X, head.Position.Y, tp.Z))
-	local muzzle = (head.CFrame * CFrame.new(0, 0, -2.1)).Position
-	local state = PlayerState.get(s.owner)
-	local st = PlayerState.computed(state)
-	local dmg = math.max(1, math.round(s.dmg))
-	local killed = Enemy.damage(target, dmg, s.owner)
-	local cash = 0
-	if killed then
-		cash = math.round(Config.CashPerKill * st.greed)
-		Economy.addCash(state, cash)
+	s.lastTick = t
+	aimHead(head, tp)
+	World.fireRun("TurretShot", { from = muzzleOf(head), to = tp })
+	hitEnemy(s.owner, target, s.dmg, tp, true)
+end
+
+------------------------------------------------------------------ Use
+local USE: { [string]: (Player, PlayerState.State, Model) -> () } = {
+	turret = placeTurret,
+	barricade = placeBarricade,
+	stim = adrenaline,
+	stimshot = stimShot,
+	medbag = placeMedBag,
+	healturret = placeHealTurret,
+	claymore = placeClaymore,
+	deadeye = deadEye,
+	flashbang = throwFlashbang,
+	molotov = throwMolotov,
+	flameturret = placeFlameTurret,
+	oildrum = placeOilDrum,
+}
+
+local TICK: { [string]: (Structure, number) -> () } = {
+	turret = turretTick,
+	healturret = healTurretTick,
+	flameturret = flameTurretTick,
+	claymore = claymoreTick,
+}
+
+local function onCooldown(state: PlayerState.State, id: string): boolean
+	return (state.cooldowns[id] or 0) > now()
+end
+
+function Abilities.use(player: Player, id: any)
+	if typeof(id) ~= "string" then
+		return
 	end
-	World.fireRun("TurretShot", { from = muzzle, to = tp })
-	Remotes.Juice:FireClient(s.owner, "Hit", {
-		position = tp,
-		amount = dmg,
-		headshot = false,
-		crit = false,
-		killed = killed,
-		model = target,
-		cash = cash,
-		secondary = true,
-	})
+	local state = PlayerState.get(player)
+	local char = player.Character
+	if not char or state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
+		return
+	end
+	-- Only the equipped class's abilities can fire.
+	local ability = Classes.AbilityById[id]
+	local handler = USE[id]
+	if not ability or not handler or Classes.ClassOfAbility[id] ~= PlayerState.classOf(state) then
+		return
+	end
+	if onCooldown(state, id) then
+		Remotes.Juice:FireClient(player, "AbilityDenied", { id = id })
+		return
+	end
+	handler(player, state, char)
+	state.cooldowns[id] = now() + (Config.AbilityCooldown[id] or 10)
+	state.dirty = true
 end
 
 function Abilities.init()
@@ -365,17 +1006,29 @@ function Abilities.init()
 		for _, s in table.clone(structures) do
 			if t >= s.expiresAt then
 				destroyStructure(s, "expired")
-			elseif s.kind == "turret" then
-				turretTick(s, t)
+			else
+				local tick = TICK[s.kind]
+				if tick then
+					tick(s, t)
+				end
 			end
 		end
-		-- Stim expiry: drop the buff and resync.
+		for _, f in table.clone(fields) do
+			if t >= f.expiresAt then
+				removeField(f, "burned out")
+			else
+				fieldTick(f, t)
+			end
+		end
+		-- Self buff expiry: drop the multipliers and resync.
 		for player, state in PlayerState.all() do
-			if state.stimUntil > 0 and t >= state.stimUntil then
-				state.stimUntil = 0
+			if state.buffId and t >= state.buffUntil then
+				local id = state.buffId
+				state.buffId = nil
+				state.buffUntil = 0
 				PlayerState.applyCharacterStats(state)
 				state.dirty = true
-				Remotes.Juice:FireClient(player, "StimEnd", {})
+				Remotes.Juice:FireClient(player, "StimEnd", { id = id })
 			end
 		end
 	end)
@@ -384,6 +1037,9 @@ end
 function Abilities.clearAll()
 	for _, s in table.clone(structures) do
 		destroyStructure(s, "cleared")
+	end
+	for _, f in table.clone(fields) do
+		removeField(f, "cleared")
 	end
 end
 

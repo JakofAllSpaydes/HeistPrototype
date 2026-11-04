@@ -10,6 +10,7 @@ export type Emote = {
 	holdSec: number, -- how long the pose plays in the line-ups
 	saleType: string, -- Direct | Crate | Event
 	price: number?, -- nil = Prices.emote
+	rarity: number, -- 1..5 (Emotes.Rarity): the tile color on the Avatar tab
 }
 
 local Emotes = {}
@@ -91,8 +92,22 @@ Emotes.List = {
 	},
 } :: { Emote }
 
+-- Rarity per emote (Rarity.Colors on the tiles and the detail row).
+Emotes.Rarity = {
+	wave = 1,
+	point = 1,
+	cheer = 2,
+	laugh = 2,
+	shuffle = 4,
+	dance = 1,
+	dance2 = 2,
+	dance3 = 3,
+	victory = 5,
+} :: { [string]: number }
+
 Emotes.ById = {} :: { [string]: Emote }
 for _, e in Emotes.List do
+	e.rarity = Emotes.Rarity[e.id] or 1
 	Emotes.ById[e.id] = e
 end
 

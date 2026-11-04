@@ -44,7 +44,8 @@ export type State = {
 	nextUid: number,
 	dirty: boolean,
 	cooldowns: { [string]: number }, -- ability id -> server time the cooldown ends
-	stimUntil: number, -- server time the stim buff ends, 0 = inactive
+	buffId: string?, -- the running self buff (stim | stimshot | deadeye), nil = none
+	buffUntil: number, -- server time the self buff ends, 0 = inactive
 	-- Downed / revive
 	downed: boolean,
 	bledOut: boolean, -- spectator: no character until revived or the run ends
@@ -97,7 +98,8 @@ local function freshState(player: Player, joinIndex: number): State
 		nextUid = 2,
 		dirty = true,
 		cooldowns = {},
-		stimUntil = 0,
+		buffId = nil,
+		buffUntil = 0,
 		downed = false,
 		bledOut = false,
 		bleedEndsAt = 0,
@@ -157,8 +159,8 @@ function PlayerState.markAllDirty()
 	end
 end
 
-function PlayerState.stimActive(state: State): boolean
-	return state.stimUntil > Workspace:GetServerTimeNow()
+function PlayerState.buffActive(state: State): boolean
+	return state.buffId ~= nil and state.buffUntil > Workspace:GetServerTimeNow()
 end
 
 ------------------------------------------------------------------ Profile-derived
@@ -232,22 +234,35 @@ function PlayerState.ownedWeapons(state: State): { Weapons.Weapon }
 end
 
 ------------------------------------------------------------------ Computed stats
--- Stim multipliers at the player's Stim level (AbilityGrowth on the fire-rate and reload percentages).
-function PlayerState.stimBuffs(state: State): Stats.Buffs
-	local level = PlayerState.abilityLevel(state, "stim")
-	local firePct = AbilityGrowth.at("stim", "FireRatePct", (Config.StimFireRateMult - 1) * 100, level)
-	local reloadPct = AbilityGrowth.at("stim", "ReloadPct", (Config.StimReloadSpeedMult - 1) * 100, level)
-	return {
-		fireRateMult = 1 + firePct / 100,
-		moveSpeedMult = Config.StimMoveMult,
-		reloadSpeedMult = 1 + reloadPct / 100,
-	}
+-- The multipliers a self buff gives at the player's level of that ability (AbilityGrowth on the percentages).
+-- stim: fire rate, reload, move. stimshot: fire rate, reload (plus the heal on use). deadeye: damage, move, pierce.
+function PlayerState.buffFor(state: State, id: string): Stats.Buffs
+	local level = PlayerState.abilityLevel(state, id)
+	local b: Stats.Buffs = { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
+	if id == "stim" then
+		-- INITIATE's Adrenaline (the id stays "stim" for saved levels).
+		b.fireRateMult = 1 + AbilityGrowth.at(id, "FireRatePct", (Config.AdrenalineFireRateMult - 1) * 100, level) / 100
+		b.reloadSpeedMult = 1
+			+ AbilityGrowth.at(id, "ReloadPct", (Config.AdrenalineReloadSpeedMult - 1) * 100, level) / 100
+		b.moveSpeedMult = 1 + AbilityGrowth.at(id, "MovePct", (Config.AdrenalineMoveMult - 1) * 100, level) / 100
+	elseif id == "stimshot" then
+		b.fireRateMult = 1 + AbilityGrowth.at(id, "FireRatePct", (Config.StimShotFireRateMult - 1) * 100, level) / 100
+		b.reloadSpeedMult = 1
+			+ AbilityGrowth.at(id, "ReloadPct", (Config.StimShotReloadSpeedMult - 1) * 100, level) / 100
+	elseif id == "deadeye" then
+		b.damageMult = 1 + AbilityGrowth.at(id, "DmgPct", Config.DeadEyeDmgPct, level) / 100
+		b.moveSpeedMult = 1 + AbilityGrowth.at(id, "SpeedPct", Config.DeadEyeSpeedPct, level) / 100
+		-- Fractional pierce is real: 2.2 passes through two more enemies at full damage and a third at 20%.
+		b.pierceAdd = AbilityGrowth.at(id, "Pierce", Config.DeadEyePierce, level)
+	end
+	return b
 end
 
 function PlayerState.computed(state: State): Types.Computed
 	local buffs: Stats.Buffs? = nil
-	if PlayerState.stimActive(state) then
-		buffs = PlayerState.stimBuffs(state)
+	local id = state.buffId
+	if id and PlayerState.buffActive(state) then
+		buffs = PlayerState.buffFor(state, id)
 	end
 	return Stats.compute(state.upgrades, state.held, buffs)
 end
@@ -480,15 +495,10 @@ local function abilityView(state: State): { [string]: Types.Ability }
 	local out: { [string]: Types.Ability } = {}
 	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
 	for _, a in class.abilities do
-		local cd = if a.id == "turret"
-			then Config.TurretCooldown
-			elseif a.id == "barricade" then Config.BarricadeCooldown
-			elseif a.id == "stim" then Config.StimCooldown
-			else 10
 		out[a.id] = {
-			cooldown = cd,
+			cooldown = Config.AbilityCooldown[a.id] or 10,
 			cooldownEndsAt = state.cooldowns[a.id] or 0,
-			activeUntil = if a.id == "stim" then state.stimUntil else nil,
+			activeUntil = if state.buffId == a.id then state.buffUntil else nil,
 		}
 	end
 	return out
