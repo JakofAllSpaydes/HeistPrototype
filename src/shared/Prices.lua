@@ -8,6 +8,7 @@ local Prices = {
 	ability = 100, -- per ability level
 	mask = 100,
 	wrap = 100,
+	emote = 100, -- SQUAD poses and MVP flexes
 }
 
 return Prices

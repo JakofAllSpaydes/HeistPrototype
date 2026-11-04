@@ -223,7 +223,7 @@ local function shot(push: boolean): CFrame
 	-- character's LEFT so the avatar reads on the left of the screen, beside the panel.
 	local side = right * (-d * Config.MetaCameraSideShare)
 	local pos = look + forward * d + side + Vector3.new(0, Config.MetaCameraHeight, 0)
-	return CFrame.lookAt(pos, look + side)
+	return CFrame.lookAt(pos, look + side + Vector3.new(0, Config.MetaCameraAim, 0))
 end
 
 -- The scene drives the camera itself every frame (bound above the gameplay camera's priority) so nothing
