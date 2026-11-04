@@ -406,6 +406,18 @@ local function setCustomize(on: boolean)
 	if panelRoot then
 		panelRoot.Visible = not on
 	end
+	-- Both customize layers own the bottom of the screen (category strip, wraps row): the dock and the gold
+	-- pill step out so nothing overlaps. BACK on the strip is the way out; Esc still closes the scene.
+	local g = gui
+	if g then
+		for _, name in { "Dock", "Gold" } do
+			local f = g:FindFirstChild(name)
+			if f and f:IsA("GuiObject") then
+				f.Visible = not on
+			end
+		end
+	end
+
 	tweenCamera(shot(on), Config.MetaCameraTweenSec)
 end
 
