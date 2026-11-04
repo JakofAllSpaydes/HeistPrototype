@@ -52,6 +52,41 @@ end
 ClientState.mouseFree = false
 ClientState.mouseFreeHold = false
 
+-- Movement lock for the dedicated screens (customization scene, Create Match): the PlayerModule controls go
+-- off while any reason is held, so the character stays put and reads as part of the screen.
+local controlLocks: { [string]: boolean } = {}
+local function controls(): any
+	local ok, module = pcall(function()
+		local Players = game:GetService("Players")
+		local scripts = Players.LocalPlayer:WaitForChild("PlayerScripts", 5)
+		local pm = scripts and scripts:FindFirstChild("PlayerModule")
+		return if pm then require(pm :: ModuleScript) else nil
+	end)
+	if ok and module and typeof(module) == "table" and module.GetControls then
+		return module:GetControls()
+	end
+	return nil
+end
+
+function ClientState.lockMovement(reason: string, on: boolean)
+	controlLocks[reason] = if on then true else nil
+	local want = next(controlLocks) == nil
+	local c = controls()
+	if c then
+		if want then
+			c:Enable()
+		else
+			c:Disable()
+		end
+	end
+	-- Belt and braces: stop any motion that was in flight.
+	local char = game:GetService("Players").LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if hum and not want then
+		hum:Move(Vector3.zero, false)
+	end
+end
+
 function ClientState.isMouseFree(): boolean
 	return ClientState.mouseFree or ClientState.mouseFreeHold or ClientState.blocked() or ClientState.inHub()
 end

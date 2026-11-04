@@ -1,14 +1,14 @@
 --!strict
--- Weapons tab (GDD_7 Weapons): OWNED row then UNOWNED grid, 5 per row; detail card with stats at the
--- current level and current > next deltas; UNLOCK / UPGRADE / EQUIP STARTER / CUSTOMIZE; the wraps
--- sub-panel pushes the camera in on the gun and previews wraps live.
+-- Weapons tab, to the reference: filter pills (ALL · PISTOL · SMG · RIFLE · SHOTGUN · SNIPER · LMG) with a
+-- search box, OWNED and UNOWNED sections of colored tiles 4 per row, and a detail card on the right (big
+-- image, name, firing mode, stat rows with » next, UPGRADE green, CUSTOMIZE pink). CUSTOMIZE switches the
+-- scene to the center-zoom view: a category strip bottom-center (SKIN · WRAP · CHARM, only WRAP live) and
+-- the wraps row with Back, a price label over the selection and APPLY / BUY.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Config = require(Shared:WaitForChild("Config"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Wraps = require(Shared:WaitForChild("Wraps"))
-local Rarity = require(Shared:WaitForChild("Rarity"))
 local Prices = require(Shared:WaitForChild("Prices"))
 
 local Client = script.Parent.Parent
@@ -19,8 +19,21 @@ local MetaUI = require(script.Parent:WaitForChild("MetaUI"))
 local WeaponsTab = {}
 
 local selected: string? = nil
+local filter = "ALL"
+local search = ""
+local customize = false
 local wrapsOpen = false
 local wrapPreview: string? = nil
+
+local FILTERS = {
+	{ id = "ALL", name = "ALL" },
+	{ id = "Pistol", name = "PISTOL" },
+	{ id = "SMG", name = "SMG" },
+	{ id = "Rifle", name = "RIFLE" },
+	{ id = "Shotgun", name = "SHOTGUN" },
+	{ id = "Sniper", name = "SNIPER" },
+	{ id = "LMG", name = "LMG" },
+}
 
 local function levelOf(profile: any, id: string): number
 	local e = profile and profile.weapons and profile.weapons[id]
@@ -31,53 +44,80 @@ local function owned(profile: any, id: string): boolean
 	return profile ~= nil and profile.weapons ~= nil and profile.weapons[id] ~= nil
 end
 
+local function wrapColorOf(profile: any, id: string): Color3?
+	local e = profile and profile.weapons and profile.weapons[id]
+	local wrapId = e and e.wrap
+	return if wrapId and Wraps.ById[wrapId] then Color3.fromHex(Wraps.ById[wrapId].color) else nil
+end
+
 local function fmtReload(t: number): string
 	return string.format("%.2fs", t)
 end
 
+local function passes(name: string, archetype: string): boolean
+	if filter ~= "ALL" and archetype ~= filter then
+		return false
+	end
+	if search ~= "" and not string.find(string.lower(name), string.lower(search), 1, true) then
+		return false
+	end
+	return true
+end
+
+local function modeOf(w: Weapons.Weapon): string
+	if w.burst > 1 then
+		return string.format("%d-round burst", w.burst)
+	elseif w.auto then
+		return "Automatic"
+	elseif w.pellets > 1 then
+		return "Pump"
+	end
+	return "Semi-auto"
+end
+
 ------------------------------------------------------------------ Detail card
-local function detail(scene: any, card: Frame, w: Weapons.Weapon)
+local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons.Showcase?)
 	local S = UI.S
 	local profile = scene.profile()
-	local isOwned = owned(profile, w.id)
-	local level = levelOf(profile, w.id)
-	local isStarter = profile and profile.starterWeaponId == w.id
-	for _, c in card:GetChildren() do
-		if c:IsA("GuiObject") then
-			c:Destroy()
-		end
-	end
-	UI.pad(card, S(14), S(12), S(14), S(12))
-	UI.list(card, Enum.FillDirection.Vertical, S(6))
+	UI.list(card, Enum.FillDirection.Vertical, S(8))
+	local archetype = if w then w.archetype else (show and show.archetype or "Rifle")
+	local color = MetaUI.ArchetypeColors[archetype] or Theme.Colors.grey
 	local well = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel2,
-		Size = UDim2.new(1, 0, 0, S(70)),
+		BackgroundColor3 = color,
+		Size = UDim2.new(1, 0, 0, S(150)),
 		LayoutOrder = 1,
 		Parent = card,
 	})
-	UI.corner(well, S(10))
-	local ic = UI.gunIcon(well, if isOwned then Rarity.color(1) else Theme.Colors.grey, S(60))
+	UI.corner(well, S(8))
+	UI.stroke(well, Theme.Colors.white, S(1.5), 0.6)
+	local ic = UI.gunIcon(well, Theme.Colors.white, S(130))
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.fromScale(0.5, 0.5)
-	local wrapId = profile and profile.weapons[w.id] and profile.weapons[w.id].wrap
-	if wrapId and Wraps.ById[wrapId] then
-		UI.recolorIcon(ic, Color3.fromHex(Wraps.ById[wrapId].color))
+	if w then
+		local wc = wrapColorOf(profile, w.id)
+		if wc then
+			UI.recolorIcon(ic, wc)
+		end
 	end
 	UI.text({
-		Text = string.upper(w.displayName),
-		Font = Theme.Fonts.display,
-		TextSize = S(20),
+		Text = if w then w.displayName else (show and show.displayName or "?"),
+		Font = Theme.Fonts.body,
+		TextSize = S(24),
+		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(24)),
+		Size = UDim2.new(1, 0, 0, S(28)),
 		LayoutOrder = 2,
 		Parent = card,
 	})
+	local isOwned = w ~= nil and owned(profile, w.id)
+	local level = if w then levelOf(profile, w.id) else 0
 	UI.text({
 		Text = string.format(
 			"%s · %s",
-			string.upper(w.archetype),
+			if w then modeOf(w) else (show and show.hint or ""),
 			if isOwned then string.format("LV %d", level) else "LOCKED"
 		),
+		Font = Theme.Fonts.body,
 		TextSize = S(11),
 		TextColor3 = if isOwned then Theme.Colors.gold else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -85,23 +125,51 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon)
 		LayoutOrder = 3,
 		Parent = card,
 	})
-	-- Stat rows at the current level, with the next level in green when owned.
-	local cur = Weapons.atLevel(w, level)
-	local nxt = Weapons.atLevel(w, level + 1)
-	local rate = Weapons.effectiveRate(w, Weapons.levelRateMult(level))
-	local nrate = Weapons.effectiveRate(w, Weapons.levelRateMult(level + 1))
-	local function n(v: number): string
-		return UI.fmtDmg(v, w.pellets)
+	if w then
+		local cur = Weapons.atLevel(w, level)
+		local nxt = Weapons.atLevel(w, level + 1)
+		local rate = Weapons.effectiveRate(w, Weapons.levelRateMult(level))
+		local nrate = Weapons.effectiveRate(w, Weapons.levelRateMult(level + 1))
+		local function dps(d: number, r: number): string
+			return tostring(math.round(d * r * w.pellets))
+		end
+		MetaUI.statRow(card, 10, "DPS", dps(cur.dmg, rate), if isOwned then dps(nxt.dmg, nrate) else nil)
+		MetaUI.statRow(
+			card,
+			11,
+			"Damage",
+			UI.fmtDmg(cur.dmg, w.pellets),
+			if isOwned then UI.fmtDmg(nxt.dmg, w.pellets) else nil
+		)
+		MetaUI.statRow(card, 12, "Rate", UI.fmtRate(rate), if isOwned then UI.fmtRate(nrate) else nil)
+		MetaUI.statRow(card, 13, "Mag Size", tostring(cur.magSize), if isOwned then tostring(nxt.magSize) else nil)
+		MetaUI.statRow(
+			card,
+			14,
+			"Reload",
+			fmtReload(cur.reloadTime),
+			if isOwned then fmtReload(nxt.reloadTime) else nil
+		)
+	else
+		for i, label in { "DPS", "Damage", "Rate", "Mag Size", "Reload" } do
+			MetaUI.statRow(card, 10 + i, label, "?", nil)
+		end
 	end
-	MetaUI.statRow(card, 10, "DMG", n(cur.dmg), if isOwned then n(nxt.dmg) else nil)
-	MetaUI.statRow(card, 11, "RATE", UI.fmtRate(rate), if isOwned then UI.fmtRate(nrate) else nil)
-	MetaUI.statRow(card, 12, "MAG", tostring(cur.magSize), if isOwned then tostring(nxt.magSize) else nil)
-	MetaUI.statRow(card, 13, "RELOAD", fmtReload(cur.reloadTime), if isOwned then fmtReload(nxt.reloadTime) else nil)
 
 	-- Buttons by state.
+	if not w then
+		if show and show.saleType == "Crate" then
+			MetaUI.button(card, 20, "VIEW CRATE", "blue", function()
+				scene.toast("CRATE UI · PHASE 4", "click")
+			end)
+		else
+			MetaUI.button(card, 20, "EVENT ONLY", "disabled", nil)
+		end
+		return
+	end
 	if not isOwned then
 		if w.saleType == "Direct" then
-			MetaUI.button(card, 20, "UNLOCK · " .. MetaUI.fmtGold(Weapons.unlockCost(w)), "primary", function()
+			MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(Weapons.unlockCost(w)), "green", function()
 				local r = scene.request("unlockWeapon", { weaponId = w.id })
 				if r.ok then
 					scene.refresh()
@@ -116,97 +184,254 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon)
 		end
 		return
 	end
-	MetaUI.button(card, 20, "UPGRADE · " .. MetaUI.fmtGold(Weapons.upgradeCost(w, level)), "primary", function()
+	MetaUI.button(card, 20, "UPGRADE - " .. MetaUI.fmtGold(Weapons.upgradeCost(w, level)), "green", function()
 		local r = scene.request("upgradeWeapon", { weaponId = w.id })
 		if r.ok then
 			scene.refresh()
 		end
 	end)
+	local isStarter = profile and profile.starterWeaponId == w.id
 	if isStarter then
-		MetaUI.button(card, 21, "EQUIPPED", "disabled", nil)
+		MetaUI.button(card, 21, "EQUIPPED AS STARTER", "disabled", nil)
 	else
-		MetaUI.button(card, 21, "EQUIP STARTER", "green", function()
+		MetaUI.button(card, 21, "EQUIP STARTER", "blue", function()
 			local r = scene.request("equipStarter", { weaponId = w.id })
 			if r.ok then
 				scene.refresh()
 			end
 		end)
 	end
-	MetaUI.button(card, 22, "CUSTOMIZE", "blue", function()
-		wrapsOpen = true
+	MetaUI.button(card, 22, "CUSTOMIZE", "pink", function()
+		customize = true
+		wrapsOpen = false
 		scene.refresh()
 	end)
 end
 
------------------------------------------------------------------- Wraps sub-panel
-local function renderWraps(scene: any)
+------------------------------------------------------------------ Customize (center zoom)
+local function stripTile(
+	parent: Instance,
+	order: number,
+	label: string,
+	glyph: string,
+	locked: boolean,
+	active: boolean,
+	size: number
+): TextButton
 	local S = UI.S
-	local panel: Frame = scene.panel
+	local holder = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(size, size + S(16)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	local b = UI.button({
+		Text = "",
+		BackgroundColor3 = if active then Theme.Colors.blue else Theme.Colors.panel,
+		Size = UDim2.fromOffset(size, size),
+		Parent = holder,
+	})
+	UI.corner(b, S(10))
+	UI.stroke(b, if active then Theme.Colors.white else Theme.Colors.black, S(1.5), 0.3)
+	UI.text({
+		Text = if locked then "🔒" else glyph,
+		Font = Theme.Fonts.display,
+		TextSize = math.floor(size * 0.4),
+		TextColor3 = if locked then Theme.Colors.grey else Theme.Colors.white,
+		Size = UDim2.fromScale(1, 1),
+		Parent = b,
+	})
+	local l = UI.text({
+		Text = label,
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = if locked then Theme.Colors.grey else Theme.Colors.text,
+		Position = UDim2.fromOffset(0, size + S(1)),
+		Size = UDim2.new(1, 0, 0, S(14)),
+		Parent = holder,
+	})
+	UI.stroke(l, Theme.Colors.black, S(1.5), 0.3)
+	return b
+end
+
+local function renderCustomize(scene: any)
+	local S = UI.S
+	local overlay: Frame = scene.overlay
 	local profile = scene.profile()
 	local w = selected and Weapons.ById[selected]
 	if not w then
-		wrapsOpen = false
+		customize = false
 		scene.refresh()
 		return
 	end
-	scene.title.Text = string.upper(w.displayName) .. " · CUSTOMIZE"
-	scene.pushCamera(true)
-	scene.hideHud(true)
+	scene.setCustomize(true)
+	local size = if scene.mobile then S(52) else S(62)
+
+	-- Name over the gun.
+	UI.text({
+		Text = string.upper(w.displayName),
+		Font = Theme.Fonts.display,
+		TextSize = S(26),
+		TextColor3 = Theme.Colors.white,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, S(70)),
+		Size = UDim2.fromOffset(S(400), S(32)),
+		Parent = overlay,
+	})
+
+	if not wrapsOpen then
+		-- Category strip: BACK · SKIN (locked) · WRAP · CHARM (locked).
+		local strip = UI.frame({
+			BackgroundColor3 = Theme.Colors.bg,
+			BackgroundTransparency = 0.25,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(14)),
+			Size = UDim2.fromOffset(size * 4 + S(60), size + S(30)),
+			Parent = overlay,
+		})
+		UI.corner(strip, S(12))
+		UI.pad(strip, S(12), S(7), S(12), S(7))
+		UI.list(strip, Enum.FillDirection.Horizontal, S(12), Enum.HorizontalAlignment.Center)
+		local back = stripTile(strip, 0, "Back", "◀", false, false, size)
+		back.BackgroundColor3 = Theme.Colors.red
+		back.Activated:Connect(function()
+			customize = false
+			scene.refresh()
+		end)
+		stripTile(strip, 1, "Skin", "SKN", true, false, size).Activated:Connect(function()
+			scene.toast("SKINS · OUT OF SCOPE", "click")
+		end)
+		local wrap = stripTile(strip, 2, "Wrap", "WRP", false, false, size)
+		wrap.Activated:Connect(function()
+			wrapsOpen = true
+			scene.refresh()
+		end)
+		stripTile(strip, 3, "Charm", "CHM", true, false, size).Activated:Connect(function()
+			scene.toast("CHARMS · OUT OF SCOPE", "click")
+		end)
+		return
+	end
+
+	-- Wraps row: Back on the left, swatches with lock / check, the price over the selection, APPLY / BUY.
 	local entry = profile and profile.weapons[w.id]
 	local applied: string? = if entry then entry.wrap else nil
-	-- Bottom-center strip with one category (WRAPS), then the wraps row.
-	local strip = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel,
+	local rowH = size + S(30)
+	local row = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.25,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, 0),
-		Size = UDim2.new(1, 0, 0, S(150)),
-		Parent = panel,
+		Position = UDim2.new(0.5, 0, 1, -S(14)),
+		Size = UDim2.new(0.8, 0, 0, rowH),
+		Parent = overlay,
 	})
-	UI.corner(strip, S(12))
-	UI.stroke(strip, Theme.Colors.blue, S(1.5))
-	local cat, catLabel = UI.pill(strip, "WRAPS", Theme.Colors.blue, Theme.Colors.bg, S(22), S(12))
-	cat.Position = UDim2.fromOffset(S(12), S(10))
-	catLabel.Font = Theme.Fonts.display
+	UI.corner(row, S(12))
 	local back = UI.button({
-		Text = "◀ BACK",
+		Text = "↶ Back",
 		Font = Theme.Fonts.display,
 		TextSize = S(13),
-		TextColor3 = Theme.Colors.text,
-		BackgroundColor3 = Theme.Colors.panel2,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(12), 0, S(8)),
-		Size = UDim2.fromOffset(S(90), S(26)),
-		Parent = strip,
+		TextColor3 = Theme.Colors.white,
+		BackgroundColor3 = Theme.Colors.red,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 0, -S(8)),
+		Size = UDim2.fromOffset(S(90), S(28)),
+		Parent = row,
 	})
-	UI.corner(back, S(8))
+	UI.corner(back, S(6))
 	back.Activated:Connect(function()
 		wrapsOpen = false
 		wrapPreview = nil
 		scene.preview.wrap(nil)
 		scene.refresh()
 	end)
-	local row = UI.frame({
+	local list = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(12), S(44)),
-		Size = UDim2.new(1, -S(24), 0, S(96)),
-		Parent = strip,
+		Position = UDim2.fromOffset(S(12), S(10)),
+		Size = UDim2.new(1, -S(24), 0, size + S(16)),
+		Parent = row,
 	})
-	UI.list(row, Enum.FillDirection.Horizontal, S(8))
-	local tileSize = if scene.mobile then S(64) else S(70)
-	for i, wrap in Wraps.List do
-		local isOwned = profile and profile.wraps.owned[wrap.id] == true
-		local isApplied = applied == wrap.id
-		local b = MetaUI.tile(row, {
-			name = wrap.name,
-			sub = if isApplied then "APPLIED" elseif isOwned then "OWNED" else MetaUI.fmtGold(Prices.wrap),
-			subColor = if isApplied then Theme.Colors.cash elseif isOwned then Theme.Colors.grey else Theme.Colors.gold,
-			color = Color3.fromHex(wrap.color),
-			owned = isOwned,
-			selected = wrapPreview == wrap.id,
-			icon = "wrap",
-			size = tileSize,
-			order = i,
+	UI.list(list, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Center)
+	-- "No wrap" first, then the six wraps.
+	local function swatch(
+		order: number,
+		name: string,
+		color: Color3,
+		lockedText: string?,
+		isSelected: boolean,
+		isApplied: boolean
+	): TextButton
+		local holder = UI.frame({
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(size, size + S(16)),
+			LayoutOrder = order,
+			Parent = list,
 		})
+		local b = UI.button({
+			Text = "",
+			BackgroundColor3 = color,
+			Size = UDim2.fromOffset(size, size),
+			Parent = holder,
+		})
+		UI.corner(b, S(8))
+		UI.stroke(
+			b,
+			if isSelected then MetaUI.Green else Theme.Colors.black,
+			S(if isSelected then 3 else 1.5),
+			if isSelected then 0 else 0.4
+		)
+		if lockedText then
+			UI.text({
+				Text = "🔒",
+				TextSize = math.floor(size * 0.4),
+				Size = UDim2.fromScale(1, 1),
+				Parent = b,
+			})
+		elseif isApplied then
+			UI.text({
+				Text = "✔",
+				Font = Theme.Fonts.display,
+				TextSize = math.floor(size * 0.45),
+				TextColor3 = MetaUI.Green,
+				Size = UDim2.fromScale(1, 1),
+				Parent = b,
+			})
+		end
+		local l = UI.text({
+			Text = name,
+			TextSize = S(10),
+			TextColor3 = Theme.Colors.text,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Position = UDim2.fromOffset(0, size + S(1)),
+			Size = UDim2.new(1, 0, 0, S(14)),
+			Parent = holder,
+		})
+		UI.stroke(l, Theme.Colors.black, S(1.5), 0.3)
+		if isSelected and lockedText then
+			-- Price label over the selection (reference: "R$ XXX" tag).
+			local tag, tagLabel = UI.pill(holder, lockedText, Theme.Colors.gold, Theme.Colors.bg, S(22), S(12))
+			tag.AnchorPoint = Vector2.new(0.5, 1)
+			tag.Position = UDim2.new(0.5, 0, 0, -S(8))
+			tag.ZIndex = 4
+			tagLabel.ZIndex = 4
+			tagLabel.Font = Theme.Fonts.display
+		end
+		return b
+	end
+	local none = swatch(0, "None", Theme.Colors.panel2, nil, wrapPreview == "none", applied == nil)
+	none.Activated:Connect(function()
+		wrapPreview = "none"
+		scene.preview.wrap(nil)
+		scene.refresh()
+	end)
+	for i, wrap in Wraps.List do
+		local isOwned = profile ~= nil and profile.wraps.owned[wrap.id] == true
+		local b = swatch(
+			i,
+			wrap.name,
+			Color3.fromHex(wrap.color),
+			if isOwned then nil else MetaUI.fmtGold(Prices.wrap),
+			wrapPreview == wrap.id,
+			applied == wrap.id
+		)
 		b.Activated:Connect(function()
 			wrapPreview = wrap.id
 			scene.preview.wrap(wrap.color)
@@ -214,37 +439,17 @@ local function renderWraps(scene: any)
 			scene.refresh()
 		end)
 	end
-	-- APPLY / BUY for the previewed wrap, and CLEAR.
-	local actions = UI.frame({
+	-- Action for the selection, right of the row.
+	local action = UI.frame({
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 0),
-		Size = UDim2.new(0, S(200), 0, S(100)),
-		Parent = panel,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, 0, 0, -S(8)),
+		Size = UDim2.fromOffset(S(200), S(44)),
+		Parent = row,
 	})
-	UI.list(actions, Enum.FillDirection.Vertical, S(6))
-	local pw = wrapPreview and Wraps.ById[wrapPreview]
-	if pw then
-		local isOwned = profile and profile.wraps.owned[pw.id] == true
-		if isOwned then
-			MetaUI.button(actions, 1, "APPLY " .. string.upper(pw.name), "primary", function()
-				local r = scene.request("applyWrap", { weaponId = w.id, wrapId = pw.id })
-				if r.ok then
-					scene.preview.commit()
-					scene.refresh()
-				end
-			end)
-		else
-			MetaUI.button(actions, 1, "BUY · " .. MetaUI.fmtGold(Prices.wrap), "primary", function()
-				local r = scene.request("buyWrap", { wrapId = pw.id })
-				if r.ok then
-					scene.refresh()
-				end
-			end)
-		end
-	end
-	if applied then
-		MetaUI.button(actions, 2, "REMOVE WRAP", "blue", function()
+	UI.list(action, Enum.FillDirection.Vertical, 0)
+	if wrapPreview == "none" and applied ~= nil then
+		MetaUI.button(action, 1, "REMOVE WRAP", "blue", function()
 			local r = scene.request("applyWrap", { weaponId = w.id, wrapId = nil })
 			if r.ok then
 				wrapPreview = nil
@@ -253,89 +458,155 @@ local function renderWraps(scene: any)
 				scene.refresh()
 			end
 		end)
+	elseif wrapPreview and wrapPreview ~= "none" and Wraps.ById[wrapPreview] then
+		local pw = Wraps.ById[wrapPreview]
+		local isOwned = profile ~= nil and profile.wraps.owned[pw.id] == true
+		if isOwned and applied ~= pw.id then
+			MetaUI.button(action, 1, "APPLY", "green", function()
+				local r = scene.request("applyWrap", { weaponId = w.id, wrapId = pw.id })
+				if r.ok then
+					scene.preview.commit()
+					scene.refresh()
+				end
+			end)
+		elseif not isOwned then
+			MetaUI.button(action, 1, "BUY - " .. MetaUI.fmtGold(Prices.wrap), "green", function()
+				local r = scene.request("buyWrap", { wrapId = pw.id })
+				if r.ok then
+					scene.refresh()
+				end
+			end)
+		end
 	end
 end
 
------------------------------------------------------------------- Grid
+------------------------------------------------------------------ Grid view
 function WeaponsTab.render(scene: any)
 	local S = UI.S
 	local panel: Frame = scene.panel
 	if not panel then
 		return
 	end
-	if wrapsOpen then
-		renderWraps(scene)
+	if customize then
+		renderCustomize(scene)
 		return
 	end
-	scene.title.Text = "WEAPONS"
+	scene.setCustomize(false)
 	local profile = scene.profile()
 	if not selected then
 		selected = if profile then profile.starterWeaponId else Weapons.Starter
 	end
-	local rightW = if scene.mobile then S(190) else S(230)
-	local grid, card = MetaUI.columns(panel, rightW)
-	UI.list(grid, Enum.FillDirection.Vertical, S(6))
-	local perRow = 5
-	local tileSize = math.max(S(64), math.floor((grid.AbsoluteSize.X - S(8) * (perRow + 1) - S(10)) / perRow))
-	tileSize = math.min(tileSize, S(96))
-	local ownedList, unownedList = {}, {}
+
+	-- Filters and search.
+	local pills = MetaUI.pills(panel, FILTERS, filter, function(id)
+		filter = id
+		UI.sound(Theme.Sounds.toast, 1.2, 0.3)
+		scene.refresh()
+	end)
+	pills.Size = UDim2.new(1, -S(180), 0, S(34))
+	local searchBox = UI.new("TextBox", {
+		PlaceholderText = "Search…",
+		Text = search,
+		Font = Theme.Fonts.body,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.white,
+		PlaceholderColor3 = Theme.Colors.grey,
+		BackgroundColor3 = Theme.Colors.panel,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromOffset(S(170), S(34)),
+		ClearTextOnFocus = false,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = panel,
+	}) :: TextBox
+	UI.corner(searchBox, S(4))
+	UI.pad(searchBox, S(10), 0, S(10), 0)
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		if searchBox.Text ~= search then
+			search = searchBox.Text
+			scene.refresh()
+		end
+	end)
+
+	local rightW = if scene.mobile then S(200) else S(250)
+	local grid, card = MetaUI.columns(panel, rightW, S(44))
+	UI.list(grid, Enum.FillDirection.Vertical, S(8))
+	local perRow = 4
+	local tileW = math.floor((grid.AbsoluteSize.X - S(8) * (perRow - 1) - S(12)) / perRow)
+	tileW = math.clamp(tileW, S(64), S(110))
+
+	local ownedList: { any }, unownedList: { any } = {}, {}
 	for _, w in Weapons.List do
-		table.insert(if owned(profile, w.id) then ownedList else unownedList, w)
+		if passes(w.displayName, w.archetype) then
+			table.insert(if owned(profile, w.id) then ownedList else unownedList, { weapon = w })
+		end
 	end
-	local function tilesFor(list: { Weapons.Weapon }, header: string, order: number)
+	for _, s in Weapons.Showcase do
+		if passes(s.displayName, s.archetype) then
+			table.insert(unownedList, { showcase = s })
+		end
+	end
+
+	local function tilesFor(list: { any }, header: string, order: number)
+		MetaUI.header(grid, order, header)
 		if #list == 0 then
 			return
 		end
-		MetaUI.header(grid, order, header)
-		local row = MetaUI.row(grid, order + 1, tileSize, perRow)
-		for i, w in list do
-			local isOwned = owned(profile, w.id)
-			local sub: string, subColor: Color3
-			if isOwned then
-				sub = string.format("LV %d", levelOf(profile, w.id))
-				subColor = Theme.Colors.gold
+		local row = MetaUI.row(grid, order + 1, tileW, perRow)
+		for i, e in list do
+			local w: Weapons.Weapon? = e.weapon
+			local s: Weapons.Showcase? = e.showcase
+			local id = if w then w.id else (s :: Weapons.Showcase).id
+			local name = if w then w.displayName else (s :: Weapons.Showcase).displayName
+			local archetype = if w then w.archetype else (s :: Weapons.Showcase).archetype
+			local isOwned = w ~= nil and owned(profile, w.id)
+			local pill: string, pillColor: Color3
+			if isOwned and w then
+				pill = string.format("LV %d", levelOf(profile, w.id))
+				pillColor = Theme.Colors.gold
+			elseif w then
+				pill, pillColor = MetaUI.acquisition(w.saleType, Weapons.unlockCost(w))
 			else
-				sub, subColor = MetaUI.acquisition(w.saleType, Weapons.unlockCost(w))
+				pill, pillColor = MetaUI.acquisition((s :: Weapons.Showcase).saleType, 0)
 			end
 			local tag: string? = nil
-			local tagColor: Color3? = nil
-			if isOwned and profile and profile.starterWeaponId == w.id then
-				tag, tagColor = "STARTER", Theme.Colors.gold
-			elseif isOwned and w.saleType ~= "Direct" then
-				tag, tagColor = string.upper(w.saleType), Theme.Colors.blue
+			if isOwned and profile and profile.starterWeaponId == id then
+				tag = "STARTER"
 			end
-			local wrapId = profile and profile.weapons[w.id] and profile.weapons[w.id].wrap
-			local color = if wrapId and Wraps.ById[wrapId]
-				then Color3.fromHex(Wraps.ById[wrapId].color)
-				else Rarity.color(1)
 			local b = MetaUI.tile(row, {
-				name = w.displayName,
-				sub = sub,
-				subColor = subColor,
-				color = color,
+				name = name,
+				pill = pill,
+				pillColor = pillColor,
+				color = MetaUI.ArchetypeColors[archetype] or Theme.Colors.grey,
 				owned = isOwned,
-				selected = selected == w.id,
+				selected = selected == id,
 				tag = tag,
-				tagColor = tagColor,
+				tagColor = Theme.Colors.gold,
 				icon = "gun",
-				size = tileSize,
+				iconColor = (w and wrapColorOf(profile, w.id)) or Theme.Colors.white,
+				size = tileW,
 				order = i,
 			})
 			b.Activated:Connect(function()
-				selected = w.id
+				selected = id
 				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
-				scene.preview.weapon(w.id)
 				scene.refresh()
 			end)
 		end
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
+
 	local w = selected and Weapons.ById[selected]
-	if w then
-		detail(scene, card, w)
+	local show: Weapons.Showcase? = nil
+	if not w then
+		for _, s in Weapons.Showcase do
+			if s.id == selected then
+				show = s
+			end
+		end
 	end
-	local _ = Config
+	detail(scene, card, w, show)
 end
 
 function WeaponsTab.onProfile(scene: any)
@@ -343,11 +614,11 @@ function WeaponsTab.onProfile(scene: any)
 end
 
 function WeaponsTab.leave(scene: any)
+	customize = false
 	wrapsOpen = false
 	wrapPreview = nil
 	scene.preview.wrap(nil)
-	scene.pushCamera(false)
-	scene.hideHud(false)
+	scene.setCustomize(false)
 end
 
 return WeaponsTab

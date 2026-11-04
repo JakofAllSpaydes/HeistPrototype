@@ -625,6 +625,35 @@ function Queue.init()
 			end
 		elseif action == "refresh" then
 			send(player, true)
+		elseif action == "play" then
+			-- PLAY: straight onto the nearest open pad; the presence loop opens the card (or joins the party).
+			local state = PlayerState.get(player)
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if not char or not root or not root:IsA("BasePart") or not PlayerState.isStanding(state) then
+				return
+			end
+			if World.inRunCycle() and World.isInParty(player) then
+				return
+			end
+			local best: Zone? = nil
+			local bestDist = math.huge
+			for _, z in zones do
+				if z.phase == "inProgress" then
+					continue
+				end
+				local d = (z.room.pad.Position - root.Position).Magnitude
+				if d < bestDist then
+					bestDist = d
+					best = z
+				end
+			end
+			if not best then
+				Remotes.Juice:FireClient(player, "QueueToast", { text = "MATCH IN PROGRESS" })
+				return
+			end
+			local pad = best.room.pad
+			char:PivotTo(CFrame.new(pad.Position.X, Config.FloorTop + 3, pad.Position.Z + 2))
 		end
 	end)
 

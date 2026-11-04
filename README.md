@@ -123,16 +123,19 @@ column, abilities, wave bar, health, ammo and held slot (`HUD.setMode("hub")`). 
 in this server's arena. The party, not the server, is the run's player set: run-scoped events (`World.fireRun`) and the
 line-ups go to members only, non-members stay in the hub with the hub HUD, and late joiners always land in the hub.
 
-**Hub HUD.** PLAY top-center (pathfinds you to the nearest zone), SHOP tile left-center (amber, `SHOP · PHASE 4`
-placeholder), Gold row bottom-left with `+` (placeholder) and INVITE FRIENDS (does nothing), the dock bottom-center
-(WEAPONS · CLASSES · AVATAR, 108×96, gold frames), BOOSTS bottom-right (one stub `+50% GOLD` chip, two dashed), the
-compact queue card under PLAY while in a party, and a `TOP WAVE N ★` billboard with the class icon above every
-character in the hub. Top-left stays empty for server chat.
+**Hub HUD.** PLAY top-center (green; teleports you onto the nearest open pad, where the Create Party card opens),
+SHOP icon tile left-center (amber, `Shop` placeholder), Gold pill bottom-left with `+` (placeholder) and INVITE
+FRIENDS under it (does nothing), the dock bottom-center (WEAPONS · CLASSES · AVATAR as icon tiles with labels under
+them, reference style), BOOSTS bottom-right (icon chips: a stub `◆ +50%` chip with a countdown from `StubBoostSec`,
+two empty), the compact queue card under PLAY while in a party, and a `TOP WAVE N ★` billboard with the class icon
+above every character in the hub. Top-left stays empty for server chat.
 
 **Queue zone and Create Match (`Queue.lua` / `QueueUI.lua`, GDD_7 Hub → Queue Zones minus the teleport).** Walk into an
-empty zone → the Create Match card (party size 1–`MaxPartySize`, map dropdown with thumbnail, difficulty dropdown,
-info panel with your top wave on that map / difficulty, `DiffGoldMult` and modifiers, CREATE, X cancels and steps you
-out). CREATE locks the settings and makes you the owner; the billboard shows map · difficulty, one slot per party size
+empty zone (or press PLAY) → the Create Party card (reference layout: blue header bar with X, Select Map thumbnails
+with COMING SOON fillers, Difficulty segment with HARD / NIGHTMARE disabled and a bonus row showing `DiffGoldMult` and
+your top wave, Party size 1–`MaxPartySize` segment, a row of purple boost chips that toast `PHASE 4`, CREATE PARTY;
+movement is locked while it is open; X cancels and steps you out). CREATE locks the settings and makes you the owner;
+the billboard shows map · difficulty, one slot per party size
 and the countdown; members see the same card compact under PLAY. Others join by walking in (`<NAME> JOINED THE PARTY
 (2/4)` on the billboard and member HUDs), leave by walking out; a full party starts at once, a party of 1 starts on
 CREATE, otherwise `QueueCountdownSec` (15) from creation; the owner leaving passes ownership to the next member; an
@@ -149,7 +152,8 @@ per player; `UpdateAsync` with 3 tries and 1 / 2 / 4s backoff; written on every 
 back to an in-memory profile and warns once. Shape: `gold`, `weapons[id] = { level, wrap }` (presence = owned),
 `starterWeaponId`, `classes { owned, equipped }`, `abilities[id] = level`, `masks { owned, equipped }`, `wraps.owned`,
 `topWave["TheBank:Normal"]`, `stats { kills, matchesPlayed, goldEarned }`, `pendingPayout`, `version`. A fresh profile
-has `StartingGold` (10,000), the M1911 at level 0 as starter, INITIATE and the plain mask. `Prices.lua` is the only
+has `StartingGold` (10,000), one gun of each archetype at level 0 (`Weapons.DefaultOwned`: M1911, UZI, AK-47,
+SPAS-12, AWP, M249; older stores are topped up on load), the M1911 as starter, INITIATE and the plain mask. `Prices.lua` is the only
 price file (`weaponUnlock`, `weaponUpgrade`, `class`, `ability`, `mask`, `wrap`, all 100). The whole profile rides in
 `StateSync.profile` so every screen reads from one place. Hat, hair and face accessories are removed on join; the
 equipped mask (head recolor plus a visor or bandana Part welded to the head) shows in the hub and the run.
@@ -161,31 +165,42 @@ the run beat it with a `★ NEW PERSONAL BEST` callout on the summary; lifetime 
 summary's GOLD EARNED headline is this number, and the hub Gold row shows the new balance on return.
 
 **Customization scene (`MetaScene.lua`, `src/client/Meta/`).** Opened from a dock tile or a station prompt on that
-tab. The camera tweens (`MetaCameraTweenSec`) to a fixed hub shot `MetaCameraDistance` from the character, who faces
-the camera on the left third playing the equipped class's idle (`ClassIdleAnimationId`); the hub HUD hides; the panel
-takes the right two thirds; Gold stays top-right with `+`, SHOP left-center; the dock bottom-left holds LEAVE (red X)
-and the three tabs. Selections preview live on the character (wrap color on the gun's grip, mask, class idle); nothing
-is saved until a purchase or equip. Toasts bottom-center of the panel (`<name> unlocked!`, `Not enough Gold!`,
-`<name> equipped as Starter!`, `<name> equipped!`) with celebratory / error / click sounds. All actions go through one
-RemoteFunction (`Meta`) that validates against the profile, charges Gold and marks the profile dirty.
+tab. Movement is locked while it is open. The camera tweens (`MetaCameraTweenSec`) to a fixed hub shot
+`MetaCameraDistance` from the character, who faces the camera on the left third playing the equipped class's idle
+(`ClassIdleAnimationId`); the hub HUD hides. All three tabs share one format (reference board): a panel on the right
+58% (62% on mobile) with a blue header bar (title, red X), filter pills, OWNED / UNOWNED section bars over colored
+tiles 4 per row (name on top, icon, a `LV n` / `◆ 100` / `CRATE` / `EVENT` pill at the bottom, a white frame on the
+selection) and a detail column (big image well, name, sub-line, stat rows with `current » next` in green, flat green
+/ pink / blue buttons). The Gold pill and the dock (LEAVE red X · WEAPONS · CLASSES · AVATAR as icon tiles with
+labels) sit bottom-left and never hide, so every sub-view can be left. Selections preview live on the character
+(wrap color on the gun's grip, mask, class idle); nothing is saved until a purchase or equip. Toasts bottom-center
+(`<name> unlocked!`, `Not enough Gold!`, `<name> equipped as Starter!`, `<name> equipped!`) with celebratory / error /
+click sounds. All actions go through one RemoteFunction (`Meta`) that validates against the profile, charges Gold
+and marks the profile dirty.
 
-- **Weapons tab.** All 15 guns: OWNED row then UNOWNED grid, 5 per row; tile = silhouette, name, `LV n` on owned,
-  `◆ 100` / `CRATE` / `EVENT` on unowned (`saleType` in `Weapons.lua`; P90 and Barrett M82 are Crate, RPK is Event),
-  `STARTER` tag on the equipped one, a blue frame on the selection. Detail card: name, archetype, `LV n` or `LOCKED`,
-  DMG · RATE · MAG · RELOAD at the current level with `current > next` in green when owned; UNLOCK · ◆ 100 (Direct),
-  VIEW CRATE (placeholder) or EVENT ONLY (disabled); owned: UPGRADE · ◆ 100, EQUIP STARTER / EQUIPPED, CUSTOMIZE.
+- **Weapons tab.** Filter pills ALL · PISTOL · SMG · RIFLE · SHOTGUN · SNIPER · LMG plus a working search box. All
+  15 real guns are Direct sale; four showcase guns (`Weapons.Showcase`: Exogun and StormLinker as CRATE, Railcaster
+  and Hornet as EVENT) render in UNOWNED with their label and can never be unlocked, rolled or dealt. Tiles are
+  colored by archetype with `LV n` on owned and a `STARTER` tag on the equipped one. Detail: name, firing mode,
+  `LV n` or `LOCKED`, DPS · Damage · Rate · Mag Size · Reload at the current level with `» next` in green when owned;
+  UNLOCK (green), VIEW CRATE (placeholder) or EVENT ONLY (disabled); owned: UPGRADE (green), EQUIP STARTER (blue) /
+  EQUIPPED AS STARTER, CUSTOMIZE (pink).
   Level math lives in `Weapons.atLevel` and `Stats`: damage × (1 + `UpgDmgPct` × level), mag × (1 + `UpgMagPct` ×
   level), reload ÷ (1 + `UpgReloadPct` × level), fire rate × (1 + `UpgFireRatePct` × level), applied before rarity
   and in-run upgrades everywhere the gun appears (starter, rolls, crate deals, floor tags via the gun's `Level` /
   `RateMult` attributes). Upgrade cost = `upgBaseCost` × `RarityUpgCostMult` ^ level. The starter spawns at Common at
   its level; the in-run roll pool is the owned set and the crate pool is the union of the party's owned sets (each gun
-  at the highest owner level). CUSTOMIZE pushes the camera in on the gun (`MetaWrapZoomDistance`), hides the chrome and
-  shows one category (WRAPS): six solid-color wraps (`Wraps.lua`, `◆ 100` or OWNED), previewed live, APPLY equips per
-  weapon id, REMOVE clears it. A wrap is a Color3 on the gun's grip part (`HeldGunWrap`) in the hub and in-run.
+  at the highest owner level). CUSTOMIZE hides the panel and centers the camera on the gun (`MetaWrapZoomDistance`)
+  with a category strip bottom-center (BACK · SKIN locked · WRAP · CHARM locked); WRAP shows the wraps row: Back, a
+  None swatch, the six wraps (`Wraps.lua`) with a lock and a `◆ 100` tag over the selection when unowned, a ✔ on the
+  applied one, previewed live, BUY / APPLY / REMOVE WRAP on the right. A wrap is a Color3 on the gun's grip part
+  (`HeldGunWrap`) in the hub and in-run.
 - **Classes tab.** `Classes.lua` lists INITIATE (Barricade Q, Turret E, Stim Z: the prototype abilities), DOC (Stim
   Shot, Med Bag, Healing Turret), SHARPSHOOTER (Claymore, Dead Eye, Flashbang) and TORCH (Molotov, Flame Turret, Oil
-  Drum) with the GDD copy, in-match `$` price and upgradeable variables. Carousel of the four icons with `EQUIPPED` /
-  `◆ 100` / `UNLOCKED`; the preview plays the class idle; EQUIP / UNLOCK under it. One row per ability: icon with the
+  Drum) with the GDD copy, in-match `$` price and upgradeable variables. Same format as Weapons: class tiles 4 per row
+  (OWNED / UNOWNED, pill `EQUIPPED` / `OWNED` / `◆ 100`, FREE tag on INITIATE), the ABILITIES section under them, and
+  the detail column (class well, name, EQUIPPED / UNLOCKED / LOCKED, the three hotkey rows, EQUIP / UNLOCK in green);
+  the preview plays the selected class's idle. One row per ability: icon with the
   `$` price, name and hotkey, description, stats as `current > next` and UPGRADE · ◆ 100 (greyed `NOT UNLOCKED` on an
   unowned class). EQUIP sets `profile.classes.equipped`; the in-run ability tiles rebuild with that class's three
   abilities (Q / E / Z in order). Only INITIATE's abilities work; the other nine print and toast `STUB · PHASE 2`.
@@ -193,8 +208,9 @@ RemoteFunction (`Meta`) that validates against the profile, charges Gold and mar
   `GrowthPct` × level) from `AbilityGrowth.lua` (`AbilityGrowthPct` 0.1 everywhere). The three live abilities read
   their numbers from it: barricade HP, turret damage and HP, stim heal (`StimHeal`) / fire-rate % / reload %.
 - **Avatar tab.** Category pills (MASKS active, two FUTURE disabled). Eight masks in `Masks.lua` (name, color,
-  shape visor / bandana / none, `saleType`): OWNED then UNOWNED grid with the weapons tab's tile rules, live preview on
-  the character, EQUIP or `◆ 100` under the detail. The equipped mask is applied by the server
+  shape visor / bandana / none, `saleType`): OWNED then UNOWNED tiles 4 per row with the weapons tab's tile rules, live
+  preview on the character, and the detail column (mask well, name, shape · sale, EQUIP / UNLOCK / VIEW CRATE / EVENT
+  ONLY). The equipped mask is applied by the server
   (`PlayerState.applyMask`) on every character: in the hub, in the line-ups and in the run.
 
 **Minigames.** Six games, played from the yard props for testing and from side job beacons in the arena. One client

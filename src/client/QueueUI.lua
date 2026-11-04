@@ -1,7 +1,8 @@
 --!strict
--- Queue zone client: the Create Match card (centered, crew-call frame style: party size 1-4, map with
--- thumbnail, difficulty, info panel, CREATE, X) and the compact party card under PLAY in the hub HUD
--- (map · difficulty, slots, countdown). Driven by Remotes.QueueState; toasts via "QueueToast".
+-- Queue zone client: the Create Party card (reference layout: header bar with X, Select Map thumbnails,
+-- Difficulty segment with the bonus row, Party size segment, a boosts row of placeholder chips, CREATE
+-- PARTY) and the compact party card under PLAY in the hub HUD (map · difficulty, slots, countdown).
+-- Driven by Remotes.QueueState; toasts via "QueueToast". Movement is locked while the card is open.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,6 +20,9 @@ local QueueUI = {}
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+local GREEN = Color3.fromHex("2FD46A")
+local PURPLE = Color3.fromHex("A23BD6")
 
 local view: any = nil
 local createGui: ScreenGui? = nil
@@ -50,13 +54,79 @@ local function fmtCountdown(startsAt: number): string
 	return string.format("STARTING IN %d", math.max(0, math.ceil(startsAt - ClientState.serverNow())))
 end
 
------------------------------------------------------------------- Create Match card
+------------------------------------------------------------------ Create Party card
 local function closeCreate()
 	if createGui then
 		createGui:Destroy()
 		createGui = nil
+		ClientState.lockMovement("queue", false)
 	end
 	ClientState.setBlock("queue", false)
+end
+
+local function section(parent: Instance, order: number, text: string)
+	local S = UI.S
+	local bar = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel,
+		Size = UDim2.new(1, 0, 0, S(24)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UI.corner(bar, S(4))
+	UI.text({
+		Text = text,
+		Font = Theme.Fonts.body,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.textDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(10), 0),
+		Size = UDim2.new(1, -S(10), 1, 0),
+		Parent = bar,
+	})
+end
+
+-- Segmented control: equal-width buttons, the selected one blue, disabled ones dim.
+local function segment(
+	parent: Instance,
+	order: number,
+	entries: { { name: string, disabled: boolean? } },
+	selectedIndex: number,
+	height: number,
+	onPick: (number) -> ()
+): { TextButton }
+	local S = UI.S
+	local row = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, height),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UI.list(row, Enum.FillDirection.Horizontal, S(8))
+	local buttons = {}
+	local n = #entries
+	for i, e in entries do
+		local on = i == selectedIndex
+		local b = UI.button({
+			Text = e.name,
+			Font = Theme.Fonts.body,
+			TextSize = S(16),
+			TextColor3 = if e.disabled then Theme.Colors.grey else Theme.Colors.white,
+			BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,
+			Size = UDim2.new(1 / n, -S(8) * (n - 1) / n, 1, 0),
+			LayoutOrder = i,
+			Parent = row,
+		})
+		UI.corner(b, S(4))
+		if not e.disabled then
+			b.Activated:Connect(function()
+				UI.punch(b, 0.95, 0.15)
+				UI.sound(Theme.Sounds.toast, 1.3, 0.3)
+				onPick(i)
+			end)
+		end
+		buttons[i] = b
+	end
+	return buttons
 end
 
 local function openCreate(v: any)
@@ -68,6 +138,7 @@ local function openCreate(v: any)
 	chosen.mapIndex = 1
 	chosen.diffIndex = 1
 	ClientState.setBlock("queue", true)
+	ClientState.lockMovement("queue", true)
 	local g = UI.new("ScreenGui", {
 		Name = "CreateMatch",
 		IgnoreGuiInset = true,
@@ -76,219 +147,252 @@ local function openCreate(v: any)
 		Parent = playerGui,
 	}) :: ScreenGui
 	createGui = g
-	local W, H = S(if mobile then 420 else 520), S(if mobile then 300 else 360)
+	local W = S(460)
 	local panel = UI.frame({
 		Name = "Panel",
 		BackgroundColor3 = Theme.Colors.bg,
-		BackgroundTransparency = 0.08,
+		BackgroundTransparency = 0.04,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, S(40)),
-		Size = UDim2.fromOffset(W, H),
+		Size = UDim2.fromOffset(W, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		Active = true,
 		Parent = g,
 	})
-	UI.corner(panel, S(14))
-	UI.stroke(panel, Theme.Colors.blue, S(2))
+	UI.corner(panel, S(10))
+	UI.stroke(panel, Theme.Colors.black, S(2), 0.3)
 	UI.tween(panel, { Position = UDim2.fromScale(0.5, 0.5) }, 0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	UI.sound(Theme.Sounds.call, 1.1, 0.5)
 	if mobile then
 		UI.new("UIScale", { Scale = 0.8, Parent = panel })
 	end
 
-	UI.text({
-		Text = "CREATE MATCH",
-		Font = Theme.Fonts.display,
-		TextSize = S(26),
-		TextColor3 = Theme.Colors.blue,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(20), S(12)),
-		Size = UDim2.new(1, -S(80), 0, S(32)),
+	-- Header bar.
+	local header = UI.frame({
+		BackgroundColor3 = Theme.Colors.blue,
+		Size = UDim2.new(1, 0, 0, S(54)),
 		Parent = panel,
+	})
+	UI.corner(header, S(10))
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Color3.fromHex("2B6FB8"), Color3.fromHex("153A66")),
+		Parent = header,
+	})
+	UI.text({
+		Text = "Create Party",
+		Font = Theme.Fonts.body,
+		TextSize = S(26),
+		TextColor3 = Theme.Colors.white,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(18), 0),
+		Size = UDim2.new(1, -S(80), 1, 0),
+		Parent = header,
 	})
 	local closeBtn = UI.button({
 		Text = "X",
 		Font = Theme.Fonts.display,
 		TextSize = S(18),
-		TextColor3 = Theme.Colors.grey,
-		BackgroundColor3 = Theme.Colors.panel2,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(12), 0, S(12)),
-		Size = UDim2.fromOffset(S(34), S(34)),
-		Parent = panel,
+		TextColor3 = Theme.Colors.white,
+		BackgroundColor3 = Theme.Colors.red,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -S(12), 0.5, 0),
+		Size = UDim2.fromOffset(S(36), S(36)),
+		Parent = header,
 	})
-	UI.corner(closeBtn, S(8))
-	UI.stroke(closeBtn, Theme.Colors.grey, S(1), 0.5)
+	UI.corner(closeBtn, S(6))
+	UI.stroke(closeBtn, Theme.Colors.white, S(1.5), 0.3)
 	closeBtn.Activated:Connect(function()
 		Remotes.QueueAction:FireServer("cancel")
 		closeCreate()
 	end)
 
-	-- Left column: party size, map, difficulty.
-	local leftW = math.floor(W * 0.56)
-	local y = S(56)
-	local function heading(text: string)
-		UI.text({
-			Text = text,
-			TextSize = S(11),
-			TextColor3 = Theme.Colors.grey,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(S(20), y),
-			Size = UDim2.fromOffset(leftW, S(14)),
-			Parent = panel,
-		})
-		y += S(18)
-	end
-	heading("PARTY SIZE")
-	local sizeRow = UI.frame({
+	local body = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(20), y),
-		Size = UDim2.fromOffset(leftW, S(40)),
+		Position = UDim2.fromOffset(0, S(54)),
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = panel,
 	})
-	UI.list(sizeRow, Enum.FillDirection.Horizontal, S(8))
-	local sizeButtons: { TextButton } = {}
-	local function paintSizes()
-		for n, b in sizeButtons do
-			local on = n == chosen.partySize
-			b.BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel2
-			b.TextColor3 = if on then Theme.Colors.bg else Theme.Colors.text
+	UI.pad(body, S(14), S(12), S(14), S(14))
+	UI.list(body, Enum.FillDirection.Vertical, S(8))
+
+	-- Select Map: three thumbnail cards (the configured maps, then COMING SOON fillers).
+	section(body, 1, "Select Map")
+	local mapsRow = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, S(110)),
+		LayoutOrder = 2,
+		Parent = body,
+	})
+	UI.list(mapsRow, Enum.FillDirection.Horizontal, S(8))
+	local mapCards: { TextButton } = {}
+	local function paintMaps()
+		for i, c in mapCards do
+			local stroke = c:FindFirstChildOfClass("UIStroke")
+			if stroke then
+				stroke.Color = if i == chosen.mapIndex then Color3.fromHex("4DE8E8") else Theme.Colors.black
+				stroke.Thickness = S(if i == chosen.mapIndex then 3 else 1)
+			end
 		end
 	end
-	for n = 1, v.maxPartySize or Config.MaxPartySize do
-		local b = UI.button({
-			Text = tostring(n),
-			Font = Theme.Fonts.display,
-			TextSize = S(20),
-			BackgroundColor3 = Theme.Colors.panel2,
-			Size = UDim2.fromOffset(S(44), S(40)),
-			LayoutOrder = n,
-			Parent = sizeRow,
-		})
-		UI.corner(b, S(8))
-		b.Activated:Connect(function()
-			chosen.partySize = n
-			paintSizes()
-			UI.punch(b, 0.9, 0.15)
-			UI.sound(Theme.Sounds.toast, 1.3, 0.3)
-		end)
-		sizeButtons[n] = b
-	end
-	paintSizes()
-	y += S(50)
-
-	-- Dropdown: a row that cycles through the entries on press (one entry each in the prototype).
-	local function dropdown(labelText: string, entries: { any }, key: string, thumb: boolean): TextLabel
-		heading(labelText)
-		local row = UI.button({
+	for i = 1, 3 do
+		local m = Config.QueueMaps[i]
+		local c = UI.button({
 			Text = "",
-			BackgroundColor3 = Theme.Colors.panel2,
-			Position = UDim2.fromOffset(S(20), y),
-			Size = UDim2.fromOffset(leftW, S(if thumb then 52 else 36)),
-			Parent = panel,
+			BackgroundColor3 = if m then Theme.Colors.panel2 else Theme.Colors.panel,
+			Size = UDim2.new(1 / 3, -S(6), 1, 0),
+			LayoutOrder = i,
+			Parent = mapsRow,
 		})
-		UI.corner(row, S(8))
-		UI.stroke(row, Theme.Colors.grey, S(1), 0.5)
-		local x = S(10)
-		if thumb then
-			local t = UI.frame({
-				BackgroundColor3 = Theme.Colors.panel,
-				Position = UDim2.fromOffset(S(8), S(6)),
-				Size = UDim2.fromOffset(S(70), S(40)),
-				Parent = row,
+		UI.corner(c, S(6))
+		UI.stroke(c, Theme.Colors.black, S(1), 0.3)
+		-- Thumbnail stand-in: a dark block with a lighter "building" shape.
+		local thumb = UI.frame({
+			BackgroundColor3 = if m then Color3.fromHex("55657A") else Theme.Colors.panel2,
+			Position = UDim2.fromScale(0.08, 0.1),
+			Size = UDim2.fromScale(0.84, 0.58),
+			Parent = c,
+		})
+		UI.corner(thumb, S(4))
+		if m then
+			UI.frame({
+				BackgroundColor3 = Theme.Colors.gold,
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.new(0.5, 0, 1, -S(4)),
+				Size = UDim2.fromScale(0.5, 0.45),
+				Parent = thumb,
 			})
-			UI.corner(t, S(6))
-			UI.stroke(t, Theme.Colors.gold, S(1), 0.4)
-			UI.text({
-				Text = "BANK",
-				Font = Theme.Fonts.display,
-				TextSize = S(12),
-				TextColor3 = Theme.Colors.gold,
-				Size = UDim2.fromScale(1, 1),
-				Parent = t,
-			})
-			x = S(88)
 		end
-		local label = UI.text({
-			Text = entries[(chosen :: any)[key]].name,
-			Font = Theme.Fonts.display,
-			TextSize = S(16),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(x, 0),
-			Size = UDim2.new(1, -x - S(30), 1, 0),
-			Parent = row,
-		})
 		UI.text({
-			Text = "▼",
+			Text = if m then m.name else "COMING SOON",
+			Font = Theme.Fonts.body,
 			TextSize = S(12),
-			TextColor3 = Theme.Colors.grey,
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -S(10), 0, 0),
-			Size = UDim2.fromOffset(S(20), S(if thumb then 52 else 36)),
-			Parent = row,
-		})
-		row.Activated:Connect(function()
-			local i = (chosen :: any)[key] % #entries + 1;
-			(chosen :: any)[key] = i
-			label.Text = entries[i].name
-			UI.punch(row, 0.96, 0.15)
-		end)
-		y += S(if thumb then 62 else 46)
-		return label
-	end
-	dropdown("MAP", Config.QueueMaps, "mapIndex", true)
-	dropdown("DIFFICULTY", Config.QueueDifficulties, "diffIndex", false)
-
-	-- Right column: info panel.
-	local infoX = S(20) + leftW + S(16)
-	local info = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel,
-		Position = UDim2.fromOffset(infoX, S(56)),
-		Size = UDim2.new(1, -infoX - S(20), 0, H - S(56) - S(76)),
-		Parent = panel,
-	})
-	UI.corner(info, S(10))
-	UI.pad(info, S(12), S(10), S(12), S(10))
-	UI.list(info, Enum.FillDirection.Vertical, S(6))
-	local function infoLine(k: string, val: string, color: Color3, order: number)
-		UI.text({
-			Text = k,
-			TextSize = S(10),
-			TextColor3 = Theme.Colors.grey,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Size = UDim2.new(1, 0, 0, S(12)),
-			LayoutOrder = order * 2,
-			Parent = info,
-		})
-		UI.text({
-			Text = val,
-			Font = Theme.Fonts.display,
-			TextSize = S(18),
-			TextColor3 = color,
-			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = if m then Theme.Colors.white else Theme.Colors.grey,
+			Position = UDim2.fromScale(0, 0.72),
 			Size = UDim2.new(1, 0, 0, S(22)),
-			LayoutOrder = order * 2 + 1,
-			Parent = info,
+			Parent = c,
 		})
+		if m then
+			c.Activated:Connect(function()
+				chosen.mapIndex = i
+				paintMaps()
+				UI.punch(c, 0.96, 0.15)
+			end)
+		end
+		mapCards[i] = c
 	end
-	infoLine("PERSONAL TOP WAVE", string.format("WAVE %d", tonumber(v.topWave) or 0), Theme.Colors.gold, 1)
-	infoLine("GOLD MULTIPLIER", string.format("x%.1f", tonumber(v.goldMult) or 1), Theme.Colors.gold, 2)
-	infoLine("MODIFIERS", tostring(v.modifiers or "NONE"), Theme.Colors.text, 3)
+	paintMaps()
+
+	-- Difficulty: Normal live, Hard / Nightmare disabled, bonus row under it.
+	section(body, 3, "Difficulty")
+	local diffEntries = {}
+	for _, d in Config.QueueDifficulties do
+		table.insert(diffEntries, { name = d.name })
+	end
+	for _, name in { "HARD", "NIGHTMARE" } do
+		if #diffEntries >= 3 then
+			break
+		end
+		table.insert(diffEntries, { name = name, disabled = true })
+	end
+	local bonus: TextLabel? = nil
+	local function paintBonus()
+		if bonus then
+			bonus.Text = string.format(
+				"◆ x%.1f Gold Bonus   |   ★ Top wave %d",
+				tonumber(v.goldMult) or 1,
+				tonumber(v.topWave) or 0
+			)
+		end
+	end
+	segment(body, 4, diffEntries, chosen.diffIndex, S(40), function(i)
+		chosen.diffIndex = i
+		paintBonus()
+	end)
+	local bonusRow = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel,
+		Size = UDim2.new(1, 0, 0, S(32)),
+		LayoutOrder = 5,
+		Parent = body,
+	})
+	UI.corner(bonusRow, S(4))
+	bonus = UI.text({
+		Text = "",
+		Font = Theme.Fonts.body,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.gold,
+		Size = UDim2.fromScale(1, 1),
+		Parent = bonusRow,
+	})
+	paintBonus()
+
+	-- Party size.
+	section(body, 6, "Party size")
+	local sizeEntries = {}
+	for n = 1, v.maxPartySize or Config.MaxPartySize do
+		table.insert(sizeEntries, { name = tostring(n) })
+	end
+	local sizeButtons: { TextButton } = {}
+	sizeButtons = segment(body, 7, sizeEntries, chosen.partySize, S(40), function(i)
+		chosen.partySize = i
+		for k, b in sizeButtons do
+			b.BackgroundColor3 = if k == i then Theme.Colors.blue else Theme.Colors.panel
+		end
+	end)
+
+	-- Boost chips (Robux placeholders: out of scope, they toast).
+	local boosts = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, S(44)),
+		LayoutOrder = 8,
+		Parent = body,
+	})
+	UI.list(boosts, Enum.FillDirection.Horizontal, S(8))
+	for i, chip in { { "2x Power", 99 }, { "2x Luck", 149 }, { "2x Cash", 199 }, { "Revive Token", 99 } } do
+		local b = UI.button({
+			Text = "",
+			BackgroundColor3 = PURPLE,
+			Size = UDim2.new(0.25, -S(6), 1, 0),
+			LayoutOrder = i,
+			Parent = boosts,
+		})
+		UI.corner(b, S(4))
+		UI.text({
+			Text = tostring(chip[1]),
+			Font = Theme.Fonts.body,
+			TextSize = S(12),
+			TextColor3 = Theme.Colors.white,
+			Position = UDim2.fromOffset(0, S(4)),
+			Size = UDim2.new(1, 0, 0, S(18)),
+			Parent = b,
+		})
+		UI.text({
+			Text = "◉ " .. tostring(chip[2]),
+			TextSize = S(11),
+			TextColor3 = Theme.Colors.white,
+			Position = UDim2.fromOffset(0, S(22)),
+			Size = UDim2.new(1, 0, 0, S(16)),
+			Parent = b,
+		})
+		b.Activated:Connect(function()
+			UI.punch(b, 0.95, 0.15)
+			HUD.get("toast").show("BOOSTS · PHASE 4", Theme.Colors.gold, 1.2)
+		end)
+	end
 
 	local create = UI.button({
-		Text = "CREATE",
-		Font = Theme.Fonts.display,
-		TextSize = S(22),
+		Text = "CREATE PARTY",
+		Font = Theme.Fonts.body,
+		TextSize = S(24),
 		TextColor3 = Theme.Colors.bg,
-		BackgroundColor3 = Theme.Colors.blue,
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -S(16)),
-		Size = UDim2.new(1, -S(40), 0, S(48)),
-		Parent = panel,
+		BackgroundColor3 = GREEN,
+		Size = UDim2.new(1, 0, 0, S(54)),
+		LayoutOrder = 9,
+		Parent = body,
 	})
-	UI.corner(create, S(12))
-	UI.stroke(create, Theme.Colors.black, S(2), 0.4)
+	UI.corner(create, S(6))
 	create.Activated:Connect(function()
-		UI.punch(create, 0.92, 0.2)
+		UI.punch(create, 0.95, 0.2)
 		UI.sound(Theme.Sounds.legendary, 1.2, 0.5)
 		Remotes.QueueAction:FireServer("create", {
 			partySize = chosen.partySize,
@@ -319,19 +423,20 @@ local function buildParty(v: any)
 	local S = UI.S
 	local card = UI.frame({
 		Name = "PartyCard",
-		BackgroundColor3 = Theme.Colors.panel,
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.1,
 		Size = UDim2.fromOffset(S(340), S(74)),
 		Parent = hub.queueSlot,
 	})
-	UI.corner(card, S(12))
+	UI.corner(card, S(8))
 	UI.stroke(card, Theme.Colors.blue, S(2))
 	local map = mapById(v.settings and v.settings.mapId)
 	local diff = diffById(v.settings and v.settings.difficultyId)
 	UI.text({
 		Text = string.format("%s · %s", map.name, diff.name),
-		Font = Theme.Fonts.display,
+		Font = Theme.Fonts.body,
 		TextSize = S(14),
-		TextColor3 = Theme.Colors.text,
+		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(S(12), S(6)),
 		Size = UDim2.new(0.6, 0, 0, S(18)),
@@ -388,7 +493,7 @@ local function paintParty(v: any)
 	local members: { any } = v.members or {}
 	for i, s in partySlots do
 		local filled = i <= #members
-		s.BackgroundColor3 = if filled then Theme.Colors.gold else Theme.Colors.grey
+		s.BackgroundColor3 = if filled then GREEN else Theme.Colors.grey
 		s.BackgroundTransparency = if filled then 0 else 0.6
 	end
 	local names = {}
@@ -447,7 +552,6 @@ function QueueUI.init()
 		destroyParty()
 		Remotes.QueueAction:FireServer("refresh")
 	end)
-	-- Countdown tick on the compact card.
 	local lastShown = -1
 	RunService.Heartbeat:Connect(function()
 		local v = view

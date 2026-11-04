@@ -113,7 +113,13 @@ function HUD.setMode(mode: string)
 		local name = child.Name
 		local managed = table.find(MANAGED, name) ~= nil
 		if spec.only then
-			if managed or SELF_MANAGED[name] then
+			if SELF_MANAGED[name] then
+				-- Toast / Combo show themselves: a mode may hide them, never force them on (that left an empty
+				-- toast bubble and a stale BLED OUT notice on screen in the hub).
+				if not spec.only[name] then
+					child.Visible = false
+				end
+			elseif managed then
 				child.Visible = spec.only[name] == true
 			end
 		elseif spec.hide and spec.hide[name] then

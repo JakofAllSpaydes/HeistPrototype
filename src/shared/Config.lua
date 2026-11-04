@@ -239,6 +239,7 @@ local Config = {
 	DiffGoldMult = 1.0,
 
 	------------------------------------------------------------------ Meta (profiles, Armory levels, classes, masks)
+	StubBoostSec = 1800, -- the hub HUD's stub +50% GOLD boost chip counts down from this (display only)
 	StartingGold = 10000, -- fresh profile
 	ProfileAutosaveSec = 60,
 	ProfileSaveDebounceSec = 2, -- purchases / equips within this window write once

@@ -1,9 +1,9 @@
 --!strict
--- The customization scene (canvas board "Customization scene — Weapons tab", GDD_7 Main UI Layout).
--- Opened from a dock tile or a station prompt on a tab: the camera tweens to a fixed hub shot with the
--- character on the left third facing the camera, the hub HUD hides, the tab's panel takes the right two
--- thirds, Gold stays top-right with +, SHOP stays left-center, and a dock bottom-left holds LEAVE and the
--- three tabs. Selections preview live on the character; nothing is saved until a purchase or equip.
+-- The customization scene, styled to the reference boards: a panel on the right ~58% of the screen with a
+-- blue header bar (title, X), the Gold pill and a dock (LEAVE · WEAPONS · CLASSES · AVATAR as icon tiles
+-- with labels) bottom-left that never hides, and a "customize" mode where the panel goes away and the
+-- camera centers on the gun (tabs draw their strips into a full-screen overlay). Movement is locked while
+-- the scene is open; selections preview live on the character; nothing is saved until a purchase or equip.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -26,27 +26,26 @@ local MetaFolder = script.Parent:WaitForChild("Meta")
 local MetaScene = {}
 
 export type Scene = {
-	panel: Frame, -- the tab's content area (dark frame, right two thirds)
+	panel: Frame, -- the tab's content area under the header bar (cleared on every render)
+	overlay: Frame, -- full-screen layer for customize-mode strips (cleared on every render)
 	title: TextLabel,
 	toast: (string, string?) -> (), -- text, kind (celebrate | error | click)
 	request: (string, any) -> any, -- Remotes.Meta round trip with the toast + SFX applied
 	profile: () -> any,
 	sync: () -> any,
-	refresh: () -> (), -- rebuild the current tab (after a sync change)
+	refresh: () -> (), -- rebuild the current tab
 	preview: Preview,
 	mobile: boolean,
-	pushCamera: (boolean) -> (), -- CUSTOMIZE: push in on the gun (true) or back to the hub shot (false)
-	hideHud: (boolean) -> (), -- the scene chrome (dock, gold) hides for the wraps sub-panel
+	setCustomize: (boolean) -> (), -- true: panel hidden, camera centered on the gun
 }
 
--- Live preview on the character: gun body / wrap colors, mask, class idle. Nothing here is saved.
+-- Live preview on the character: wrap color on the grip, mask, class idle. Nothing here is saved.
 export type Preview = {
 	wrap: (string?) -> (), -- hex color or nil = clear
 	mask: (string?, string?) -> (), -- color hex, shape (nil = the equipped one from the server)
 	classIdle: (string) -> (),
-	weapon: (string?) -> (), -- weapon id to show in the hand (recolors the body by rarity Common)
 	reset: () -> (),
-	commit: () -> (), -- after an equip landed on the server: forget the old baseline so reset keeps the new look
+	commit: () -> (), -- after an equip landed on the server: forget the old baseline
 }
 
 local player = Players.LocalPlayer
@@ -55,23 +54,25 @@ local camera = Workspace.CurrentCamera :: Camera
 
 local tabs: { [string]: any } = {}
 local gui: ScreenGui? = nil
+local panelRoot: Frame? = nil
 local panelFrame: Frame? = nil
+local overlayFrame: Frame? = nil
 local titleLabel: TextLabel? = nil
 local toastLabel: TextLabel? = nil
 local toastToken = 0
-local chrome: { GuiObject } = {}
 local dockTiles: { [string]: TextButton } = {}
 local goldLabel: TextLabel? = nil
 local currentTab: string? = nil
 local open = false
+local customize = false
 local idleTrack: AnimationTrack? = nil
 local previewMask: BasePart? = nil
 local savedHeadColor: Color3? = nil
 local savedWrapColor: Color3? = nil
 local cameraTween: Tween? = nil
-local pushed = false
 
 local TABS = { "WEAPONS", "CLASSES", "AVATAR" }
+local PANEL_W = 0.58 -- share of the viewport the panel takes (62% on mobile)
 
 local function char(): Model?
 	return player.Character
@@ -157,9 +158,6 @@ local preview: Preview = {
 			end
 		end
 	end,
-	weapon = function(_weaponId: string?)
-		-- The held visual is one Part; the weapon's identity reads from the detail card. Nothing to swap here.
-	end,
 	reset = function()
 		stopIdle()
 		local c = char()
@@ -198,26 +196,22 @@ local preview: Preview = {
 }
 
 ------------------------------------------------------------------ Camera
--- Fixed hub shot: the character on the left third, lit, facing the camera. The camera sits in front of
--- the character (south of it, since the hub faces north) and looks slightly past it so the panel side is free.
-local function hubShot(push: boolean): CFrame
+-- Hub shot: the character on the left third, facing the camera, with the panel side free. Customize shot:
+-- the gun dead center, close, so the wrap reads.
+local function shot(push: boolean): CFrame
 	local c = char()
 	local root = c and c:FindFirstChild("HumanoidRootPart")
 	local base = if root and root:IsA("BasePart") then root.CFrame else CFrame.new(0, 3, 150)
 	local forward = base.LookVector
 	local right = base.RightVector
 	if push then
-		-- CUSTOMIZE: on the gun in the right hand.
 		local gun = c and c:FindFirstChild("HeldGun")
-		local target = if gun and gun:IsA("BasePart")
-			then gun.Position
-			else base.Position + right * 1 + Vector3.new(0, -0.3, 0)
-		local pos = target + forward * Config.MetaWrapZoomDistance + right * 1.2 + Vector3.new(0, 0.6, 0)
+		local target = if gun and gun:IsA("BasePart") then gun.Position else base.Position + right * 1
+		local pos = target + forward * Config.MetaWrapZoomDistance + Vector3.new(0, 0.4, 0)
 		return CFrame.lookAt(pos, target)
 	end
 	local d = Config.MetaCameraDistance
 	local look = base.Position + Vector3.new(0, 0.2, 0)
-	-- Offset the camera to the character's right so the character lands on the left third of the screen.
 	local pos = look + forward * d + right * (d * 0.55) + Vector3.new(0, 1.2, 0)
 	return CFrame.lookAt(pos, look + right * (d * 0.45))
 end
@@ -238,7 +232,6 @@ local function faceCamera()
 	local hum = c and c:FindFirstChildOfClass("Humanoid")
 	if root and root:IsA("BasePart") and hum then
 		hum.AutoRotate = false
-		-- Turn toward the camera (the shot looks back at the character along its own forward).
 		local to = camera.CFrame.Position - root.Position
 		local flat = Vector3.new(to.X, 0, to.Z)
 		if flat.Magnitude > 0.1 then
@@ -293,20 +286,38 @@ end
 
 local scene: Scene
 
-local function refreshTab()
-	local p = panelFrame
-	if not p or not currentTab then
+local function clear(f: Frame?)
+	if not f then
 		return
 	end
-	for _, c in p:GetChildren() do
+	for _, c in f:GetChildren() do
 		if c:IsA("GuiObject") then
 			c:Destroy()
 		end
 	end
+end
+
+local function refreshTab()
+	if not currentTab then
+		return
+	end
+	clear(panelFrame)
+	clear(overlayFrame)
 	local mod = tabs[currentTab]
 	if mod then
 		mod.render(scene)
 	end
+end
+
+local function setCustomize(on: boolean)
+	if on == customize then
+		return
+	end
+	customize = on
+	if panelRoot then
+		panelRoot.Visible = not on
+	end
+	tweenCamera(shot(on), Config.MetaCameraTweenSec)
 end
 
 local function paintDock()
@@ -314,9 +325,9 @@ local function paintDock()
 		local on = tab == currentTab
 		local stroke = tile:FindFirstChildOfClass("UIStroke")
 		if stroke then
-			stroke.Color = if on then Theme.Colors.gold else Theme.Colors.grey
+			stroke.Color = if on then Theme.Colors.gold else Theme.Colors.black
+			stroke.Thickness = UI.S(if on then 3 else 1.5)
 		end
-		tile.BackgroundColor3 = if on then Theme.Colors.panel2 else Theme.Colors.panel
 	end
 end
 
@@ -329,13 +340,77 @@ local function selectTab(tab: string)
 	end
 	currentTab = tab
 	if titleLabel then
-		titleLabel.Text = tab
+		titleLabel.Text = string.sub(tab, 1, 1) .. string.lower(string.sub(tab, 2))
 	end
 	paintDock()
-	scene.pushCamera(false)
-	scene.hideHud(false)
+	setCustomize(false)
 	refreshTab()
 	UI.sound(Theme.Sounds.toast, 1.2, 0.3)
+end
+
+-- Icon tile with a label under it (reference dock style). Returns the button.
+local function dockTile(
+	parent: Instance,
+	order: number,
+	label: string,
+	glyph: string,
+	bg: Color3,
+	fg: Color3,
+	size: number
+): TextButton
+	local S = UI.S
+	local holder = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(size, size + S(16)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	local b = UI.button({
+		Name = label,
+		Text = "",
+		BackgroundColor3 = bg,
+		Size = UDim2.fromOffset(size, size),
+		ZIndex = 6,
+		Parent = holder,
+	})
+	UI.corner(b, S(10))
+	UI.stroke(b, Theme.Colors.black, S(1.5), 0.3)
+	if glyph == "gun" then
+		local icon = UI.gunIcon(b, fg, math.floor(size * 0.8))
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+		icon.ZIndex = 7
+		for _, c in icon:GetChildren() do
+			if c:IsA("GuiObject") then
+				c.ZIndex = 7
+			end
+		end
+	else
+		UI.text({
+			Text = glyph,
+			Font = Theme.Fonts.display,
+			TextSize = math.floor(size * (if #glyph > 1 then 0.34 else 0.6)),
+			TextColor3 = fg,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 7,
+			Parent = b,
+		})
+	end
+	local l = UI.text({
+		Text = label,
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.text,
+		Position = UDim2.fromOffset(0, size + S(1)),
+		Size = UDim2.new(1, 0, 0, S(14)),
+		ZIndex = 6,
+		Parent = holder,
+	})
+	UI.stroke(l, Theme.Colors.black, S(1.5), 0.3)
+	b.MouseEnter:Connect(function()
+		UI.punch(b, 1.06, 0.15)
+	end)
+	return b
 end
 
 local function build()
@@ -353,42 +428,84 @@ local function build()
 		Parent = playerGui,
 	}) :: ScreenGui
 	gui = g
-	chrome = {}
 	dockTiles = {}
 
-	-- Panel: the right two thirds (62% on mobile), dark frame, title.
-	local panelW = if mobile then 0.62 else 0.64
-	local panel = UI.frame({
-		Name = "Panel",
-		BackgroundColor3 = Theme.Colors.bg,
-		BackgroundTransparency = 0.1,
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -S(16), 0.5, 0),
-		Size = UDim2.new(panelW, 0, if mobile then 0.92 else 0.84, 0),
-		Active = true,
+	-- Overlay for customize-mode strips (under the dock, over the world).
+	overlayFrame = UI.frame({
+		Name = "Overlay",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 2,
 		Parent = g,
 	})
-	UI.corner(panel, S(16))
-	UI.stroke(panel, Theme.Colors.gold, S(2))
-	titleLabel = UI.text({
-		Text = "WEAPONS",
-		Font = Theme.Fonts.display,
-		TextSize = S(26),
-		TextColor3 = Theme.Colors.gold,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(20), S(10)),
-		Size = UDim2.new(1, -S(40), 0, S(32)),
-		Parent = panel,
+
+	-- Panel: right share of the screen, header bar with title and X, content below.
+	local panelW = if mobile then 0.62 else PANEL_W
+	local root = UI.frame({
+		Name = "Panel",
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.04,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -S(14), 0.5, 0),
+		Size = UDim2.new(panelW, 0, if mobile then 0.94 else 0.9, 0),
+		ClipsDescendants = true,
+		Active = true,
+		ZIndex = 3,
+		Parent = g,
 	})
-	local content = UI.frame({
+	UI.corner(root, S(12))
+	UI.stroke(root, Theme.Colors.black, S(2), 0.3)
+	panelRoot = root
+	local headerH = S(60)
+	local header = UI.frame({
+		Name = "Header",
+		BackgroundColor3 = Theme.Colors.blue,
+		Size = UDim2.new(1, 0, 0, headerH),
+		ZIndex = 4,
+		Parent = root,
+	})
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Color3.fromHex("2B6FB8"), Color3.fromHex("153A66")),
+		Rotation = 0,
+		Parent = header,
+	})
+	titleLabel = UI.text({
+		Text = "Weapons",
+		Font = Theme.Fonts.body,
+		TextSize = S(28),
+		TextColor3 = Theme.Colors.white,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(24), 0),
+		Size = UDim2.new(1, -S(100), 1, 0),
+		ZIndex = 5,
+		Parent = header,
+	})
+	local closeBtn = UI.button({
+		Text = "X",
+		Font = Theme.Fonts.display,
+		TextSize = S(20),
+		TextColor3 = Theme.Colors.white,
+		BackgroundColor3 = Theme.Colors.red,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -S(14), 0.5, 0),
+		Size = UDim2.fromOffset(S(40), S(40)),
+		ZIndex = 5,
+		Parent = header,
+	})
+	UI.corner(closeBtn, S(8))
+	UI.stroke(closeBtn, Theme.Colors.white, S(1.5), 0.3)
+	closeBtn.Activated:Connect(function()
+		UI.punch(closeBtn, 0.9, 0.15)
+		MetaScene.close()
+	end)
+	panelFrame = UI.frame({
 		Name = "Content",
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(14), S(46)),
-		Size = UDim2.new(1, -S(28), 1, -S(46) - S(40)),
-		ClipsDescendants = true,
-		Parent = panel,
+		Position = UDim2.fromOffset(S(14), headerH + S(10)),
+		Size = UDim2.new(1, -S(28), 1, -headerH - S(20)),
+		ZIndex = 4,
+		Parent = root,
 	})
-	panelFrame = content
 	toastLabel = UI.text({
 		Name = "Toast",
 		Text = "",
@@ -396,32 +513,59 @@ local function build()
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.cash,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -S(8)),
-		Size = UDim2.new(1, -S(40), 0, S(26)),
+		Position = UDim2.new(0.5, 0, 1, -S(60)),
+		Size = UDim2.new(0.6, 0, 0, S(26)),
 		Visible = false,
 		ZIndex = 30,
-		Parent = panel,
+		Parent = g,
 	})
-	UI.stroke(toastLabel :: TextLabel, Theme.Colors.black, S(1.5), 0.3)
+	UI.stroke(toastLabel :: TextLabel, Theme.Colors.black, S(2), 0.2)
 
-	-- Gold, top-right (with +), and SHOP, left-center: the hub chrome stays.
+	-- Gold pill and dock, bottom-left (reference layout). The dock never hides.
+	local tile = if mobile then S(52) else S(60)
+	local dock = UI.frame({
+		Name = "Dock",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(20), 1, -S(16)),
+		Size = UDim2.fromOffset(tile * 4 + S(30), tile + S(16)),
+		ZIndex = 6,
+		Parent = g,
+	})
+	UI.list(dock, Enum.FillDirection.Horizontal, S(10))
+	local leave = dockTile(dock, 0, "Leave", "X", Theme.Colors.red, Theme.Colors.white, tile)
+	leave.Activated:Connect(function()
+		UI.punch(leave, 0.9, 0.15)
+		MetaScene.close()
+	end)
+	local glyphs = { WEAPONS = "gun", CLASSES = "CLS", AVATAR = "MSK" }
+	local colors = { WEAPONS = Theme.Colors.blue, CLASSES = Theme.Colors.grey, AVATAR = Theme.Colors.gold }
+	local labels = { WEAPONS = "Weapons", CLASSES = "Classes", AVATAR = "Avatar" }
+	for i, tab in TABS do
+		local b = dockTile(dock, i, labels[tab], glyphs[tab], Theme.Colors.panel, colors[tab], tile)
+		b.Activated:Connect(function()
+			UI.punch(b, 0.92, 0.15)
+			selectTab(tab)
+		end)
+		dockTiles[tab] = b
+	end
 	local gold = UI.frame({
 		Name = "Gold",
 		BackgroundColor3 = Theme.Colors.panel,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(16), 0, S(12)),
-		Size = UDim2.fromOffset(S(190), S(36)),
-		ZIndex = 5,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(20), 1, -S(16) - tile - S(26)),
+		Size = UDim2.fromOffset(tile * 4 + S(30), S(36)),
+		ZIndex = 6,
 		Parent = g,
 	})
-	UI.corner(gold, S(10))
-	UI.stroke(gold, Theme.Colors.gold, S(1.5))
+	UI.corner(gold, S(8))
+	UI.stroke(gold, Theme.Colors.black, S(1.5), 0.3)
 	local bar = UI.frame({
 		BackgroundColor3 = Theme.Colors.gold,
-		Size = UDim2.fromOffset(S(22), S(11)),
-		Position = UDim2.fromOffset(S(10), S(13)),
+		Size = UDim2.fromOffset(S(24), S(12)),
+		Position = UDim2.fromOffset(S(10), S(12)),
 		Rotation = -8,
-		ZIndex = 6,
+		ZIndex = 7,
 		Parent = gold,
 	})
 	UI.corner(bar, S(3))
@@ -429,23 +573,23 @@ local function build()
 		Text = "0",
 		Font = Theme.Fonts.display,
 		TextSize = S(20),
-		TextColor3 = Theme.Colors.gold,
+		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(40), 0),
-		Size = UDim2.new(1, -S(80), 1, 0),
-		ZIndex = 6,
+		Position = UDim2.fromOffset(S(42), 0),
+		Size = UDim2.new(1, -S(84), 1, 0),
+		ZIndex = 7,
 		Parent = gold,
 	})
 	local plus = UI.button({
 		Text = "+",
 		Font = Theme.Fonts.display,
 		TextSize = S(18),
-		TextColor3 = Theme.Colors.gold,
-		BackgroundColor3 = Theme.Colors.panel2,
+		TextColor3 = Theme.Colors.bg,
+		BackgroundColor3 = Theme.Colors.cash,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -S(6), 0.5, 0),
-		Size = UDim2.fromOffset(S(24), S(24)),
-		ZIndex = 6,
+		Size = UDim2.fromOffset(S(26), S(26)),
+		ZIndex = 7,
 		Parent = gold,
 	})
 	UI.corner(plus, S(6))
@@ -453,107 +597,6 @@ local function build()
 		UI.punch(plus, 0.9, 0.15)
 		toast("GOLD · PHASE 4", "click")
 	end)
-	table.insert(chrome, gold)
-	local shop = UI.button({
-		Name = "Shop",
-		Text = "$",
-		Font = Theme.Fonts.display,
-		TextSize = S(30),
-		TextColor3 = Theme.Colors.amber,
-		BackgroundColor3 = Theme.Colors.panel,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, S(16), 0.5, -S(40)),
-		Size = UDim2.fromOffset(S(56), S(56)),
-		ZIndex = 5,
-		Parent = g,
-	})
-	UI.corner(shop, S(10))
-	UI.stroke(shop, Theme.Colors.amber, S(2))
-	shop.Activated:Connect(function()
-		UI.punch(shop, 0.92, 0.15)
-		toast("SHOP · PHASE 4", "click")
-	end)
-	table.insert(chrome, shop)
-
-	-- Dock, bottom-left: LEAVE (red X) and the three tabs.
-	local dockTile = if mobile then S(60) else S(76)
-	local dock = UI.frame({
-		Name = "Dock",
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, S(16), 1, -S(16)),
-		Size = UDim2.fromOffset(dockTile * 4 + S(30), dockTile),
-		ZIndex = 5,
-		Parent = g,
-	})
-	UI.list(dock, Enum.FillDirection.Horizontal, S(10))
-	table.insert(chrome, dock)
-	local leave = UI.button({
-		Name = "Leave",
-		Text = "X",
-		Font = Theme.Fonts.display,
-		TextSize = S(28),
-		TextColor3 = Theme.Colors.text,
-		BackgroundColor3 = Theme.Colors.red,
-		Size = UDim2.fromOffset(dockTile, dockTile),
-		LayoutOrder = 0,
-		ZIndex = 6,
-		Parent = dock,
-	})
-	UI.corner(leave, S(10))
-	UI.stroke(leave, Theme.Colors.black, S(2), 0.4)
-	UI.text({
-		Text = "LEAVE",
-		TextSize = S(9),
-		TextColor3 = Theme.Colors.text,
-		Position = UDim2.new(0, 0, 1, -S(14)),
-		Size = UDim2.new(1, 0, 0, S(12)),
-		ZIndex = 7,
-		Parent = leave,
-	})
-	leave.Activated:Connect(function()
-		UI.punch(leave, 0.9, 0.15)
-		MetaScene.close()
-	end)
-	local glyphs = { WEAPONS = "GUN", CLASSES = "CLS", AVATAR = "MSK" }
-	for i, tab in TABS do
-		local tile = UI.button({
-			Name = tab,
-			Text = "",
-			BackgroundColor3 = Theme.Colors.panel,
-			Size = UDim2.fromOffset(dockTile, dockTile),
-			LayoutOrder = i,
-			ZIndex = 6,
-			Parent = dock,
-		})
-		UI.corner(tile, S(10))
-		UI.stroke(tile, Theme.Colors.grey, S(2))
-		UI.text({
-			Text = glyphs[tab],
-			Font = Theme.Fonts.display,
-			TextSize = S(16),
-			TextColor3 = Theme.Colors.gold,
-			Position = UDim2.fromOffset(0, S(8)),
-			Size = UDim2.new(1, 0, 0, S(24)),
-			ZIndex = 7,
-			Parent = tile,
-		})
-		UI.text({
-			Text = tab,
-			Font = Theme.Fonts.display,
-			TextSize = S(10),
-			TextColor3 = Theme.Colors.text,
-			Position = UDim2.new(0, 0, 1, -S(18)),
-			Size = UDim2.new(1, 0, 0, S(14)),
-			ZIndex = 7,
-			Parent = tile,
-		})
-		tile.Activated:Connect(function()
-			UI.punch(tile, 0.92, 0.15)
-			selectTab(tab)
-		end)
-		dockTiles[tab] = tile
-	end
 	paintDock()
 end
 
@@ -572,15 +615,16 @@ function MetaScene.open(tab: string?)
 		return
 	end
 	open = true
+	customize = false
 	build()
 	ClientState.setAds(false)
 	ClientState.setBlock("meta", true)
+	ClientState.lockMovement("meta", true)
 	ClientState.cameraMode = "meta"
 	HUD.setMode("meta")
-	pushed = false
 	faceCamera()
 	camera.CameraType = Enum.CameraType.Scriptable
-	tweenCamera(hubShot(false), Config.MetaCameraTweenSec)
+	tweenCamera(shot(false), Config.MetaCameraTweenSec)
 	local sync = ClientState.sync
 	preview.classIdle(if sync then sync.classId else Classes.Default)
 	UI.sound(Theme.Sounds.call, 1.2, 0.45)
@@ -597,12 +641,15 @@ function MetaScene.close()
 		old.leave(scene)
 	end
 	currentTab = nil
+	customize = false
 	preview.reset()
 	if gui then
 		gui:Destroy()
 		gui = nil
 	end
+	panelRoot = nil
 	panelFrame = nil
+	overlayFrame = nil
 	titleLabel = nil
 	toastLabel = nil
 	if cameraTween then
@@ -612,6 +659,7 @@ function MetaScene.close()
 	ClientState.cameraMode = "gameplay"
 	ClientState.requestCameraYaw = 0
 	ClientState.setBlock("meta", false)
+	ClientState.lockMovement("meta", false)
 	HUD.setMode(HUD.baseMode())
 	UI.sound(Theme.Sounds.swap, 0.9, 0.4)
 end
@@ -624,6 +672,7 @@ function MetaScene.init()
 	}
 	scene = {
 		panel = nil :: any,
+		overlay = nil :: any,
 		title = nil :: any,
 		toast = toast,
 		request = request,
@@ -637,24 +686,14 @@ function MetaScene.init()
 		refresh = refreshTab,
 		preview = preview,
 		mobile = ClientState.isMobile,
-		pushCamera = function(push: boolean)
-			if push == pushed then
-				return
-			end
-			pushed = push
-			tweenCamera(hubShot(push), Config.MetaCameraTweenSec)
-		end,
-		hideHud = function(hide: boolean)
-			for _, c in chrome do
-				c.Visible = not hide
-			end
-		end,
+		setCustomize = setCustomize,
 	}
-	-- The scene table hands the live panel to the tab on each render.
 	setmetatable(scene :: any, {
 		__index = function(_, k)
 			if k == "panel" then
 				return panelFrame
+			elseif k == "overlay" then
+				return overlayFrame
 			elseif k == "title" then
 				return titleLabel
 			end
@@ -662,7 +701,6 @@ function MetaScene.init()
 		end,
 	})
 
-	-- Hub HUD dock tiles and station prompts open the scene.
 	local function bindDock()
 		local hub = HUD.get("hub")
 		if hub then
@@ -687,7 +725,6 @@ function MetaScene.init()
 			MetaScene.close()
 		end
 	end)
-	-- Gold and the tab refresh on sync changes (purchases land through the profile in the sync).
 	local lastGold = -1
 	local lastProfileStamp = ""
 	ClientState.Changed:Connect(function(sync: any)
@@ -703,12 +740,11 @@ function MetaScene.init()
 			lastGold = gold
 			goldLabel.Text = UI.fmtNum(gold)
 		end
-		-- A cheap stamp of the parts of the profile the tabs draw from.
 		local stamp = ""
 		if p then
 			local n = 0
 			for id, w in p.weapons do
-				n += (w.level or 0) * 97 + #id
+				n += (w.level or 0) * 97 + #id + (if w.wrap then #w.wrap * 7 else 0)
 			end
 			local a = 0
 			for id, lvl in p.abilities do
@@ -754,7 +790,6 @@ function MetaScene.init()
 			MetaScene.close()
 		end
 	end)
-	-- Keep the character facing the camera while the scene is open (the gameplay camera is off).
 	RunService.RenderStepped:Connect(function()
 		if open then
 			faceCamera()

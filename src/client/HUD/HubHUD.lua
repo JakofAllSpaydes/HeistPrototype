@@ -1,12 +1,14 @@
 --!strict
--- The hub HUD (canvas board "Hub HUD — desktop"): PLAY top-center, SHOP tile left-center, Gold row with +
--- and INVITE FRIENDS bottom-left, the WEAPONS · CLASSES · AVATAR dock bottom-center, BOOSTS chips
--- bottom-right, and a slot under PLAY for the compact queue card. Shown by HUD.setMode("hub"); the match
--- HUD pieces are hidden by the mode. Top-left stays empty for server chat.
-local PathfindingService = game:GetService("PathfindingService")
-local Players = game:GetService("Players")
+-- The hub HUD: PLAY top-center (teleports you onto the queue pad; the card opens there), SHOP tile
+-- left-center, Gold pill with + and INVITE FRIENDS bottom-left, the WEAPONS · CLASSES · AVATAR dock
+-- bottom-center as icon tiles with labels (reference style), BOOSTS bottom-right as icon chips with a
+-- countdown, and a slot under PLAY for the compact queue card. Shown by HUD.setMode("hub").
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -15,76 +17,71 @@ local ClientState = require(Client:WaitForChild("ClientState"))
 
 local HubHUD = {}
 
-local player = Players.LocalPlayer
+local GREEN = Color3.fromHex("2FD46A")
+local boostStartedAt = os.clock() -- the stub boost's countdown runs from the first HUD build
 
--- Nearest queue pad part in the map (QueueZone1..N).
-local function nearestZone(from: Vector3): BasePart?
-	local room = Workspace:FindFirstChild("Room")
-	if not room then
-		return nil
+-- Icon tile with a label under it. Returns the button.
+local function iconTile(
+	parent: Instance,
+	order: number,
+	label: string,
+	glyph: string,
+	bg: Color3,
+	fg: Color3,
+	size: number
+): TextButton
+	local S = UI.S
+	local holder = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(size, size + S(16)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	local b = UI.button({
+		Name = label,
+		Text = "",
+		BackgroundColor3 = bg,
+		Size = UDim2.fromOffset(size, size),
+		Parent = holder,
+	})
+	UI.corner(b, S(10))
+	UI.stroke(b, Theme.Colors.black, S(1.5), 0.3)
+	if glyph == "gun" then
+		local icon = UI.gunIcon(b, fg, math.floor(size * 0.8))
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+	else
+		UI.text({
+			Text = glyph,
+			Font = Theme.Fonts.display,
+			TextSize = math.floor(size * (if #glyph > 1 then 0.34 else 0.6)),
+			TextColor3 = fg,
+			Size = UDim2.fromScale(1, 1),
+			Parent = b,
+		})
 	end
-	local best: BasePart? = nil
-	local bestDist = math.huge
-	for _, child in room:GetChildren() do
-		if child:IsA("BasePart") and string.match(child.Name, "^QueueZone%d+$") then
-			local d = (child.Position - from).Magnitude
-			if d < bestDist then
-				bestDist = d
-				best = child
-			end
-		end
-	end
-	return best
-end
-
-local walkToken = 0
-
--- PLAY: walk to the nearest zone along a computed path (straight line when the path fails). Any
--- player input cancels it (the humanoid's own MoveTo is overridden by the controls).
-local function walkToZone()
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not char or not root or not hum then
-		return
-	end
-	local zone = nearestZone(root.Position)
-	if not zone then
-		return
-	end
-	walkToken += 1
-	local token = walkToken
-	local target = Vector3.new(zone.Position.X, root.Position.Y, zone.Position.Z)
-	task.spawn(function()
-		local path = PathfindingService:CreatePath({ AgentRadius = 2, AgentHeight = 5, AgentCanJump = false })
-		local ok = pcall(function()
-			path:ComputeAsync(root.Position, target)
-		end)
-		local waypoints = if ok and path.Status == Enum.PathStatus.Success then path:GetWaypoints() else nil
-		if not waypoints or #waypoints == 0 then
-			hum:MoveTo(target)
-			return
-		end
-		for i, wp in waypoints do
-			if token ~= walkToken or hum.Parent ~= char then
-				return
-			end
-			if i == 1 then
-				continue
-			end
-			hum:MoveTo(wp.Position)
-			local reached = hum.MoveToFinished:Wait()
-			if not reached then
-				hum:MoveTo(target)
-				return
-			end
+	local l = UI.text({
+		Text = label,
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.text,
+		Position = UDim2.fromOffset(0, size + S(1)),
+		Size = UDim2.new(1, 0, 0, S(14)),
+		Parent = holder,
+	})
+	UI.stroke(l, Theme.Colors.black, S(1.5), 0.3)
+	b.MouseEnter:Connect(function()
+		if not ClientState.isMobile then
+			UI.punch(b, 1.06, 0.15)
 		end
 	end)
+	return b
 end
 
 function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S
 	local mobile = ClientState.isMobile
+	local component: { [string]: any } = {}
 	local root = UI.frame({
 		Name = "HubHUD",
 		BackgroundTransparency = 1,
@@ -101,18 +98,18 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Font = Theme.Fonts.display,
 		TextSize = if mobile then S(22) else S(32),
 		TextColor3 = Theme.Colors.bg,
-		BackgroundColor3 = Theme.Colors.gold,
+		BackgroundColor3 = GREEN,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, S(if mobile then 12 else 22)),
 		Size = UDim2.fromOffset(if mobile then S(200) else S(280), playH),
 		Parent = root,
 	})
-	UI.corner(play, S(14))
+	UI.corner(play, S(10))
 	UI.stroke(play, Theme.Colors.black, S(2), 0.4)
 	play.Activated:Connect(function()
 		UI.punch(play, 0.92, 0.2)
 		UI.sound(Theme.Sounds.toast, 1.3, 0.5)
-		walkToZone()
+		Remotes.QueueAction:FireServer("play")
 	end)
 	play.MouseEnter:Connect(function()
 		if not mobile then
@@ -120,7 +117,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end)
 
-	-- Slot for the compact queue card, under PLAY (QueueUI parents its card here).
+	-- Slot for the compact queue card, under PLAY.
 	local queueSlot = UI.frame({
 		Name = "QueueSlot",
 		BackgroundTransparency = 1,
@@ -131,240 +128,194 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = root,
 	})
 	UI.list(queueSlot, Enum.FillDirection.Vertical, S(6), Enum.HorizontalAlignment.Center)
-
-	-- SHOP tile, left-center (amber frame). Opens a placeholder.
-	local tileW, tileH = if mobile then S(56) else S(92), if mobile then S(56) else S(104)
-	local shop = UI.button({
-		Name = "Shop",
-		Text = "",
-		BackgroundColor3 = Theme.Colors.panel,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, S(20), 0.5, 0),
-		Size = UDim2.fromOffset(tileW, tileH),
-		Parent = root,
-	})
-	UI.corner(shop, S(10))
-	UI.stroke(shop, Theme.Colors.amber, S(2))
-	UI.text({
-		Text = "$",
-		Font = Theme.Fonts.display,
-		TextSize = if mobile then S(26) else S(40),
-		TextColor3 = Theme.Colors.amber,
-		Size = UDim2.new(1, 0, if mobile then 1 else 0.66, 0),
-		Parent = shop,
-	})
-	if not mobile then
-		UI.text({
-			Text = "SHOP",
-			Font = Theme.Fonts.display,
-			TextSize = S(14),
-			TextColor3 = Theme.Colors.text,
-			Position = UDim2.fromScale(0, 0.66),
-			Size = UDim2.fromScale(1, 0.3),
-			Parent = shop,
-		})
+	if mobile then
+		UI.new("UIScale", { Scale = 0.8, Parent = queueSlot })
 	end
 
-	-- Placeholder panel (SHOP · PHASE 4, CRATE UI · PHASE 4): centered card with a title and an OK.
+	-- Placeholder panel (SHOP / GOLD / CRATE · PHASE 4).
 	local placeholder = UI.frame({
 		Name = "Placeholder",
 		BackgroundColor3 = Theme.Colors.bg,
-		BackgroundTransparency = 0.08,
+		BackgroundTransparency = 0.04,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(S(360), S(160)),
+		Size = UDim2.fromOffset(S(360), S(170)),
 		Visible = false,
 		ZIndex = 20,
 		Parent = root,
 	})
-	UI.corner(placeholder, S(14))
-	UI.stroke(placeholder, Theme.Colors.amber, S(2))
-	local placeholderTitle = UI.text({
-		Text = "SHOP · PHASE 4",
-		Font = Theme.Fonts.display,
-		TextSize = S(26),
-		TextColor3 = Theme.Colors.amber,
-		Position = UDim2.fromOffset(0, S(24)),
-		Size = UDim2.new(1, 0, 0, S(34)),
+	UI.corner(placeholder, S(10))
+	UI.stroke(placeholder, Theme.Colors.black, S(2), 0.3)
+	local phHeader = UI.frame({
+		BackgroundColor3 = Theme.Colors.blue,
+		Size = UDim2.new(1, 0, 0, S(44)),
 		ZIndex = 21,
 		Parent = placeholder,
 	})
+	UI.corner(phHeader, S(10))
+	local placeholderTitle = UI.text({
+		Text = "Shop",
+		Font = Theme.Fonts.body,
+		TextSize = S(22),
+		TextColor3 = Theme.Colors.white,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(16), 0),
+		Size = UDim2.new(1, -S(32), 1, 0),
+		ZIndex = 22,
+		Parent = phHeader,
+	})
 	UI.text({
-		Text = "ROBUX AND CRATES ARE OUT OF SCOPE FOR THIS BRIEF",
+		Text = "PHASE 4 · ROBUX AND CRATES ARE OUT OF SCOPE FOR THIS BRIEF",
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.grey,
-		Position = UDim2.fromOffset(0, S(62)),
+		Position = UDim2.fromOffset(0, S(64)),
 		Size = UDim2.new(1, 0, 0, S(16)),
 		ZIndex = 21,
 		Parent = placeholder,
 	})
 	local okBtn = UI.button({
 		Text = "OK",
-		Font = Theme.Fonts.display,
+		Font = Theme.Fonts.body,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.bg,
-		BackgroundColor3 = Theme.Colors.amber,
+		BackgroundColor3 = GREEN,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -S(16)),
-		Size = UDim2.fromOffset(S(120), S(40)),
+		Position = UDim2.new(0.5, 0, 1, -S(14)),
+		Size = UDim2.new(1, -S(28), 0, S(44)),
 		ZIndex = 21,
 		Parent = placeholder,
 	})
-	UI.corner(okBtn, S(10))
+	UI.corner(okBtn, S(6))
 	okBtn.Activated:Connect(function()
 		placeholder.Visible = false
 	end)
-	local component: { [string]: any } = {}
 	function component.showPlaceholder(title: string)
 		placeholderTitle.Text = title
 		placeholder.Visible = true
-		UI.punch(placeholder, 1.1, 0.25)
+		UI.punch(placeholder, 1.08, 0.25)
 		UI.sound(Theme.Sounds.toast, 1.1, 0.4)
 	end
-	shop.Activated:Connect(function()
-		UI.punch(shop, 0.92, 0.15)
-		component.showPlaceholder("SHOP · PHASE 4")
-	end)
 
-	-- Gold row, bottom-left, with + (placeholder) and INVITE FRIENDS under it.
-	local goldRoot = UI.frame({
-		Name = "GoldRow",
+	-- SHOP tile, left-center.
+	local shopSize = if mobile then S(52) else S(64)
+	local shopHolder = UI.frame({
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, S(20), 1, -S(20)),
-		Size = UDim2.fromOffset(S(260), S(78)),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, S(20), 0.5, 0),
+		Size = UDim2.fromOffset(shopSize, shopSize + S(16)),
 		Parent = root,
 	})
+	local shop = iconTile(shopHolder, 1, "Shop", "$", Theme.Colors.amber, Theme.Colors.bg, shopSize)
+	shop.Activated:Connect(function()
+		UI.punch(shop, 0.92, 0.15)
+		component.showPlaceholder("Shop")
+	end)
+
+	-- Gold pill with + and INVITE FRIENDS, bottom-left.
+	local goldW = if mobile then S(170) else S(230)
+	local gold = UI.frame({
+		Name = "Gold",
+		BackgroundColor3 = Theme.Colors.panel,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(20), 1, -S(62)),
+		Size = UDim2.fromOffset(goldW, S(38)),
+		Parent = root,
+	})
+	UI.corner(gold, S(8))
+	UI.stroke(gold, Theme.Colors.black, S(1.5), 0.3)
 	local bar = UI.frame({
 		BackgroundColor3 = Theme.Colors.gold,
-		Size = UDim2.fromOffset(S(28), S(14)),
-		Position = UDim2.fromOffset(S(2), S(12)),
+		Size = UDim2.fromOffset(S(26), S(13)),
+		Position = UDim2.fromOffset(S(10), S(13)),
 		Rotation = -8,
-		Parent = goldRoot,
+		Parent = gold,
 	})
 	UI.corner(bar, S(3))
 	local goldLabel = UI.text({
 		Name = "Gold",
 		Text = "0",
 		Font = Theme.Fonts.display,
-		TextSize = S(30),
-		TextColor3 = Theme.Colors.gold,
+		TextSize = S(22),
+		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(40), 0),
-		Size = UDim2.new(1, -S(80), 0, S(40)),
-		Parent = goldRoot,
+		Position = UDim2.fromOffset(S(44), 0),
+		Size = UDim2.new(1, -S(88), 1, 0),
+		Parent = gold,
 	})
-	UI.stroke(goldLabel, Theme.Colors.black, S(1.5), 0.4)
 	local plus = UI.button({
 		Text = "+",
 		Font = Theme.Fonts.display,
 		TextSize = S(20),
-		TextColor3 = Theme.Colors.gold,
-		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.fromOffset(S(26), S(26)),
-		Position = UDim2.fromOffset(S(40) + S(160), S(7)),
-		Parent = goldRoot,
+		TextColor3 = Theme.Colors.bg,
+		BackgroundColor3 = GREEN,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -S(6), 0.5, 0),
+		Size = UDim2.fromOffset(S(28), S(28)),
+		Parent = gold,
 	})
-	UI.corner(plus, S(7))
-	UI.stroke(plus, Theme.Colors.gold, S(1.5))
+	UI.corner(plus, S(6))
 	plus.Activated:Connect(function()
 		UI.punch(plus, 0.9, 0.15)
-		component.showPlaceholder("GOLD · PHASE 4")
+		component.showPlaceholder("Gold")
 	end)
 	local invite = UI.button({
 		Name = "Invite",
 		Text = if mobile then "+👥" else "INVITE FRIENDS",
-		Font = Theme.Fonts.display,
-		TextSize = S(14),
-		TextColor3 = Theme.Colors.text,
+		Font = Theme.Fonts.body,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.white,
 		BackgroundColor3 = Theme.Colors.panel,
-		Position = UDim2.fromOffset(0, S(44)),
-		Size = UDim2.fromOffset(if mobile then S(44) else S(160), S(30)),
-		Parent = goldRoot,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(20), 1, -S(20)),
+		Size = UDim2.fromOffset(if mobile then S(44) else goldW, S(34)),
+		Parent = root,
 	})
-	UI.corner(invite, S(8))
-	UI.stroke(invite, Theme.Colors.grey, S(1.5), 0.3)
+	UI.corner(invite, S(6))
+	UI.stroke(invite, Theme.Colors.black, S(1.5), 0.3)
 	invite.Activated:Connect(function()
 		UI.punch(invite, 0.92, 0.15) -- present, does nothing (brief)
 	end)
 
-	-- Dock, bottom-center: WEAPONS · CLASSES · AVATAR.
-	local dockW, dockH = if mobile then S(76) else S(108), if mobile then S(68) else S(96)
+	-- Dock, bottom-center: WEAPONS · CLASSES · AVATAR icon tiles with labels.
+	local tile = if mobile then S(56) else S(68)
 	local dock = UI.frame({
 		Name = "Dock",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -S(18)),
-		Size = UDim2.fromOffset(dockW * 3 + S(24), dockH),
+		Position = UDim2.new(0.5, 0, 1, -S(16)),
+		Size = UDim2.fromOffset(tile * 3 + S(24), tile + S(16)),
 		Parent = root,
 	})
 	UI.list(dock, Enum.FillDirection.Horizontal, S(12), Enum.HorizontalAlignment.Center)
 	local tiles: { [string]: TextButton } = {}
-	local glyphs = { WEAPONS = "GUN", CLASSES = "CLS", AVATAR = "MSK" }
+	local glyphs = { WEAPONS = "gun", CLASSES = "CLS", AVATAR = "MSK" }
+	local colors = { WEAPONS = Theme.Colors.blue, CLASSES = Theme.Colors.grey, AVATAR = Theme.Colors.gold }
+	local labels = { WEAPONS = "Weapons", CLASSES = "Classes", AVATAR = "Avatar" }
 	for i, tab in { "WEAPONS", "CLASSES", "AVATAR" } do
-		local tile = UI.button({
-			Name = tab,
-			Text = "",
-			BackgroundColor3 = Theme.Colors.panel,
-			Size = UDim2.fromOffset(dockW, dockH),
-			LayoutOrder = i,
-			Parent = dock,
-		})
-		UI.corner(tile, S(10))
-		UI.stroke(tile, Theme.Colors.gold, S(2))
-		local well = UI.frame({
-			BackgroundColor3 = Theme.Colors.panel2,
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, S(8)),
-			Size = UDim2.fromOffset(dockH * 0.5, dockH * 0.5),
-			Parent = tile,
-		})
-		UI.corner(well, S(8))
-		if tab == "WEAPONS" then
-			local icon = UI.gunIcon(well, Theme.Colors.gold, math.floor(dockH * 0.46))
-			icon.AnchorPoint = Vector2.new(0.5, 0.5)
-			icon.Position = UDim2.fromScale(0.5, 0.5)
-		else
-			UI.text({
-				Text = glyphs[tab],
-				Font = Theme.Fonts.display,
-				TextSize = math.floor(dockH * 0.2),
-				TextColor3 = Theme.Colors.gold,
-				Size = UDim2.fromScale(1, 1),
-				Parent = well,
-			})
+		local b = iconTile(dock, i, labels[tab], glyphs[tab], Theme.Colors.panel, colors[tab], tile)
+		local stroke = b:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Color = Theme.Colors.gold
+			stroke.Transparency = 0
 		end
-		UI.text({
-			Text = tab,
-			Font = Theme.Fonts.display,
-			TextSize = if mobile then S(10) else S(14),
-			TextColor3 = Theme.Colors.text,
-			Position = UDim2.new(0, 0, 1, if mobile then -S(16) else -S(28)),
-			Size = UDim2.new(1, 0, 0, if mobile then S(14) else S(22)),
-			Parent = tile,
-		})
-		tile.Activated:Connect(function()
-			UI.punch(tile, 0.92, 0.18)
+		b.Activated:Connect(function()
+			UI.punch(b, 0.92, 0.18)
 			UI.sound(Theme.Sounds.toast, 1.4, 0.35)
 			if component.onDock then
 				component.onDock(tab)
 			end
 		end)
-		tile.MouseEnter:Connect(function()
-			if not mobile then
-				UI.punch(tile, 1.04, 0.15)
-			end
-		end)
-		tiles[tab] = tile
+		tiles[tab] = b
 	end
 
-	-- BOOSTS, bottom-right: three chips, the first a stub, the others dashed empty.
+	-- BOOSTS, bottom-right: icon chips; the first is a stub +50% GOLD with a countdown, the others empty.
+	local chipSize = if mobile then S(44) else S(56)
 	local boosts = UI.frame({
 		Name = "Boosts",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -S(20), 1, -S(20)),
-		Size = UDim2.fromOffset(S(300), S(52)),
+		Position = UDim2.new(1, -S(20), 1, -S(16)),
+		Size = UDim2.fromOffset(chipSize * 3 + S(20), chipSize + S(34)),
 		Parent = root,
 	})
 	UI.text({
@@ -379,39 +330,66 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local chips = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, S(18)),
-		Size = UDim2.new(1, 0, 0, S(30)),
+		Size = UDim2.new(1, 0, 0, chipSize + S(16)),
 		Parent = boosts,
 	})
-	UI.list(chips, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Right)
+	UI.list(chips, Enum.FillDirection.Horizontal, S(10), Enum.HorizontalAlignment.Right)
+	local timerLabel: TextLabel? = nil
 	for i = 1, 3 do
 		local filled = i == 1
-		local chip = UI.frame({
-			BackgroundColor3 = if filled then Theme.Colors.panel else Theme.Colors.bg,
-			BackgroundTransparency = if filled then 0 else 0.5,
-			Size = UDim2.fromOffset(S(90), S(30)),
+		local holder = UI.frame({
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(chipSize, chipSize + S(16)),
 			LayoutOrder = i,
 			Parent = chips,
 		})
-		UI.corner(chip, S(15))
-		local stroke =
-			UI.stroke(chip, if filled then Theme.Colors.gold else Theme.Colors.grey, S(1.5), if filled then 0 else 0.4)
-		if not filled then
-			stroke.LineJoinMode = Enum.LineJoinMode.Round
-		end
-		UI.text({
-			Text = if filled then "+50% GOLD" else "— — —",
-			Font = Theme.Fonts.display,
-			TextSize = S(11),
-			TextColor3 = if filled then Theme.Colors.gold else Theme.Colors.grey,
-			Size = UDim2.fromScale(1, 1),
-			Parent = chip,
+		local chip = UI.frame({
+			BackgroundColor3 = if filled then Theme.Colors.panel else Theme.Colors.bg,
+			BackgroundTransparency = if filled then 0 else 0.6,
+			Size = UDim2.fromOffset(chipSize, chipSize),
+			Parent = holder,
 		})
-	end
-
-	-- Mobile: the slot and card scale down.
-	if mobile then
-		local scale = UI.new("UIScale", { Scale = 0.8, Parent = queueSlot })
-		local _ = scale
+		UI.corner(chip, S(10))
+		UI.stroke(chip, if filled then Theme.Colors.gold else Theme.Colors.grey, S(1.5), if filled then 0 else 0.5)
+		if filled then
+			UI.text({
+				Text = "◆",
+				Font = Theme.Fonts.display,
+				TextSize = math.floor(chipSize * 0.42),
+				TextColor3 = Theme.Colors.gold,
+				Position = UDim2.fromOffset(0, S(2)),
+				Size = UDim2.new(1, 0, 0.6, 0),
+				Parent = chip,
+			})
+			UI.text({
+				Text = "+50%",
+				Font = Theme.Fonts.display,
+				TextSize = S(11),
+				TextColor3 = Theme.Colors.gold,
+				Position = UDim2.fromScale(0, 0.6),
+				Size = UDim2.new(1, 0, 0.4, 0),
+				Parent = chip,
+			})
+			timerLabel = UI.text({
+				Text = "",
+				Font = Theme.Fonts.display,
+				TextSize = S(11),
+				TextColor3 = Theme.Colors.text,
+				Position = UDim2.fromOffset(0, chipSize + S(1)),
+				Size = UDim2.new(1, 0, 0, S(14)),
+				Parent = holder,
+			})
+			UI.stroke(timerLabel :: TextLabel, Theme.Colors.black, S(1.5), 0.3)
+		else
+			UI.text({
+				Text = "+",
+				Font = Theme.Fonts.display,
+				TextSize = math.floor(chipSize * 0.4),
+				TextColor3 = Theme.Colors.grey,
+				Size = UDim2.fromScale(1, 1),
+				Parent = chip,
+			})
+		end
 	end
 
 	component.frame = root
@@ -434,8 +412,9 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end
 
-	-- PLAY breathes while nobody is in a party; a small nudge so it reads as the thing to press.
+	-- The stub boost ticks down; PLAY breathes.
 	local t = 0
+	local lastSec = -1
 	track(RunService.Heartbeat:Connect(function(dt)
 		if not root.Visible then
 			return
@@ -444,6 +423,15 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local stroke = play:FindFirstChildOfClass("UIStroke")
 		if stroke then
 			stroke.Transparency = 0.3 + 0.2 * math.sin(t * 2)
+		end
+		local label = timerLabel
+		if label then
+			local left = math.max(0, Config.StubBoostSec - (os.clock() - boostStartedAt))
+			local sec = math.ceil(left)
+			if sec ~= lastSec then
+				lastSec = sec
+				label.Text = string.format("%d:%02d", sec // 60, sec % 60)
+			end
 		end
 	end))
 

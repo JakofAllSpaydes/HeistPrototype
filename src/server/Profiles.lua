@@ -76,7 +76,16 @@ end
 function Profiles.fresh(): Profile
 	return {
 		gold = Config.StartingGold,
-		weapons = { [Weapons.Starter] = { level = 0 } },
+		weapons = (function()
+			-- One gun of each archetype is owned from the start so every type can be tested without buying.
+			local owned = { [Weapons.Starter] = { level = 0 } }
+			for _, id in Weapons.DefaultOwned do
+				if Weapons.ById[id] then
+					owned[id] = { level = 0 }
+				end
+			end
+			return owned
+		end)(),
 		starterWeaponId = Weapons.Starter,
 		classes = { owned = { [Classes.Default] = true }, equipped = Classes.Default },
 		abilities = {},
@@ -109,9 +118,13 @@ local function migrate(raw: any): Profile
 			end
 		end
 	end
-	if not p.weapons[Weapons.Starter] and next(p.weapons) == nil then
-		p.weapons[Weapons.Starter] = { level = 0 }
+	-- Older stores: every default-owned gun is granted so the testable set is always there.
+	for _, id in Weapons.DefaultOwned do
+		if Weapons.ById[id] and not p.weapons[id] then
+			p.weapons[id] = { level = 0 }
+		end
 	end
+
 	if typeof(raw.starterWeaponId) == "string" and p.weapons[raw.starterWeaponId] then
 		p.starterWeaponId = raw.starterWeaponId
 	elseif not p.weapons[p.starterWeaponId] then

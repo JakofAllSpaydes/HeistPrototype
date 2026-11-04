@@ -160,7 +160,6 @@ Weapons.List = {
 		id = "P90",
 		displayName = "P90",
 		archetype = "SMG",
-		saleType = "Crate",
 		baseDmg = 10,
 		fireRate = 17,
 		magSize = 50,
@@ -195,7 +194,6 @@ Weapons.List = {
 		id = "M82",
 		displayName = "Barrett M82",
 		archetype = "Sniper",
-		saleType = "Crate",
 		baseDmg = 110,
 		fireRate = 1.3,
 		magSize = 10,
@@ -218,7 +216,6 @@ Weapons.List = {
 		id = "RPK",
 		displayName = "RPK",
 		archetype = "LMG",
-		saleType = "Event",
 		baseDmg = 18,
 		fireRate = 9.5,
 		magSize = 75,
@@ -234,6 +231,19 @@ for _, w in Weapons.List do
 end
 
 Weapons.Starter = "M1911"
+
+-- Owned by every fresh profile: one gun of each archetype, so every type is testable without buying.
+Weapons.DefaultOwned = { "M1911", "UZI", "AK-47", "SPAS-12", "AWP", "M249" }
+
+-- Showcase entries for the Weapons tab only: fake Crate / Event guns that render with their acquisition
+-- label and can never be unlocked, rolled or dealt (they are not in Weapons.List).
+export type Showcase = { id: string, displayName: string, archetype: string, saleType: string, hint: string }
+Weapons.Showcase = {
+	{ id = "Exogun", displayName = "Exogun", archetype = "Rifle", saleType = "Crate", hint = "Energy" },
+	{ id = "StormLinker", displayName = "StormLinker", archetype = "SMG", saleType = "Crate", hint = "Automatic" },
+	{ id = "Railcaster", displayName = "Railcaster", archetype = "Sniper", saleType = "Event", hint = "Charged" },
+	{ id = "Hornet", displayName = "Hornet", archetype = "Pistol", saleType = "Event", hint = "Burst" },
+} :: { Showcase }
 
 -- Armory level math (Config.Upg*Pct): applied to the base stats before rarity and in-run upgrades,
 -- everywhere the weapon appears (starter, rolls, crate deals, floor tags).
