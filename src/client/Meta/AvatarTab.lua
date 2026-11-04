@@ -113,6 +113,7 @@ function AvatarTab.render(scene: any)
 		MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(mask.price or Prices.mask), "green", function()
 			local r = scene.request("buyMask", { maskId = mask.id })
 			if r.ok then
+				scene.preview.commit()
 				scene.refresh()
 			end
 		end)

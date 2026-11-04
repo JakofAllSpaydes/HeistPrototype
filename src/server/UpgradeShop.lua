@@ -95,7 +95,7 @@ end
 -- BuyUpgrade: charge once on press; reopening an unclaimed pick-3 is free and returns the same cards.
 function UpgradeShop.buy(player: Player): any
 	local state = PlayerState.get(player)
-	if state.downed or state.bledOut then
+	if state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
 		return { ok = false, reason = "downed" }
 	end
 	if state.openPick3 then

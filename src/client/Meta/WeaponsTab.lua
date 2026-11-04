@@ -325,24 +325,6 @@ local function renderCustomize(scene: any)
 		Parent = overlay,
 	})
 	UI.corner(row, S(12))
-	local back = UI.button({
-		Text = "↶ Back",
-		Font = Theme.Fonts.display,
-		TextSize = S(13),
-		TextColor3 = Theme.Colors.white,
-		BackgroundColor3 = Theme.Colors.red,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, 0, 0, -S(8)),
-		Size = UDim2.fromOffset(S(90), S(28)),
-		Parent = row,
-	})
-	UI.corner(back, S(6))
-	back.Activated:Connect(function()
-		wrapsOpen = false
-		wrapPreview = nil
-		scene.preview.wrap(nil)
-		scene.refresh()
-	end)
 	local list = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(S(12), S(10)),
@@ -350,6 +332,15 @@ local function renderCustomize(scene: any)
 		Parent = row,
 	})
 	UI.list(list, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Center)
+	-- Back is the first tile in the row, so it is always on screen with the swatches.
+	local back = stripTile(list, -1, "Back", "◀", false, false, size)
+	back.BackgroundColor3 = Theme.Colors.red
+	back.Activated:Connect(function()
+		wrapsOpen = false
+		wrapPreview = nil
+		scene.preview.wrap(nil)
+		scene.refresh()
+	end)
 	-- "No wrap" first, then the six wraps.
 	local function swatch(
 		order: number,
@@ -471,8 +462,9 @@ local function renderCustomize(scene: any)
 			end)
 		elseif not isOwned then
 			MetaUI.button(action, 1, "BUY - " .. MetaUI.fmtGold(Prices.wrap), "green", function()
-				local r = scene.request("buyWrap", { wrapId = pw.id })
+				local r = scene.request("buyWrap", { wrapId = pw.id, weaponId = w.id })
 				if r.ok then
+					scene.preview.commit()
 					scene.refresh()
 				end
 			end)

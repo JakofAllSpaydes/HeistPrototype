@@ -68,6 +68,9 @@ local function controls(): any
 	return nil
 end
 
+local lockedRoot: BasePart? = nil
+local savedWalkSpeed: number? = nil
+
 function ClientState.lockMovement(reason: string, on: boolean)
 	controlLocks[reason] = if on then true else nil
 	local want = next(controlLocks) == nil
@@ -79,12 +82,38 @@ function ClientState.lockMovement(reason: string, on: boolean)
 			c:Disable()
 		end
 	end
-	-- Belt and braces: stop any motion that was in flight.
+	-- Hard lock as well: the root anchors locally (the client owns its character's physics) and the walk
+	-- speed drops to 0, so no input path can move the character while a screen is up.
 	local char = game:GetService("Players").LocalPlayer.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if hum and not want then
-		hum:Move(Vector3.zero, false)
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if not want then
+		if hum then
+			hum:Move(Vector3.zero, false)
+			if savedWalkSpeed == nil then
+				savedWalkSpeed = hum.WalkSpeed
+			end
+			hum.WalkSpeed = 0
+		end
+		if root and root:IsA("BasePart") then
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.Anchored = true
+			lockedRoot = root
+		end
+	else
+		if lockedRoot and lockedRoot.Parent then
+			lockedRoot.Anchored = false
+		end
+		lockedRoot = nil
+		if hum and savedWalkSpeed ~= nil then
+			hum.WalkSpeed = savedWalkSpeed
+		end
+		savedWalkSpeed = nil
 	end
+end
+
+function ClientState.movementLocked(): boolean
+	return next(controlLocks) ~= nil
 end
 
 function ClientState.isMouseFree(): boolean

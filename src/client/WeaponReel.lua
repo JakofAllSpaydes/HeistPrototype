@@ -325,7 +325,7 @@ function WeaponReel.press()
 	if not t or not sync then
 		return
 	end
-	if ClientState.downed then
+	if ClientState.downed or ClientState.inHub() then
 		t.shake()
 		UI.sound(Theme.Sounds.deny, 1, 0.4)
 		return

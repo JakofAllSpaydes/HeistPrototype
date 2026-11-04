@@ -49,7 +49,7 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	}
 
 	track(UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed then
+		if gameProcessed or ClientState.inHub() then
 			return
 		end
 		local tile = if input.KeyCode == Enum.KeyCode.One

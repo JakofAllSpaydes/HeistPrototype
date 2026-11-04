@@ -48,7 +48,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Esc / X / 2 | Close the upgrade overlay. |
 | V | Vote to skip the intermission (or click the VOTES pill). `SkipVoteFraction` / `SkipMinIntermissionSec` in Config. |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
-| Ctrl | In a run: toggle the cursor lock so you can click HUD tiles. While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and there are no hotkeys. |
+| Ctrl | In a run: toggle the cursor lock so you can click HUD tiles. While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
 | Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, minigame stats, +1,000 Gold, unlock all, reset profile. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
@@ -165,8 +165,10 @@ the run beat it with a `★ NEW PERSONAL BEST` callout on the summary; lifetime 
 summary's GOLD EARNED headline is this number, and the hub Gold row shows the new balance on return.
 
 **Customization scene (`MetaScene.lua`, `src/client/Meta/`).** Opened from a dock tile or a station prompt on that
-tab. Movement is locked while it is open. The camera tweens (`MetaCameraTweenSec`) to a fixed hub shot
-`MetaCameraDistance` from the character, who faces the camera on the left third playing the equipped class's idle
+tab. Movement is hard-locked while it is open (controls off, root anchored locally, walk speed 0; the same lock holds
+the Create Party card). The camera tweens (`MetaCameraTweenSec`) to a fixed hub shot
+`MetaCameraDistance` from the character and `MetaCameraSideShare` of that to its right, looking straight ahead, so the
+character stands about a fifth in from the left edge facing the camera, playing the equipped class's idle
 (`ClassIdleAnimationId`); the hub HUD hides. All three tabs share one format (reference board): a panel on the right
 58% (62% on mobile) with a blue header bar (title, red X), filter pills, OWNED / UNOWNED section bars over colored
 tiles 4 per row (name on top, icon, a `LV n` / `◆ 100` / `CRATE` / `EVENT` pill at the bottom, a white frame on the
@@ -174,7 +176,8 @@ selection) and a detail column (big image well, name, sub-line, stat rows with `
 / pink / blue buttons). The Gold pill and the dock (LEAVE red X · WEAPONS · CLASSES · AVATAR as icon tiles with
 labels) sit bottom-left and never hide, so every sub-view can be left. Selections preview live on the character
 (wrap color on the gun's grip, mask, class idle); nothing is saved until a purchase or equip. Toasts bottom-center
-(`<name> unlocked!`, `Not enough Gold!`, `<name> equipped as Starter!`, `<name> equipped!`) with celebratory / error /
+(`<name> unlocked and equipped!`: every unlock equips itself, weapons as starter, wraps on the gun they were bought from,
+classes and masks at once; `Not enough Gold!`, `<name> equipped as Starter!`, `<name> equipped!`) with celebratory / error /
 click sounds. All actions go through one RemoteFunction (`Meta`) that validates against the profile, charges Gold
 and marks the profile dirty.
 
@@ -197,10 +200,11 @@ and marks the profile dirty.
   (`HeldGunWrap`) in the hub and in-run.
 - **Classes tab.** `Classes.lua` lists INITIATE (Barricade Q, Turret E, Stim Z: the prototype abilities), DOC (Stim
   Shot, Med Bag, Healing Turret), SHARPSHOOTER (Claymore, Dead Eye, Flashbang) and TORCH (Molotov, Flame Turret, Oil
-  Drum) with the GDD copy, in-match `$` price and upgradeable variables. Same format as Weapons: class tiles 4 per row
-  (OWNED / UNOWNED, pill `EQUIPPED` / `OWNED` / `◆ 100`, FREE tag on INITIATE), the ABILITIES section under them, and
-  the detail column (class well, name, EQUIPPED / UNLOCKED / LOCKED, the three hotkey rows, EQUIP / UNLOCK in green);
-  the preview plays the selected class's idle. One row per ability: icon with the
+  Drum) with the GDD copy, in-match `$` price and upgradeable variables. The category pills are the classes (colored
+  circle with the initial, name, lock when unowned, ✔ when equipped); below them the selected class's three ability
+  rows, and the detail column (class well, name, EQUIPPED / UNLOCKED / LOCKED, the three hotkey rows, EQUIP / UNLOCK
+  in green); the preview plays the selected class's idle. One row per ability: icon with the
+
   `$` price, name and hotkey, description, stats as `current > next` and UPGRADE · ◆ 100 (greyed `NOT UNLOCKED` on an
   unowned class). EQUIP sets `profile.classes.equipped`; the in-run ability tiles rebuild with that class's three
   abilities (Q / E / Z in order). Only INITIATE's abilities work; the other nine print and toast `STUB · PHASE 2`.

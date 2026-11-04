@@ -42,7 +42,7 @@ local NOT_ENOUGH = "Not enough Gold!"
 local handlers: { [string]: (Player, PlayerState.State, Profiles.Profile, any) -> Result } = {}
 
 ------------------------------------------------------------------ Weapons
-handlers.unlockWeapon = function(player, _state, p, args)
+handlers.unlockWeapon = function(player, state, p, args)
 	local w = Weapons.ById[tostring(args and args.weaponId)]
 	if not w then
 		return fail("no such weapon")
@@ -60,9 +60,16 @@ handlers.unlockWeapon = function(player, _state, p, args)
 		return fail("gold", NOT_ENOUGH)
 	end
 	p.weapons[w.id] = { level = 0 }
+	-- New things are equipped as they are unlocked.
+	p.starterWeaponId = w.id
 	Profiles.markDirty(player)
-	Log.event("Meta", "%s unlocked %s for %d gold", player.Name, w.id, cost)
-	return done(w.displayName .. " unlocked!", "celebrate")
+	if not World.inRun() then
+		state.held = PlayerState.starterHeld(state)
+		PlayerState.refreshHeldVisual(state)
+		state.dirty = true
+	end
+	Log.event("Meta", "%s unlocked %s for %d gold and equipped it as starter", player.Name, w.id, cost)
+	return done(w.displayName .. " unlocked and equipped!", "celebrate")
 end
 
 handlers.upgradeWeapon = function(player, state, p, args)
@@ -102,7 +109,7 @@ handlers.equipStarter = function(player, state, p, args)
 	return done(w.displayName .. " equipped as Starter!", "click")
 end
 
-handlers.buyWrap = function(player, _state, p, args)
+handlers.buyWrap = function(player, state, p, args)
 	local wrap = Wraps.ById[tostring(args and args.wrapId)]
 	if not wrap then
 		return fail("no such wrap")
@@ -114,9 +121,19 @@ handlers.buyWrap = function(player, _state, p, args)
 		return fail("gold", NOT_ENOUGH)
 	end
 	p.wraps.owned[wrap.id] = true
+	-- Applied at once to the weapon it was bought from (args.weaponId), when owned.
+	local w = Weapons.ById[tostring(args and args.weaponId)]
+	local entry = w and p.weapons[w.id]
+	if w and entry then
+		entry.wrap = wrap.id
+		if state.held.weaponId == w.id then
+			PlayerState.refreshHeldVisual(state)
+			state.dirty = true
+		end
+	end
 	Profiles.markDirty(player)
-	Log.event("Meta", "%s bought the %s wrap", player.Name, wrap.id)
-	return done(wrap.name .. " unlocked!", "celebrate")
+	Log.event("Meta", "%s bought the %s wrap%s", player.Name, wrap.id, if w then " and put it on " .. w.id else "")
+	return done(wrap.name .. (if w then " unlocked and applied!" else " unlocked!"), "celebrate")
 end
 
 -- Apply (or clear, wrapId nil) a wrap on an owned weapon. Owned wraps only.
@@ -142,7 +159,7 @@ handlers.applyWrap = function(player, state, p, args)
 end
 
 ------------------------------------------------------------------ Classes
-handlers.unlockClass = function(player, _state, p, args)
+handlers.unlockClass = function(player, state, p, args)
 	local c = Classes.ById[tostring(args and args.classId)]
 	if not c then
 		return fail("no such class")
@@ -154,9 +171,13 @@ handlers.unlockClass = function(player, _state, p, args)
 		return fail("gold", NOT_ENOUGH)
 	end
 	p.classes.owned[c.id] = true
+	p.classes.equipped = c.id
+	state.cooldowns = {}
 	Profiles.markDirty(player)
-	Log.event("Meta", "%s unlocked class %s", player.Name, c.id)
-	return done(string.upper(c.name) .. " unlocked!", "celebrate")
+	state.dirty = true
+	Hub.refreshTag(player)
+	Log.event("Meta", "%s unlocked and equipped class %s", player.Name, c.id)
+	return done(string.upper(c.name) .. " unlocked and equipped!", "celebrate")
 end
 
 handlers.equipClass = function(player, state, p, args)
@@ -193,7 +214,7 @@ handlers.upgradeAbility = function(player, state, p, args)
 end
 
 ------------------------------------------------------------------ Masks
-handlers.buyMask = function(player, _state, p, args)
+handlers.buyMask = function(player, state, p, args)
 	local m = Masks.ById[tostring(args and args.maskId)]
 	if not m then
 		return fail("no such mask")
@@ -210,9 +231,12 @@ handlers.buyMask = function(player, _state, p, args)
 		return fail("gold", NOT_ENOUGH)
 	end
 	p.masks.owned[m.id] = true
+	p.masks.equipped = m.id
 	Profiles.markDirty(player)
-	Log.event("Meta", "%s bought the %s mask", player.Name, m.id)
-	return done(m.name .. " unlocked!", "celebrate")
+	PlayerState.applyMask(state)
+	state.dirty = true
+	Log.event("Meta", "%s bought and equipped the %s mask", player.Name, m.id)
+	return done(m.name .. " unlocked and equipped!", "celebrate")
 end
 
 handlers.equipMask = function(player, state, p, args)

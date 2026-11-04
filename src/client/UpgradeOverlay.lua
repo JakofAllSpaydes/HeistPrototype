@@ -614,7 +614,7 @@ function UpgradeOverlay.close()
 end
 
 function UpgradeOverlay.open()
-	if isOpen or busy or ClientState.downed then
+	if isOpen or busy or ClientState.downed or ClientState.inHub() then
 		return
 	end
 	local sync = ClientState.sync

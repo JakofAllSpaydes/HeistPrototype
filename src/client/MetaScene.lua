@@ -210,10 +210,14 @@ local function shot(push: boolean): CFrame
 		local pos = target + forward * Config.MetaWrapZoomDistance + Vector3.new(0, 0.4, 0)
 		return CFrame.lookAt(pos, target)
 	end
+	-- The camera stands in front of the character and off to its right, looking straight ahead (parallel to
+	-- the character's facing), so the character lands about a fifth of the way in from the left edge, in
+	-- the space beside the panel.
 	local d = Config.MetaCameraDistance
-	local look = base.Position + Vector3.new(0, 0.2, 0)
-	local pos = look + forward * d + right * (d * 0.55) + Vector3.new(0, 1.2, 0)
-	return CFrame.lookAt(pos, look + right * (d * 0.45))
+	local look = base.Position + Vector3.new(0, 0.3, 0)
+	local side = right * (d * Config.MetaCameraSideShare)
+	local pos = look + forward * d + side + Vector3.new(0, 1.0, 0)
+	return CFrame.lookAt(pos, look + side)
 end
 
 local function tweenCamera(cf: CFrame, sec: number)

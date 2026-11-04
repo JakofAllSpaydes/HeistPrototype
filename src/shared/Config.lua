@@ -257,6 +257,7 @@ local Config = {
 		TORCH = "rbxassetid://507766388",
 	},
 	MetaCameraDistance = 9, -- studs from the character in the customization scene
+	MetaCameraSideShare = 0.6, -- the camera sits this x distance to the character's right, so the character reads on the left
 	MetaCameraTweenSec = 0.45,
 	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE pushes the camera in on the gun to this distance
 

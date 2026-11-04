@@ -276,7 +276,7 @@ function Abilities.use(player: Player, id: any)
 	end
 	local state = PlayerState.get(player)
 	local char = player.Character
-	if not char or state.downed or state.bledOut then
+	if not char or state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
 		return
 	end
 	-- Only the equipped class's abilities can fire; the non-INITIATE kits are Phase 2 stubs.

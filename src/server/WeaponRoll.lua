@@ -281,7 +281,7 @@ end
 
 function WeaponRoll.buy(player: Player): any
 	local state = PlayerState.get(player)
-	if state.downed or state.bledOut then
+	if state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
 		return { ok = false, reason = "downed" }
 	end
 	local price = Economy.weaponPrice(state)

@@ -184,7 +184,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Remotes.SetAutoSkip:FireServer(myAuto)
 	end)
 	track(UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed or ClientState.blocked() then
+		if gameProcessed or ClientState.blocked() or ClientState.inHub() then
 			return
 		end
 		if input.KeyCode == Enum.KeyCode.V then

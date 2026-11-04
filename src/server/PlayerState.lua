@@ -78,7 +78,7 @@ local function freshState(player: Player, joinIndex: number): State
 	return {
 		player = player,
 		profile = nil,
-		cash = Config.StartingCash,
+		cash = Config.HubCash, -- joiners land in the hub; Hub.beginRun sets StartingCash for the party
 		upgradesBought = 0,
 		weaponsBought = 0,
 		upgrades = {},

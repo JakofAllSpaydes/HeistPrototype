@@ -121,7 +121,7 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	rebuild(Classes.Default)
 
 	track(UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed or ClientState.blocked() then
+		if gameProcessed or ClientState.blocked() or ClientState.inHub() then
 			return
 		end
 		for slot, key in HOTKEYS do

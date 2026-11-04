@@ -1,8 +1,8 @@
 --!strict
--- Classes tab in the shared format: class tiles 4 per row (OWNED / UNOWNED) on the left with the ABILITIES
--- section under them (one row per ability of the selected class: icon with the in-match $ price, name and
--- hotkey, description, stats as current » next, UPGRADE), and the detail column on the right (class well,
--- name, EQUIPPED / UNLOCKED / price, EQUIP or UNLOCK). The preview plays the selected class's idle.
+-- Classes tab: the category pills ARE the classes (icon + name, lock on unowned); below them the selected
+-- class's three ability rows (icon with the in-match $ price, name and hotkey, description, stats as
+-- current » next, UPGRADE), and the detail column on the right (class well, name, EQUIPPED / UNLOCKED /
+-- LOCKED, EQUIP or UNLOCK). The preview plays the selected class's idle.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -23,6 +23,59 @@ local lastIdle: string? = nil
 local function fmtVar(v: Classes.Var, value: number): string
 	local s = if value == math.floor(value) then string.format("%d", value) else string.format("%.1f", value)
 	return s .. v.unit
+end
+
+-- Class pill: colored circle with the initial, name, lock when unowned, blue when selected.
+local function classPill(
+	parent: Instance,
+	order: number,
+	c: Classes.Class,
+	own: boolean,
+	on: boolean,
+	equipped: boolean,
+	onPick: () -> ()
+)
+	local S = UI.S
+	local b = UI.button({
+		Text = "",
+		BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,
+		Size = UDim2.fromOffset(S(132), S(40)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UI.corner(b, S(4))
+	local circle = UI.frame({
+		BackgroundColor3 = if own then Color3.fromHex(c.color) else Theme.Colors.panel2,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, S(6), 0.5, 0),
+		Size = UDim2.fromOffset(S(28), S(28)),
+		Parent = b,
+	})
+	UI.corner(circle, 999)
+	UI.text({
+		Text = if own then string.sub(c.name, 1, 1) else "🔒",
+		Font = Theme.Fonts.display,
+		TextSize = S(if own then 15 else 13),
+		TextColor3 = Theme.Colors.bg,
+		Size = UDim2.fromScale(1, 1),
+		Parent = circle,
+	})
+	UI.text({
+		Text = string.upper(c.name) .. (if equipped then " ✔" else ""),
+		Font = Theme.Fonts.body,
+		TextSize = S(12),
+		TextColor3 = if own then Theme.Colors.white else Theme.Colors.grey,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Position = UDim2.fromOffset(S(40), 0),
+		Size = UDim2.new(1, -S(44), 1, 0),
+		Parent = b,
+	})
+	b.Activated:Connect(function()
+		UI.punch(b, 0.95, 0.15)
+		onPick()
+	end)
+	return b
 end
 
 local function abilityRow(
@@ -148,62 +201,30 @@ function ClassesTab.render(scene: any)
 		scene.preview.classIdle(class.id)
 	end
 
-	MetaUI.pills(panel, { { id = "ALL", name = "ALL CLASSES" } }, "ALL", function() end)
-	local rightW = if scene.mobile then S(200) else S(250)
-	local grid, card = MetaUI.columns(panel, rightW, S(44))
-	UI.list(grid, Enum.FillDirection.Vertical, S(8))
-	local perRow = 4
-	local tileW = MetaUI.tileWidth(grid, perRow)
-
-	local ownedList, unownedList = {}, {}
-	for _, c in Classes.List do
+	-- Class pills.
+	local pills = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, S(40)),
+		Parent = panel,
+	})
+	UI.list(pills, Enum.FillDirection.Horizontal, S(6))
+	for i, c in Classes.List do
 		local own = profile ~= nil and profile.classes.owned[c.id] == true
-		table.insert(if own then ownedList else unownedList, c)
+		classPill(pills, i, c, own, selected == c.id, equipped == c.id, function()
+			selected = c.id
+			UI.sound(Theme.Sounds.toast, 1.25, 0.3)
+			scene.refresh()
+		end)
 	end
-	local function tilesFor(list: { Classes.Class }, header: string, order: number)
-		MetaUI.header(grid, order, header)
-		if #list == 0 then
-			return
-		end
-		local row = MetaUI.row(grid, order + 1, tileW, perRow)
-		for i, c in list do
-			local own = profile ~= nil and profile.classes.owned[c.id] == true
-			local pill, pillColor
-			if equipped == c.id then
-				pill, pillColor = "EQUIPPED", MetaUI.Green
-			elseif own then
-				pill, pillColor = "OWNED", Theme.Colors.grey
-			else
-				pill, pillColor = MetaUI.fmtGold(Prices.class), Theme.Colors.cash
-			end
-			local b = MetaUI.tile(row, {
-				name = c.name,
-				pill = pill,
-				pillColor = pillColor,
-				color = Color3.fromHex(c.color),
-				owned = own,
-				selected = selected == c.id,
-				tag = if c.free then "FREE" else nil,
-				icon = "class",
-				iconColor = Theme.Colors.white,
-				glyph = string.sub(c.name, 1, 1),
-				size = tileW,
-				order = i,
-			})
-			b.Activated:Connect(function()
-				selected = c.id
-				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
-				scene.refresh()
-			end)
-		end
-	end
-	tilesFor(ownedList, "OWNED", 1)
-	tilesFor(unownedList, "UNOWNED", 10)
 
-	-- Ability rows for the selected class.
-	MetaUI.header(grid, 20, string.upper(class.name) .. " · ABILITIES")
+	local rightW = if scene.mobile then S(200) else S(250)
+	local grid, card = MetaUI.columns(panel, rightW, S(50))
+	UI.list(grid, Enum.FillDirection.Vertical, S(8))
+
+	-- Ability list.
+	MetaUI.header(grid, 1, string.upper(class.name) .. " · ABILITIES")
 	for i, a in class.abilities do
-		abilityRow(scene, grid, 20 + i, class, a, isOwned)
+		abilityRow(scene, grid, 1 + i, class, a, isOwned)
 	end
 
 	-- Detail.
