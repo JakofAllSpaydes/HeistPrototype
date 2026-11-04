@@ -245,7 +245,7 @@ function CrewCall.trigger()
 			Lines.job.promptObject,
 			Config.SideJobHoldSec,
 			function(player)
-				if job == thisJob and thisJob.active then
+				if job == thisJob and thisJob.active and PlayerState.isStanding(PlayerState.get(player)) then
 					Log.event("Call", "%s hacked the terminal for Side Job #%d", player.Name, thisJob.id)
 					CrewCall.finish(true)
 				end

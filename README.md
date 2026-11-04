@@ -261,7 +261,9 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   hands the gun and camera back the same frame and slides the panel off over `MinigameExitSec`; side jobs every 2 waves.
 - **Round 10d (3 Nov, feedback)** — F is the interact key on side job beacons too (was E); floor tags compare DMG and
   RATE at display precision so an identical gun reads even, not ▲; with `StragglerHighlightCount` (5) or fewer enemies
-  left the survivors glow red through walls (client Highlights).
+  left the survivors glow red through walls (client Highlights). Sawed-Off fires both barrels back to back (rate 2.8,
+  dmg 17; the 2-shell mag is the limiter). Downed or bled-out players cannot interact: every ProximityPrompt hides on
+  their client and the server refuses minigames, hacks and START RUN from them.
 
 ## Open design notes (not built)
 

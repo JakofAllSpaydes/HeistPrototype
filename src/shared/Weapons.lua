@@ -175,10 +175,10 @@ Weapons.List = {
 		id = "SawedOff",
 		displayName = "Sawed-Off",
 		archetype = "Shotgun",
-		baseDmg = 20,
-		fireRate = 1.4,
+		baseDmg = 17,
+		fireRate = 2.8, -- both barrels back to back; the 2-shell mag and reload are the real limiter
 		magSize = 2,
-		reloadTime = 0.6, -- two shells, quick: the small mag is paid for in reload trips, not downtime
+		reloadTime = 0.6, -- sustained: 2 shots per (2 / 2.8 + 0.6)s = 1.5/s, about 155 DPS; paper DPS overstates it
 		spread = 9,
 		pellets = 6,
 	}),

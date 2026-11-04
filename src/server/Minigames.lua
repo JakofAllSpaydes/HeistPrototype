@@ -63,6 +63,9 @@ function Minigames.open(player: Player, name: string, opts: OpenOpts?)
 	if not table.find(Room.PropNames, name) then
 		return
 	end
+	if not PlayerState.isStanding(PlayerState.get(player)) then
+		return -- downed or bled out: no interacting
+	end
 	local old = byPlayer[player]
 	if old then
 		close(old, "cancel", 0)

@@ -80,6 +80,9 @@ function Staging.requestRun(player: Player?)
 	if World.state ~= "Staging" then
 		return
 	end
+	if player and not PlayerState.isStanding(PlayerState.get(player)) then
+		return
+	end
 	World.runRequested = true
 	Log.event("Run", "START RUN pressed by %s", if player then player.Name else "debug")
 end

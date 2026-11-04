@@ -3,6 +3,7 @@
 -- hold on a downed teammate (F, or the touch button) with the ring on the crosshair, world markers over
 -- downed teammates, and the REVIVED BY / REVIVED THE CREW notices.
 local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -279,6 +280,8 @@ local function onDowned(data: any)
 	ClientState.downed = true
 	ClientState.downedPlayers[player.UserId] = true
 	ClientState.setAds(false)
+	-- No interacting while down: every prompt (guns, beacons, props, door) hides on this client.
+	ProximityPromptService.Enabled = false
 	HUD.setMode("downed")
 	local bottom = HUD.get("bottom")
 	if bottom then
@@ -292,6 +295,7 @@ local function onDowned(data: any)
 end
 
 local function clearLocal()
+	ProximityPromptService.Enabled = true
 	if not ClientState.downed then
 		return
 	end
@@ -325,7 +329,8 @@ function DownedUI.init()
 			UI.sound(Theme.Sounds.legendary, 1.3, 0.5)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.25 })
 		elseif name == "BledOut" then
-			-- Spectate takes over; the bar and crawl go away.
+			-- Spectate takes over; the bar and crawl go away. Prompts come back with the character.
+			ProximityPromptService.Enabled = false
 			ClientState.downed = false
 			ClientState.downedPlayers[player.UserId] = nil
 			local bottom = HUD.get("bottom")
