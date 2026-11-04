@@ -177,9 +177,11 @@ in this order; anything that fails is a Config or one-file fix:
    center; if the dial feels off-center on a device, that is the `GuiService:GetGuiInset()` term in `Safe.lua`).
 3. `START RUN`: 5.0s sequence, van drives in, crew steps out, masks, poses, orbit, WAVE 1 banner, control returns
    behind you. Then the arena plays as Round 8.
-4. Debug `Down me`: crawl, low camera, bleed bar, SELF-REVIVE. Local Server 2 players: hold F on the downed player
-   (ring on both screens), bleed out → spectate, REVIVE EVERYBODY.
-5. Debug `Skip to run end` (or die out): RUN OVER stamp, line-up at the van, cash rain, MVP, summary, buttons, 30s auto.
+4. Debug `Down me`: crawl, low camera, prompts gone, bleed bar with GIVE UP / SELF-REVIVE. Local Server 2 players:
+   hold F on the downed player (ring on both screens), bleed out → spectate, REVIVE EVERYBODY (also inside the 5s
+   RUN OVER window: SECOND CHANCE restarts the wave).
+5. Debug `Skip to run end` (or die out): RUN OVER stamp, line-up with dummies, cash rain, MVP flex alone, summary,
+   PLAY AGAIN auto-starts, TO LOBBY waits at the door, 30s auto.
 6. Haptics only fire on devices where `HapticService:IsVibrationSupported` is true.
 
 ## Layout
