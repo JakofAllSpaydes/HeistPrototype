@@ -109,11 +109,19 @@ local function cancelReload(): boolean
 	return true
 end
 
+-- Mags remembered per gun uid, so a stowed gun (downed sidearm) comes back with the ammo it had.
+local savedMags: { [number]: number } = {}
+
 ClientState.Changed:Connect(function(sync: Types.Sync)
 	local h = sync.held
 	if not held or h.uid ~= held.uid then
+		if held then
+			savedMags[held.uid] = mag
+		end
 		held = h
-		mag = h.magSize
+		local saved = savedMags[h.uid]
+		mag = if saved then math.min(saved, h.magSize) else h.magSize
+		savedMags[h.uid] = nil
 		reloading = false
 		reloadToken += 1
 	else
@@ -224,7 +232,8 @@ local burstEndedAt = -math.huge
 
 RunService.Heartbeat:Connect(function()
 	local h = held
-	if not h or ClientState.blocked() or ClientState.downed then
+	-- Downed: the sidearm still fires while crawling (Config.DownedCanShoot); a bled-out spectator never does.
+	if not h or ClientState.blocked() or (ClientState.downed and not Config.DownedCanShoot) then
 		burstLeft = 0
 		return
 	end
@@ -278,7 +287,8 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		firing = true
 	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-		if not ClientState.blocked() then
+		-- No ADS while downed: the sidearm is hip-fire only.
+		if not ClientState.blocked() and not ClientState.downed then
 			ClientState.setAds(true)
 		end
 	elseif input.KeyCode == Enum.KeyCode.R then

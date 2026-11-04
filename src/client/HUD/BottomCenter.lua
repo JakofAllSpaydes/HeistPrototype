@@ -167,6 +167,13 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	local pill, pillLabel = UI.pill(slot, "COMMON", Theme.Colors.grey, Theme.Colors.bg, S(16), S(10))
 	pill.Position = UDim2.fromOffset(slotH + S(2), S(30))
+	-- Armory level beside the rarity; SIDEARM (red) replaces it while downed with the pistol.
+	local levelPill, levelLabel = UI.pill(slot, "LV 0", Theme.Colors.panel2, Theme.Colors.gold, S(16), S(10))
+	levelPill.Position = UDim2.fromOffset(slotH + S(74), S(30))
+	levelPill.Visible = false
+	local sidearmPill, _sidearmLabel = UI.pill(slot, "SIDEARM", Theme.Colors.red, Theme.Colors.text, S(16), S(10))
+	sidearmPill.Position = UDim2.fromOffset(slotH + S(74), S(30))
+	sidearmPill.Visible = false
 	-- Right column: damage per shot over fire rate, the same two numbers the floor tags compare.
 	local dmg = UI.text({
 		Text = "DMG 22",
@@ -347,6 +354,13 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		dmg.Text = "DMG " .. UI.fmtDmg(held.dmg or 0, held.pellets or 1)
 		rate.Text = "RATE " .. UI.fmtRate(held.displayRate or held.fireRate or 0)
 		pillLabel.Text = string.upper(held.rarityName)
+		local level = tonumber(held.level) or 0
+		levelLabel.Text = string.format("LV %d", level)
+		sidearmPill.Visible = held.sidearm == true
+		levelPill.Visible = not sidearmPill.Visible and level > 0
+		if held.wrapColor then
+			UI.recolorIcon(icon, Color3.fromHex(tostring(held.wrapColor)))
+		end
 		if typeof(sync.selfRevives) == "number" and sync.selfRevives ~= selfRevives then
 			selfRevives = sync.selfRevives
 			paintSelf()

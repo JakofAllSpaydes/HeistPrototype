@@ -246,7 +246,10 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	camera.CFrame = CFrame.new(camPos) * rot * shake
 	camera.Focus = CFrame.new(pivot)
 
-	if hum and hum.Health > 0 then
+	if hum and hum.Health > 0 and ClientState.inHub() then
+		-- Hub: the cursor is free, the character turns with its own movement (default Roblox), RMB drags.
+		hum.AutoRotate = true
+	elseif hum and hum.Health > 0 then
 		hum.AutoRotate = false
 		local faceYaw = yaw
 		if free and not ClientState.blocked() then

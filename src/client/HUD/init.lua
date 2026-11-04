@@ -6,7 +6,9 @@ local Workspace = game:GetService("Workspace")
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
-local Signal = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Signal"))
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Signal = require(Shared:WaitForChild("Signal"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local WaveBar = require(script.WaveBar)
 local CallSlot = require(script.CallSlot)
@@ -20,6 +22,7 @@ local Crosshair = require(script.Crosshair)
 local WorldFx = require(script.WorldFx)
 local Toast = require(script.Toast)
 local MobileControls = require(script.MobileControls)
+local HubHUD = require(script.HubHUD)
 
 export type Component = { update: ((any) -> ())?, onJuice: ((string, any) -> ())?, [string]: any }
 
@@ -27,7 +30,7 @@ local HUD = {
 	Rebuilt = Signal.new(),
 	gui = nil :: ScreenGui?,
 	components = {} :: { [string]: Component },
-	mode = "gameplay", -- gameplay | downed | spectate | cinematic | none
+	mode = "gameplay", -- gameplay | hub | meta | downed | spectate | cinematic | none
 }
 
 -- Top-level pieces a mode can hide. Toast and Combo show themselves, so a mode only ever hides them.
@@ -46,20 +49,30 @@ local MANAGED = {
 	"FireButton",
 	"ADSButton",
 	"ReloadButton",
+	"HubHUD",
 }
 local SELF_MANAGED = { Toast = true, Combo = true }
-local COMBAT = {
-	Crosshair = true,
-	Ammo = true,
-	BuyColumn = true,
-	AbilityColumn = true,
-	FireButton = true,
-	ADSButton = true,
-	ReloadButton = true,
-}
+-- Downed: buys and abilities go; with the sidearm (Config.DownedCanShoot) the crosshair, ammo and fire
+-- controls stay so you can keep shooting from the floor.
+local DOWNED_HIDE: { [string]: boolean } = if Config.DownedCanShoot
+	then { BuyColumn = true, AbilityColumn = true, HubHUD = true }
+	else {
+		Crosshair = true,
+		Ammo = true,
+		BuyColumn = true,
+		AbilityColumn = true,
+		FireButton = true,
+		ADSButton = true,
+		ReloadButton = true,
+		HubHUD = true,
+	}
 local MODES: { [string]: { hide: { [string]: boolean }?, only: { [string]: boolean }? } } = {
-	gameplay = { hide = {} },
-	downed = { hide = COMBAT },
+	gameplay = { hide = { HubHUD = true } },
+	-- The hub: match HUD down (buy column, abilities, wave bar, health, ammo, held slot), hub layout up.
+	hub = { only = { HubHUD = true, Toast = true } },
+	-- Customization scene: it draws its own ScreenGui; the HUD holds only toasts.
+	meta = { only = { Toast = true } },
+	downed = { hide = DOWNED_HIDE },
 	spectate = {
 		hide = {
 			Crosshair = true,
@@ -72,11 +85,18 @@ local MODES: { [string]: { hide: { [string]: boolean }?, only: { [string]: boole
 			BottomCenter = true,
 			Currency = true,
 			Combo = true,
+			HubHUD = true,
 		},
 	},
 	cinematic = { only = { WaveBar = true } },
 	none = { only = {} },
 }
+
+-- The mode the HUD rests in when nothing special is on: the hub layout in the hub, the match HUD in a run.
+function HUD.baseMode(): string
+	local sync = ClientState.sync
+	return if sync and sync.waveState == "Hub" then "hub" else "gameplay"
+end
 
 -- Show or hide HUD pieces for a mode (downed, spectating, the run start / end sequences).
 function HUD.setMode(mode: string)
@@ -151,6 +171,7 @@ function HUD.build()
 		worldFx = WorldFx.build(gui, track),
 		toast = Toast.build(gui, track),
 		mobile = MobileControls.build(gui, track),
+		hub = HubHUD.build(gui, track),
 	}
 	if ClientState.sync then
 		HUD.update(ClientState.sync)
@@ -164,6 +185,13 @@ function HUD.update(sync: any)
 		if c.update then
 			c.update(sync)
 		end
+	end
+	-- Hub <-> match: the resting mode follows the sync; sequences and overlays set their own modes on top.
+	local hubNow = sync.waveState == "Hub"
+	if hubNow and HUD.mode == "gameplay" then
+		HUD.setMode("hub")
+	elseif not hubNow and HUD.mode == "hub" then
+		HUD.setMode("gameplay")
 	end
 end
 

@@ -1,10 +1,14 @@
 --!strict
--- Right column: header ABILITIES, tiles Auto Turret (Q), Barricade (E), Stim (Z) with live cooldown sweeps.
+-- Right column: header ABILITIES, three tiles for the equipped class's abilities (Q / E / Z) with live
+-- cooldown sweeps. The tiles rebuild when the class in the sync changes. Only INITIATE's abilities are
+-- live; the rest fire a STUB · PHASE 2 toast from the server.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Classes = require(Shared:WaitForChild("Classes"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -15,6 +19,8 @@ local Tile = require(script.Parent.Tile)
 local AbilityColumn = {}
 
 type CooldownUI = { sweep: Frame, label: TextLabel }
+
+local HOTKEYS = { Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.Z }
 
 function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S
@@ -29,7 +35,7 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = gui,
 	})
 	UI.list(root, Enum.FillDirection.Vertical, S(profile.tilePad), Enum.HorizontalAlignment.Center)
-	UI.text({
+	local header = UI.text({
 		Text = "ABILITIES",
 		Font = Theme.Fonts.display,
 		TextSize = S(16),
@@ -39,61 +45,17 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = root,
 	})
 
-	local tiles = {
-		turret = Tile.build(
-			root,
-			{ name = "AUTO TURRET", hotkey = "Q", order = 1, iconKind = "turret" },
-			profile.tile,
-			profile.hotkeyChips
-		),
-		barricade = Tile.build(
-			root,
-			{ name = "BARRICADE", hotkey = "E", order = 2, iconKind = "wall" },
-			profile.tile,
-			profile.hotkeyChips
-		),
-		stim = Tile.build(
-			root,
-			{ name = "STIM", hotkey = "Z", order = 3, iconKind = "stim" },
-			profile.tile,
-			profile.hotkeyChips
-		),
-	}
-	for _, t in tiles do
-		t.setAffordable(true)
-	end
-
-	-- Cooldown sweep: dark overlay that drains from the top, plus a seconds label.
+	local tiles: { [string]: Tile.Tile } = {}
+	local order: { string } = {} -- ability ids in slot order (Q, E, Z)
 	local cooldowns: { [string]: CooldownUI } = {}
-	for id, t in tiles do
-		local sweep = UI.frame({
-			Name = "Cooldown",
-			BackgroundColor3 = Theme.Colors.black,
-			BackgroundTransparency = 0.45,
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.fromScale(0, 1),
-			Size = UDim2.fromScale(1, 0),
-			Visible = false,
-			ZIndex = 4,
-			Parent = t.button,
-		})
-		UI.corner(sweep, S(10))
-		local label = UI.text({
-			Text = "",
-			Font = Theme.Fonts.display,
-			TextSize = S(20),
-			TextColor3 = Theme.Colors.text,
-			Size = UDim2.fromScale(1, 1),
-			Visible = false,
-			ZIndex = 5,
-			Parent = t.button,
-		})
-		UI.stroke(label, Theme.Colors.black, S(1.5), 0.3)
-		cooldowns[id] = { sweep = sweep, label = label }
-	end
+	local classId = ""
+	local abilities: { [string]: any } = {}
 
 	local function use(id: string)
 		local t = tiles[id]
+		if not t then
+			return
+		end
 		if ClientState.downed then
 			t.shake()
 			return
@@ -101,34 +63,81 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		UI.punch(t.button, 0.9, 0.2)
 		Remotes.UseAbility:FireServer(id)
 	end
-	for id, t in tiles do
-		t.onPress = function()
-			use(id)
+
+	local function rebuild(newClassId: string)
+		classId = newClassId
+		for _, t in tiles do
+			t.button:Destroy()
+		end
+		tiles = {}
+		order = {}
+		cooldowns = {}
+		local class = Classes.ById[classId] or Classes.ById[Classes.Default]
+		header.Text = string.upper(class.name)
+		header.TextColor3 = Color3.fromHex(class.color)
+		for i, a in class.abilities do
+			local t = Tile.build(
+				root,
+				{ name = string.upper(a.name), hotkey = a.hotkey, order = i, iconKind = a.icon },
+				profile.tile,
+				profile.hotkeyChips
+			)
+			t.setAffordable(true)
+			if not a.live then
+				t.setGreyed(true)
+			end
+			tiles[a.id] = t
+			order[i] = a.id
+			-- Cooldown sweep: dark overlay that drains from the top, plus a seconds label.
+			local sweep = UI.frame({
+				Name = "Cooldown",
+				BackgroundColor3 = Theme.Colors.black,
+				BackgroundTransparency = 0.45,
+				AnchorPoint = Vector2.new(0, 1),
+				Position = UDim2.fromScale(0, 1),
+				Size = UDim2.fromScale(1, 0),
+				Visible = false,
+				ZIndex = 4,
+				Parent = t.button,
+			})
+			UI.corner(sweep, S(10))
+			local label = UI.text({
+				Text = "",
+				Font = Theme.Fonts.display,
+				TextSize = S(20),
+				TextColor3 = Theme.Colors.text,
+				Size = UDim2.fromScale(1, 1),
+				Visible = false,
+				ZIndex = 5,
+				Parent = t.button,
+			})
+			UI.stroke(label, Theme.Colors.black, S(1.5), 0.3)
+			cooldowns[a.id] = { sweep = sweep, label = label }
+			t.onPress = function()
+				use(a.id)
+			end
 		end
 	end
+	rebuild(Classes.Default)
 
 	track(UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed then
+		if gameProcessed or ClientState.blocked() then
 			return
 		end
-		local id = if input.KeyCode == Enum.KeyCode.Q
-			then "turret"
-			elseif input.KeyCode == Enum.KeyCode.E then "barricade"
-			elseif input.KeyCode == Enum.KeyCode.Z then "stim"
-			else nil
-		if id then
-			use(id)
+		for slot, key in HOTKEYS do
+			if input.KeyCode == key and order[slot] then
+				use(order[slot])
+			end
 		end
 	end))
 
-	local abilities: { [string]: any } = {}
 	local stimPulse = 0
 	track(RunService.Heartbeat:Connect(function(dt)
 		local now = ClientState.serverNow()
 		for id, t in tiles do
 			local a = abilities[id]
 			local cd = cooldowns[id]
-			if not a then
+			if not a or not cd then
 				continue
 			end
 			local activeUntil = a.activeUntil or 0
@@ -169,9 +178,11 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	local component = {}
 	component.frame = root
-	component.tiles = tiles
 
 	function component.update(sync: any)
+		if typeof(sync.classId) == "string" and sync.classId ~= classId then
+			rebuild(sync.classId)
+		end
 		abilities = sync.abilities or {}
 	end
 
@@ -183,7 +194,10 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				UI.sound(Theme.Sounds.deny, 1, 0.35)
 			end
 		elseif name == "StimStart" then
-			UI.punch(tiles.stim.button, 1.3, 0.4)
+			local t = tiles.stim
+			if t then
+				UI.punch(t.button, 1.3, 0.4)
+			end
 			UI.sound(Theme.Sounds.legendary, 1.5, 0.5)
 		end
 	end

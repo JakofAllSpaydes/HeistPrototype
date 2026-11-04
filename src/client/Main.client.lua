@@ -32,6 +32,8 @@ require(script.Parent:WaitForChild("DownedUI")).init()
 require(script.Parent:WaitForChild("Spectate")).init()
 require(script.Parent:WaitForChild("RunStartUI")).init()
 require(script.Parent:WaitForChild("RunEndUI")).init()
+require(script.Parent:WaitForChild("QueueUI")).init()
+require(script.Parent:WaitForChild("MetaScene")).init()
 require(script.Parent:WaitForChild("DebugPanel")).init()
 
 -- Ctrl toggles the camera lock (mouse free / locked). Hold Left Alt to free it temporarily.
@@ -40,6 +42,9 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
+		if ClientState.inHub() then
+			return -- no hotkeys in the hub; the cursor is free there anyway
+		end
 		ClientState.mouseFree = not ClientState.mouseFree
 		HUD.get("toast").show(if ClientState.mouseFree then "CAMERA UNLOCKED" else "CAMERA LOCKED", nil, 0.7)
 	elseif input.KeyCode == Enum.KeyCode.LeftAlt then

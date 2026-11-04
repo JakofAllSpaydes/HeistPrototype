@@ -117,7 +117,7 @@ local function finish()
 	ClientState.cameraMode = "gameplay"
 	ClientState.requestCameraYaw = 0 -- the line faces north (-Z); the gameplay camera picks up behind
 	ClientState.setBlock("cinematic", false)
-	HUD.setMode("gameplay")
+	HUD.setMode(HUD.baseMode())
 end
 
 local function step(_dt: number)
@@ -226,7 +226,7 @@ function RunStartUI.init()
 	ClientState.Juice:Connect(function(name: string, d: any)
 		if name == "RunStartBegin" then
 			begin(d)
-		elseif name == "StagingEnter" or name == "RunOver" then
+		elseif name == "HubEnter" or name == "RunOver" then
 			finish()
 		end
 	end)

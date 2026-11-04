@@ -241,7 +241,7 @@ function Spectate.exit(keepCamera: boolean?)
 	nameLabel = nil
 	if not keepCamera then
 		ClientState.cameraMode = "gameplay"
-		HUD.setMode("gameplay")
+		HUD.setMode(HUD.baseMode())
 	end
 end
 
@@ -251,7 +251,7 @@ function Spectate.init()
 			Spectate.enter()
 		elseif name == "Revived" then
 			Spectate.exit()
-		elseif name == "StagingEnter" then
+		elseif name == "HubEnter" then
 			Spectate.exit()
 		elseif name == "RunOver" and active then
 			windowEndsAt = os.clock() + (tonumber(data.reviveWindowSec) or 0)

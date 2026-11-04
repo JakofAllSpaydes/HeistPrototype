@@ -35,7 +35,9 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	local dmg = gun:GetAttribute("Dmg") :: number? or 0
 	local w = Weapons.ById[tostring(gun:GetAttribute("WeaponId"))]
 	local pellets = if w then w.pellets else 1
-	local rate = if w then Weapons.effectiveRate(w, ClientState.rateMult()) else 0
+	-- The gun's own Armory level is baked into RateMult; the held gun's upgrade / stim multiplier goes on top.
+	local levelMult = tonumber(gun:GetAttribute("RateMult")) or 1
+	local rate = if w then Weapons.effectiveRate(w, ClientState.rateMult() * levelMult) else 0
 	local sync = ClientState.sync
 	local held = sync and sync.held
 	-- Compare at display precision (the tag's Dmg is rounded, the held one is not) so equal reads as equal.

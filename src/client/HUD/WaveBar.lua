@@ -310,7 +310,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	local component = {}
 
-	-- Staging (the yard): the bar reads STAGING, no stars, no pills. Run over: RUN OVER.
+	-- Hub (the yard): the bar is hidden by the hub HUD; it reads HUB if ever shown. Run over: RUN OVER.
 	local function paintState()
 		local inRun = state == "Intro" or state == "Wave" or state == "Intermission"
 		stars.Visible = inRun
@@ -328,8 +328,8 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		endsAt = sync.intermissionEndsAt
 		waveStartedAt = sync.waveStartedAt or waveStartedAt
 		currentWave = sync.wave
-		if state == "Staging" then
-			wave.Text = "STAGING"
+		if state == "Hub" then
+			wave.Text = "HUB"
 			wave.TextColor3 = Theme.Colors.grey
 			lastShown = -1
 		elseif state == "RunOver" or state == "RunEnd" or state == "Summary" then

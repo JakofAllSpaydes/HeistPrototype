@@ -307,7 +307,7 @@ local function clearLocal()
 	end
 	stopCrawl()
 	if HUD.mode == "downed" then
-		HUD.setMode("gameplay")
+		HUD.setMode(HUD.baseMode())
 	end
 end
 
@@ -377,12 +377,12 @@ function DownedUI.init()
 			HUD.get("callSlot")
 				.toast(string.format("%s REVIVED THE CREW", string.upper(tostring(data.name))), Theme.Colors.gold, 1.8)
 			UI.sound(Theme.Sounds.legendary, 1, 0.6)
-		elseif name == "StagingEnter" then
+		elseif name == "HubEnter" then
 			clearLocal()
 			clearMarks()
 			sendHold(false)
 			if HUD.mode ~= "gameplay" and not ClientState.spectating then
-				HUD.setMode("gameplay")
+				HUD.setMode(HUD.baseMode())
 			end
 		end
 	end)

@@ -239,7 +239,10 @@ local function spin(weapon: any)
 		UI.fmtDmg(weapon.dmg or 0, weapon.pellets or 1),
 		UI.fmtRate(
 			if Weapons.ById[weapon.weaponId]
-				then Weapons.effectiveRate(Weapons.ById[weapon.weaponId], ClientState.rateMult())
+				then Weapons.effectiveRate(
+					Weapons.ById[weapon.weaponId],
+					ClientState.rateMult() * (tonumber(weapon.levelRateMult) or 1)
+				)
 				else (weapon.fireRate or 0) * ClientState.rateMult()
 		)
 	)

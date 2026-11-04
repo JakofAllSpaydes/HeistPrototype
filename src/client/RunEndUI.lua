@@ -126,7 +126,7 @@ local function finish()
 	ClientState.cameraMode = "gameplay"
 	ClientState.requestCameraYaw = 0
 	ClientState.setBlock("cinematic", false)
-	HUD.setMode("gameplay")
+	HUD.setMode(HUD.baseMode())
 end
 
 local function showMvp(d: any)
@@ -261,13 +261,21 @@ local function showSummary(d: any)
 		ZIndex = 11,
 		Parent = panel,
 	})
+	-- Your own row: NEW PERSONAL BEST callout under the headline when the run beat your top wave.
+	local myRow: any = nil
+	for _, row in rows do
+		if row.userId == player.UserId then
+			myRow = row
+		end
+	end
 	UI.text({
-		Text = "DISPLAY ONLY · NO PERSISTENCE YET",
-		TextSize = S(10),
-		TextColor3 = Theme.Colors.grey,
+		Text = if myRow and myRow.newBest then "★ NEW PERSONAL BEST" else "PAID TO YOUR PROFILE",
+		Font = if myRow and myRow.newBest then Theme.Fonts.display else Theme.Fonts.body,
+		TextSize = if myRow and myRow.newBest then S(14) else S(10),
+		TextColor3 = if myRow and myRow.newBest then Theme.Colors.cash else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(S(26), S(80)),
-		Size = UDim2.fromOffset(S(300), S(12)),
+		Size = UDim2.fromOffset(S(300), S(14)),
 		ZIndex = 11,
 		Parent = panel,
 	})
@@ -340,6 +348,9 @@ local function showSummary(d: any)
 		local xx = 0
 		local nameCell =
 			cell(rowFrame, string.upper(tostring(row.name)), cols[1], xx + S(8), color, S(14), Theme.Fonts.display)
+		if row.newBest then
+			nameCell.Text = nameCell.Text .. "  ★ NEW BEST"
+		end
 		if isMvp then
 			local tag, tagLabel = UI.pill(rowFrame, "MVP", Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
 			tag.AnchorPoint = Vector2.new(1, 0.5)
@@ -376,7 +387,7 @@ local function showSummary(d: any)
 		Remotes.SummaryChoice:FireServer(choice)
 		UI.punch(button, 0.92, 0.2)
 		UI.sound(Theme.Sounds.toast, 1.3, 0.5)
-		button.Text = "LOADING THE YARD…"
+		button.Text = if choice == "again" then "RE-FORMING THE PARTY…" else "BACK TO THE HUB…"
 	end
 	local again = UI.button({
 		Text = "PLAY AGAIN",
@@ -413,7 +424,7 @@ local function showSummary(d: any)
 	end)
 	lobbyButton = lobby
 	UI.text({
-		Text = "BOTH GO BACK TO THE YARD IN THE PROTOTYPE",
+		Text = "PLAY AGAIN RE-FORMS THE PARTY IN THE QUEUE ZONE · TO LOBBY RETURNS TO THE HUB",
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.grey,
 		Position = UDim2.fromOffset(0, H - S(16)),
@@ -508,7 +519,7 @@ local function step(_dt: number)
 		local e = os.clock() - summaryShownAt
 		local k = easeOut(e / math.max(d.countUpSec or 1, 0.05))
 		if goldLabel then
-			-- Your own gold: your banked share plus side job gold (falls back to the crew figure).
+			-- Your own GOLD EARNED: the run payout plus your side job gold (falls back to the base figure).
 			local mine = d.gold or 0
 			for _, row in d.players do
 				if row.userId == player.UserId and typeof(row.gold) == "number" then
@@ -559,7 +570,7 @@ function RunEndUI.init()
 	ClientState.Juice:Connect(function(name: string, d: any)
 		if name == "RunEndBegin" then
 			begin(d)
-		elseif name == "StagingEnter" then
+		elseif name == "HubEnter" then
 			finish()
 		end
 	end)

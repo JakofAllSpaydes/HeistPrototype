@@ -53,20 +53,29 @@ ClientState.mouseFree = false
 ClientState.mouseFreeHold = false
 
 function ClientState.isMouseFree(): boolean
-	return ClientState.mouseFree or ClientState.mouseFreeHold or ClientState.blocked()
+	return ClientState.mouseFree or ClientState.mouseFreeHold or ClientState.blocked() or ClientState.inHub()
 end
 
 function ClientState.serverNow(): number
 	return Workspace:GetServerTimeNow()
 end
 
--- The player's fire-rate multiplier (upgrades, stim): held fire rate over the held gun's base rate.
--- Applied to other guns' base rates so floor tags and the reel compare like with like.
+-- The player's fire-rate multiplier (upgrades, stim): held fire rate over the held gun's base rate at its
+-- Armory level. Applied to other guns' leveled base rates so floor tags and the reel compare like with like.
 function ClientState.rateMult(): number
 	local sync = ClientState.sync
 	local held = sync and sync.held
 	local w = held and Weapons.ById[held.weaponId]
-	return if held and w and w.fireRate > 0 then held.fireRate / w.fireRate else 1
+	if not (held and w and w.fireRate > 0) then
+		return 1
+	end
+	return held.fireRate / (w.fireRate * (tonumber(held.levelRateMult) or 1))
+end
+
+-- True while this player is in the hub (not in a run, not in a party that is in the arena).
+function ClientState.inHub(): boolean
+	local sync = ClientState.sync
+	return sync == nil or sync.waveState == "Hub"
 end
 
 -- World point under the aim: the screen center when locked, the cursor when unlocked. Shared by the

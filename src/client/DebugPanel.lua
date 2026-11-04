@@ -175,12 +175,31 @@ local function build()
 	end, Theme.Colors.malus)
 
 	local r8 = row(panel, 9, rh)
-	btn(r8, "Start run", 0.5, function()
+	btn(r8, "Force queue start", 0.5, function()
 		send("StartRun")
 	end, Theme.Colors.cash)
 	btn(r8, "Skip to run end", 0.5, function()
 		send("EndRun")
 	end, Theme.Colors.red)
+
+	UI.text({
+		Text = "PROFILE",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.new(1, 0, 0, S(14)),
+		LayoutOrder = 15,
+		Parent = panel,
+	})
+	local r12 = row(panel, 16, rh)
+	btn(r12, "+1,000 Gold", 1 / 3, function()
+		send("AddGold", 1000)
+	end, Theme.Colors.gold)
+	btn(r12, "Unlock all", 1 / 3, function()
+		send("UnlockAll")
+	end, Theme.Colors.gold)
+	btn(r12, "Reset profile", 1 / 3, function()
+		send("ResetProfile")
+	end, Theme.Colors.malus)
 
 	local r8b = row(panel, 10, rh)
 	btn(r8b, "Down me", 1 / 3, function()
