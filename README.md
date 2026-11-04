@@ -7,9 +7,8 @@ as test props, the downed / revive loop, a run start sequence and a run end sequ
 and a summary.
 
 State as of **3 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, plus the
-brief 2 slices (Round 9 below). Everything on `main` builds clean and is what Studio sees through Rojo. Brief 2 was
-built without a Studio playtest in the loop; the first session in Studio is the verification pass (see
-"Brief 2 verify list").
+brief 2 slices (Round 9) and five feedback rounds on them (9b–10c below). Everything on `main` builds clean and is
+what Studio sees through Rojo. The "Brief 2 verify list" is the walk-through for a fresh Studio session.
 
 ## Run it
 
@@ -39,7 +38,7 @@ arena door says `START RUN`. Downed / revive lines need Studio's Local Server wi
 | F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
 | Esc / X | Cancel an open minigame (counts as `cancel` in the log). |
 | ◀ ▶ / A D | Spectating (bled out): cycle living teammates. REVIVE EVERYBODY button bottom-center. |
-| E (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Kind is rolled per job from `SideJobKindWeights` (50/50 by default). |
+| E (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Minigame jobs: E opens the game at the beacon. Kind is rolled per job from `SideJobKindWeights` (eight kinds, equal odds by default). |
 | Esc / X / 2 | Close the upgrade overlay. |
 | V | Vote to skip the intermission (or click the VOTES pill). `SkipVoteFraction` / `SkipMinIntermissionSec` in Config. |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
@@ -58,7 +57,9 @@ WAVE N CLEAR and the 3-2-1 countdown; "N LEFT" sits under the heat stars. The in
 (V / VOTES pill, `SkipVoteFraction`), and AUTO SKIP rolls waves into each other `AutoSkipWaveSec` after each one has
 fully spawned. Kill chains show a combo counter from x2 with words at tier counts (`ComboTiers`).
 
-**Weapons.** 8 guns with five rarities. Buying a roll plays a reel in the top-center slot, then the gun drops in from
+**Weapons.** 15 guns across six archetypes (pistol, SMG, rifle, shotgun, sniper, LMG) with five rarities. The SCAR-H is a
+3-round burst (`burst` / `burstDelay`; RATE and DPS show the delivered rate) and snipers carry built-in pierce by rarity
+(`pierceByRarity`), neither spelled out in the name. Buying a roll plays a reel in the top-center slot, then the gun drops in from
 the sky at your feet with a beam and a floor tag. Floor guns live 30s (`GroundWeaponLifetime`), countdown above the
 tag, beam fades over the last 10s. Tags show name, DMG per shot ("33x8" for pellets) and RATE, each with a ▲ / ▼
 against your held gun. Swapping leaves your old gun where the new one was with a fresh timer. Rarity odds are
@@ -80,12 +81,15 @@ a malus line. A tracker grid inside the overlay shows what you own.
 fire-rate and reload-speed buff with FOV push). Structures are enemy targets, have HP bars and can be destroyed. Cooldown sweeps on
 the ability tiles. Airstrike was removed.
 
-**Crew call / side job.** A call from MARLOW on wave 1 and every 3 waves, kind rolled 50/50 (`SideJobKindWeights`):
-"VAULT PING" (hack the terminal, hold E) or "HOLD THE FLOOR" (stand in the circle for `SideJobCaptureSec`; progress
-pauses when nobody is inside, a green disc fills on the floor). The dialogue card slides in from the right into the
-top-right stack with typewriter text, collapses in place to a timer pill (with a progress bar for capture), and the
-result card expands from that pill. A world marker over the beacon shows name, hint, timer and distance; past
-`MarkerCompactDistance` it shrinks to a badge. Done within 75s: $600, heat up and a crate drop. Fail: heat down.
+**Crew call / side job.** A call from MARLOW on wave 1 and every `SideJobEveryWaves` (2) waves, kind rolled from
+`SideJobKindWeights` (eight kinds, equal odds): "VAULT PING" (hack the terminal, hold E), "HOLD THE FLOOR" (stand in
+the circle for `SideJobCaptureSec`; progress pauses when nobody is inside, a green disc fills on the floor), or one of
+the six minigames (the beacon carries an OPEN prompt; a validated done finishes the job, fails can retry until the
+timer). The dialogue card slides in from the right into the top-right stack with typewriter text, collapses in place to
+a timer pill (with a progress bar for capture), and the result card expands from that pill. A world marker over the
+beacon shows name, hint, timer and distance; past `MarkerCompactDistance` it shrinks to a badge. Done within 75s: $600,
+`SideJobGold` gold per player, heat up and a crate drop. Fail: heat down. A run ending with a job open clears it on
+every client.
 
 **HUD.** Built in code from `src/client/UI/Theme.lua`, scaled manually from a 760px basis. Wave bar with heat stars,
 N LEFT, AUTO SKIP and VOTES pills (top-center), transient center toasts for wave/heat/crate/vote events, top-right
@@ -106,44 +110,50 @@ In the yard nothing spawns, no crew call, no crate; START RUN wipes yard purchas
 `StartingCash`, so the arena plays exactly as Round 8 from WAVE 1. The door stays open; walking back out mid-run is
 harmless. After the summary everyone gets a fresh character at the yard spawn. Late joiners mid-run land at the arena spawn.
 
-**Minigames (test props, not wired into jobs yet).** One client module per game under `src/client/Minigames/`, sharing
-`Frame.lua` (centered panel `MinigamePanelPct` of the shorter screen edge wide, crew-call frame style, title, hint,
-elapsed timer, X / Esc cancel, damage shake, downed = fail, haptics on hits and locks). The server (`Minigames.lua`)
-owns the session: the prop's prompt opens it, the client sends done / fail / cancel with its miss count, anything
-faster than `MinigameMinSec[name]` is logged as a fail, and every close prints
+**Minigames.** Six games, played from the yard props for testing and from side job beacons in the arena. One client
+module per game under `src/client/Minigames/`, sharing `Frame.lua` (centered panel `MinigamePanelPct` of the shorter
+screen edge wide, crew-call frame style, title, hint, elapsed timer, X / Esc cancel, damage shake, downed = fail,
+haptics on hits and locks, closes as a cancel past `MinigameCloseDistance` from the prop). On DONE or FAILED the gun
+and camera come back that frame and the panel slides off over `MinigameExitSec`. The server (`Minigames.lua`) owns
+the session: the prompt opens it, the client sends done / fail / cancel with its miss count, anything faster than
+`MinigameMinSec[name]` is logged as a fail, and every close prints
 `minigame <name> tier <n> done in <sec>s, <fails> fails` (or `… fail|cancel <sec>s <misses> misses`). The debug panel's
 `Stats` button prints per-game averages. Tier (1–3, `MinigameTier`) is session-wide from the pad or the debug panel:
-Lockpick (tap: zone width), Hotwire (drag: wires), Keypad (tap: digits), Arm charges (tap: caps), Safe dial (drag:
-numbers), Frequency jam (drag: locks and slider range). Nothing happens on success beyond the green DONE.
+Lockpick (tap: zone width and points needed), Hotwire (drag: wires), Keypad (tap: digits; typing early hides the
+code), Arm charges (tap: caps), Safe dial (drag: numbers), Frequency jam (drag: locks and slider range).
 
 **Downed, revive, game over.** 0 HP → `Downed.down`: crawl speed and animation (`DownedAnimationId`), no jump, no
 fire / abilities / buys / swaps, enemies drop you from targeting, the health bar becomes a red bleed bar from
-`BleedOutSec` with SELF-REVIVE (free, counter) on its right, a red-cross marker with name and seconds over you for
-teammates. A standing teammate within `ReviveRadius` holds F for `ReviveHoldSec` (ring on their crosshair and on your
+`BleedOutSec` (15s) with GIVE UP (bleed out now) and SELF-REVIVE (free, counter) above it, a red-cross marker with name
+and seconds over you for teammates. A standing teammate within `ReviveRadius` holds F for `ReviveHoldSec` (ring on their crosshair and on your
 bleed bar, releasing resets) → you stand at `ReviveHPPct` with `ReviveInvulnSec` of invulnerability and a
 `REVIVED BY` toast for both. Bleed-out removes the character and opens spectate (camera orbits living teammates, name
 and HP top-center, REVIVE EVERYBODY free with a counter: everyone downed or bled out stands up where they fell,
 `<NAME> REVIVED THE CREW` center toast). **Run over** when nobody is standing and nobody is still bleeding, so a solo
-player bleeds (and can self-revive) before game over, and REVIVE EVERYBODY has a window to matter: enemies freeze and
-fade, the lens pulls in and the world desaturates for `RunOverSlowSec` under a `RUN OVER · WAVE N` stamp, then the
-run end. Characters are loaded by hand (`Players.CharacterAutoLoads = false`).
+player bleeds (and can self-revive) before game over: enemies freeze and fade, the lens pulls in and the world
+desaturates under a `RUN OVER · WAVE N` stamp for `RunOverSlowSec + RunOverHoldSec` (5s). Inside that window REVIVE
+EVERYBODY still saves the run: the crew stands up, enemies clear and the same wave restarts (SECOND CHANCE); after it
+the press is ignored and the run end plays. Characters are loaded by hand (`Players.CharacterAutoLoads = false`).
 
-**Run start (`IntroSec` 5.0, `RunStartBeats`).** The crew vanishes into the van, the van drives from the yard through
-the door and brakes beside the arena spawn (dust ring, shake), the crew steps out in a line in join order facing the
-arena, heads recolor to `MaskColors` by line position with a hands-to-face stand-in animation, each player plays a random
-pose from `Poses` (kept for the run end, `PoseStagger` apart), the camera pans the line at chest height, pushes in, then
-orbits 180° to behind the local player and hands over to the gameplay camera. Input locked, HUD down to the wave bar,
-not skippable. The crate drops as control returns.
+**Run start (`IntroSec` 5.0, `RunStartBeats`).** The crew (players plus dummy crew up to `SquadSize`, 4.5 studs apart)
+vanishes into the van; a chase cam follows the van from the yard through the door until it brakes beside the arena spawn
+(dust ring, shake); the crew steps out in a line in join order facing the arena, heads recolor to `MaskColors` by line
+position with a hands-to-face stand-in animation, each player plays a random pose from `Poses` (kept for the run end,
+`PoseStagger` apart) while one slow pan runs from the crew member farthest from you to you and pushes in; then the
+camera orbits 180° to behind you and hands over to the gameplay camera. Input locked, HUD down to the wave bar, not
+skippable. The dummies vanish and the van drives off and is removed (`VanExitSec`) as control returns; the crate drops.
 
-**Run end (`RunEndBeats`).** Arena cleared, everyone (spectators too) gets a fresh character in the line at the van,
-anchored, mask on, cash bag in hand, `KILLS · $CASH` tag over the head. Poses replay, bills rain (`CashRainPerBanked`
-× Total Banked, capped at `CashRainMax`, over `CashRainSec`), then a cut to a tight 3/4 orbit (`MvpOrbitSec`) on the
-MVP (kills × `MvpKillWeight` + cash collected × `MvpCashWeight` + revives × `MvpReviveWeight`; ties to the earlier
-joiner; solo still gets the beat) with a gold MVP stamp, name, the winning stat line, rays, shake and a bigger haptic.
-The summary panel slides up over a dim: TOTAL BANKED count-up (`SummaryCountUpSec`), WAVE N, one row per player
-(name, pose, kills, cash collected, revives, downs, self-revives, MVP tag), `GOLD +N` (`GoldPerBanked`, display only),
-PLAY AGAIN and TO LOBBY with a `SummaryAutoLobbySec` countdown; both return the crew to the yard. Total Banked is the
-cash earned during the run (kills, jobs), not the balance.
+**Run end (`RunEndBeats` 0.6 / 1.4 / 4.0 / 7.0).** Arena cleared, everyone (spectators too) gets a fresh character in
+the line, anchored, mask on, cash bag in hand, `KILLS · $CASH` tag over the head; dummy crew fill the line to
+`SquadSize` with plausible rows under the best real player. One slow pan along the whole team with the poses and the
+bill rain (`CashRainPerBanked` × Total Banked, capped at `CashRainMax`, over `CashRainSec`) inside it, then a cut to a
+3/4 orbit (`MvpOrbitSec`) on the MVP (kills × `MvpKillWeight` + cash collected × `MvpCashWeight` + revives ×
+`MvpReviveWeight`; ties to the earlier joiner; solo still gets the beat) with the rest of the crew hidden, the MVP's
+`MvpAnimationId` flex, a gold MVP stamp, name, the winning stat line, rays, shake and a bigger haptic. The summary
+panel slides up over a dim: GOLD EARNED count-up (your banked share × `GoldPerBanked` plus side job gold, display
+only), WAVE N, one row per player (name, kills, jobs, cash collected, downs, revives, MVP tag), PLAY AGAIN and
+TO LOBBY with a `SummaryAutoLobbySec` countdown. TO LOBBY returns the crew to the yard; PLAY AGAIN does the same and
+starts the next run by itself.
 
 ## Verifying a change
 
@@ -179,7 +189,8 @@ See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/serv
 
 Server modules: World, Room, Stats, PlayerState, Enemy, Spawner, Combat, Economy, UpgradeShop, WeaponRoll, BigCrate,
 CrewCall, Abilities, SkipVote, Staging (yard, door, tier pad, resets), Minigames (sessions, log, stats), Downed
-(down / revive / bleed-out / game over), RunStart, RunEnd, Debug, Log; `GameLoop.server.lua` is the entry. All cash, HP,
+(down / revive / bleed-out / game over), RunStart, RunEnd, Squad (dummy crew for the sequences), Debug, Log;
+`GameLoop.server.lua` is the entry. All cash, HP,
 spawns, rolls, loot, minigame results and revives are server-authoritative; every remote is created in
 `src/shared/Remotes.lua`.
 
@@ -246,13 +257,16 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   follows the van through the door; the keypad takes input the moment you type (hides the code early); the crew line
   stands 4.5 studs apart; both floors sit at `FloorTop` 0.5.
 
+- **Round 10c (3 Nov, feedback)** — pierce and burst are no longer spelled out in weapon names; a finished minigame
+  hands the gun and camera back the same frame and slides the panel off over `MinigameExitSec`; side jobs every 2 waves.
+
 ## Open design notes (not built)
 
 - **Brief 2 assumptions to confirm.** A downed player keeps the run alive (self-revive is free), so "all players down"
   is not game over until the last bleed runs out; flip that in `Downed.checkRunOver` if the stamp should land on the
-  last knockdown. Robux Self-Revive / Revive Everybody, gold persistence, pose shop and the hub are out of scope; both
-  summary buttons do the same thing. Minigames are not wired into side jobs. `RunOverTimeScale` only drives the client
-  slow-mo read (lens + desaturation); enemies are frozen and nobody is standing at that point.
+  last knockdown. Robux Self-Revive / Revive Everybody, gold persistence, pose shop and the hub are out of scope; gold
+  is counted per run and shown, never saved. `RunOverTimeScale` only drives the client slow-mo read (lens +
+  desaturation); enemies are frozen and nobody is standing at that point.
 
 - **Dropped weapon handling.** Floor drops are hard to pick up mid-wave and can land behind a moving player.
   Discussed a stash slot (previous gun kept in a second HUD slot with the 30s decay, instant swap key, rolled guns
