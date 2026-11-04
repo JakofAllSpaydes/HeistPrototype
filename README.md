@@ -4,11 +4,12 @@ Playable Roblox prototype of the Grand Heist Survival core loop: one room, one e
 infinite waves, cash, the weapon reel, ground loot, the big crate, the upgrade overlay, the crew call
 (side job), three abilities and a heat star meter. Brief 2 adds the staging yard, six objective minigames
 as test props, the downed / revive loop, a run start sequence and a run end sequence with an MVP moment
-and a summary.
+and a summary. Brief 3 turns the yard into the hub: a DataStore profile with Gold, a queue zone with Create Match
+and a party-scoped run, a real Gold payout, the customization scene (Weapons / Classes / Avatar) and a downed sidearm.
 
-State as of **3 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, plus the
-brief 2 slices (Round 9) and five feedback rounds on them (9b–10c below). Everything on `main` builds clean and is
-what Studio sees through Rojo. The "Brief 2 verify list" is the walk-through for a fresh Studio session.
+State as of **3 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
+slices (Round 9) and six feedback rounds on them (9b–10d below), and the brief 3 build (Round 11). Everything on `main`
+builds clean and is what Studio sees through Rojo. The "Brief 3 verify list" is the walk-through for a fresh Studio session.
 
 ## Run it
 
@@ -20,9 +21,12 @@ Everything the designer tunes lives in `src/shared/Config.lua`. Change a number,
 The map is a Rojo-synced model (`src/map/Room.model.json`, regenerate with `lune run tools/genmap.luau`; `lune` is in
 `aftman.toml`, and the generator loads Config through `luau.load` with Vector2 / Vector3 stubs).
 
-You spawn in the **staging yard** south of the arena: no enemies, wave bar reads `STAGING`, cash is `StagingCash` so
-the buy tiles can be tested. Six minigame props and a tier pad stand along the west wall; the lit floor marker at the
-arena door says `START RUN`. Downed / revive lines need Studio's Local Server with 2 players; everything else works solo.
+You spawn in the **hub** (the yard south of the arena) with the hub HUD, 10,000 Gold on a fresh profile, the M1911 as
+starter, INITIATE equipped and the plain mask. Profiles need `Enable Studio Access to API Services` on the place
+(Game Settings → Security); without it the server warns once and keeps an in-memory profile for the session. Walk onto
+the blue queue pad in front of the arena door (or press PLAY) to create a match. The three customization stations stand
+along the west wall, the six minigame props and the tier pad along the east wall. Party and downed / revive lines need
+Studio's Local Server with 2–4 players; everything else works solo.
 
 ## Controls
 
@@ -33,8 +37,10 @@ arena door says `START RUN`. Downed / revive lines need Studio's Local Server wi
 | R | Reload. Tube-fed guns (`shellReload` in Weapons, currently the SPAS-12) load one shell per `reloadTime`; firing or R again stops at the current count. |
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 / 2 | Buy weapon roll / buy upgrade pick (also clickable tiles, left column). |
-| Q / E / Z | Turret / barricade / stim. |
-| F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the yard: `START RUN` on the door marker, `OPEN` on a minigame prop, `TIER n` on the pad. |
+| Q / E / Z | The equipped class's three abilities (INITIATE: barricade / turret / stim; the other classes' tiles are Phase 2 stubs that toast). |
+| F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
+| Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
+| PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
 | F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
 | Esc / X | Cancel an open minigame (counts as `cancel` in the log). |
 | ◀ ▶ / A D | Spectating (bled out): cycle living teammates. REVIVE EVERYBODY button bottom-center. |
@@ -42,10 +48,12 @@ arena door says `START RUN`. Downed / revive lines need Studio's Local Server wi
 | Esc / X / 2 | Close the upgrade overlay. |
 | V | Vote to skip the intermission (or click the VOTES pill). `SkipVoteFraction` / `SkipMinIntermissionSec` in Config. |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
-| Ctrl | Toggle the cursor lock so you can click HUD tiles. While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. |
-| Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, start run, skip to run end, down me / down all / revive all, open any minigame, set tier, minigame stats. Mobile: the `DBG` chip top-left. |
+| Ctrl | In a run: toggle the cursor lock so you can click HUD tiles. While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and there are no hotkeys. |
+| Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, minigame stats, +1,000 Gold, unlock all, reset profile. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
+Hub HUD on mobile landscape: dock tiles 76×68, PLAY 44px, SHOP and INVITE as icon tiles, queue card at 80%; the
+customization panel takes the right 62% with 64px tiles and a 60px dock.
 Every minigame is tap or drag only (no double-tap, long-press or keyboard); the revive hold and spectate arrows are buttons.
 
 ## What is in the build
@@ -103,12 +111,91 @@ hidden locally). RMB (mobile: ADS toggle) aims: narrower FOV, camera pulls in, h
 unlocks the cursor: the camera holds, the character turns to face the cursor, the crosshair rides it and shots go there.
 Downed drops the pivot to `DownedCameraHeight`; spectate and the two sequences take the camera over (`ClientState.cameraMode`).
 
-**Staging yard and the run loop (brief 2).** The map is the arena plus a 120×80 yard on its south wall (`YardWidth`,
-`YardDepth`, `DoorWidth`, `PropSpacing`; regenerate the map after changing them). `GameLoop` runs
-`Staging → START RUN → Intro (run start sequence) → Wave / Intermission … → RunOver → RunEnd → Summary → Staging`.
-In the yard nothing spawns, no crew call, no crate; START RUN wipes yard purchases and starts a fresh run with
-`StartingCash`, so the arena plays exactly as Round 8 from WAVE 1. The door stays open; walking back out mid-run is
-harmless. After the summary everyone gets a fresh character at the yard spawn. Late joiners mid-run land at the arena spawn.
+**Hub and the run loop (brief 3).** The map is the arena plus a 120×80 yard on its south wall (`YardWidth`,
+`YardDepth`, `DoorWidth`, `QueueZoneSize`, `StationSpacing`, `PropSpacing`; regenerate the map after changing them).
+The yard is the hub: spawn at the center facing the arena door, a planning table with a gold edge in the middle (the
+van parks beside it and only appears in the start animation), one queue zone (`QueueZoneCount` zones; a 16×16 blue pad
+with a gate frame and a billboard) in front of the door, three stations along the west wall (gun rack `WEAPONS`,
+podium `CLASSES`, mask wall `AVATAR`; `F` opens the customization scene on that tab), the minigame props and the tier
+pad along the east wall. `GameLoop` runs `Hub → Queue start → Intro (run start) → Wave / Intermission … → RunOver →
+RunEnd → Summary → Hub`. In the hub nothing spawns, no crew call, no crate, no cash; the hub HUD hides the buy
+column, abilities, wave bar, health, ammo and held slot (`HUD.setMode("hub")`). `MatchMode = "local"`: the party plays
+in this server's arena. The party, not the server, is the run's player set: run-scoped events (`World.fireRun`) and the
+line-ups go to members only, non-members stay in the hub with the hub HUD, and late joiners always land in the hub.
+
+**Hub HUD.** PLAY top-center (pathfinds you to the nearest zone), SHOP tile left-center (amber, `SHOP · PHASE 4`
+placeholder), Gold row bottom-left with `+` (placeholder) and INVITE FRIENDS (does nothing), the dock bottom-center
+(WEAPONS · CLASSES · AVATAR, 108×96, gold frames), BOOSTS bottom-right (one stub `+50% GOLD` chip, two dashed), the
+compact queue card under PLAY while in a party, and a `TOP WAVE N ★` billboard with the class icon above every
+character in the hub. Top-left stays empty for server chat.
+
+**Queue zone and Create Match (`Queue.lua` / `QueueUI.lua`, GDD_7 Hub → Queue Zones minus the teleport).** Walk into an
+empty zone → the Create Match card (party size 1–`MaxPartySize`, map dropdown with thumbnail, difficulty dropdown,
+info panel with your top wave on that map / difficulty, `DiffGoldMult` and modifiers, CREATE, X cancels and steps you
+out). CREATE locks the settings and makes you the owner; the billboard shows map · difficulty, one slot per party size
+and the countdown; members see the same card compact under PLAY. Others join by walking in (`<NAME> JOINED THE PARTY
+(2/4)` on the billboard and member HUDs), leave by walking out; a full party starts at once, a party of 1 starts on
+CREATE, otherwise `QueueCountdownSec` (15) from creation; the owner leaving passes ownership to the next member; an
+empty zone resets. Start → every member goes through the run start into the arena; the zone reads `MATCH IN
+PROGRESS` and refuses entry until the run ends (local-mode rule, noted in code). PLAY AGAIN on the summary re-forms the
+same party on the pad with the same settings and a fresh countdown (a full party starts again by itself); TO LOBBY
+(or the 30s auto) returns the party to the hub spawn and reopens the zone. Debug `Force queue start` starts your
+open party now, or a party of just you.
+
+**Profiles (`Profiles.lua`, DataStore `GHS_Profiles_v1`).** Loaded on join before the character spawns; session cache
+per player; `UpdateAsync` with 3 tries and 1 / 2 / 4s backoff; written on every purchase / equip (debounced
+`ProfileSaveDebounceSec`), on the run payout, on leave and every `ProfileAutosaveSec`; a failed payout write stays in
+`pendingPayout` and retries in the hub; an advisory session lock key per player. Without API access the module falls
+back to an in-memory profile and warns once. Shape: `gold`, `weapons[id] = { level, wrap }` (presence = owned),
+`starterWeaponId`, `classes { owned, equipped }`, `abilities[id] = level`, `masks { owned, equipped }`, `wraps.owned`,
+`topWave["TheBank:Normal"]`, `stats { kills, matchesPlayed, goldEarned }`, `pendingPayout`, `version`. A fresh profile
+has `StartingGold` (10,000), the M1911 at level 0 as starter, INITIATE and the plain mask. `Prices.lua` is the only
+price file (`weaponUnlock`, `weaponUpgrade`, `class`, `ability`, `mask`, `wrap`, all 100). The whole profile rides in
+`StateSync.profile` so every screen reads from one place. Hat, hair and face accessories are removed on join; the
+equipped mask (head recolor plus a visor or bandana Part welded to the head) shows in the hub and the run.
+
+**Payout (GDD_7).** At the summary each party member earns `GoldEarned = (Σ over cleared waves of (GoldPerWaveBase +
+GoldPerWaveAdd × (wave − 1)) + GoldPerObjective × side jobs) × DiffGoldMult` plus their `SideJobGold` per job, paid once
+into the profile (it accumulates across REVIVE EVERYBODY saves; players who left earn nothing). `topWave` updates when
+the run beat it with a `★ NEW PERSONAL BEST` callout on the summary; lifetime kills, matches and gold accumulate. The
+summary's GOLD EARNED headline is this number, and the hub Gold row shows the new balance on return.
+
+**Customization scene (`MetaScene.lua`, `src/client/Meta/`).** Opened from a dock tile or a station prompt on that
+tab. The camera tweens (`MetaCameraTweenSec`) to a fixed hub shot `MetaCameraDistance` from the character, who faces
+the camera on the left third playing the equipped class's idle (`ClassIdleAnimationId`); the hub HUD hides; the panel
+takes the right two thirds; Gold stays top-right with `+`, SHOP left-center; the dock bottom-left holds LEAVE (red X)
+and the three tabs. Selections preview live on the character (wrap color on the gun's grip, mask, class idle); nothing
+is saved until a purchase or equip. Toasts bottom-center of the panel (`<name> unlocked!`, `Not enough Gold!`,
+`<name> equipped as Starter!`, `<name> equipped!`) with celebratory / error / click sounds. All actions go through one
+RemoteFunction (`Meta`) that validates against the profile, charges Gold and marks the profile dirty.
+
+- **Weapons tab.** All 15 guns: OWNED row then UNOWNED grid, 5 per row; tile = silhouette, name, `LV n` on owned,
+  `◆ 100` / `CRATE` / `EVENT` on unowned (`saleType` in `Weapons.lua`; P90 and Barrett M82 are Crate, RPK is Event),
+  `STARTER` tag on the equipped one, a blue frame on the selection. Detail card: name, archetype, `LV n` or `LOCKED`,
+  DMG · RATE · MAG · RELOAD at the current level with `current > next` in green when owned; UNLOCK · ◆ 100 (Direct),
+  VIEW CRATE (placeholder) or EVENT ONLY (disabled); owned: UPGRADE · ◆ 100, EQUIP STARTER / EQUIPPED, CUSTOMIZE.
+  Level math lives in `Weapons.atLevel` and `Stats`: damage × (1 + `UpgDmgPct` × level), mag × (1 + `UpgMagPct` ×
+  level), reload ÷ (1 + `UpgReloadPct` × level), fire rate × (1 + `UpgFireRatePct` × level), applied before rarity
+  and in-run upgrades everywhere the gun appears (starter, rolls, crate deals, floor tags via the gun's `Level` /
+  `RateMult` attributes). Upgrade cost = `upgBaseCost` × `RarityUpgCostMult` ^ level. The starter spawns at Common at
+  its level; the in-run roll pool is the owned set and the crate pool is the union of the party's owned sets (each gun
+  at the highest owner level). CUSTOMIZE pushes the camera in on the gun (`MetaWrapZoomDistance`), hides the chrome and
+  shows one category (WRAPS): six solid-color wraps (`Wraps.lua`, `◆ 100` or OWNED), previewed live, APPLY equips per
+  weapon id, REMOVE clears it. A wrap is a Color3 on the gun's grip part (`HeldGunWrap`) in the hub and in-run.
+- **Classes tab.** `Classes.lua` lists INITIATE (Barricade Q, Turret E, Stim Z: the prototype abilities), DOC (Stim
+  Shot, Med Bag, Healing Turret), SHARPSHOOTER (Claymore, Dead Eye, Flashbang) and TORCH (Molotov, Flame Turret, Oil
+  Drum) with the GDD copy, in-match `$` price and upgradeable variables. Carousel of the four icons with `EQUIPPED` /
+  `◆ 100` / `UNLOCKED`; the preview plays the class idle; EQUIP / UNLOCK under it. One row per ability: icon with the
+  `$` price, name and hotkey, description, stats as `current > next` and UPGRADE · ◆ 100 (greyed `NOT UNLOCKED` on an
+  unowned class). EQUIP sets `profile.classes.equipped`; the in-run ability tiles rebuild with that class's three
+  abilities (Q / E / Z in order). Only INITIATE's abilities work; the other nine print and toast `STUB · PHASE 2`.
+  Ability levels (`profile.abilities[id]`) persist across class switches, no cap; stat at level = base × (1 +
+  `GrowthPct` × level) from `AbilityGrowth.lua` (`AbilityGrowthPct` 0.1 everywhere). The three live abilities read
+  their numbers from it: barricade HP, turret damage and HP, stim heal (`StimHeal`) / fire-rate % / reload %.
+- **Avatar tab.** Category pills (MASKS active, two FUTURE disabled). Eight masks in `Masks.lua` (name, color,
+  shape visor / bandana / none, `saleType`): OWNED then UNOWNED grid with the weapons tab's tile rules, live preview on
+  the character, EQUIP or `◆ 100` under the detail. The equipped mask is applied by the server
+  (`PlayerState.applyMask`) on every character: in the hub, in the line-ups and in the run.
 
 **Minigames.** Six games, played from the yard props for testing and from side job beacons in the arena. One client
 module per game under `src/client/Minigames/`, sharing `Frame.lua` (centered panel `MinigamePanelPct` of the shorter
@@ -123,7 +210,7 @@ Lockpick (tap: zone width and points needed), Hotwire (drag: wires), Keypad (tap
 code), Arm charges (tap: caps), Safe dial (drag: numbers), Frequency jam (drag: locks and slider range).
 
 **Downed, revive, game over.** 0 HP → `Downed.down`: crawl speed and animation (`DownedAnimationId`), no jump, no
-fire / abilities / buys / swaps, enemies drop you from targeting, the health bar becomes a red bleed bar from
+abilities / buys / swaps, enemies drop you from targeting, the health bar becomes a red bleed bar from
 `BleedOutSec` (15s) with GIVE UP (bleed out now) and SELF-REVIVE (free, counter) above it, a red-cross marker with name
 and seconds over you for teammates. A standing teammate within `ReviveRadius` holds F for `ReviveHoldSec` (ring on their crosshair and on your
 bleed bar, releasing resets) → you stand at `ReviveHPPct` with `ReviveInvulnSec` of invulnerability and a
@@ -135,10 +222,18 @@ desaturates under a `RUN OVER · WAVE N` stamp for `RunOverSlowSec + RunOverHold
 EVERYBODY still saves the run: the crew stands up, enemies clear and the same wave restarts (SECOND CHANCE); after it
 the press is ignored and the run end plays. Characters are loaded by hand (`Players.CharacterAutoLoads = false`).
 
+**Downed sidearm (brief 3).** A downed player keeps shooting: the held gun is stowed server-side (id, rarity, level;
+the client remembers its mag per gun uid) and a Common `DownedPistolId` (M1911) at its own Armory level with a full
+mag takes its place; spread × `DownedSpreadMult` (1.5), damage and in-run upgrades apply as normal. The held slot
+shows the pistol with a red `SIDEARM` tag, the crosshair and ammo stay, ADS is off, reload works, the crawl animation
+is unchanged. Any revive hands the stowed gun back exactly as it was (same uid, same mag); bleed-out drops it where
+you fell as ground loot with the normal lifetime so a teammate can recover it. `DownedCanShoot = false` restores the
+Round 9 no-fire rule.
+
 **Run start (`IntroSec` 5.0, `RunStartBeats`).** The crew (players plus dummy crew up to `SquadSize`, 4.5 studs apart)
 vanishes into the van; a chase cam follows the van from the yard through the door until it brakes beside the arena spawn
-(dust ring, shake); the crew steps out in a line in join order facing the arena, heads recolor to `MaskColors` by line
-position with a hands-to-face stand-in animation, each player plays a random pose from `Poses` (kept for the run end,
+(dust ring, shake); the crew steps out in a line in join order facing the arena, heads recolor to the equipped mask
+color (dummies use `MaskColors`) with a hands-to-face stand-in animation, each player plays a random pose from `Poses` (kept for the run end,
 `PoseStagger` apart) while one slow pan runs from the crew member farthest from you to you and pushes in; then the
 camera orbits 180° to behind you and hands over to the gameplay camera. Input locked, HUD down to the wave bar, not
 skippable. The dummies vanish and the van drives off and is removed (`VanExitSec`) as control returns; the crate drops.
@@ -150,10 +245,10 @@ bill rain (`CashRainPerBanked` × Total Banked, capped at `CashRainMax`, over `C
 3/4 orbit (`MvpOrbitSec`) on the MVP (kills × `MvpKillWeight` + cash collected × `MvpCashWeight` + revives ×
 `MvpReviveWeight`; ties to the earlier joiner; solo still gets the beat) with the rest of the crew hidden, the MVP's
 `MvpAnimationId` flex, a gold MVP stamp, name, the winning stat line, rays, shake and a bigger haptic. The summary
-panel slides up over a dim: GOLD EARNED count-up (your banked share × `GoldPerBanked` plus side job gold, display
-only), WAVE N, one row per player (name, kills, jobs, cash collected, downs, revives, MVP tag), PLAY AGAIN and
-TO LOBBY with a `SummaryAutoLobbySec` countdown. TO LOBBY returns the crew to the yard; PLAY AGAIN does the same and
-starts the next run by itself.
+panel slides up over a dim: GOLD EARNED count-up (the GDD payout plus your side job gold, paid into the profile, with
+`★ NEW PERSONAL BEST` when the wave beat your top wave), WAVE N, one row per player (name, kills, jobs, cash
+collected, downs, revives, MVP tag, NEW BEST), PLAY AGAIN and TO LOBBY with a `SummaryAutoLobbySec` countdown. TO
+LOBBY returns the party to the hub spawn; PLAY AGAIN re-forms the party on the queue pad and starts the countdown.
 
 ## Verifying a change
 
@@ -165,41 +260,64 @@ rojo build -o build.rbxl
 
 Nothing is tested in Studio by the tooling; playtests are manual.
 
-### Brief 2 verify list
+### Brief 3 verify list
 
-The brief 2 code was written and built (`stylua`, `luau-lsp`, `rojo build`) but not yet run in Studio. First session,
-in this order; anything that fails is a Config or one-file fix:
+The brief 3 code was written and built (`stylua`, `luau-lsp`, `rojo build`) but not yet run in Studio. Turn on
+`Enable Studio Access to API Services` first (otherwise profiles stay in memory and the rejoin line cannot pass).
+Solo pass first, then a 2-player Local Server; anything that fails is a Config or one-file fix:
 
-1. Spawn in the yard, wave bar `STAGING`, cash $5,000, buy tiles work. Floor labels read from where you stand (if a label
-   is upside down, flip the `Yaw = 90` on the label parts in `tools/genmap.luau`).
-2. Walk to each prop, `F` opens it, play it to DONE, check the output line and the miss count. Esc cancels. Tier pad
-   changes the hint numbers. Device emulator: every game with touch only (Safe dial uses the GUI inset to find the dial
-   center; if the dial feels off-center on a device, that is the `GuiService:GetGuiInset()` term in `Safe.lua`).
-3. `START RUN`: 5.0s sequence, van drives in, crew steps out, masks, poses, orbit, WAVE 1 banner, control returns
-   behind you. Then the arena plays as Round 8.
-4. Debug `Down me`: crawl, low camera, prompts gone, bleed bar with GIVE UP / SELF-REVIVE. Local Server 2 players:
-   hold F on the downed player (ring on both screens), bleed out → spectate, REVIVE EVERYBODY (also inside the 5s
-   RUN OVER window: SECOND CHANCE restarts the wave).
-5. Debug `Skip to run end` (or die out): RUN OVER stamp, line-up with dummies, cash rain, MVP flex alone, summary,
-   PLAY AGAIN auto-starts, TO LOBBY waits at the door, 30s auto.
-6. Haptics only fire on devices where `HapticService:IsVibrationSupported` is true.
+1. Fresh join: hub HUD only (no buy column, abilities, wave bar, health or ammo), Gold 10,000 bottom-left, `TOP WAVE 0
+   ★` with the INITIATE circle over your head, no hat / face accessories, plain mask. Output shows `[GHS Profile]
+   <name> loaded … (new)`. Backtick → `+1,000 Gold` bumps the row; `Reset profile` puts it back. If the floor labels
+   by the stations or props read upside down, flip the `Yaw` on the label parts in `tools/genmap.luau`.
+2. PLAY walks you to the pad; stepping on it opens Create Match. X steps you out and closes it. CREATE with size 1
+   starts at once; with size 2+ the billboard shows slots and `STARTING IN 15`, the compact card sits under PLAY.
+   Local Server: a second player walking in joins (`JOINED THE PARTY (2/4)` toast on both HUDs and the billboard),
+   walking out leaves, the creator leaving hands ownership over (★ on the card), everyone out resets the zone. Full
+   party → immediate start.
+3. Start: the party goes through the van sequence into the arena with the starter at Common; a player not in the
+   party keeps the hub HUD and the billboard reads `MATCH IN PROGRESS` (walking on pushes them off). Buy a roll with
+   one gun owned → it is always that gun; `Unlock all` then a roll / crate → only owned guns, floor tags show the
+   leveled DMG / RATE.
+4. Summary: GOLD EARNED = `20 + 25 + …` per cleared wave + 50 per side job (+5 per job per player); `★ NEW PERSONAL
+   BEST` on a first run; TO LOBBY → hub Gold row shows the new balance and the tag shows the new top wave; PLAY AGAIN →
+   the party lands on the pad with a fresh countdown. Rejoin (leave and re-enter Play) → Gold, top wave, owned items
+   restored.
+5. Customization: dock tile or station `F` opens the scene on that tab, camera tweens to the character on the left,
+   hub HUD gone, Gold top-right. Weapons: unlock (toast `… unlocked!`, Gold −100), `Not enough Gold!` when short
+   (reset profile and spend down, or set `StartingGold` 0), UPGRADE raises LV and the green next-values, EQUIP STARTER
+   toasts and moves the STARTER tag, CUSTOMIZE pushes in on the gun, a wrap previews on the grip, BUY then APPLY
+   recolors it, and the grip keeps the color in the next run. Classes: DOC unlock / EQUIP → the in-run tiles read
+   STIM SHOT / MED BAG / HEALING TURRET and each toasts `STUB · PHASE 2`; per-ability UPGRADE raises LV and the
+   `current > next` line; INITIATE's barricade HP / turret damage / stim heal grow in-run. Avatar: selecting previews
+   the mask on your head, `◆ 100` buys, EQUIP wears it in the hub and the run. LEAVE and Esc return to the hub view.
+6. Sidearm: debug `Down me` holding a high-rarity rifle → the slot reads M1911 · COMMON · SIDEARM, you can fire and
+   reload while crawling (no ADS), the crosshair stays; `Revive all` → the rifle is back with the ammo it had;
+   `Down me` then GIVE UP → the rifle lies on the floor with a 30s tag.
+7. Mobile (device emulator, landscape): dock tiles 76×68, PLAY 44px, SHOP / INVITE icons, the queue card at 80%, the
+   scene panel at 62% with 64px tiles and a 60px dock; every tap works with touch only.
 
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
 `src/client` → StarterPlayerScripts.Client, `src/assets` → ReplicatedStorage.Assets, `src/map` → Workspace.Room.
 
-Server modules: World, Room, Stats, PlayerState, Enemy, Spawner, Combat, Economy, UpgradeShop, WeaponRoll, BigCrate,
-CrewCall, Abilities, SkipVote, Staging (yard, door, tier pad, resets), Minigames (sessions, log, stats), Downed
-(down / revive / bleed-out / game over), RunStart, RunEnd, Squad (dummy crew for the sequences), Debug, Log;
-`GameLoop.server.lua` is the entry. All cash, HP,
+Server modules: World (run state, the party, `fireRun`, payout accumulators), Room, Stats, Profiles (DataStore),
+PlayerState (per-player run state + profile-derived held / mask / wrap / class), Enemy, Spawner, Combat, Economy,
+UpgradeShop, WeaponRoll, BigCrate, CrewCall, Abilities, SkipVote, Hub (yard dressing, stations, tier pad, resets, TOP
+WAVE tag), Queue (zones, Create Match, party, countdown, PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions),
+Minigames (sessions, log, stats), Downed (down / revive / bleed-out / game over / sidearm), RunStart, RunEnd (payout,
+summary), Squad (dummy crew for the sequences), Debug, Log; `GameLoop.server.lua` is the entry. All cash, Gold, HP,
 spawns, rolls, loot, minigame results and revives are server-authoritative; every remote is created in
-`src/shared/Remotes.lua`.
+`src/shared/Remotes.lua`. Shared data: Config, Prices, Weapons (with `saleType` and the level math), Classes,
+AbilityGrowth, Masks, Wraps, Rarity, Upgrades, Types, Remotes, Signal, CrewCall/Lines.
 
-Client: ClientState (sync + juice bus + downed / camera mode flags), HUD components under `src/client/HUD` (with
-`HUD.setMode` for downed / spectate / cinematic), UpgradeOverlay, WeaponReel, GroundLoot, CrewCallUI, Markers (beacon
-billboards), Minigames (Frame + one module per game), DownedUI (bleed bar hooks, revive hold, downed markers), Spectate,
-RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
+Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), HUD components under `src/client/HUD`
+(with `HUD.setMode` for hub / meta / downed / spectate / cinematic and `HubHUD` for the hub layout), QueueUI (Create
+Match card, compact party card), MetaScene with `src/client/Meta/` (MetaUI, WeaponsTab, ClassesTab, AvatarTab),
+UpgradeOverlay, WeaponReel, GroundLoot, CrewCallUI, Markers (beacon billboards), Minigames (Frame + one module per
+game), DownedUI (bleed bar hooks, revive hold, downed markers), Spectate, RunStartUI, RunEndUI (sequence cameras,
+poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
 
 ## Changelog (playtest rounds)
 
@@ -267,13 +385,35 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   dmg 17; the 2-shell mag is the limiter). Downed or bled-out players cannot interact: every ProximityPrompt hides on
   their client and the server refuses minigames, hacks and START RUN from them.
 
+- **Round 11 (3 Nov, brief 3)** — the yard is the hub (planning table, queue pad with gate and billboard, three
+  stations on the west wall, props and tier pad moved east, no START RUN marker); `Staging` → `Hub`, state `Hub`.
+  Profiles over DataStore (`Profiles.lua`, `GHS_Profiles_v1`, retry / backoff / debounce / autosave / pending payout /
+  in-memory fallback), `Prices.lua`, accessories stripped on join, masks (`Masks.lua`) worn in the hub and the run.
+  Hub HUD (`HubHUD.lua`: PLAY, SHOP placeholder, Gold row + INVITE, dock, BOOSTS, queue card slot, TOP WAVE billboard).
+  Queue zone and Create Match (`Queue.lua` / `QueueUI.lua`): party, countdown, join / leave / ownership, MATCH IN
+  PROGRESS, PLAY AGAIN re-forms the party. The party is the run's player set (`World.party`, `World.fireRun`,
+  `World.runAudience`): run events, line-ups, skip votes, crate sizes and enemy targeting are party-scoped; late joiners
+  land in the hub. GDD payout into the profile with top wave and lifetime stats, `★ NEW PERSONAL BEST`. Customization
+  scene (`MetaScene.lua`, `Meta/`): fixed camera, dock with LEAVE, Gold and SHOP chrome, live preview, toasts;
+  Weapons tab (grid, detail, unlock / upgrade / equip starter, wraps sub-panel), Classes tab (carousel, ability rows,
+  unlock / equip / upgrade; in-run tiles follow the class; nine stubs), Avatar tab (masks). Armory level math in
+  `Weapons.atLevel` / `Stats` applied to the starter, rolls, crates and floor tags; owned-only roll and crate pools;
+  `AbilityGrowth` on barricade HP, turret damage / HP and stim heal / fire rate / reload. Downed sidearm (stow, M1911
+  at Common, spread ×1.5, SIDEARM tag, restore on revive, drop on bleed-out). Debug: force queue start, +1,000 Gold,
+  unlock all, reset profile. Config gains the Hub, Queue, Meta and Payout groups; `StagingCash` and `GoldPerBanked`
+  are gone. Built and linted, not yet run in Studio (see the Brief 3 verify list).
+
 ## Open design notes (not built)
 
+- **Brief 3 assumptions to confirm.** The crate pool is the union of the party's owned guns, each at its highest
+  owner level (a shared drop cannot be per-profile). INITIATE's hotkey order follows the GDD class table (Q barricade,
+  E turret, Z stim), which swaps Q / E from Round 9. Stim's "heal" is `StimHeal` (20 HP) so the GDD's upgradeable heal
+  exists. Walking into a zone while someone else has the Create Match card open waits on the pad and joins on CREATE.
+  The session lock is advisory (logged and taken over), not a hard refusal.
 - **Brief 2 assumptions to confirm.** A downed player keeps the run alive (self-revive is free), so "all players down"
   is not game over until the last bleed runs out; flip that in `Downed.checkRunOver` if the stamp should land on the
-  last knockdown. Robux Self-Revive / Revive Everybody, gold persistence, pose shop and the hub are out of scope; gold
-  is counted per run and shown, never saved. `RunOverTimeScale` only drives the client slow-mo read (lens +
-  desaturation); enemies are frozen and nobody is standing at that point.
+  last knockdown. Robux Self-Revive / Revive Everybody and the pose shop are out of scope. `RunOverTimeScale` only
+  drives the client slow-mo read (lens + desaturation); enemies are frozen and nobody is standing at that point.
 
 - **Dropped weapon handling.** Floor drops are hard to pick up mid-wave and can land behind a moving player.
   Discussed a stash slot (previous gun kept in a second HUD slot with the 30s decay, instant swap key, rolled guns
