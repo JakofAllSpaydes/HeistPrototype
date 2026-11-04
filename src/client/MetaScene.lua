@@ -7,7 +7,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
@@ -69,7 +68,6 @@ local idleTrack: AnimationTrack? = nil
 local previewMask: BasePart? = nil
 local savedHeadColor: Color3? = nil
 local savedWrapColor: Color3? = nil
-local cameraTween: Tween? = nil
 
 local TABS = { "WEAPONS", "CLASSES", "AVATAR" }
 local PANEL_W = 0.58 -- share of the viewport the panel takes (62% on mobile)
@@ -220,14 +218,45 @@ local function shot(push: boolean): CFrame
 	return CFrame.lookAt(pos, look + side)
 end
 
+-- The scene drives the camera itself every frame (bound above the gameplay camera's priority) so nothing
+-- else can leave it where it was: it eases from wherever it is to the shot over `sec`.
+local camFrom: CFrame? = nil
+local camTo: CFrame? = nil
+local camT0 = 0
+local camSec = 0.4
+
 local function tweenCamera(cf: CFrame, sec: number)
-	if cameraTween then
-		cameraTween:Cancel()
+	camFrom = camera.CFrame
+	camTo = cf
+	camT0 = os.clock()
+	camSec = math.max(sec, 0.01)
+end
+
+local function stepCamera()
+	local to = camTo
+	if not to then
+		return
 	end
-	cameraTween = TweenService:Create(camera, TweenInfo.new(sec, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		CFrame = cf,
-	})
-	cameraTween:Play()
+	camera.CameraType = Enum.CameraType.Scriptable
+	local s = math.clamp((os.clock() - camT0) / camSec, 0, 1)
+	local k = 1 - (1 - s) * (1 - s)
+	local from = camFrom or to
+	local cf = from:Lerp(to, k)
+	camera.CFrame = cf
+	camera.Focus = cf
+end
+
+-- Every part of the character visible on this client (first-person zoom hides it locally).
+local function showCharacter()
+	local c = char()
+	if not c then
+		return
+	end
+	for _, d in c:GetDescendants() do
+		if d:IsA("BasePart") or d:IsA("Decal") then
+			d.LocalTransparencyModifier = 0
+		end
+	end
 end
 
 local function faceCamera()
@@ -626,9 +655,18 @@ function MetaScene.open(tab: string?)
 	ClientState.lockMovement("meta", true)
 	ClientState.cameraMode = "meta"
 	HUD.setMode("meta")
+	-- Out of first person (the character would be locally invisible), character shown, then the shot.
+	ClientState.Juice:Fire("CameraZoomReset", {})
+	showCharacter()
 	faceCamera()
 	camera.CameraType = Enum.CameraType.Scriptable
 	tweenCamera(shot(false), Config.MetaCameraTweenSec)
+	RunService:BindToRenderStep("GHSMetaCamera", Enum.RenderPriority.Camera.Value + 1, function()
+		if open then
+			faceCamera()
+			stepCamera()
+		end
+	end)
 	local sync = ClientState.sync
 	preview.classIdle(if sync then sync.classId else Classes.Default)
 	UI.sound(Theme.Sounds.call, 1.2, 0.45)
@@ -656,10 +694,11 @@ function MetaScene.close()
 	overlayFrame = nil
 	titleLabel = nil
 	toastLabel = nil
-	if cameraTween then
-		cameraTween:Cancel()
-		cameraTween = nil
-	end
+	pcall(function()
+		RunService:UnbindFromRenderStep("GHSMetaCamera")
+	end)
+	camFrom = nil
+	camTo = nil
 	ClientState.cameraMode = "gameplay"
 	ClientState.requestCameraYaw = 0
 	ClientState.setBlock("meta", false)
@@ -792,11 +831,6 @@ function MetaScene.init()
 		end
 		if input.KeyCode == Enum.KeyCode.Escape then
 			MetaScene.close()
-		end
-	end)
-	RunService.RenderStepped:Connect(function()
-		if open then
-			faceCamera()
 		end
 	end)
 end

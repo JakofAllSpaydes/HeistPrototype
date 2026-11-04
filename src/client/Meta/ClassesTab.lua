@@ -1,8 +1,8 @@
 --!strict
 -- Classes tab: the category pills ARE the classes (icon + name, lock on unowned); below them the selected
--- class's three ability rows (icon with the in-match $ price, name and hotkey, description, stats as
--- current » next, UPGRADE), and the detail column on the right (class well, name, EQUIPPED / UNLOCKED /
--- LOCKED, EQUIP or UNLOCK). The preview plays the selected class's idle.
+-- class's three ability rows, sized to fill the panel (big icon well with the in-match $ price, name and
+-- hotkey, description, stats as current » next, UPGRADE), and the detail column on the right (tall class
+-- well, name, EQUIPPED / UNLOCKED / LOCKED, the kit, EQUIP or UNLOCK). The preview plays the class idle.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -34,12 +34,12 @@ local function classPill(
 	on: boolean,
 	equipped: boolean,
 	onPick: () -> ()
-)
+): TextButton
 	local S = UI.S
 	local b = UI.button({
 		Text = "",
 		BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,
-		Size = UDim2.fromOffset(S(132), S(40)),
+		Size = UDim2.new(0.25, -S(5), 0, S(44)),
 		LayoutOrder = order,
 		Parent = parent,
 	})
@@ -47,15 +47,15 @@ local function classPill(
 	local circle = UI.frame({
 		BackgroundColor3 = if own then Color3.fromHex(c.color) else Theme.Colors.panel2,
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, S(6), 0.5, 0),
-		Size = UDim2.fromOffset(S(28), S(28)),
+		Position = UDim2.new(0, S(8), 0.5, 0),
+		Size = UDim2.fromOffset(S(30), S(30)),
 		Parent = b,
 	})
 	UI.corner(circle, 999)
 	UI.text({
 		Text = if own then string.sub(c.name, 1, 1) else "🔒",
 		Font = Theme.Fonts.display,
-		TextSize = S(if own then 15 else 13),
+		TextSize = S(if own then 16 else 13),
 		TextColor3 = Theme.Colors.bg,
 		Size = UDim2.fromScale(1, 1),
 		Parent = circle,
@@ -63,12 +63,12 @@ local function classPill(
 	UI.text({
 		Text = string.upper(c.name) .. (if equipped then " ✔" else ""),
 		Font = Theme.Fonts.body,
-		TextSize = S(12),
+		TextSize = S(13),
 		TextColor3 = if own then Theme.Colors.white else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.fromOffset(S(40), 0),
-		Size = UDim2.new(1, -S(44), 1, 0),
+		Position = UDim2.fromOffset(S(46), 0),
+		Size = UDim2.new(1, -S(50), 1, 0),
 		Parent = b,
 	})
 	b.Activated:Connect(function()
@@ -78,10 +78,13 @@ local function classPill(
 	return b
 end
 
+-- One ability row at a fixed height: icon well left, name / description / stats in the middle, LV and
+-- UPGRADE on the right.
 local function abilityRow(
 	scene: any,
 	parent: Instance,
 	order: number,
+	rowH: number,
 	class: Classes.Class,
 	a: Classes.Ability,
 	isOwned: boolean
@@ -89,84 +92,86 @@ local function abilityRow(
 	local S = UI.S
 	local profile = scene.profile()
 	local level = if profile then (profile.abilities[a.id] or 0) else 0
-	local rowH = S(62) + S(30) * #a.vars
 	local row = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel,
 		Size = UDim2.new(1, -S(8), 0, rowH),
 		LayoutOrder = order,
 		Parent = parent,
 	})
-	UI.corner(row, S(6))
-	local iconWell = UI.frame({
+	UI.corner(row, S(8))
+	local pad = S(12)
+	local wellSize = math.min(rowH - pad * 2, S(110))
+	local well = UI.frame({
 		BackgroundColor3 = Color3.fromHex(class.color),
 		BackgroundTransparency = if a.live then 0 else 0.5,
-		Position = UDim2.fromOffset(S(10), S(10)),
-		Size = UDim2.fromOffset(S(46), S(46)),
+		Position = UDim2.fromOffset(pad, pad),
+		Size = UDim2.fromOffset(wellSize, wellSize),
 		Parent = row,
 	})
-	UI.corner(iconWell, S(6))
+	UI.corner(well, S(8))
 	UI.text({
 		Text = a.icon,
 		Font = Theme.Fonts.display,
-		TextSize = S(13),
+		TextSize = math.floor(wellSize * 0.3),
 		TextColor3 = Theme.Colors.bg,
+		Position = UDim2.fromOffset(0, -S(6)),
 		Size = UDim2.fromScale(1, 1),
-		Parent = iconWell,
+		Parent = well,
 	})
-	local pricePill, priceLabel = UI.pill(iconWell, "$" .. a.price, Theme.Colors.cash, Theme.Colors.bg, S(14), S(9))
+	local pricePill, priceLabel = UI.pill(well, "$" .. a.price, Theme.Colors.bg, Theme.Colors.cash, S(20), S(12))
 	pricePill.AnchorPoint = Vector2.new(0.5, 1)
-	pricePill.Position = UDim2.new(0.5, 0, 1, S(6))
-	pricePill.ZIndex = 3
-	priceLabel.ZIndex = 3
+	pricePill.Position = UDim2.new(0.5, 0, 1, -S(6))
+	pricePill.BackgroundTransparency = 0.15
 	priceLabel.Font = Theme.Fonts.display
+	local textX = pad + wellSize + S(14)
+	local rightW = S(170)
 	UI.text({
-		Text = string.format("%s · %s%s", a.name, a.hotkey, if a.live then "" else " · STUB · PHASE 2"),
+		Text = string.format("%s", a.name),
 		Font = Theme.Fonts.body,
-		TextSize = S(15),
+		TextSize = S(20),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(66), S(8)),
-		Size = UDim2.new(1, -S(230), 0, S(20)),
+		Position = UDim2.fromOffset(textX, pad),
+		Size = UDim2.new(1, -textX - rightW, 0, S(24)),
 		Parent = row,
 	})
+	local hotkey, hotkeyLabel = UI.pill(row, a.hotkey, Theme.Colors.panel2, Theme.Colors.white, S(20), S(12))
+	hotkey.Position = UDim2.fromOffset(textX, pad + S(28))
+	hotkeyLabel.Font = Theme.Fonts.display
 	UI.text({
-		Text = a.description,
-		TextSize = S(11),
+		Text = a.description .. (if a.live then "" else "   ·   STUB · PHASE 2"),
+		TextSize = S(12),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextWrapped = true,
-		Position = UDim2.fromOffset(S(66), S(28)),
-		Size = UDim2.new(1, -S(230), 0, S(28)),
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Position = UDim2.fromOffset(textX + S(40), pad + S(28)),
+		Size = UDim2.new(1, -textX - S(40) - rightW, 0, S(20)),
 		Parent = row,
 	})
-	UI.text({
-		Text = string.format("LV %d", level),
-		Font = Theme.Fonts.display,
-		TextSize = S(12),
-		TextColor3 = Theme.Colors.gold,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(10), 0, S(8)),
-		Size = UDim2.fromOffset(S(60), S(16)),
-		Parent = row,
-	})
+	-- Stats fill the rest of the middle column.
+	local statsY = pad + S(54)
 	local stats = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(10), S(60)),
-		Size = UDim2.new(1, -S(170), 0, S(30) * #a.vars),
+		Position = UDim2.fromOffset(textX, statsY),
+		Size = UDim2.new(1, -textX - rightW, 1, -statsY - pad),
 		Parent = row,
 	})
-	UI.list(stats, Enum.FillDirection.Vertical, S(2))
+	UI.list(stats, Enum.FillDirection.Vertical, S(4))
 	for k, v in a.vars do
 		local cur = AbilityGrowth.at(a.id, v.id, v.base, level)
 		local nxt = AbilityGrowth.at(a.id, v.id, v.base, level + 1)
 		MetaUI.statRow(stats, k, v.label, fmtVar(v, cur), if isOwned then fmtVar(v, nxt) else nil)
 	end
+	-- Right: level on top, UPGRADE at the bottom.
+	local lv, lvLabel = UI.pill(row, string.format("LV %d", level), Theme.Colors.bg, Theme.Colors.gold, S(22), S(12))
+	lv.AnchorPoint = Vector2.new(1, 0)
+	lv.Position = UDim2.new(1, -pad, 0, pad)
+	lvLabel.Font = Theme.Fonts.display
 	local btnHolder = UI.frame({
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -S(10), 1, -S(8)),
-		Size = UDim2.fromOffset(S(150), S(44)),
+		Position = UDim2.new(1, -pad, 1, -pad),
+		Size = UDim2.fromOffset(rightW - S(12), S(44)),
 		Parent = row,
 	})
 	UI.list(btnHolder, Enum.FillDirection.Vertical, 0)
@@ -201,10 +206,10 @@ function ClassesTab.render(scene: any)
 		scene.preview.classIdle(class.id)
 	end
 
-	-- Class pills.
+	-- Class pills across the full width.
 	local pills = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(40)),
+		Size = UDim2.new(1, 0, 0, S(44)),
 		Parent = panel,
 	})
 	UI.list(pills, Enum.FillDirection.Horizontal, S(6))
@@ -217,18 +222,26 @@ function ClassesTab.render(scene: any)
 		end)
 	end
 
-	local rightW = if scene.mobile then S(200) else S(250)
-	local grid, card = MetaUI.columns(panel, rightW, S(50))
+	local rightW = if scene.mobile then S(200) else S(260)
+	local grid, card = MetaUI.columns(panel, rightW, S(54))
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 
-	-- Ability list.
+	-- Three rows share the column's height (no dead space), with a floor so stats never clip.
+	local n = #class.abilities
+	local available = grid.AbsoluteSize.Y - S(26) - S(8) * (n + 1)
+	local rowH = math.max(S(150), math.floor(available / math.max(n, 1)))
 	MetaUI.header(grid, 1, string.upper(class.name) .. " · ABILITIES")
 	for i, a in class.abilities do
-		abilityRow(scene, grid, 1 + i, class, a, isOwned)
+		abilityRow(scene, grid, 1 + i, rowH, class, a, isOwned)
 	end
 
-	-- Detail.
-	MetaUI.well(card, 1, Color3.fromHex(class.color), "class", string.sub(class.name, 1, 1), Theme.Colors.white)
+	-- Detail: tall well, name, status, the kit, action.
+	local ic =
+		MetaUI.well(card, 1, Color3.fromHex(class.color), "class", string.sub(class.name, 1, 1), Theme.Colors.white)
+	local well = ic.Parent
+	if well and well:IsA("Frame") then
+		well.Size = UDim2.new(1, 0, 0, S(220))
+	end
 	MetaUI.heading(
 		card,
 		2,
@@ -236,9 +249,11 @@ function ClassesTab.render(scene: any)
 		if equipped == class.id then "EQUIPPED" elseif isOwned then "UNLOCKED" else "LOCKED",
 		if equipped == class.id then MetaUI.Green elseif isOwned then Theme.Colors.gold else Theme.Colors.grey
 	)
+	MetaUI.header(card, 5, "KIT")
 	for i, a in class.abilities do
 		MetaUI.statRow(card, 10 + i, a.hotkey, a.name, nil)
 	end
+	MetaUI.statRow(card, 15, "Price", if class.free then "FREE" else MetaUI.fmtGold(Prices.class), nil)
 	if equipped == class.id then
 		MetaUI.button(card, 20, "EQUIPPED", "disabled", nil)
 	elseif isOwned then

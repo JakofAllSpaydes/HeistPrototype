@@ -134,6 +134,11 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		end)
 	elseif name == "RunResumed" then
 		slowFov = 0
+	elseif name == "CameraZoomReset" then
+		-- A scene is taking the camera: back to the default third-person distance so the character is not
+		-- left hidden by a first-person zoom.
+		targetZoom = Config.CameraZoomDefault
+		zoom = targetZoom
 	end
 end)
 
