@@ -97,16 +97,6 @@ local function addTag(gun: BasePart)
 	UI.new("UICorner", { CornerRadius = UDim.new(0.15, 0), Parent = frame })
 	UI.stroke(frame, color, 2)
 	local nameText = string.upper(tostring(gun:GetAttribute("DisplayName") or gun:GetAttribute("WeaponId")))
-	local tagWeapon = Weapons.ById[tostring(gun:GetAttribute("WeaponId"))]
-	if tagWeapon then
-		if tagWeapon.burst > 1 then
-			nameText ..= string.format(" · %d-BURST", tagWeapon.burst)
-		end
-		local pierce = Weapons.builtInPierce(tagWeapon, rarity)
-		if pierce > 0 then
-			nameText ..= string.format(" · PIERCE %d", pierce)
-		end
-	end
 	UI.text({
 		Text = nameText,
 		Font = Theme.Fonts.display,

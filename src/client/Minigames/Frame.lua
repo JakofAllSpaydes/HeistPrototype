@@ -383,10 +383,24 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 				stampOn(a, "FAILED", Theme.Colors.red)
 				stroke.Color = Theme.Colors.red
 				UI.sound(Theme.Sounds.deny, 0.7, 0.5)
-				UI.shake(panel, u(5), 0.25)
 			end
 			sendResult(a, outcome)
-			task.delay(0.7, function()
+			-- You are likely mid-combat: the gun and camera come back at once, and the panel slides off
+			-- under the stamp instead of holding.
+			if active == a then
+				active = nil
+				ClientState.setBlock("minigame", false)
+			end
+			local exit = math.max(Config.MinigameExitSec, 0.05)
+			UI.tween(
+				panel,
+				{ Position = UDim2.new(0.5, 0, 0.5, u(140)), BackgroundTransparency = 1 },
+				exit,
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.In
+			)
+			UI.tween(stroke, { Transparency = 1 }, exit)
+			task.delay(exit, function()
 				destroy(a)
 			end)
 		end,

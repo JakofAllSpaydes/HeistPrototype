@@ -143,7 +143,7 @@ local Config = {
 	------------------------------------------------------------------ Crew call / stub Side Job
 	CallHoldSec = 4,
 	SideJobFirstWave = 1,
-	SideJobEveryWaves = 3,
+	SideJobEveryWaves = 2,
 	SideJobDurationSec = 75,
 	SideJobReward = 600,
 	SideJobGold = 5, -- meta currency per completed side job, per player (display only, no persistence)
@@ -230,6 +230,7 @@ local Config = {
 	MinigameMinSec = { Lockpick = 1.5, Hotwire = 1.5, Keypad = 1.5, Charges = 1.5, Safe = 2, Freq = 1 },
 	MinigameHaptics = true, -- HapticService pulses on hits and locks (mobile / gamepad)
 	MinigameCloseDistance = 14, -- walking further than this from the prop closes the panel (counts as cancel)
+	MinigameExitSec = 0.3, -- on DONE / FAILED the panel slides off over this long; input is back at once
 	LockpickTargetByTier = { 3, 4, 5 }, -- points to open per tier: green zone +1, pink sliver +2
 	LockpickZoneShrink = 0.9, -- zone width x this per hit, floored at half the starting width
 	LockpickSpeedUp = 1.08, -- pin speed x this per hit

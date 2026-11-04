@@ -346,14 +346,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		lastDps = dps
 		dmg.Text = "DMG " .. UI.fmtDmg(held.dmg or 0, held.pellets or 1)
 		rate.Text = "RATE " .. UI.fmtRate(held.displayRate or held.fireRate or 0)
-		local extras = ""
-		if (held.burst or 1) > 1 then
-			extras ..= string.format(" · %d-BURST", held.burst)
-		end
-		if (held.builtInPierce or 0) > 0 then
-			extras ..= string.format(" · PIERCE %d", held.builtInPierce)
-		end
-		pillLabel.Text = string.upper(held.rarityName) .. extras
+		pillLabel.Text = string.upper(held.rarityName)
 		if typeof(sync.selfRevives) == "number" and sync.selfRevives ~= selfRevives then
 			selfRevives = sync.selfRevives
 			paintSelf()
