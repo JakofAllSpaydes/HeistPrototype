@@ -313,6 +313,11 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			task.delay((data.slowSec or 1) + (data.holdSec or 2.5) - 0.6, function()
 				UI.tween(cc, { Saturation = 0, TintColor = Theme.Colors.white }, 0.6)
 			end)
+		elseif name == "RunResumed" then
+			local cc = Lighting:FindFirstChild("GHSSlowMo")
+			if cc and cc:IsA("ColorCorrectionEffect") then
+				UI.tween(cc, { Saturation = 0, TintColor = Theme.Colors.white }, 0.3)
+			end
 		elseif name == "Multishot" then
 			UI.sound(Theme.Sounds.shot, 1.4, 0.25)
 		elseif name == "TurretShot" then

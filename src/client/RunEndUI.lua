@@ -32,7 +32,49 @@ local gui: ScreenGui? = nil
 local dim: Frame? = nil
 local stampFrame: Frame? = nil
 local summaryShownAt = -1
+local hiddenForMvp: { Instance } = {} -- the rest of the crew and their tags, hidden locally for the MVP beat
 local goldLabel: TextLabel? = nil
+
+-- Camera framing: characters stand about 5 studs tall with the root 3 up, so chest is ~3 and the head ~5.
+local EYE_LINE = 2.6
+local PAN_HEIGHT = 3.6
+local PAN_FAR = 11
+local PAN_NEAR = 8.5
+local MVP_DIST = 6.5
+local MVP_HEIGHT = 3.4
+
+local function hideOthers(d: any)
+	hiddenForMvp = {}
+	for _, row in d.players do
+		if d.mvp and row.userId == d.mvp.userId then
+			continue
+		end
+		local char = RunStartUI.charFor(row)
+		if not char then
+			continue
+		end
+		for _, part in char:GetDescendants() do
+			if part:IsA("BasePart") or part:IsA("Decal") then
+				part.LocalTransparencyModifier = 1
+				table.insert(hiddenForMvp, part)
+			elseif part:IsA("BillboardGui") then
+				part.Enabled = false
+				table.insert(hiddenForMvp, part)
+			end
+		end
+	end
+end
+
+local function showOthers()
+	for _, inst in hiddenForMvp do
+		if inst:IsA("BasePart") or inst:IsA("Decal") then
+			inst.LocalTransparencyModifier = 0
+		elseif inst:IsA("BillboardGui") then
+			inst.Enabled = true
+		end
+	end
+	hiddenForMvp = {}
+end
 local lobbyButton: TextButton? = nil
 local chosen = false
 
@@ -67,6 +109,7 @@ local function teardown()
 		gui:Destroy()
 		gui = nil
 	end
+	showOthers()
 	dim = nil
 	stampFrame = nil
 	goldLabel = nil
@@ -145,9 +188,10 @@ local function showMvp(d: any)
 	task.delay(0.3, function()
 		MinigameFrame.haptic(0.8)
 	end)
-	-- The MVP's pose replays under the stamp.
-	local pose = Config.Poses[d.mvp.pose] or Config.Poses[1]
-	RunStartUI.playAnim(RunStartUI.charFor(d.mvp), pose.animationId, pose.holdSec + 1)
+	-- The rest of the crew steps out of frame; the MVP gets a flex of their own under the stamp.
+	hideOthers(d)
+	local beats = d.beats
+	RunStartUI.playAnim(RunStartUI.charFor(d.mvp), Config.MvpAnimationId, (beats.summary - beats.mvp) + 0.5)
 end
 
 local function showSummary(d: any)
@@ -157,6 +201,7 @@ local function showSummary(d: any)
 	end
 	local S = UI.S
 	summaryShownAt = os.clock()
+	showOthers()
 	local dimFrame = dim
 	if dimFrame then
 		UI.tween(dimFrame, { BackgroundTransparency = 0.45 }, 0.4)
@@ -237,11 +282,11 @@ local function showSummary(d: any)
 	-- Table.
 	local cols = {
 		{ title = "CREW", w = 0.34, align = Enum.TextXAlignment.Left },
-		{ title = "JOBS", w = 0.14, align = Enum.TextXAlignment.Center },
-		{ title = "KILLS", w = 0.14, align = Enum.TextXAlignment.Center },
+		{ title = "KILLS", w = 0.13, align = Enum.TextXAlignment.Center },
+		{ title = "JOBS", w = 0.13, align = Enum.TextXAlignment.Center },
 		{ title = "CASH", w = 0.18, align = Enum.TextXAlignment.Center },
-		{ title = "REVIVES", w = 0.1, align = Enum.TextXAlignment.Center },
-		{ title = "DOWNS", w = 0.1, align = Enum.TextXAlignment.Center },
+		{ title = "DOWNS", w = 0.11, align = Enum.TextXAlignment.Center },
+		{ title = "REVIVES", w = 0.11, align = Enum.TextXAlignment.Center },
 	}
 	local tableX, tableW = S(24), W - S(48)
 	local y = S(96)
@@ -306,15 +351,15 @@ local function showSummary(d: any)
 		end
 		xx += math.floor(tableW * cols[1].w)
 		-- Side jobs plus minigames completed.
-		cell(rowFrame, tostring(row.jobs or 0), cols[2], xx, Theme.Colors.blue, S(13), Theme.Fonts.body)
+		cell(rowFrame, tostring(row.kills or 0), cols[2], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
 		xx += math.floor(tableW * cols[2].w)
-		cell(rowFrame, tostring(row.kills or 0), cols[3], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
+		cell(rowFrame, tostring(row.jobs or 0), cols[3], xx, Theme.Colors.blue, S(13), Theme.Fonts.body)
 		xx += math.floor(tableW * cols[3].w)
 		cell(rowFrame, fmtCash(row.cash or 0), cols[4], xx, Theme.Colors.cash, S(13), Theme.Fonts.body)
 		xx += math.floor(tableW * cols[4].w)
-		cell(rowFrame, tostring(row.revives or 0), cols[5], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
+		cell(rowFrame, tostring(row.downs or 0), cols[5], xx, Theme.Colors.malus, S(13), Theme.Fonts.body)
 		xx += math.floor(tableW * cols[5].w)
-		cell(rowFrame, tostring(row.downs or 0), cols[6], xx, Theme.Colors.malus, S(13), Theme.Fonts.body)
+		cell(rowFrame, tostring(row.revives or 0), cols[6], xx, Theme.Colors.text, S(13), Theme.Fonts.body)
 		if row.userId == player.UserId then
 			UI.stroke(rowFrame, color, S(1.5), 0.3)
 		end
@@ -393,7 +438,8 @@ local function step(_dt: number)
 		sum += cf.Position
 	end
 	local center = if #line > 0 then sum / #line else Vector3.zero
-	local lineShot = CFrame.lookAt(Vector3.new(center.X, 2.6, center.Z - 9), center + Vector3.new(0, 1.8, 0))
+	local lineShot =
+		CFrame.lookAt(Vector3.new(center.X, 4.2, center.Z - 12), Vector3.new(center.X, EYE_LINE - 0.4, center.Z))
 
 	local cf: CFrame = lineShot
 	if t < beats.mvp then
@@ -431,7 +477,8 @@ local function step(_dt: number)
 		local a = if #line > 0 then line[1].Position else center
 		local b = if #line > 0 then line[#line].Position else center
 		local x = (a.X - 1.5) + ((b.X + 1.5) - (a.X - 1.5)) * s
-		cf = CFrame.lookAt(Vector3.new(x, 2.6, center.Z - (8 - 2 * s)), Vector3.new(x, 2.0, center.Z))
+		local dist = PAN_FAR + (PAN_NEAR - PAN_FAR) * s
+		cf = CFrame.lookAt(Vector3.new(x, PAN_HEIGHT, center.Z - dist), Vector3.new(x, EYE_LINE, center.Z))
 	elseif t < beats.summary then
 		once("mvp", function()
 			showMvp(d)
@@ -441,7 +488,11 @@ local function step(_dt: number)
 		local pos = if mvpRoot then mvpRoot.Position else center
 		local s = (t - beats.mvp) / math.max(d.mvpOrbitSec or 2.5, 0.1)
 		local a = 0.55 - 0.8 * math.clamp(s, 0, 1)
-		cf = CFrame.lookAt(pos + Vector3.new(math.sin(a) * 4.6, 2.0, -math.cos(a) * 4.6), pos + Vector3.new(0, 1.7, 0))
+		-- Full body in frame: a touch above eye line, looking down at the chest.
+		cf = CFrame.lookAt(
+			pos + Vector3.new(math.sin(a) * MVP_DIST, MVP_HEIGHT, -math.cos(a) * MVP_DIST),
+			pos + Vector3.new(0, EYE_LINE - 0.3, 0)
+		)
 	else
 		once("summary", function()
 			showSummary(d)

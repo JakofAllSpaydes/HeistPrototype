@@ -405,6 +405,9 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.red, alpha = 0.35 })
 			ClientState.Juice:Fire("Shake", { amp = 0.5, dur = 0.4 })
+		elseif name == "RunResumed" then
+			banner("SECOND CHANCE", Theme.Colors.cash, 64, 1.2, Theme.Sounds.legendary, 1.1)
+			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.3 })
 		elseif name == "SkipVote" then
 			voteCount = data.votes or voteCount
 			voteNeeded = data.needed or voteNeeded

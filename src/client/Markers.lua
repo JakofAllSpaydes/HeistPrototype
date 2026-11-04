@@ -236,7 +236,10 @@ function Markers.init()
 				data.position,
 				Theme.Colors.blue,
 				tostring(data.name),
-				if capture then Lines.capture.markerHint else Lines.hackMarkerHint,
+				if typeof(data.markerHint) == "string"
+					then data.markerHint
+					elseif capture then Lines.capture.markerHint
+					else Lines.hackMarkerHint,
 				data.endsAt or 0
 			)
 			if capture then
@@ -259,7 +262,7 @@ function Markers.init()
 			else
 				Markers.setSub("job", Lines.capture.markerHint, nil, flipped)
 			end
-		elseif name == "CallEnd" then
+		elseif name == "CallEnd" or name == "CallCleared" then
 			Markers.remove("job")
 		end
 	end)

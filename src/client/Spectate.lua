@@ -23,6 +23,8 @@ local active = false
 local index = 1
 local gui: ScreenGui? = nil
 local nameLabel: TextLabel? = nil
+local reviveHint: TextLabel? = nil
+local windowEndsAt = -1 -- os.clock when the run-over revive window shuts
 local angle = 0
 local lastCF: CFrame? = nil
 
@@ -139,7 +141,7 @@ local function build()
 	})
 	UI.corner(revive, S(14))
 	UI.stroke(revive, Theme.Colors.black, S(2), 0.4)
-	UI.text({
+	reviveHint = UI.text({
 		Text = "FREE IN THE PROTOTYPE · STANDS THE WHOLE CREW UP",
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.bg,
@@ -156,6 +158,17 @@ local function build()
 end
 
 local function step(dt: number)
+	-- Run over: the button counts down the window in which it still saves the run.
+	local hint = reviveHint
+	if hint and windowEndsAt >= 0 then
+		local left = windowEndsAt - os.clock()
+		if left > 0 then
+			hint.Text = string.format("%d s TO SAVE THE RUN", math.ceil(left))
+			hint.TextColor3 = Theme.Colors.red
+		else
+			hint.Text = "TOO LATE"
+		end
+	end
 	local list = living()
 	local label = nameLabel
 	if #list == 0 then
@@ -197,6 +210,7 @@ function Spectate.enter()
 	active = true
 	index = 1
 	angle = 0
+	windowEndsAt = -1
 	lastCF = camera.CFrame
 	ClientState.spectating = true
 	ClientState.cameraMode = "spectate"
@@ -232,13 +246,19 @@ function Spectate.exit(keepCamera: boolean?)
 end
 
 function Spectate.init()
-	ClientState.Juice:Connect(function(name: string)
+	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "BledOut" then
 			Spectate.enter()
 		elseif name == "Revived" then
 			Spectate.exit()
 		elseif name == "StagingEnter" then
 			Spectate.exit()
+		elseif name == "RunOver" and active then
+			windowEndsAt = os.clock() + (tonumber(data.reviveWindowSec) or 0)
+			local hint = reviveHint
+			if hint then
+				UI.punch(hint.Parent :: GuiObject, 1.2, 0.4)
+			end
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)

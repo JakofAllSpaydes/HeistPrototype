@@ -226,6 +226,18 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   from there into the gameplay camera; the run end is longer (`RunEndBeats` 0.6 / 1.4 / 4.0 / 7.0): one slow pan along
   the whole team for 4s with poses and the cash rain inside it, then a 3s MVP beat (`MvpOrbitSec` 2.5).
 
+- **Round 10 (3 Nov, feedback)** — the six minigames are side job kinds now (`SideJobKindWeights`, equal odds with
+  hack and capture): the beacon carries an OPEN prompt, a validated done finishes the job, fails can retry until the
+  timer. Side jobs clear on every client when the run ends (`CallCleared`). The run-over screen is a 5s window
+  (`RunOverSlowSec + RunOverHoldSec`) where REVIVE EVERYBODY really saves the run: the crew stands up, enemies clear
+  and the same wave restarts (SECOND CHANCE banner); presses after the window are ignored, and the spectate button
+  counts the window down. Summary columns read kills / jobs / cash / downs / revives. ARMS DROP CLOSED and N LEFT
+  toasts are gone. Reload is a two-click sound. Seven new guns: Desert Eagle, P90, SCAR-H, Sawed-Off, Barrett M82 and
+  the first LMGs, M249 and RPK (new `LMG` falloff). Camera pass on both sequences: the run start door shot sits
+  higher, then one slow pan from the crew member farthest from you to you that pushes in as it lands and orbits into
+  the gameplay camera; the run end pan and MVP shots sit at head height with the whole body in frame, the rest of the
+  crew is hidden for the MVP beat and the MVP plays `MvpAnimationId` instead of their pose.
+
 ## Open design notes (not built)
 
 - **Brief 2 assumptions to confirm.** A downed player keeps the run alive (self-revive is free), so "all players down"

@@ -54,6 +54,7 @@ local Config = {
 		Rifle = { start = 60, finish = 130, min = 0.6 },
 		Shotgun = { start = 15, finish = 45, min = 0.25 },
 		Sniper = { start = 600, finish = 600, min = 1 }, -- never falls off
+		LMG = { start = 50, finish = 120, min = 0.55 },
 	},
 
 	------------------------------------------------------------------ Player
@@ -147,8 +148,18 @@ local Config = {
 	SideJobReward = 600,
 	SideJobBeaconRadius = 6,
 	SideJobHoldSec = 2, -- hold the HACK prompt on the beacon this long to complete
-	-- Job type is rolled per job from these weights (equal = 50/50). hack | capture
-	SideJobKindWeights = { hack = 1, capture = 1 },
+	-- Job type is rolled per job from these weights. hack | capture | one of the six minigames (played at the beacon
+	-- at the session tier; retry until the timer runs out).
+	SideJobKindWeights = {
+		hack = 1,
+		capture = 1,
+		Lockpick = 1,
+		Hotwire = 1,
+		Keypad = 1,
+		Charges = 1,
+		Safe = 1,
+		Freq = 1,
+	},
 	SideJobCaptureSec = 10, -- seconds a player must stand in the circle; pauses while nobody is inside
 	SideJobCaptureRadius = 7, -- studs
 	SideJobRewardCrate = true, -- a crate drops at the beacon on completion
@@ -247,7 +258,10 @@ local Config = {
 	SelfReviveHPPct = 50,
 	ReviveInvulnSec = 1, -- no damage for this long after standing up
 	RunOverSlowSec = 1, -- slow-mo under the RUN OVER stamp
-	RunOverHoldSec = 2.5, -- the red screen and stamp stay this much longer, then the run end cutscene starts
+	-- The red screen and stamp stay this much longer, then the run end cutscene starts. The whole window
+	-- (RunOverSlowSec + RunOverHoldSec) is when REVIVE EVERYBODY still saves the run: the crew stands up and the
+	-- same wave restarts.
+	RunOverHoldSec = 4,
 	RunOverTimeScale = 0.3, -- player and enemy speed during the slow-mo
 
 	------------------------------------------------------------------ Run start (IntroSec is the total length)
@@ -268,6 +282,7 @@ local Config = {
 	-- Seconds from the start of the sequence: the camera pans the team until `mvp`, then the MVP beat runs to `summary`.
 	RunEndBeats = { poses = 0.6, rain = 1.4, mvp = 4.0, summary = 7.0 },
 	MvpOrbitSec = 2.5, -- the slow orbit on the MVP covers this long
+	MvpAnimationId = "rbxassetid://507771019", -- the MVP's flex while the rest of the crew is hidden (default R15 dance)
 	CashRainSec = 2,
 	CashRainPerBanked = 0.02, -- bills = this x Total Banked
 	CashRainMax = 200,

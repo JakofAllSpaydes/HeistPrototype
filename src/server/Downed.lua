@@ -205,7 +205,16 @@ local function onReviveEverybody(player: Player)
 	if not state.bledOut then
 		return
 	end
-	Downed.reviveEverybody(player)
+	if World.state == "RunOver" then
+		-- Inside the run-over window: the crew stands up and the run resumes (GameLoop watches runOver).
+		Downed.reviveEverybody(player)
+		World.runOver = false
+		World.skipRequested = false
+		Log.event("Run", "%s revived the crew on the run over screen: second chance", player.Name)
+	elseif World.inRun() then
+		Downed.reviveEverybody(player)
+	end
+	-- Any later press (run end, summary) is ignored.
 end
 
 -- Nearest downed player within ReviveRadius of a point, excluding `except`.

@@ -458,14 +458,9 @@ function CrewCallUI.init()
 			)
 			UI.sound(Theme.Sounds.crate, 0.9, 0.7)
 			ClientState.Juice:Fire("Shake", { amp = 0.35, dur = 0.3 })
-		elseif name == "CrateCount" then
-			local left = data.left or 0
-			if left > 0 then
-				centerSlot().toast(string.format("ARMS DROP · %d LEFT", left), Theme.Colors.gold, 0.8)
-			end
-		elseif name == "CrateEnd" then
-			centerSlot().toast("ARMS DROP CLOSED", Theme.Colors.grey, 1)
-			UI.sound(Theme.Sounds.crate, 0.5, 0.4)
+		elseif name == "CallCleared" then
+			-- The run ended (or debug reset) with a job open: no result card, the box just goes.
+			destroyActive()
 		end
 	end)
 

@@ -154,20 +154,34 @@ task.spawn(function()
 
 		runWaves()
 
-		-- Run over: enemies freeze and fade under the RUN OVER stamp, then everyone goes back to the yard.
-		setState("RunOver")
-		Remotes.Juice:FireAllClients("RunOver", {
-			wave = World.wave,
-			slowSec = Config.RunOverSlowSec,
-			holdSec = Config.RunOverHoldSec,
-			timeScale = Config.RunOverTimeScale,
-		})
-		Enemy.freezeAll(Config.RunOverSlowSec)
-		Log.event("Run", "Run %d over at wave %d", World.runId, World.wave)
-		task.wait(Config.RunOverSlowSec)
+		-- Run over: enemies freeze and fade under the RUN OVER stamp. While the stamp holds, REVIVE EVERYBODY
+		-- still saves the run: the crew stands up and the same wave restarts.
+		local window = Config.RunOverSlowSec + Config.RunOverHoldSec
+		while true do
+			setState("RunOver")
+			Remotes.Juice:FireAllClients("RunOver", {
+				wave = World.wave,
+				slowSec = Config.RunOverSlowSec,
+				holdSec = Config.RunOverHoldSec,
+				timeScale = Config.RunOverTimeScale,
+				reviveWindowSec = window,
+			})
+			Enemy.freezeAll(Config.RunOverSlowSec)
+			Log.event("Run", "Run %d over at wave %d (%.1fs to revive everybody)", World.runId, World.wave, window)
+			local t0 = os.clock()
+			while World.runOver and os.clock() - t0 < window do
+				task.wait(0.1)
+			end
+			if World.runOver then
+				break
+			end
+			Enemy.killAll()
+			Remotes.Juice:FireAllClients("RunResumed", { wave = World.wave })
+			Log.event("Run", "second chance: wave %d restarts", World.wave)
+			task.wait(1.5)
+			runWaves()
+		end
 		Enemy.killAll()
-		-- The red screen and stamp run their course before the cutscene cuts in.
-		task.wait(Config.RunOverHoldSec)
 
 		-- Run end sequence, MVP, summary (PLAY AGAIN / TO LOBBY both lead back to the yard).
 		setState("RunEnd")

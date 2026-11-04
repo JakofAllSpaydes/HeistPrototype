@@ -1,8 +1,8 @@
 --!strict
 -- Owned weapon pool for the prototype. Rarity is rolled per instance, never stored here.
 -- displayName is the copy the player sees; keep names as near-names.
--- Paper DPS at common (dmg x rate x pellets): pistols 128 / 140, SMGs 180, rifles 160 / 165, shotgun 179,
--- sniper 135 plus headshots. SMG and shotgun only hit that up close (Config.FalloffByArchetype); the sniper
+-- Paper DPS at common (dmg x rate x pellets): pistols 128 / 140 / 135, SMGs 180 / 170, rifles 160 / 165 / 161,
+-- shotguns 179 / 168, snipers 135 / 143 plus headshots, LMGs 169 / 171 (mid falloff, slow reloads). SMG and shotgun only hit that up close (Config.FalloffByArchetype); the sniper
 -- never falls off. Rarity multiplies damage on top (Config.RarityDmgMult): the spread between the weakest
 -- and strongest common (1.4x) stays under every rarity step, so a legendary pistol beats an epic rifle.
 export type Weapon = {
@@ -116,6 +116,82 @@ Weapons.List = {
 		magSize = 5,
 		reloadTime = 3.0,
 		spread = 0.2,
+	}),
+	-- Round 10 additions: one more of each type plus two LMGs (big mags, slow reloads, mid falloff).
+	def({
+		id = "Deagle",
+		displayName = "Desert Eagle",
+		archetype = "Pistol",
+		baseDmg = 45,
+		fireRate = 3,
+		magSize = 7,
+		reloadTime = 1.5,
+		spread = 1.0,
+	}),
+	def({
+		id = "P90",
+		displayName = "P90",
+		archetype = "SMG",
+		baseDmg = 10,
+		fireRate = 17,
+		magSize = 50,
+		reloadTime = 2.0,
+		spread = 3.0,
+		auto = true,
+	}),
+	def({
+		id = "SCAR-H",
+		displayName = "SCAR-H",
+		archetype = "Rifle",
+		baseDmg = 26,
+		fireRate = 6.2,
+		magSize = 20,
+		reloadTime = 2.3,
+		spread = 1.7,
+		auto = true,
+	}),
+	def({
+		id = "SawedOff",
+		displayName = "Sawed-Off",
+		archetype = "Shotgun",
+		baseDmg = 20,
+		fireRate = 1.4,
+		magSize = 2,
+		reloadTime = 1.1,
+		spread = 9,
+		pellets = 6,
+	}),
+	def({
+		id = "M82",
+		displayName = "Barrett M82",
+		archetype = "Sniper",
+		baseDmg = 110,
+		fireRate = 1.3,
+		magSize = 10,
+		reloadTime = 3.4,
+		spread = 0.3,
+	}),
+	def({
+		id = "M249",
+		displayName = "M249",
+		archetype = "LMG",
+		baseDmg = 13,
+		fireRate = 13,
+		magSize = 100,
+		reloadTime = 4.5,
+		spread = 2.8,
+		auto = true,
+	}),
+	def({
+		id = "RPK",
+		displayName = "RPK",
+		archetype = "LMG",
+		baseDmg = 18,
+		fireRate = 9.5,
+		magSize = 75,
+		reloadTime = 4.0,
+		spread = 2.4,
+		auto = true,
 	}),
 } :: { Weapon }
 

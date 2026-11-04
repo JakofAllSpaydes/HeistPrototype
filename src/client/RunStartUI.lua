@@ -1,8 +1,8 @@
 --!strict
--- Run start on the client: the camera timeline (door shot on the van, pan along the line, hold for masks,
--- push in on the poses, orbit to behind the local player) and the animations (mask-on, poses) played on
--- every character in the line. Runs off the server clock in RunStartBegin; input locked, HUD down to the
--- wave bar, not skippable.
+-- Run start on the client: the camera timeline (door shot on the van, one slow pan from the farthest crew
+-- member to you that pushes in as it arrives, orbit to behind you) and the animations (mask-on, poses)
+-- played on every character in the line. Runs off the server clock in RunStartBegin; input locked, HUD
+-- down to the wave bar, not skippable.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -23,9 +23,20 @@ local data: any = nil
 local fired: { [string]: boolean } = {}
 local tracks: { AnimationTrack } = {}
 
+-- Camera framing: characters stand about 5 studs tall with the root 3 up, so chest is ~3 and the head ~5.
+local EYE_LINE = 2.8 -- where the camera looks on a character
+local PAN_HEIGHT = 3.6
+local PAN_FAR = 10 -- distance from the line at the start of the pan
+local PAN_NEAR = 5.5 -- distance when it lands on you
+
 local function easeOut(s: number): number
 	s = math.clamp(s, 0, 1)
 	return 1 - (1 - s) * (1 - s)
+end
+
+local function smooth(s: number): number
+	s = math.clamp(s, 0, 1)
+	return s * s * (3 - 2 * s)
 end
 
 -- A roster entry's character: a dummy's model, or the player's character.
@@ -92,8 +103,6 @@ local function once(beat: string, fn: () -> ())
 	end
 end
 
-local lastCF: CFrame? = nil
-
 local function finish()
 	local d = data
 	if not d then
@@ -124,11 +133,7 @@ local function step(_dt: number)
 		end
 		return
 	end
-	local sum = Vector3.zero
-	for _, cf in line do
-		sum += cf.Position
-	end
-	local lineCenter = sum / #line
+	local lineZ = line[1].Position.Z
 	local myIndex = 1
 	for i, entry in d.players do
 		if entry.userId == player.UserId then
@@ -139,66 +144,63 @@ local function step(_dt: number)
 	local myChar = player.Character
 	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local myPos = if myRoot and t >= beats.doors then myRoot.Position else myCF.Position
+	-- The pan starts on whoever stands farthest from you in the line.
+	local farX = if myIndex <= #line / 2 then line[#line].Position.X else line[1].Position.X
 
 	local cf: CFrame
 	if t < beats.doors then
-		-- Low, front-left of the door, watching the van come in.
+		-- Front-left of the door, watching the van come in.
 		local door: Vector3 = d.door
 		local body = vanBody()
 		local target = if body then body.Position else door
-		cf = CFrame.lookAt(door + Vector3.new(-16, 2.5, 14), target + Vector3.new(0, 1, 0))
-	elseif t < beats.masks then
+		cf = CFrame.lookAt(door + Vector3.new(-16, 4, 14), target + Vector3.new(0, 1.5, 0))
+	elseif t < beats.orbit then
 		once("doors", function()
 			UI.sound(Theme.Sounds.take, 0.8, 0.6)
 		end)
-		-- Pan along the line at chest height.
-		local s = (t - beats.doors) / math.max(beats.masks - beats.doors, 0.01)
-		local a, b = line[1].Position, line[#line].Position
-		local x = a.X + (b.X - a.X) * easeOut(s)
-		cf = CFrame.lookAt(Vector3.new(x, 2.6, lineCenter.Z - 7), Vector3.new(x, 2.3, lineCenter.Z))
-	elseif t < beats.poses then
-		once("masks", function()
-			for _, entry in d.players do
-				RunStartUI.playAnim(RunStartUI.charFor(entry), Config.MaskOnAnimationId, beats.poses - beats.masks)
-			end
-			UI.sound(Theme.Sounds.swap, 1.1, 0.5)
-		end)
-		-- Holds.
-		cf = lastCF or CFrame.lookAt(Vector3.new(lineCenter.X, 2.6, lineCenter.Z - 7), lineCenter)
-	elseif t < beats.orbit then
-		once("poses", function()
-			for i, entry in d.players do
-				local pose = Config.Poses[entry.pose] or Config.Poses[1]
-				task.delay(Config.PoseStagger * (i - 1), function()
-					if data == d then
-						RunStartUI.playAnim(RunStartUI.charFor(entry), pose.animationId, pose.holdSec)
-					end
-				end)
-			end
-			UI.sound(Theme.Sounds.reelLand, 1, 0.5)
-		end)
-		-- Push in from the team shot to a tight shot of the local player, so you find yourself in the line.
-		local s = easeOut((t - beats.poses) / math.max(beats.orbit - beats.poses, 0.01))
-		local from = Vector3.new(lineCenter.X, 3.0, lineCenter.Z - 9)
-		local to = myPos + Vector3.new(0, 2.2, -4.5)
-		local look = (lineCenter + Vector3.new(0, 2, 0)):Lerp(myPos + Vector3.new(0, 1.7, 0), s)
-		cf = CFrame.lookAt(from:Lerp(to, s), look)
+		if t >= beats.masks then
+			once("masks", function()
+				for _, entry in d.players do
+					RunStartUI.playAnim(RunStartUI.charFor(entry), Config.MaskOnAnimationId, beats.poses - beats.masks)
+				end
+				UI.sound(Theme.Sounds.swap, 1.1, 0.5)
+			end)
+		end
+		if t >= beats.poses then
+			once("poses", function()
+				for i, entry in d.players do
+					local pose = Config.Poses[entry.pose] or Config.Poses[1]
+					task.delay(Config.PoseStagger * (i - 1), function()
+						if data == d then
+							RunStartUI.playAnim(RunStartUI.charFor(entry), pose.animationId, pose.holdSec)
+						end
+					end)
+				end
+				UI.sound(Theme.Sounds.reelLand, 1, 0.5)
+			end)
+		end
+		-- One slow pan from the farthest crew member to you, pushing in as it lands on you.
+		local s = smooth((t - beats.doors) / math.max(beats.orbit - beats.doors, 0.01))
+		local x = farX + (myPos.X - farX) * s
+		local dist = PAN_FAR + (PAN_NEAR - PAN_FAR) * s
+		local height = PAN_HEIGHT + (EYE_LINE + 0.4 - PAN_HEIGHT) * s
+		cf = CFrame.lookAt(Vector3.new(x, height, lineZ - dist), Vector3.new(x, EYE_LINE, lineZ))
 	elseif t < d.introSec then
-		-- Orbit 180 degrees from the tight front shot to behind the local player, widening into the gameplay camera.
+		-- Orbit 180 degrees from the tight front shot to behind you, widening into the gameplay camera.
 		local s = easeOut((t - beats.orbit) / math.max(d.introSec - beats.orbit, 0.01))
 		local theta = math.pi * (1 - s)
-		local r = 4.5 + (Config.CameraZoomDefault - 4.5) * s
+		local r = PAN_NEAR + (Config.CameraZoomDefault - PAN_NEAR) * s
 		local offset = Vector3.new(
 			math.sin(theta) * r + Config.CameraShoulder.X * s,
-			2.2 + (0.2 + Config.CameraShoulder.Y) * s,
+			(EYE_LINE + 0.4) + (1.5 + Config.CameraShoulder.Y - (EYE_LINE + 0.4)) * s,
 			math.cos(theta) * r
 		)
-		cf = CFrame.lookAt(myPos + offset, myPos + Vector3.new(0, 1.7 - 0.2 * s, 0) + Vector3.new(0, 0, -6) * s)
+		local look = Vector3.new(myPos.X, EYE_LINE - 1.1 * s, myPos.Z - 8 * s)
+		cf = CFrame.lookAt(myPos + offset, look)
 	else
 		finish()
 		return
 	end
-	lastCF = cf
 	camera.CFrame = cf
 	camera.Focus = cf
 end
@@ -207,7 +209,6 @@ local function begin(d: any)
 	finish()
 	data = d
 	fired = {}
-	lastCF = nil
 	ClientState.setAds(false)
 	ClientState.cameraMode = "cinematic"
 	ClientState.setBlock("cinematic", true)

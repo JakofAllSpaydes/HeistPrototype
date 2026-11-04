@@ -132,6 +132,8 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		task.delay((data.slowSec or 1) + (data.holdSec or 2.5) - 0.5, function()
 			slowFov = 0
 		end)
+	elseif name == "RunResumed" then
+		slowFov = 0
 	end
 end)
 

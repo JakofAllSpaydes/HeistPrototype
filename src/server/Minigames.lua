@@ -14,7 +14,16 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
 
-type Session = { token: number, player: Player, name: string, tier: number, startedAt: number }
+type Session = {
+	token: number,
+	player: Player,
+	name: string,
+	tier: number,
+	startedAt: number,
+	onDone: ((Player) -> ())?, -- side job hook
+}
+
+export type OpenOpts = { position: Vector3?, onDone: ((Player) -> ())? }
 type Result = { sec: number, misses: number, outcome: string, tier: number }
 
 local Minigames = {}
@@ -48,7 +57,9 @@ local function close(s: Session, outcome: string, misses: number)
 end
 
 -- Open `name` for a player at the session tier. An open game for that player is cancelled first.
-function Minigames.open(player: Player, name: string)
+-- opts.position is where the panel closes from when walked away from (default: the yard prop);
+-- opts.onDone runs on a validated done (side jobs).
+function Minigames.open(player: Player, name: string, opts: OpenOpts?)
 	if not table.find(Room.PropNames, name) then
 		return
 	end
@@ -63,15 +74,17 @@ function Minigames.open(player: Player, name: string)
 		name = name,
 		tier = World.minigameTier,
 		startedAt = os.clock(),
+		onDone = if opts then opts.onDone else nil,
 	}
 	sessions[s.token] = s
 	byPlayer[player] = s
 	local prop = Room.props[name]
+	local position = if opts and opts.position then opts.position elseif prop then prop.panel.Position else nil
 	Remotes.MinigameStart:FireClient(player, {
 		token = s.token,
 		name = name,
 		tier = s.tier,
-		position = if prop then prop.panel.Position else nil, -- walking away from here closes the panel
+		position = position, -- walking away from here closes the panel
 	})
 	Log.event("Minigame", "%s opened %s at tier %d", player.Name, name, s.tier)
 end
@@ -100,6 +113,9 @@ local function onResult(player: Player, token: any, outcome: any, misses: any)
 		state.minigamesDone += 1
 		state.dirty = true
 		Remotes.Juice:FireClient(player, "MinigameDone", { name = s.name, tier = s.tier })
+		if s.onDone then
+			s.onDone(player)
+		end
 	end
 end
 

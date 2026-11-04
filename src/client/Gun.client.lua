@@ -76,7 +76,11 @@ local function reload()
 	reloading = true
 	reloadToken += 1
 	local token = reloadToken
-	UI.sound(Theme.Sounds.reload, 1, 0.4)
+	-- Mag out, mag in: two clicks.
+	UI.sound(Theme.Sounds.reload, 0.7, 0.45)
+	task.delay(0.16, function()
+		UI.sound(Theme.Sounds.reload, 1.05, 0.45)
+	end)
 	if held.shellReload then
 		shellReload(token)
 		return
@@ -204,6 +208,7 @@ local function fire()
 		then 0.6
 		elseif h.archetype == "Shotgun" then 0.7
 		elseif h.archetype == "SMG" then 1.3
+		elseif h.archetype == "LMG" then 0.85
 		else 1
 	UI.sound(Theme.Sounds.shot, pitch, 0.35)
 	ClientState.Juice:Fire("LocalFire", { weaponId = h.weaponId })

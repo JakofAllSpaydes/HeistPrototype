@@ -18,6 +18,7 @@ local Room = require(script.Parent.Room)
 local BigCrate = require(script.Parent.BigCrate)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Minigames = require(script.Parent.Minigames)
 
 type Job = {
 	id: number,
@@ -40,8 +41,32 @@ local nextId = 0
 local BLUE = Color3.fromHex("4D9FE8")
 local GREEN = Color3.fromHex("8FE3A1")
 
+local function isMinigame(kind: string): boolean
+	return table.find(Room.PropNames, kind) ~= nil
+end
+
+-- Crew call copy per kind. Minigame kinds build theirs from Lines.minigame with the prop's name.
 local function copyFor(kind: string): any
-	return if kind == "capture" then Lines.capture else Lines.job
+	if kind == "capture" then
+		return Lines.capture
+	elseif not isMinigame(kind) then
+		return Lines.job
+	end
+	local mg = Lines.minigame
+	local prop = mg.props[kind] or { name = string.upper(kind), title = "CRACK THE " .. string.upper(kind) }
+	return {
+		name = prop.title,
+		crewLead = mg.crewLead,
+		typeLabel = mg.typeLabel,
+		kind = mg.kind,
+		text = { string.format(mg.text[1], prop.name), mg.text[2] },
+		rewardLine = mg.rewardLine,
+		markerHint = string.format(mg.markerHint, prop.name),
+		propName = prop.name,
+		doneTitle = mg.doneTitle,
+		doneText = mg.doneText,
+		failText = mg.failText,
+	}
 end
 
 -- Weighted roll over Config.SideJobKindWeights.
@@ -103,8 +128,14 @@ local function buildBeaconBase(position: Vector3, radius: number): Model
 	return model
 end
 
--- Hack: a terminal with a hold-to-HACK prompt.
-local function buildHackBeacon(position: Vector3, onTriggered: (Player) -> ()): Model
+-- Hack / minigame: a terminal with a prompt (hold-to-HACK, or tap OPEN for a minigame).
+local function buildHackBeacon(
+	position: Vector3,
+	actionText: string,
+	objectText: string,
+	holdSec: number,
+	onTriggered: (Player) -> ()
+): Model
 	local model = buildBeaconBase(position, Config.SideJobBeaconRadius)
 	local terminal = Instance.new("Part")
 	terminal.Name = "Terminal"
@@ -125,10 +156,10 @@ local function buildHackBeacon(position: Vector3, onTriggered: (Player) -> ()): 
 	screen.Material = Enum.Material.Neon
 	screen.Parent = model
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = Lines.job.promptAction
-	prompt.ObjectText = Lines.job.promptObject
+	prompt.ActionText = actionText
+	prompt.ObjectText = objectText
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = Config.SideJobHoldSec
+	prompt.HoldDuration = holdSec
 	prompt.MaxActivationDistance = Config.SideJobBeaconRadius + 2
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = terminal
@@ -191,13 +222,35 @@ function CrewCall.trigger()
 	local fill: BasePart? = nil
 	if kind == "capture" then
 		beacon, fill = buildCaptureBeacon(position)
-	else
-		beacon = buildHackBeacon(position, function(player)
-			if job == thisJob and thisJob.active then
-				Log.event("Call", "%s hacked the terminal for Side Job #%d", player.Name, thisJob.id)
-				CrewCall.finish(true)
+	elseif isMinigame(kind) then
+		-- The prompt opens the minigame at the beacon; a validated done finishes the job. Fails can retry.
+		beacon = buildHackBeacon(position, "OPEN", copy.propName, 0, function(player)
+			if job ~= thisJob or not thisJob.active then
+				return
 			end
+			Minigames.open(player, kind, {
+				position = position,
+				onDone = function(p)
+					if job == thisJob and thisJob.active then
+						Log.event("Call", "%s finished the %s for Side Job #%d", p.Name, kind, thisJob.id)
+						CrewCall.finish(true)
+					end
+				end,
+			})
 		end)
+	else
+		beacon = buildHackBeacon(
+			position,
+			Lines.job.promptAction,
+			Lines.job.promptObject,
+			Config.SideJobHoldSec,
+			function(player)
+				if job == thisJob and thisJob.active then
+					Log.event("Call", "%s hacked the terminal for Side Job #%d", player.Name, thisJob.id)
+					CrewCall.finish(true)
+				end
+			end
+		)
 	end
 	thisJob = {
 		id = nextId,
@@ -227,6 +280,7 @@ function CrewCall.trigger()
 		duration = Config.SideJobDurationSec,
 		position = position,
 		captureSec = Config.SideJobCaptureSec,
+		markerHint = copy.markerHint,
 	})
 	Log.event(
 		"Call",
@@ -260,7 +314,10 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	elseif not silent then
 		World.addHeat(Config.HeatSideJobFail, "side job failed")
 	end
-	if not silent then
+	if silent then
+		-- Run ended or debug reset: the card, pill and marker just go away on every client.
+		Remotes.Juice:FireAllClients("CallCleared", { id = j.id })
+	else
 		Remotes.Juice:FireAllClients("CallEnd", {
 			id = j.id,
 			jobKind = j.kind,
