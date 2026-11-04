@@ -168,11 +168,14 @@ summary's GOLD EARNED headline is this number, and the hub Gold row shows the ne
 
 **Customization scene (`MetaScene.lua`, `src/client/Meta/`).** Opened from a dock tile or a station prompt on that
 tab. Movement is hard-locked while it is open (controls off, root anchored locally, walk speed 0; the same lock holds
-the Create Party card). The camera tweens (`MetaCameraTweenSec`) to a fixed hub shot
-`MetaCameraDistance` (5.5) from the character and `MetaCameraSideShare` of that to its left, `MetaCameraHeight` up,
-looking straight ahead, so the avatar fills the left third facing the camera, playing the equipped class's idle
-(`ClassIdleAnimationId`); the hub HUD and the TOP WAVE billboard hide. Dragging on the avatar side of the screen
-(not on the panel, dock or strips) turns the avatar round (`MetaDragSensitivity`). All three tabs share one format
+the Create Party card, which instead closes when you walk off the pad). The scene drives the camera itself every
+frame (`MetaCameraTweenSec` ease): it stands `MetaCameraDistance` (7.5) in front of the character and
+`MetaCameraSideShare` of that to the character's left, `MetaCameraHeight` up, aiming `MetaCameraAim` (1.6 studs)
+below the character's center, so the avatar fills the left third with its head near the top of the frame, facing the
+camera and playing the equipped class's idle (`ClassIdleAnimationId`); the hub HUD hides and the TOP WAVE billboard is
+kept off every frame. Dragging on the avatar side of the screen (not on the panel, dock, gold pill or strips) turns
+the avatar round (`MetaDragSensitivity`). The Gold pill and the dock (LEAVE · WEAPONS · CLASSES · AVATAR, 96px tiles)
+sit bottom-left and read the balance on open. All three tabs share one format
 (reference board): a panel on the right
 58% (62% on mobile) with a blue header bar (title, red X), filter pills, OWNED / UNOWNED section bars over colored
 tiles 4 per row (name on top, icon, a `LV n` / `◆ 100` / `CRATE` / `EVENT` pill at the bottom, a white frame on the
@@ -197,8 +200,9 @@ and marks the profile dirty.
   and in-run upgrades everywhere the gun appears (starter, rolls, crate deals, floor tags via the gun's `Level` /
   `RateMult` attributes). Upgrade cost = `upgBaseCost` × `RarityUpgCostMult` ^ level. The starter spawns at Common at
   its level; the in-run roll pool is the owned set and the crate pool is the union of the party's owned sets (each gun
-  at the highest owner level). CUSTOMIZE hides the panel and centers the camera on the gun (`MetaWrapZoomDistance`)
-  with a category strip bottom-center (BACK · SKIN locked · WRAP · CHARM locked); WRAP shows the wraps row: Back, a
+  at the highest owner level). CUSTOMIZE hides the panel, the dock and the gold pill and centers the camera on the
+  gun (`MetaWrapZoomDistance`) with a category strip bottom-center (BACK · SKIN locked · WRAP · CHARM locked); WRAP
+  shows the wraps row: a Back tile, a
   None swatch, the six wraps (`Wraps.lua`) with a lock and a `◆ 100` tag over the selection when unowned, a ✔ on the
   applied one, previewed live, BUY / APPLY / REMOVE WRAP on the right. A wrap is a Color3 on the gun's grip part
   (`HeldGunWrap`) in the hub and in-run.
@@ -299,7 +303,8 @@ Solo pass first, then a 2-player Local Server; anything that fails is a Config o
    ★` with the INITIATE circle over your head, no hat / face accessories, plain mask. Output shows `[GHS Profile]
    <name> loaded … (new)`. Backtick → `+1,000 Gold` bumps the row; `Reset profile` puts it back. If the floor labels
    by the stations or props read upside down, flip the `Yaw` on the label parts in `tools/genmap.luau`.
-2. PLAY walks you to the pad; stepping on it opens Create Match. X steps you out and closes it. CREATE with size 1
+2. PLAY teleports you onto the pad and the Create Party card opens (you can still walk; walking off the pad closes
+   it). X steps you out and closes it. CREATE with size 1
    starts at once; with size 2+ the billboard shows slots and `STARTING IN 15`, the compact card sits under PLAY.
    Local Server: a second player walking in joins (`JOINED THE PARTY (2/4)` toast on both HUDs and the billboard),
    walking out leaves, the creator leaving hands ownership over (★ on the card), everyone out resets the zone. Full
@@ -312,19 +317,26 @@ Solo pass first, then a 2-player Local Server; anything that fails is a Config o
    BEST` on a first run; TO LOBBY → hub Gold row shows the new balance and the tag shows the new top wave; PLAY AGAIN →
    the party lands on the pad with a fresh countdown. Rejoin (leave and re-enter Play) → Gold, top wave, owned items
    restored.
-5. Customization: dock tile or station `F` opens the scene on that tab, camera tweens to the character on the left,
-   hub HUD gone, Gold top-right. Weapons: unlock (toast `… unlocked!`, Gold −100), `Not enough Gold!` when short
-   (reset profile and spend down, or set `StartingGold` 0), UPGRADE raises LV and the green next-values, EQUIP STARTER
-   toasts and moves the STARTER tag, CUSTOMIZE pushes in on the gun, a wrap previews on the grip, BUY then APPLY
-   recolors it, and the grip keeps the color in the next run. Classes: DOC unlock / EQUIP → the in-run tiles read
-   STIM SHOT / MED BAG / HEALING TURRET and each toasts `STUB · PHASE 2`; per-ability UPGRADE raises LV and the
-   `current > next` line; INITIATE's barricade HP / turret damage / stim heal grow in-run. Avatar: selecting previews
-   the mask on your head, `◆ 100` buys, EQUIP wears it in the hub and the run. LEAVE and Esc return to the hub view.
+5. Customization: dock tile or station `F` opens the scene on that tab; you cannot move, the camera eases to the
+   avatar on the left with its head near the top, no TOP WAVE tag, the Gold pill reads the balance, dragging on the
+   avatar turns it. Weapons: unlock (toast `… unlocked and equipped!`, Gold −100, STARTER tag moves), `Not enough
+   Gold!` when short (reset profile and spend down, or set `StartingGold` 0), UPGRADE raises LV and the green
+   `» next` values, CUSTOMIZE hides the panel and dock and zooms on the gun, WRAP opens the swatch row, a wrap
+   previews on the grip, BUY applies it, Back tiles climb out, and the grip keeps the color in the next run. Classes:
+   the DOC pill → UNLOCK equips it, the in-run tiles read STIM SHOT / MED BAG / HEALING TURRET and each toasts
+   `STUB · PHASE 2`; per-ability UPGRADE raises LV and the `» next` line; INITIATE's barricade HP / turret damage /
+   stim heal grow in-run. Avatar: MASKS previews the mask on your head and `◆ 100` buys and wears it in the hub and
+   the run; SQUAD and MVP tiles play the emote on the avatar when tapped, EQUIP sets it, and the next run start /
+   run end line-up plays your SQUAD pose while the MVP beat plays your MVP flex. LEAVE, the X and Esc return to the
+   hub view.
 6. Sidearm: debug `Down me` holding a high-rarity rifle → the slot reads M1911 · COMMON · SIDEARM, you can fire and
    reload while crawling (no ADS), the crosshair stays; `Revive all` → the rifle is back with the ammo it had;
    `Down me` then GIVE UP → the rifle lies on the floor with a 30s tag.
-7. Mobile (device emulator, landscape): dock tiles 76×68, PLAY 44px, SHOP / INVITE icons, the queue card at 80%, the
-   scene panel at 62% with 64px tiles and a 60px dock; every tap works with touch only.
+7. Side job: let a job sit until half its window is gone → MARLOW's card comes back with the reminder line and
+   collapses to the pill again with the timer intact. Hotwire: release a wire just beside the right socket → it
+   still connects.
+8. Mobile (device emulator, landscape): hub dock tiles 64px, PLAY 44px, SHOP / INVITE icons, the queue card at
+   80%, the scene panel at 62% with 64px tiles and a 64px dock; every tap works with touch only.
 
 ## Layout
 
@@ -439,6 +451,11 @@ poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   character's left, closer (`MetaCameraDistance` 5.5) with drag-to-rotate and the TOP WAVE tag hidden; bigger hub
   dock tiles; the planning table is gone; crew call cards hold 4.5s and a half-time reminder card returns while a
   job is open; Avatar tab gains SQUAD and MVP emote categories (`Emotes.lua`) that the line-ups and the MVP beat use.
+- **Round 11g–11i (4 Nov, feedback)** — scene camera pulled back to 7.5 and aimed `MetaCameraAim` below the
+  character's center so the head sits near the top of the frame; the scene's dock and gold pill grew to fill the
+  corner and the gold reads on open; the TOP WAVE tag stays hidden every frame in the scene; `Prices.emote` (its
+  absence had broken the SQUAD / MVP grids after the owned tiles); the dock and gold pill hide on both customize
+  layers so nothing overlaps the strip.
 
 ## Open design notes (not built)
 
