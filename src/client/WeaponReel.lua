@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -236,7 +237,11 @@ local function spin(weapon: any)
 		"%s  ·  DMG %s  ·  %s",
 		string.upper(weapon.displayName),
 		UI.fmtDmg(weapon.dmg or 0, weapon.pellets or 1),
-		UI.fmtRate((weapon.fireRate or 0) * ClientState.rateMult())
+		UI.fmtRate(
+			if Weapons.ById[weapon.weaponId]
+				then Weapons.effectiveRate(Weapons.ById[weapon.weaponId], ClientState.rateMult())
+				else (weapon.fireRate or 0) * ClientState.rateMult()
+		)
 	)
 	p.result.TextColor3 = color
 	local center = p.panel.AbsolutePosition + p.panel.AbsoluteSize / 2

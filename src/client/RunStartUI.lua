@@ -22,6 +22,7 @@ local camera = Workspace.CurrentCamera :: Camera
 local data: any = nil
 local fired: { [string]: boolean } = {}
 local tracks: { AnimationTrack } = {}
+local chasePos: Vector3? = nil -- smoothed camera position while following the van
 
 -- Camera framing: characters stand about 5 studs tall with the root 3 up, so chest is ~3 and the head ~5.
 local EYE_LINE = 2.8 -- where the camera looks on a character
@@ -149,11 +150,14 @@ local function step(_dt: number)
 
 	local cf: CFrame
 	if t < beats.doors then
-		-- Front-left of the door, watching the van come in.
+		-- Chase the van from behind-right and above, through the door and into the arena.
 		local door: Vector3 = d.door
 		local body = vanBody()
 		local target = if body then body.Position else door
-		cf = CFrame.lookAt(door + Vector3.new(-16, 4, 14), target + Vector3.new(0, 1.5, 0))
+		local want = target + Vector3.new(2, 6, 14)
+		local prev = chasePos
+		chasePos = if prev then prev:Lerp(want, 0.25) else want
+		cf = CFrame.lookAt(chasePos, target + Vector3.new(0, 1.5, -4))
 	elseif t < beats.orbit then
 		once("doors", function()
 			UI.sound(Theme.Sounds.take, 0.8, 0.6)
@@ -209,6 +213,7 @@ local function begin(d: any)
 	finish()
 	data = d
 	fired = {}
+	chasePos = nil
 	ClientState.setAds(false)
 	ClientState.cameraMode = "cinematic"
 	ClientState.setBlock("cinematic", true)

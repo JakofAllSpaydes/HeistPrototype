@@ -218,20 +218,54 @@ local function fire()
 	end
 end
 
+-- Burst guns: one pull fires `burst` shots at fireRate, then burstDelay before the next burst.
+local burstLeft = 0
+local burstEndedAt = -math.huge
+
 RunService.Heartbeat:Connect(function()
 	local h = held
 	if not h or ClientState.blocked() or ClientState.downed then
+		burstLeft = 0
+		return
+	end
+	local now = os.clock()
+	if now - lastShot < 1 / h.fireRate then
+		return
+	end
+	if h.burst > 1 then
+		if burstLeft > 0 then
+			-- The rest of a burst comes out whether or not the button is still held.
+			burstLeft -= 1
+			lastShot = now
+			fire()
+			if burstLeft == 0 or mag <= 0 then
+				burstLeft = 0
+				burstEndedAt = now
+			end
+			return
+		end
+		local want = firing or ClientState.touchFire
+		if not want or now - burstEndedAt < h.burstDelay then
+			return
+		end
+		if Config.HoldToFire or not semiLatch then
+			semiLatch = true
+			burstLeft = h.burst - 1
+			lastShot = now
+			fire()
+			if mag <= 0 then
+				burstLeft = 0
+				burstEndedAt = now
+			end
+		end
 		return
 	end
 	local want = firing or ClientState.touchFire
 	if not want then
 		return
 	end
-	if os.clock() - lastShot < 1 / h.fireRate then
-		return
-	end
 	if h.auto or Config.HoldToFire or not semiLatch then
-		lastShot = os.clock()
+		lastShot = now
 		semiLatch = true
 		fire()
 	end

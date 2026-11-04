@@ -34,6 +34,7 @@ export type Row = {
 	selfRevives: number,
 	reviveAll: number,
 	jobs: number, -- side jobs + minigames completed
+	gold: number, -- this player's meta currency from the run: banked cash share plus side job gold
 	score: number,
 	lineIndex: number,
 	model: Model?, -- dummies only
@@ -189,6 +190,7 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 		selfRevives = 0,
 		reviveAll = 0,
 		jobs = math.random(0, 3),
+		gold = math.floor(cash * Config.GoldPerBanked),
 		score = RunEnd.mvpScore(kills, cash, revives),
 		lineIndex = i,
 		model = d.model,
@@ -222,6 +224,7 @@ function RunEnd.play(): string
 			selfRevives = s.selfRevives,
 			reviveAll = s.reviveAllUsed,
 			jobs = s.jobsDone + s.minigamesDone,
+			gold = math.floor(s.cashCollected * Config.GoldPerBanked) + s.gold,
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}

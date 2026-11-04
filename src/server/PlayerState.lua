@@ -53,6 +53,7 @@ export type State = {
 	downs: number,
 	selfRevives: number,
 	reviveAllUsed: number,
+	gold: number, -- meta currency earned this run (side jobs); display only, no persistence
 	jobsDone: number, -- side jobs completed this run (everyone in the run gets the credit)
 	minigamesDone: number, -- minigames finished this run
 	pose: number, -- index into Config.Poses, rolled at run start
@@ -101,6 +102,7 @@ local function freshState(player: Player, joinIndex: number): State
 		downs = 0,
 		selfRevives = 0,
 		reviveAllUsed = 0,
+		gold = 0,
 		jobsDone = 0,
 		minigamesDone = 0,
 		pose = 1,
@@ -295,7 +297,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		intermissionEndsAt = World.intermissionEndsAt,
 		heat = World.heat,
 		cash = state.cash,
-		gold = 0,
+		gold = state.gold,
 		maxHP = st.maxHP,
 		held = {
 			weaponId = w.id,
@@ -312,6 +314,10 @@ function PlayerState.buildSync(state: State): Types.Sync
 			pellets = w.pellets,
 			auto = w.auto,
 			shellReload = w.shellReload,
+			burst = w.burst,
+			burstDelay = w.burstDelay,
+			displayRate = Weapons.effectiveRate(w, if w.fireRate > 0 then st.fireRate / w.fireRate else 1),
+			builtInPierce = Weapons.builtInPierce(w, state.held.rarity),
 			uid = state.held.uid,
 		},
 		stats = st,

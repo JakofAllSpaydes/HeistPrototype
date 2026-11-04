@@ -274,8 +274,10 @@ function CrewCall.trigger()
 		crewLead = copy.crewLead,
 		typeLabel = copy.typeLabel,
 		text = copy.text,
-		rewardLine = string.format(copy.rewardLine, Config.SideJobReward),
+		rewardLine = string.format(copy.rewardLine, Config.SideJobReward, Config.SideJobGold),
+		rewardShort = string.format("+$%d · %dG", Config.SideJobReward, Config.SideJobGold),
 		reward = Config.SideJobReward,
+		gold = Config.SideJobGold,
 		endsAt = endsAt,
 		duration = Config.SideJobDurationSec,
 		position = position,
@@ -305,6 +307,7 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	if success then
 		for _, state in PlayerState.all() do
 			Economy.addCash(state, Config.SideJobReward)
+			state.gold += Config.SideJobGold
 			state.jobsDone += 1
 		end
 		if Config.SideJobRewardCrate then
@@ -329,9 +332,11 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 			kind = copy.kind,
 			title = if success then copy.doneTitle else Lines.failToast,
 			text = if success then copy.doneText else copy.failText,
-			rewardLine = if success then string.format(copy.rewardLine, Config.SideJobReward) else "",
+			rewardLine = if success
+				then string.format(copy.rewardLine, Config.SideJobReward, Config.SideJobGold)
+				else "",
 			toast = if success
-				then string.format(Lines.doneToast, copy.name, Config.SideJobReward)
+				then string.format(Lines.doneToast, copy.name, Config.SideJobReward, Config.SideJobGold)
 				else Lines.failToast,
 		})
 	end

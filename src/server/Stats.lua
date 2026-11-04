@@ -37,8 +37,7 @@ export type Buffs = { fireRateMult: number, moveSpeedMult: number, reloadSpeedMu
 function Stats.weaponDps(weaponId: string, rarity: number, upgrades: { [string]: Types.TrackerItem }): number
 	local w = Weapons.ById[weaponId]
 	return Stats.weaponDamage(weaponId, rarity, pct(upgrades, "Damage"))
-		* w.fireRate
-		* mult(upgrades, "FireRate")
+		* Weapons.effectiveRate(w, mult(upgrades, "FireRate"))
 		* w.pellets
 end
 
@@ -58,7 +57,7 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		headshotMult = Config.HeadshotMult * mult(upgrades, "HeadshotMult"),
 		greed = mult(upgrades, "Greed"),
 		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3),
-		pierce = math.max(0, math.floor(points(upgrades, "Pierce"))),
+		pierce = math.max(0, math.floor(points(upgrades, "Pierce"))) + Weapons.builtInPierce(w, held.rarity),
 		ricochet = math.max(0, points(upgrades, "Ricochet")),
 		splash = math.max(0, points(upgrades, "Splash")),
 		multishot = math.max(0, points(upgrades, "Multishot")),

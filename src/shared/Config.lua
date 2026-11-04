@@ -146,6 +146,7 @@ local Config = {
 	SideJobEveryWaves = 3,
 	SideJobDurationSec = 75,
 	SideJobReward = 600,
+	SideJobGold = 5, -- meta currency per completed side job, per player (display only, no persistence)
 	SideJobBeaconRadius = 6,
 	SideJobHoldSec = 2, -- hold the HACK prompt on the beacon this long to complete
 	-- Job type is rolled per job from these weights. hack | capture | one of the six minigames (played at the beacon

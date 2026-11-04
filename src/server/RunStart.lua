@@ -19,7 +19,7 @@ local Log = require(script.Parent.Log)
 
 local RunStart = {}
 
-local LINE_GAP = 3 -- studs between crew in the line
+local LINE_GAP = 4.5 -- studs between crew in the line (room to read each one)
 local LINE_Z = 3 -- line sits this far south of the arena spawn
 local VAN_GAP = 7 -- the van brakes this far west of the line's west end
 

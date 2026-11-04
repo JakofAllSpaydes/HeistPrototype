@@ -11,7 +11,7 @@ local Frame = require(script.Parent.Frame)
 
 local Keypad = {
 	title = "KEYPAD",
-	hint = "MEMORISE THE CODE, THEN TYPE IT",
+	hint = "MEMORISE THE CODE, THEN TYPE IT · TYPE EARLY TO HIDE IT",
 	color = Theme.Colors.cash,
 	aspect = 1.15,
 }
@@ -131,8 +131,17 @@ function Keypad.open(host: Frame.Host)
 	end
 
 	local function press(digit: number)
-		if showing or done then
+		if done then
 			return
+		end
+		if showing then
+			-- Typing early is allowed: the code hides at once and the pad lights.
+			showToken += 1
+			showing = false
+			codeLabel.Text = string.rep("· ", digits)
+			codeLabel.TextTransparency = 0
+			codeLabel.TextColor3 = Theme.Colors.grey
+			paintPad(true)
 		end
 		if digit == code[entered + 1] then
 			entered += 1

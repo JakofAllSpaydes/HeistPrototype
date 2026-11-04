@@ -119,7 +119,7 @@ local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStro
 		Parent = pill,
 	})
 	UI.text({
-		Text = data.rewardLine,
+		Text = data.rewardShort or data.rewardLine,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.cash,
 		TextXAlignment = Enum.TextXAlignment.Right,

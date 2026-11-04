@@ -508,7 +508,14 @@ local function step(_dt: number)
 		local e = os.clock() - summaryShownAt
 		local k = easeOut(e / math.max(d.countUpSec or 1, 0.05))
 		if goldLabel then
-			goldLabel.Text = string.format("+%d", math.floor((d.gold or 0) * k))
+			-- Your own gold: your banked share plus side job gold (falls back to the crew figure).
+			local mine = d.gold or 0
+			for _, row in d.players do
+				if row.userId == player.UserId and typeof(row.gold) == "number" then
+					mine = row.gold
+				end
+			end
+			goldLabel.Text = string.format("+%d", math.floor(mine * k))
 			goldLabel.TextSize = if k < 1 then UI.S(44 + 6 * math.sin(e * 30)) else UI.S(44)
 		end
 		if lobbyButton and not chosen then

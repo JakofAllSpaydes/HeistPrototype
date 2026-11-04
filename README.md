@@ -238,6 +238,14 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   the gameplay camera; the run end pan and MVP shots sit at head height with the whole body in frame, the rest of the
   crew is hidden for the MVP beat and the MVP plays `MvpAnimationId` instead of their pose.
 
+- **Round 10b (3 Nov, feedback)** — SCAR-H is a 3-round burst (`burst` / `burstDelay` on the weapon; RATE and DPS
+  show the delivered rate, tags and the slot say `3-BURST`); Sawed-Off reloads in 0.6s; snipers carry built-in pierce
+  by rarity (`pierceByRarity` 1 / 1 / 2 / 3 / 4, shown as `PIERCE n`); side jobs pay `SideJobGold` per player on top
+  of the cash (card, pill, toast and the HUD gold row show it; the summary headline is your own gold: banked share
+  plus job gold); PLAY AGAIN starts the next run from the yard by itself; the run start opens on a chase cam that
+  follows the van through the door; the keypad takes input the moment you type (hides the code early); the crew line
+  stands 4.5 studs apart; both floors sit at `FloorTop` 0.5.
+
 ## Open design notes (not built)
 
 - **Brief 2 assumptions to confirm.** A downed player keeps the run alive (self-revive is free), so "all players down"

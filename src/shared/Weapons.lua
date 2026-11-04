@@ -18,6 +18,9 @@ export type Weapon = {
 	auto: boolean, -- hold to fire
 	shellReload: boolean, -- tube-fed: shells load one at a time and firing cancels the rest
 	rarityWeights: { number }, -- multiplies the wave-bracket odds per rarity, 1 = unchanged
+	burst: number, -- shots per trigger pull (1 = normal); fireRate is the rate inside the burst
+	burstDelay: number, -- seconds between bursts
+	pierceByRarity: { number }?, -- built-in pierce per rarity tier (snipers)
 }
 
 local Weapons = {}
@@ -27,7 +30,23 @@ local function def(t: { [string]: any }): Weapon
 	t.auto = t.auto or false
 	t.shellReload = t.shellReload or false
 	t.rarityWeights = t.rarityWeights or { 1, 1, 1, 1, 1 }
+	t.burst = t.burst or 1
+	t.burstDelay = t.burstDelay or 0
 	return t :: Weapon
+end
+
+-- Shots per second as actually delivered, with a fire-rate multiplier applied: bursts count the pause.
+function Weapons.effectiveRate(w: Weapon, mult: number?): number
+	local r = w.fireRate * (mult or 1)
+	if w.burst > 1 and r > 0 then
+		return w.burst / (w.burst / r + w.burstDelay)
+	end
+	return r
+end
+
+function Weapons.builtInPierce(w: Weapon, rarity: number): number
+	local p = w.pierceByRarity
+	return if p then (p[rarity] or p[#p] or 0) else 0
 end
 
 Weapons.List = {
@@ -116,6 +135,7 @@ Weapons.List = {
 		magSize = 5,
 		reloadTime = 3.0,
 		spread = 0.2,
+		pierceByRarity = { 1, 1, 2, 3, 4 }, -- snipers always punch through; more at higher rarity
 	}),
 	-- Round 10 additions: one more of each type plus two LMGs (big mags, slow reloads, mid falloff).
 	def({
@@ -143,12 +163,13 @@ Weapons.List = {
 		id = "SCAR-H",
 		displayName = "SCAR-H",
 		archetype = "Rifle",
-		baseDmg = 26,
-		fireRate = 6.2,
-		magSize = 20,
+		baseDmg = 36,
+		fireRate = 10, -- inside the burst
+		burst = 3,
+		burstDelay = 0.45, -- 3 shots per 0.75s = 4/s effective, DPS 144
+		magSize = 21,
 		reloadTime = 2.3,
-		spread = 1.7,
-		auto = true,
+		spread = 1.4,
 	}),
 	def({
 		id = "SawedOff",
@@ -157,7 +178,7 @@ Weapons.List = {
 		baseDmg = 20,
 		fireRate = 1.4,
 		magSize = 2,
-		reloadTime = 1.1,
+		reloadTime = 0.6, -- two shells, quick: the small mag is paid for in reload trips, not downtime
 		spread = 9,
 		pellets = 6,
 	}),
@@ -170,6 +191,7 @@ Weapons.List = {
 		magSize = 10,
 		reloadTime = 3.4,
 		spread = 0.3,
+		pierceByRarity = { 1, 1, 2, 3, 4 },
 	}),
 	def({
 		id = "M249",

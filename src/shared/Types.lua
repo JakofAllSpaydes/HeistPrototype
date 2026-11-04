@@ -31,6 +31,10 @@ export type HeldView = {
 	pellets: number,
 	auto: boolean,
 	shellReload: boolean, -- reloadTime is per shell; firing cancels the rest
+	burst: number, -- shots per trigger pull; fireRate paces shots inside the burst
+	burstDelay: number,
+	displayRate: number, -- shots per second as delivered (bursts count the pause): what RATE shows
+	builtInPierce: number, -- the gun's own pierce at this rarity (snipers)
 	uid: number,
 }
 

@@ -35,11 +35,11 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	local dmg = gun:GetAttribute("Dmg") :: number? or 0
 	local w = Weapons.ById[tostring(gun:GetAttribute("WeaponId"))]
 	local pellets = if w then w.pellets else 1
-	local rate = (if w then w.fireRate else 0) * ClientState.rateMult()
+	local rate = if w then Weapons.effectiveRate(w, ClientState.rateMult()) else 0
 	local sync = ClientState.sync
 	local held = sync and sync.held
 	local heldShot = if held then held.dmg * held.pellets else 0
-	local heldRate = if held then held.fireRate else 0
+	local heldRate = if held then (held.displayRate or held.fireRate) else 0
 	local dmgArrow, dmgColor = UI.arrow(dmg * pellets, heldShot)
 	local rateArrow, rateColor = UI.arrow(rate, heldRate)
 	tag.dmgLabel.Text = "DMG " .. UI.fmtDmg(dmg, pellets) .. dmgArrow
@@ -97,6 +97,16 @@ local function addTag(gun: BasePart)
 	UI.new("UICorner", { CornerRadius = UDim.new(0.15, 0), Parent = frame })
 	UI.stroke(frame, color, 2)
 	local nameText = string.upper(tostring(gun:GetAttribute("DisplayName") or gun:GetAttribute("WeaponId")))
+	local tagWeapon = Weapons.ById[tostring(gun:GetAttribute("WeaponId"))]
+	if tagWeapon then
+		if tagWeapon.burst > 1 then
+			nameText ..= string.format(" · %d-BURST", tagWeapon.burst)
+		end
+		local pierce = Weapons.builtInPierce(tagWeapon, rarity)
+		if pierce > 0 then
+			nameText ..= string.format(" · PIERCE %d", pierce)
+		end
+	end
 	UI.text({
 		Text = nameText,
 		Font = Theme.Fonts.display,

@@ -135,7 +135,15 @@ task.spawn(function()
 		setState("Staging")
 		Staging.enter()
 		Remotes.Juice:FireAllClients("StagingEnter", {})
-		Log.event("Run", "Staging: waiting for START RUN")
+		if World.lastChoice == "again" then
+			-- PLAY AGAIN: a beat for the fresh characters to land, then straight into the next run.
+			World.lastChoice = nil
+			Log.event("Run", "PLAY AGAIN: starting the next run")
+			task.wait(1.5)
+			Staging.requestRun(nil)
+		else
+			Log.event("Run", "Staging: waiting for START RUN")
+		end
 		while not World.runRequested do
 			task.wait(0.1)
 		end
@@ -186,6 +194,7 @@ task.spawn(function()
 		-- Run end sequence, MVP, summary (PLAY AGAIN / TO LOBBY both lead back to the yard).
 		setState("RunEnd")
 		local choice = RunEnd.play()
+		World.lastChoice = choice
 		Log.event("Run", "summary closed (%s), back to the yard", choice)
 	end
 end)

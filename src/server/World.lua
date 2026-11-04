@@ -14,6 +14,7 @@ local World = {
 	runRequested = false, -- START RUN pressed (or debug): leave Staging
 	runOver = false, -- game over (or debug): the wave loop winds down and the run end plays
 	summaryChoice = nil :: string?, -- "again" | "lobby": a summary button was pressed
+	lastChoice = nil :: string?, -- how the last summary closed; "again" starts the next run from the yard at once
 	intermissionEndsAt = 0, -- server time (workspace:GetServerTimeNow())
 	pendingWave = nil :: number?, -- set by debug: next loop iteration jumps here
 	skipRequested = false, -- set by debug: end the current wave / intermission now
