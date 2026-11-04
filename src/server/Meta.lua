@@ -10,6 +10,7 @@ local Remotes = require(Shared.Remotes)
 local Weapons = require(Shared.Weapons)
 local Classes = require(Shared.Classes)
 local Masks = require(Shared.Masks)
+local Emotes = require(Shared.Emotes)
 local Wraps = require(Shared.Wraps)
 local Prices = require(Shared.Prices)
 local PlayerState = require(script.Parent.PlayerState)
@@ -250,6 +251,49 @@ handlers.equipMask = function(player, state, p, args)
 	state.dirty = true
 	Log.event("Meta", "%s equipped the %s mask", player.Name, m.id)
 	return done(m.name .. " equipped!", "click")
+end
+
+------------------------------------------------------------------ Emotes (SQUAD pose, MVP flex)
+handlers.buyEmote = function(player, _state, p, args)
+	local e = Emotes.ById[tostring(args and args.emoteId)]
+	if not e then
+		return fail("no such emote")
+	end
+	if p.emotes.owned[e.id] then
+		return fail("already owned")
+	end
+	if e.saleType == "Event" then
+		return fail("EVENT ONLY")
+	elseif e.saleType == "Crate" then
+		return fail("CRATE UI · PHASE 4")
+	end
+	if not charge(player, e.price or Prices.emote) then
+		return fail("gold", NOT_ENOUGH)
+	end
+	p.emotes.owned[e.id] = true
+	if e.slot == "mvp" then
+		p.emotes.mvp = e.id
+	else
+		p.emotes.squad = e.id
+	end
+	Profiles.markDirty(player)
+	Log.event("Meta", "%s bought and equipped the %s emote (%s)", player.Name, e.id, e.slot)
+	return done(e.name .. " unlocked and equipped!", "celebrate")
+end
+
+handlers.equipEmote = function(player, _state, p, args)
+	local e = Emotes.ById[tostring(args and args.emoteId)]
+	if not e or not p.emotes.owned[e.id] then
+		return fail("not owned")
+	end
+	if e.slot == "mvp" then
+		p.emotes.mvp = e.id
+	else
+		p.emotes.squad = e.id
+	end
+	Profiles.markDirty(player)
+	Log.event("Meta", "%s equipped the %s emote (%s)", player.Name, e.id, e.slot)
+	return done(e.name .. " equipped!", "click")
 end
 
 function Meta.init()

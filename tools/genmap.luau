@@ -150,22 +150,7 @@ part("YardWallS", { yw + 2, wallH, 1 }, { 0, wallH / 2, yardNorth + yd + 0.5 }, 
 part("YardWallE", { 1, wallH, yd }, { yw / 2 + 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
 part("YardWallW", { 1, wallH, yd }, { -yw / 2 - 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
 
--- Planning table in the middle of the yard: dark top with a gold edge, four legs. Players spawn just south
--- of it, facing the arena door.
-local tableZ = yardZ
-part("Table", { 10, 0.5, 5 }, { 0, floorTop + 2.75, tableZ }, { 0.13, 0.13, 0.16 }, "SmoothPlastic")
-part("TableEdge", { 10.4, 0.2, 5.4 }, { 0, floorTop + 2.5, tableZ }, amber, "Neon", { CanCollide = false })
-for _, sx in { -1, 1 } do
-	for _, sz in { -1, 1 } do
-		part(
-			string.format("TableLeg_%d_%d", sx, sz),
-			{ 0.5, 2.5, 0.5 },
-			{ sx * 4.5, floorTop + 1.25, tableZ + sz * 2 },
-			{ 0.3, 0.3, 0.34 },
-			"Metal"
-		)
-	end
-end
+local tableZ = yardZ -- where the table stood; the spawn keeps its spot south of it
 table.insert(children, {
 	name = "Spawn",
 	className = "SpawnLocation",

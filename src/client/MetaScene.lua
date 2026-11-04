@@ -45,6 +45,7 @@ export type Preview = {
 	classIdle: (string) -> (),
 	reset: () -> (),
 	commit: () -> (), -- after an equip landed on the server: forget the old baseline
+	emote: (string, number?) -> (), -- play an emote once on the avatar (animation id, hold seconds)
 }
 
 local player = Players.LocalPlayer
@@ -178,6 +179,11 @@ local preview: Preview = {
 		savedHeadColor = nil
 		savedWrapColor = nil
 	end,
+	emote = function(animationId: string, holdSec: number?)
+		-- The idle keeps looping underneath; the emote plays on top at action priority and stops after hold.
+		RunStartUI.playAnim(char(), animationId, holdSec or 2)
+		UI.sound(Theme.Sounds.toast, 1.2, 0.3)
+	end,
 	commit = function()
 		if previewMask then
 			previewMask:Destroy()
@@ -216,7 +222,7 @@ local function shot(push: boolean): CFrame
 	-- The camera looks back at the character, so its screen-right is the character's left: stand off to the
 	-- character's LEFT so the avatar reads on the left of the screen, beside the panel.
 	local side = right * (-d * Config.MetaCameraSideShare)
-	local pos = look + forward * d + side + Vector3.new(0, 1.0, 0)
+	local pos = look + forward * d + side + Vector3.new(0, Config.MetaCameraHeight, 0)
 	return CFrame.lookAt(pos, look + side)
 end
 
@@ -261,6 +267,11 @@ local function showCharacter()
 	end
 end
 
+-- The avatar faces the camera, plus whatever the player has dragged it round by (dragYaw).
+local dragYaw = 0
+local dragging = false
+local dragLastX = 0
+
 local function faceCamera()
 	local c = char()
 	local root = c and c:FindFirstChild("HumanoidRootPart")
@@ -270,8 +281,51 @@ local function faceCamera()
 		local to = camera.CFrame.Position - root.Position
 		local flat = Vector3.new(to.X, 0, to.Z)
 		if flat.Magnitude > 0.1 then
-			root.CFrame = CFrame.lookAt(root.Position, root.Position + flat.Unit)
+			root.CFrame = CFrame.lookAt(root.Position, root.Position + flat.Unit) * CFrame.Angles(0, dragYaw, 0)
 		end
+	end
+end
+
+-- Drag starts only over the avatar side of the screen: not on the panel (when shown), the dock, the gold
+-- pill or the bottom strip area the customize layer uses.
+local function overAvatarArea(x: number, y: number): boolean
+	local g = gui
+	if not g then
+		return false
+	end
+	local function inside(f: GuiObject?): boolean
+		if not f or not f.Visible then
+			return false
+		end
+		local p, s = f.AbsolutePosition, f.AbsoluteSize
+		return x >= p.X and x <= p.X + s.X and y >= p.Y and y <= p.Y + s.Y
+	end
+	if inside(panelRoot) then
+		return false
+	end
+	for _, name in { "Dock", "Gold" } do
+		if inside(g:FindFirstChild(name) :: GuiObject?) then
+			return false
+		end
+	end
+	local overlay = overlayFrame
+	if overlay then
+		for _, c in overlay:GetChildren() do
+			if c:IsA("GuiObject") and inside(c) then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+-- The TOP WAVE billboard over the local character hides while the scene is up (it would sit in the shot).
+local function setHubTagVisible(visible: boolean)
+	local c = char()
+	local head = c and c:FindFirstChild("Head")
+	local tag = head and head:FindFirstChild("HubTag")
+	if tag and tag:IsA("BillboardGui") then
+		tag.Enabled = visible
 	end
 end
 
@@ -666,6 +720,9 @@ function MetaScene.open(tab: string?)
 	-- Out of first person (the character would be locally invisible), character shown, then the shot.
 	ClientState.Juice:Fire("CameraZoomReset", {})
 	showCharacter()
+	setHubTagVisible(false)
+	dragYaw = 0
+	dragging = false
 	faceCamera()
 	camera.CameraType = Enum.CameraType.Scriptable
 	tweenCamera(shot(false), Config.MetaCameraTweenSec)
@@ -692,7 +749,9 @@ function MetaScene.close()
 	end
 	currentTab = nil
 	customize = false
+	dragging = false
 	preview.reset()
+	setHubTagVisible(true)
 	if gui then
 		gui:Destroy()
 		gui = nil
@@ -834,11 +893,40 @@ function MetaScene.init()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed or not open then
+		if not open then
 			return
 		end
-		if input.KeyCode == Enum.KeyCode.Escape then
+		if input.KeyCode == Enum.KeyCode.Escape and not gameProcessed then
 			MetaScene.close()
+			return
+		end
+		-- Drag on the avatar side of the screen turns the avatar round; the UI side is left alone.
+		local press = input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		if press and not gameProcessed and overAvatarArea(input.Position.X, input.Position.Y) then
+			dragging = true
+			dragLastX = input.Position.X
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		if not open or not dragging then
+			return
+		end
+		if
+			input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			local dx = input.Position.X - dragLastX
+			dragLastX = input.Position.X
+			dragYaw -= dx * Config.MetaDragSensitivity
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			dragging = false
 		end
 	end)
 end

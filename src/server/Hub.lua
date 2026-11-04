@@ -197,10 +197,6 @@ local function decorate()
 			Remotes.Juice:FireClient(player, "OpenMeta", { tab = station.tab })
 		end)
 	end
-	local tbl = Room.table
-	if tbl then
-		surfaceLabel(tbl, Enum.NormalId.Top, "THE BANK", BLUE, 44)
-	end
 end
 
 ------------------------------------------------------------------ State housekeeping

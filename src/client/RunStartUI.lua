@@ -174,9 +174,11 @@ local function step(_dt: number)
 			once("poses", function()
 				for i, entry in d.players do
 					local pose = Config.Poses[entry.pose] or Config.Poses[1]
+					local animId = if typeof(entry.poseAnim) == "string" then entry.poseAnim else pose.animationId
+					local hold = tonumber(entry.poseHold) or pose.holdSec
 					task.delay(Config.PoseStagger * (i - 1), function()
 						if data == d then
-							RunStartUI.playAnim(RunStartUI.charFor(entry), pose.animationId, pose.holdSec)
+							RunStartUI.playAnim(RunStartUI.charFor(entry), animId, hold)
 						end
 					end)
 				end

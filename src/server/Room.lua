@@ -29,7 +29,6 @@ local Room = {
 	tierPadBase = nil :: BasePart?,
 	zones = {} :: { Zone }, -- queue zones, QueueZone1..N
 	stations = {} :: { Station },
-	table = nil :: BasePart?,
 }
 
 local function part(
@@ -355,8 +354,6 @@ function Room.build()
 		Room.van = van
 		Room.vanHome = van:GetPivot()
 	end
-	local tbl = room:FindFirstChild("Table")
-	Room.table = if tbl and tbl:IsA("BasePart") then tbl else nil
 	Room.props = {}
 	for _, name in Room.PropNames do
 		local panel = room:FindFirstChild("Prop_" .. name)

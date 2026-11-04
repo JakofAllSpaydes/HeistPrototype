@@ -95,7 +95,9 @@ the circle for `SideJobCaptureSec`; progress pauses when nobody is inside, a gre
 the six minigames (the beacon carries an OPEN prompt; a validated done finishes the job, fails can retry until the
 timer). The dialogue card slides in from the right into the top-right stack with typewriter text, collapses in place to
 a timer pill (with a progress bar for capture), and the result card expands from that pill. A world marker over the
-beacon shows name, hint, timer and distance; past `MarkerCompactDistance` it shrinks to a badge. Done within 75s: $600,
+beacon shows name, hint, timer and distance; past `MarkerCompactDistance` it shrinks to a badge. Cards hold
+`CallHoldSec` (4.5s) before collapsing. If the job is still open at `SideJobReminderPct` (50%) of the window, MARLOW's
+card comes back with a reminder line (`Lines.reminder`) and collapses again. Done within 75s: $600,
 `SideJobGold` gold per player, heat up and a crate drop. Fail: heat down. A run ending with a job open clears it on
 every client.
 
@@ -113,8 +115,8 @@ Downed drops the pivot to `DownedCameraHeight`; spectate and the two sequences t
 
 **Hub and the run loop (brief 3).** The map is the arena plus a 120×80 yard on its south wall (`YardWidth`,
 `YardDepth`, `DoorWidth`, `QueueZoneSize`, `StationSpacing`, `PropSpacing`; regenerate the map after changing them).
-The yard is the hub: spawn at the center facing the arena door, a planning table with a gold edge in the middle (the
-van parks beside it and only appears in the start animation), one queue zone (`QueueZoneCount` zones; a 16×16 blue pad
+The yard is the hub: spawn at the center facing the arena door (the van parks beside the spawn and only appears in the
+start animation), one queue zone (`QueueZoneCount` zones; a 16×16 blue pad
 with a gate frame and a billboard) in front of the door, three stations along the west wall (gun rack `WEAPONS`,
 podium `CLASSES`, mask wall `AVATAR`; `F` opens the customization scene on that tab), the minigame props and the tier
 pad along the east wall. `GameLoop` runs `Hub → Queue start → Intro (run start) → Wave / Intermission … → RunOver →
@@ -125,8 +127,8 @@ line-ups go to members only, non-members stay in the hub with the hub HUD, and l
 
 **Hub HUD.** PLAY top-center (green; teleports you onto the nearest open pad, where the Create Party card opens),
 SHOP icon tile left-center (amber, `Shop` placeholder), Gold pill bottom-left with `+` (placeholder) and INVITE
-FRIENDS under it (does nothing), the dock bottom-center (WEAPONS · CLASSES · AVATAR as icon tiles with labels under
-them, reference style), BOOSTS bottom-right (icon chips: a stub `◆ +50%` chip with a countdown from `StubBoostSec`,
+FRIENDS under it (does nothing), the dock bottom-center (WEAPONS · CLASSES · AVATAR as 92px icon tiles with labels
+under them, reference style), BOOSTS bottom-right (icon chips: a stub `◆ +50%` chip with a countdown from `StubBoostSec`,
 two empty), the compact queue card under PLAY while in a party, and a `TOP WAVE N ★` billboard with the class icon
 above every character in the hub. Top-left stays empty for server chat.
 
@@ -167,9 +169,11 @@ summary's GOLD EARNED headline is this number, and the hub Gold row shows the ne
 **Customization scene (`MetaScene.lua`, `src/client/Meta/`).** Opened from a dock tile or a station prompt on that
 tab. Movement is hard-locked while it is open (controls off, root anchored locally, walk speed 0; the same lock holds
 the Create Party card). The camera tweens (`MetaCameraTweenSec`) to a fixed hub shot
-`MetaCameraDistance` from the character and `MetaCameraSideShare` of that to its right, looking straight ahead, so the
-character stands about a fifth in from the left edge facing the camera, playing the equipped class's idle
-(`ClassIdleAnimationId`); the hub HUD hides. All three tabs share one format (reference board): a panel on the right
+`MetaCameraDistance` (5.5) from the character and `MetaCameraSideShare` of that to its left, `MetaCameraHeight` up,
+looking straight ahead, so the avatar fills the left third facing the camera, playing the equipped class's idle
+(`ClassIdleAnimationId`); the hub HUD and the TOP WAVE billboard hide. Dragging on the avatar side of the screen
+(not on the panel, dock or strips) turns the avatar round (`MetaDragSensitivity`). All three tabs share one format
+(reference board): a panel on the right
 58% (62% on mobile) with a blue header bar (title, red X), filter pills, OWNED / UNOWNED section bars over colored
 tiles 4 per row (name on top, icon, a `LV n` / `◆ 100` / `CRATE` / `EVENT` pill at the bottom, a white frame on the
 selection) and a detail column (big image well, name, sub-line, stat rows with `current » next` in green, flat green
@@ -211,11 +215,15 @@ and marks the profile dirty.
   Ability levels (`profile.abilities[id]`) persist across class switches, no cap; stat at level = base × (1 +
   `GrowthPct` × level) from `AbilityGrowth.lua` (`AbilityGrowthPct` 0.1 everywhere). The three live abilities read
   their numbers from it: barricade HP, turret damage and HP, stim heal (`StimHeal`) / fire-rate % / reload %.
-- **Avatar tab.** Category pills (MASKS active, two FUTURE disabled). Eight masks in `Masks.lua` (name, color,
-  shape visor / bandana / none, `saleType`): OWNED then UNOWNED tiles 4 per row with the weapons tab's tile rules, live
-  preview on the character, and the detail column (mask well, name, shape · sale, EQUIP / UNLOCK / VIEW CRATE / EVENT
-  ONLY). The equipped mask is applied by the server
-  (`PlayerState.applyMask`) on every character: in the hub, in the line-ups and in the run.
+- **Avatar tab.** Category pills MASKS · SQUAD · MVP. Masks: eight in `Masks.lua` (name, color, shape visor /
+  bandana / none, `saleType`), OWNED then UNOWNED tiles 4 per row with the weapons tab's tile rules, live preview on
+  the character, and the detail column (mask well, name, shape · sale, EQUIP / UNLOCK / VIEW CRATE / EVENT ONLY); the
+  equipped mask is applied by the server (`PlayerState.applyMask`) on every character: in the hub, in the line-ups
+  and in the run. SQUAD and MVP: emotes from `Emotes.lua` (default R15 animations stand in; `slot` squad or mvp,
+  `saleType`, `Prices.emote`). The SQUAD emote is the pose the player strikes in the run start and run end line-ups
+  (`profile.emotes.squad`, carried in the roster as `poseAnim` / `poseHold`; dummies still roll `Poses`); the MVP
+  emote is the flex played alone under the MVP stamp (`profile.emotes.mvp`, `mvpAnim`). Tapping a tile plays the
+  emote on the avatar, the detail has a ▶ PREVIEW, and EQUIP / UNLOCK set it. Unlocks auto-equip.
 
 **Minigames.** Six games, played from the yard props for testing and from side job beacons in the arena. One client
 module per game under `src/client/Minigames/`, sharing `Frame.lua` (centered panel `MinigamePanelPct` of the shorter
@@ -253,7 +261,8 @@ Round 9 no-fire rule.
 **Run start (`IntroSec` 5.0, `RunStartBeats`).** The crew (players plus dummy crew up to `SquadSize`, 4.5 studs apart)
 vanishes into the van; a chase cam follows the van from the yard through the door until it brakes beside the arena spawn
 (dust ring, shake); the crew steps out in a line in join order facing the arena, heads recolor to the equipped mask
-color (dummies use `MaskColors`) with a hands-to-face stand-in animation, each player plays a random pose from `Poses` (kept for the run end,
+color (dummies use `MaskColors`) with a hands-to-face stand-in animation, each player plays their equipped SQUAD emote
+(dummies a random pose from `Poses`; kept for the run end,
 `PoseStagger` apart) while one slow pan runs from the crew member farthest from you to you and pushes in; then the
 camera orbits 180° to behind you and hands over to the gameplay camera. Input locked, HUD down to the wave bar, not
 skippable. The dummies vanish and the van drives off and is removed (`VanExitSec`) as control returns; the crate drops.
@@ -264,7 +273,7 @@ the line, anchored, mask on, cash bag in hand, `KILLS · $CASH` tag over the hea
 bill rain (`CashRainPerBanked` × Total Banked, capped at `CashRainMax`, over `CashRainSec`) inside it, then a cut to a
 3/4 orbit (`MvpOrbitSec`) on the MVP (kills × `MvpKillWeight` + cash collected × `MvpCashWeight` + revives ×
 `MvpReviveWeight`; ties to the earlier joiner; solo still gets the beat) with the rest of the crew hidden, the MVP's
-`MvpAnimationId` flex, a gold MVP stamp, name, the winning stat line, rays, shake and a bigger haptic. The summary
+equipped MVP emote (`MvpAnimationId` for dummies), a gold MVP stamp, name, the winning stat line, rays, shake and a bigger haptic. The summary
 panel slides up over a dim: GOLD EARNED count-up (the GDD payout plus your side job gold, paid into the profile, with
 `★ NEW PERSONAL BEST` when the wave beat your top wave), WAVE N, one row per player (name, kills, jobs, cash
 collected, downs, revives, MVP tag, NEW BEST), PLAY AGAIN and TO LOBBY with a `SummaryAutoLobbySec` countdown. TO
@@ -422,6 +431,14 @@ poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   at Common, spread ×1.5, SIDEARM tag, restore on revive, drop on bleed-out). Debug: force queue start, +1,000 Gold,
   unlock all, reset profile. Config gains the Hub, Queue, Meta and Payout groups; `StagingCash` and `GoldPerBanked`
   are gone. Built and linted, not yet run in Studio (see the Brief 3 verify list).
+- **Round 11b–11f (4 Nov, feedback on brief 3)** — menus to the reference boards (right panel with header bar,
+  pills, tiles 4 per row, detail column; Create Party card; icon dock; boost chips with a countdown); movement
+  hard-locked in the scene; combat hotkeys and buys off in the hub; default-owned gun per archetype and showcase
+  Crate / Event guns; customize = center zoom with a category strip and the wraps row (Back tile); class pills;
+  unlocks auto-equip; Hotwire drops snap to the nearest socket; scene camera driven per frame, offset to the
+  character's left, closer (`MetaCameraDistance` 5.5) with drag-to-rotate and the TOP WAVE tag hidden; bigger hub
+  dock tiles; the planning table is gone; crew call cards hold 4.5s and a half-time reminder card returns while a
+  job is open; Avatar tab gains SQUAD and MVP emote categories (`Emotes.lua`) that the line-ups and the MVP beat use.
 
 ## Open design notes (not built)
 

@@ -80,6 +80,14 @@ local Lines = {
 	doneToast = "%s CLEAR · +$%d · +%d GOLD",
 	failToast = "TOO SLOW",
 	portraitLabel = "[IMG: TBA]",
+	-- Half-time reminder while a job is still open (Config.SideJobReminderPct).
+	reminder = {
+		title = "STILL OPEN",
+		text = {
+			"Half the window's gone and that job's still sitting there.",
+			"Finish it or forget it. Your call.",
+		},
+	},
 }
 
 return Lines

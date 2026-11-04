@@ -104,7 +104,16 @@ function RunStart.play()
 		state.pose = math.random(#Config.Poses)
 		-- The mask color is the equipped mask's (PlayerState.applyMask); dummies use Config.MaskColors.
 		state.maskColor = PlayerState.maskOf(state).color
-		roster[i] = { userId = p.UserId, name = p.Name, pose = state.pose, maskColor = state.maskColor, lineIndex = i }
+		local squad = PlayerState.squadEmote(state)
+		roster[i] = {
+			userId = p.UserId,
+			name = p.Name,
+			pose = state.pose,
+			poseAnim = squad.animationId,
+			poseHold = squad.holdSec,
+			maskColor = state.maskColor,
+			lineIndex = i,
+		}
 		line[i] = RunStart.lineCFrame(i, n)
 		models[i] = p.Character
 	end

@@ -277,7 +277,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end)
 
 	-- Dock, bottom-center: WEAPONS · CLASSES · AVATAR icon tiles with labels.
-	local tile = if mobile then S(56) else S(68)
+	local tile = if mobile then S(64) else S(92)
 	local dock = UI.frame({
 		Name = "Dock",
 		BackgroundTransparency = 1,

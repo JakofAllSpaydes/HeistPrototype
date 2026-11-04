@@ -141,7 +141,8 @@ local Config = {
 	BigCrateFanMax = 7,
 
 	------------------------------------------------------------------ Crew call / stub Side Job
-	CallHoldSec = 4,
+	CallHoldSec = 4.5, -- crew call card shows this long before it collapses to the pill (result cards too)
+	SideJobReminderPct = 0.5, -- a reminder line comes in when this share of the job window has gone and it is still open
 	SideJobFirstWave = 1,
 	SideJobEveryWaves = 2,
 	SideJobDurationSec = 75,
@@ -256,8 +257,10 @@ local Config = {
 		SHARPSHOOTER = "rbxassetid://507766388",
 		TORCH = "rbxassetid://507766388",
 	},
-	MetaCameraDistance = 9, -- studs from the character in the customization scene
-	MetaCameraSideShare = 0.6, -- the camera sits this x distance to the character's right, so the character reads on the left
+	MetaCameraDistance = 5.5, -- studs from the character in the customization scene (closer = bigger avatar)
+	MetaCameraSideShare = 0.72, -- the camera sits this x distance to the character's left, so the avatar reads about a fifth in from the left edge
+	MetaCameraHeight = 0.3, -- camera height above the character's center in the scene
+	MetaDragSensitivity = 0.012, -- radians per pixel when dragging the avatar round in the scene
 	MetaCameraTweenSec = 0.45,
 	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE pushes the camera in on the gun to this distance
 

@@ -30,6 +30,7 @@ type Job = {
 	progress: number, -- capture: 0..1
 	inside: boolean, -- capture: someone is in the circle
 	lastSent: number,
+	reminded: boolean, -- the half-time reminder line went out
 }
 
 local CrewCall = {}
@@ -262,6 +263,7 @@ function CrewCall.trigger()
 		progress = 0,
 		inside = false,
 		lastSent = 0,
+		reminded = false,
 	}
 	job = thisJob
 
@@ -356,9 +358,16 @@ function CrewCall.init()
 		if not j or not j.active then
 			return
 		end
-		if Workspace:GetServerTimeNow() >= j.endsAt then
+		local now = Workspace:GetServerTimeNow()
+		if now >= j.endsAt then
 			CrewCall.finish(false)
 			return
+		end
+		-- Half-time reminder: the card comes back with a nudge while the job is still open.
+		if not j.reminded and now >= j.endsAt - Config.SideJobDurationSec * (1 - Config.SideJobReminderPct) then
+			j.reminded = true
+			World.fireRun("CallReminder", { id = j.id, title = Lines.reminder.title, text = Lines.reminder.text })
+			Log.event("Call", "Side Job #%d reminder at %d%%", j.id, math.round(Config.SideJobReminderPct * 100))
 		end
 		if j.kind == "capture" then
 			local inside = anyoneInside(j.position, Config.SideJobCaptureRadius)

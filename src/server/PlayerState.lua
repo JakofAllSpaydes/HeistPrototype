@@ -14,6 +14,7 @@ local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 local Types = require(Shared.Types)
 local Masks = require(Shared.Masks)
+local Emotes = require(Shared.Emotes)
 local Wraps = require(Shared.Wraps)
 local Classes = require(Shared.Classes)
 local AbilityGrowth = require(Shared.AbilityGrowth)
@@ -182,6 +183,19 @@ end
 function PlayerState.classOf(state: State): string
 	local p = state.profile
 	return if p then p.classes.equipped else Classes.Default
+end
+
+-- The line-up pose and the MVP flex from the profile (defaults when nothing is set).
+function PlayerState.squadEmote(state: State): Emotes.Emote
+	local p = state.profile
+	local id = if p and p.emotes then p.emotes.squad else Emotes.DefaultSquad
+	return Emotes.ById[id] or Emotes.ById[Emotes.DefaultSquad]
+end
+
+function PlayerState.mvpEmote(state: State): Emotes.Emote
+	local p = state.profile
+	local id = if p and p.emotes then p.emotes.mvp else Emotes.DefaultMvp
+	return Emotes.ById[id] or Emotes.ById[Emotes.DefaultMvp]
 end
 
 function PlayerState.abilityLevel(state: State, abilityId: string): number

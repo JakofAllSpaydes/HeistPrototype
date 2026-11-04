@@ -27,6 +27,9 @@ export type Row = {
 	userId: number,
 	name: string,
 	pose: number,
+	poseAnim: string?, -- the player's SQUAD emote (dummies use Config.Poses by index)
+	poseHold: number?,
+	mvpAnim: string?, -- the player's MVP emote
 	maskColor: string,
 	kills: number,
 	cash: number,
@@ -184,6 +187,9 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 		userId = -k,
 		name = d.name,
 		pose = d.pose,
+		poseAnim = nil,
+		poseHold = nil,
+		mvpAnim = nil,
 		maskColor = d.maskColor,
 		kills = kills,
 		cash = cash,
@@ -252,6 +258,9 @@ function RunEnd.play(): string
 			userId = p.UserId,
 			name = p.Name,
 			pose = s.pose,
+			poseAnim = PlayerState.squadEmote(s).animationId,
+			poseHold = PlayerState.squadEmote(s).holdSec,
+			mvpAnim = PlayerState.mvpEmote(s).animationId,
 			maskColor = s.maskColor,
 			kills = s.kills,
 			cash = s.cashCollected,
@@ -319,7 +328,14 @@ function RunEnd.play(): string
 		startedAt = startedAt,
 		players = rows,
 		mvp = if mvp
-			then { userId = mvp.userId, name = mvp.name, statLine = statLine(mvp), pose = mvp.pose, model = mvp.model }
+			then {
+				userId = mvp.userId,
+				name = mvp.name,
+				statLine = statLine(mvp),
+				pose = mvp.pose,
+				mvpAnim = mvp.mvpAnim,
+				model = mvp.model,
+			}
 			else nil,
 		totalBanked = total,
 		gold = gold,

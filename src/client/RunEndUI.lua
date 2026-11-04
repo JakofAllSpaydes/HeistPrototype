@@ -191,7 +191,8 @@ local function showMvp(d: any)
 	-- The rest of the crew steps out of frame; the MVP gets a flex of their own under the stamp.
 	hideOthers(d)
 	local beats = d.beats
-	RunStartUI.playAnim(RunStartUI.charFor(d.mvp), Config.MvpAnimationId, (beats.summary - beats.mvp) + 0.5)
+	local flex = if typeof(d.mvp.mvpAnim) == "string" then d.mvp.mvpAnim else Config.MvpAnimationId
+	RunStartUI.playAnim(RunStartUI.charFor(d.mvp), flex, (beats.summary - beats.mvp) + 0.5)
 end
 
 local function showSummary(d: any)
@@ -460,9 +461,11 @@ local function step(_dt: number)
 			once("poses", function()
 				for i, row in d.players do
 					local pose = Config.Poses[row.pose] or Config.Poses[1]
+					local animId = if typeof(row.poseAnim) == "string" then row.poseAnim else pose.animationId
+					local hold = tonumber(row.poseHold) or pose.holdSec
 					task.delay(Config.PoseStagger * (i - 1), function()
 						if data == d then
-							RunStartUI.playAnim(RunStartUI.charFor(row), pose.animationId, pose.holdSec)
+							RunStartUI.playAnim(RunStartUI.charFor(row), animId, hold)
 						end
 					end)
 				end

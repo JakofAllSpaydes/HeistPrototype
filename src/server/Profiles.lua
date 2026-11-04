@@ -16,6 +16,7 @@ local Config = require(Shared.Config)
 local Weapons = require(Shared.Weapons)
 local Classes = require(Shared.Classes)
 local Masks = require(Shared.Masks)
+local Emotes = require(Shared.Emotes)
 local Signal = require(Shared.Signal)
 local Log = require(script.Parent.Log)
 
@@ -27,6 +28,7 @@ export type Profile = {
 	classes: { owned: { [string]: boolean }, equipped: string },
 	abilities: { [string]: number }, -- ability id -> level
 	masks: { owned: { [string]: boolean }, equipped: string },
+	emotes: { owned: { [string]: boolean }, squad: string, mvp: string }, -- line-up pose and MVP flex
 	wraps: { owned: { [string]: boolean } },
 	topWave: { [string]: number }, -- "TheBank:Normal" -> wave
 	stats: { kills: number, matchesPlayed: number, goldEarned: number },
@@ -90,6 +92,13 @@ function Profiles.fresh(): Profile
 		classes = { owned = { [Classes.Default] = true }, equipped = Classes.Default },
 		abilities = {},
 		masks = { owned = { [Masks.Default] = true }, equipped = Masks.Default },
+		emotes = (function()
+			local owned = {}
+			for _, id in Emotes.DefaultOwned do
+				owned[id] = true
+			end
+			return { owned = owned, squad = Emotes.DefaultSquad, mvp = Emotes.DefaultMvp }
+		end)(),
 		wraps = { owned = {} },
 		topWave = { ["TheBank:Normal"] = 0 },
 		stats = { kills = 0, matchesPlayed = 0, goldEarned = 0 },
@@ -159,6 +168,21 @@ local function migrate(raw: any): Profile
 		end
 		if typeof(raw.masks.equipped) == "string" and p.masks.owned[raw.masks.equipped] then
 			p.masks.equipped = raw.masks.equipped
+		end
+	end
+	if typeof(raw.emotes) == "table" then
+		if typeof(raw.emotes.owned) == "table" then
+			for id, v in raw.emotes.owned do
+				if Emotes.ById[id] and v then
+					p.emotes.owned[id] = true
+				end
+			end
+		end
+		if typeof(raw.emotes.squad) == "string" and p.emotes.owned[raw.emotes.squad] then
+			p.emotes.squad = raw.emotes.squad
+		end
+		if typeof(raw.emotes.mvp) == "string" and p.emotes.owned[raw.emotes.mvp] then
+			p.emotes.mvp = raw.emotes.mvp
 		end
 	end
 	if typeof(raw.wraps) == "table" and typeof(raw.wraps.owned) == "table" then
@@ -438,6 +462,9 @@ function Profiles.unlockAll(player: Player)
 	end
 	for _, m in Masks.List do
 		p.masks.owned[m.id] = true
+	end
+	for _, e in Emotes.List do
+		p.emotes.owned[e.id] = true
 	end
 	Profiles.markDirty(player)
 	Log.event("Profile", "%s unlocked everything", player.Name)

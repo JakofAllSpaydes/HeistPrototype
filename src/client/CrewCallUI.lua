@@ -374,6 +374,25 @@ local function onCallStart(data: any)
 	end)
 end
 
+-- Half-time reminder: the pill expands back into a card with the nudge, then collapses again. The capture
+-- progress and the timer carry over.
+local function onCallReminder(data: any)
+	local call = active
+	if not call or not call.data or call.data.id ~= data.id then
+		return
+	end
+	local progress = call.progress or 0
+	local d = table.clone(call.data)
+	d.text = data.text or d.text
+	d.typeLabel = data.title or d.typeLabel
+	onCallStart(d)
+	if active then
+		active.progress = progress
+		active.wasInside = call.wasInside
+	end
+	centerSlot().toast(tostring(data.title or "STILL OPEN"), Theme.Colors.amber, 1.2)
+end
+
 -- Result: expand from the pill into a "nice work" / "too slow" card, hold, slide out. Toast in the center.
 local function onCallEnd(data: any)
 	callToken += 1
@@ -445,6 +464,8 @@ function CrewCallUI.init()
 				end
 				call.wasInside = data.inside == true
 			end
+		elseif name == "CallReminder" then
+			onCallReminder(data)
 		elseif name == "CallEnd" then
 			onCallEnd(data)
 		elseif name == "CrateIncoming" then
