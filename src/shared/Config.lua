@@ -210,6 +210,8 @@ local Config = {
 	------------------------------------------------------------------ Room
 	RoomSize = 200,
 	WallHeight = 12,
+	FloorTop = 0.5, -- y of the floor's top face (arena and yard); above the default Baseplate so nothing z-fights
+
 	PillarGrid = 5, -- NxN pillars, the center one is skipped so the spawn stays clear
 	PillarSize = 4,
 

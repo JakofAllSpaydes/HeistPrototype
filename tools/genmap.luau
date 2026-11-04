@@ -66,13 +66,14 @@ end
 local size = Config.RoomSize
 local wallH = Config.WallHeight
 local half = size / 2
+local floorTop = Config.FloorTop -- floor-level props sit on this; walls and pillars still start at y = 0
 local dark = { 0.17, 0.17, 0.2 }
 local darker = { 0.13, 0.13, 0.16 }
 local amber = { 0.91, 0.71, 0.3 }
 
 ------------------------------------------------------------------ Arena
--- Floor: 2 studs thick, top face at y = 0. Delete the default Baseplate (top also at y = 0) or they z-fight.
-part("Floor", { size, 2, size }, { 0, -1, 0 }, darker, "Concrete")
+-- Floor: 2 studs thick, top face at FloorTop (above the default Baseplate's top at y = 0, so no z-fighting).
+part("Floor", { size, 2, size }, { 0, floorTop - 1, 0 }, darker, "Concrete")
 part("WallN", { size + 2, wallH, 1 }, { 0, wallH / 2, -half - 0.5 }, dark, "Concrete")
 part("WallE", { 1, wallH, size + 2 }, { half + 0.5, wallH / 2, 0 }, dark, "Concrete")
 part("WallW", { 1, wallH, size + 2 }, { -half - 0.5, wallH / 2, 0 }, dark, "Concrete")
@@ -110,7 +111,7 @@ for i = 1, n do
 end
 
 -- Arena spawn pad: where the van brakes and the crew lines up. Not a SpawnLocation; players spawn in the yard.
-part("ArenaSpawn", { 8, 0.4, 8 }, { 0, 0.25, 0 }, { 0.31, 0.31, 0.35 }, "SmoothPlastic", {
+part("ArenaSpawn", { 8, 0.4, 8 }, { 0, floorTop + 0.25, 0 }, { 0.31, 0.31, 0.35 }, "SmoothPlastic", {
 	CanCollide = false,
 	Transparency = 0.6,
 })
@@ -123,7 +124,7 @@ for k = 1, count do
 	part(
 		"SpawnPoint" .. k,
 		{ 3, 0.2, 3 },
-		{ math.cos(angle) * radius, 0.15, math.sin(angle) * radius },
+		{ math.cos(angle) * radius, floorTop + 0.15, math.sin(angle) * radius },
 		{ 0.47, 0.16, 0.16 },
 		"Neon",
 		{
@@ -141,7 +142,7 @@ local yardZ = yardNorth + yd / 2
 local asphalt = { 0.2, 0.2, 0.23 }
 local yardWall = { 0.22, 0.22, 0.26 }
 
-part("YardFloor", { yw, 2, yd }, { 0, -1, yardZ }, asphalt, "Asphalt")
+part("YardFloor", { yw, 2, yd }, { 0, floorTop - 1, yardZ }, asphalt, "Asphalt")
 part("YardWallS", { yw + 2, wallH, 1 }, { 0, wallH / 2, yardNorth + yd + 0.5 }, yardWall, "Concrete")
 part("YardWallE", { 1, wallH, yd }, { yw / 2 + 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
 part("YardWallW", { 1, wallH, yd }, { -yw / 2 - 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
@@ -152,7 +153,7 @@ table.insert(children, {
 	className = "SpawnLocation",
 	properties = {
 		Size = { 8, 0.4, 8 },
-		CFrame = cframe({ 0, 0.25, yardNorth + yd * 0.75 }),
+		CFrame = cframe({ 0, floorTop + 0.25, yardNorth + yd * 0.75 }),
 		Color = { 0.31, 0.31, 0.35 },
 		Material = "SmoothPlastic",
 		Anchored = true,
@@ -166,7 +167,7 @@ table.insert(children, {
 })
 
 -- Floor marker in front of the door; the server puts the START RUN prompt on it.
-part("StartRunMarker", { Config.DoorWidth, 0.2, 6 }, { 0, 0.1, yardNorth + 4 }, amber, "Neon", {
+part("StartRunMarker", { Config.DoorWidth, 0.2, 6 }, { 0, floorTop + 0.1, yardNorth + 4 }, amber, "Neon", {
 	CanCollide = false,
 	Transparency = 0.45,
 })
@@ -191,7 +192,7 @@ end
 
 -- Van: a Parts box with wheels, parked at the yard center facing the arena door (-Z).
 local vanParts: { Child } = {}
-local vanY = 1.4 -- body bottom sits on the wheels
+local vanY = floorTop + 1.4 -- body bottom sits on the wheels, wheels on the floor
 part("Body", { 6, 4.2, 11 }, { 0, vanY + 2.1, yardZ }, { 0.2, 0.24, 0.36 }, "SmoothPlastic", nil, vanParts)
 part("Windshield", { 5.4, 1.5, 0.2 }, { 0, vanY + 3.1, yardZ - 5.45 }, { 0.55, 0.7, 0.85 }, "Glass", {
 	CanCollide = false,
@@ -212,7 +213,7 @@ for _, sx in { -1, 1 } do
 		part(
 			string.format("Wheel_%s%s", if sx < 0 then "L" else "R", if sz < 0 then "F" else "B"),
 			{ 0.8, 2.2, 2.2 },
-			{ sx * 3.2, 1.1, yardZ + sz * 3.6 },
+			{ sx * 3.2, floorTop + 1.1, yardZ + sz * 3.6 },
 			{ 0.08, 0.08, 0.09 },
 			"Rubber",
 			{ Shape = "Cylinder", CanCollide = false },
@@ -230,7 +231,7 @@ local propZ0 = yardNorth + 11
 for i, name in props do
 	local z = propZ0 + (i - 1) * Config.PropSpacing
 	part("Prop_" .. name, { 0.6, 6, 4 }, { propX, 3, z }, { 0.26, 0.28, 0.34 }, "Metal")
-	part("PropLabel_" .. name, { 6, 0.2, 3 }, { propX + 4.6, 0.1, z }, { 0.1, 0.1, 0.12 }, "SmoothPlastic", {
+	part("PropLabel_" .. name, { 6, 0.2, 3 }, { propX + 4.6, floorTop + 0.1, z }, { 0.1, 0.1, 0.12 }, "SmoothPlastic", {
 		CanCollide = false,
 		Yaw = 90,
 	})
@@ -238,14 +239,21 @@ end
 
 -- Tier pad past the last prop: three buttons that set the minigame tier for the session.
 local padZ = propZ0 + #props * Config.PropSpacing + 2
-part("TierPad", { 10, 0.4, 4 }, { propX + 4.6, 0.2, padZ }, { 0.1, 0.1, 0.12 }, "SmoothPlastic", {
+part("TierPad", { 10, 0.4, 4 }, { propX + 4.6, floorTop + 0.2, padZ }, { 0.1, 0.1, 0.12 }, "SmoothPlastic", {
 	CanCollide = false,
 	Yaw = 90,
 })
 for t = 1, 3 do
-	part("TierPad" .. t, { 2.4, 0.6, 2.4 }, { propX + 4.6, 0.7, padZ + (t - 2) * 3 }, { 0.3, 0.3, 0.34 }, "Metal", {
-		CanCollide = false,
-	})
+	part(
+		"TierPad" .. t,
+		{ 2.4, 0.6, 2.4 },
+		{ propX + 4.6, floorTop + 0.7, padZ + (t - 2) * 3 },
+		{ 0.3, 0.3, 0.34 },
+		"Metal",
+		{
+			CanCollide = false,
+		}
+	)
 end
 
 local model = { className = "Folder", children = children }

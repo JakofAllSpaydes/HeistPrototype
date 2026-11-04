@@ -15,7 +15,7 @@ local Room = {
 	pillars = {} :: { Vector3 },
 	folder = nil :: Folder?,
 	PropNames = { "Lockpick", "Hotwire", "Keypad", "Charges", "Safe", "Freq" },
-	arenaSpawn = Vector3.new(0, 0, 0), -- floor point where the van brakes and the crew lines up
+	arenaSpawn = Vector3.new(0, Config.FloorTop, 0), -- floor point where the van brakes and the crew lines up
 	yardSpawn = CFrame.new(0, 3, 0), -- where characters stand in the yard, facing the door
 	doorPosition = Vector3.new(0, 0, 0), -- floor point in the middle of the south wall opening
 	van = nil :: Model?,
@@ -68,8 +68,9 @@ local function buildFallback(): Folder
 	local darker = Color3.fromRGB(34, 34, 40)
 	local amber = Color3.fromHex("E8B64C")
 	local half = size / 2
+	local floorTop = Config.FloorTop
 	local concrete = Enum.Material.Concrete
-	part("Floor", Vector3.new(size, 2, size), CFrame.new(0, -1, 0), darker, concrete, room)
+	part("Floor", Vector3.new(size, 2, size), CFrame.new(0, floorTop - 1, 0), darker, concrete, room)
 	part("WallN", Vector3.new(size + 2, wallH, 1), CFrame.new(0, wallH / 2, -half - 0.5), dark, concrete, room)
 	part("WallE", Vector3.new(1, wallH, size + 2), CFrame.new(half + 0.5, wallH / 2, 0), dark, concrete, room)
 	part("WallW", Vector3.new(1, wallH, size + 2), CFrame.new(-half - 0.5, wallH / 2, 0), dark, concrete, room)
@@ -112,7 +113,7 @@ local function buildFallback(): Folder
 	local pad = part(
 		"ArenaSpawn",
 		Vector3.new(8, 0.4, 8),
-		CFrame.new(0, 0.25, 0),
+		CFrame.new(0, floorTop + 0.25, 0),
 		Color3.fromRGB(80, 80, 90),
 		Enum.Material.SmoothPlastic,
 		room
@@ -126,7 +127,7 @@ local function buildFallback(): Folder
 		local marker = part(
 			"SpawnPoint" .. k,
 			Vector3.new(3, 0.2, 3),
-			CFrame.new(math.cos(angle) * radius, 0.15, math.sin(angle) * radius),
+			CFrame.new(math.cos(angle) * radius, floorTop + 0.15, math.sin(angle) * radius),
 			Color3.fromRGB(120, 40, 40),
 			Enum.Material.Neon,
 			room
@@ -141,7 +142,7 @@ local function buildFallback(): Folder
 	local yardZ = yardNorth + yd / 2
 	local asphalt = Color3.fromRGB(51, 51, 59)
 	local yardWall = Color3.fromRGB(56, 56, 66)
-	part("YardFloor", Vector3.new(yw, 2, yd), CFrame.new(0, -1, yardZ), asphalt, Enum.Material.Asphalt, room)
+	part("YardFloor", Vector3.new(yw, 2, yd), CFrame.new(0, floorTop - 1, yardZ), asphalt, Enum.Material.Asphalt, room)
 	part(
 		"YardWallS",
 		Vector3.new(yw + 2, wallH, 1),
@@ -155,7 +156,7 @@ local function buildFallback(): Folder
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "Spawn"
 	spawn.Size = Vector3.new(8, 0.4, 8)
-	spawn.CFrame = CFrame.new(0, 0.25, yardNorth + yd * 0.75)
+	spawn.CFrame = CFrame.new(0, floorTop + 0.25, yardNorth + yd * 0.75)
 	spawn.Anchored = true
 	spawn.CanCollide = false
 	spawn.Transparency = 0.6
@@ -166,7 +167,7 @@ local function buildFallback(): Folder
 	local marker = part(
 		"StartRunMarker",
 		Vector3.new(Config.DoorWidth, 0.2, 6),
-		CFrame.new(0, 0.1, yardNorth + 4),
+		CFrame.new(0, floorTop + 0.1, yardNorth + 4),
 		amber,
 		Enum.Material.Neon,
 		room
@@ -204,7 +205,7 @@ local function buildFallback(): Folder
 	end
 	local van = Instance.new("Model")
 	van.Name = "Van"
-	local vanY = 1.4
+	local vanY = floorTop + 1.4
 	local body = part(
 		"Body",
 		Vector3.new(6, 4.2, 11),
@@ -218,7 +219,7 @@ local function buildFallback(): Folder
 			local wheel = part(
 				string.format("Wheel_%s%s", if sx < 0 then "L" else "R", if sz < 0 then "F" else "B"),
 				Vector3.new(0.8, 2.2, 2.2),
-				CFrame.new(sx * 3.2, 1.1, yardZ + sz * 3.6),
+				CFrame.new(sx * 3.2, floorTop + 1.1, yardZ + sz * 3.6),
 				Color3.fromRGB(20, 20, 23),
 				Enum.Material.Rubber,
 				van
@@ -244,7 +245,7 @@ local function buildFallback(): Folder
 		local label = part(
 			"PropLabel_" .. name,
 			Vector3.new(6, 0.2, 3),
-			CFrame.new(propX + 4.6, 0.1, z) * CFrame.Angles(0, math.rad(90), 0),
+			CFrame.new(propX + 4.6, floorTop + 0.1, z) * CFrame.Angles(0, math.rad(90), 0),
 			Color3.fromRGB(26, 26, 31),
 			Enum.Material.SmoothPlastic,
 			room
@@ -255,7 +256,7 @@ local function buildFallback(): Folder
 	local base = part(
 		"TierPad",
 		Vector3.new(10, 0.4, 4),
-		CFrame.new(propX + 4.6, 0.2, padZ) * CFrame.Angles(0, math.rad(90), 0),
+		CFrame.new(propX + 4.6, floorTop + 0.2, padZ) * CFrame.Angles(0, math.rad(90), 0),
 		Color3.fromRGB(26, 26, 31),
 		Enum.Material.SmoothPlastic,
 		room
@@ -265,7 +266,7 @@ local function buildFallback(): Folder
 		local button = part(
 			"TierPad" .. t,
 			Vector3.new(2.4, 0.6, 2.4),
-			CFrame.new(propX + 4.6, 0.7, padZ + (t - 2) * 3),
+			CFrame.new(propX + 4.6, floorTop + 0.7, padZ + (t - 2) * 3),
 			Color3.fromRGB(77, 77, 87),
 			Enum.Material.Metal,
 			room
@@ -305,9 +306,9 @@ function Room.build()
 			continue
 		end
 		if string.match(child.Name, "^SpawnPoint%d+$") then
-			table.insert(Room.spawnPoints, Vector3.new(child.Position.X, 0, child.Position.Z))
+			table.insert(Room.spawnPoints, Vector3.new(child.Position.X, Config.FloorTop, child.Position.Z))
 		elseif string.match(child.Name, "^Pillar") then
-			table.insert(Room.pillars, Vector3.new(child.Position.X, 0, child.Position.Z))
+			table.insert(Room.pillars, Vector3.new(child.Position.X, Config.FloorTop, child.Position.Z))
 		end
 	end
 	if #Room.spawnPoints == 0 then
@@ -319,20 +320,20 @@ function Room.build()
 		end
 	end
 	if #Room.pillars == 0 then
-		table.insert(Room.pillars, Vector3.new(30, 0, 30))
+		table.insert(Room.pillars, Vector3.new(30, Config.FloorTop, 30))
 	end
 
 	-- Yard and sequence anchors.
 	local arenaSpawn = room:FindFirstChild("ArenaSpawn")
 	if arenaSpawn and arenaSpawn:IsA("BasePart") then
-		Room.arenaSpawn = Vector3.new(arenaSpawn.Position.X, 0, arenaSpawn.Position.Z)
+		Room.arenaSpawn = Vector3.new(arenaSpawn.Position.X, Config.FloorTop, arenaSpawn.Position.Z)
 	end
-	Room.doorPosition = Vector3.new(0, 0, Config.RoomSize / 2)
+	Room.doorPosition = Vector3.new(0, Config.FloorTop, Config.RoomSize / 2)
 	local spawn = room:FindFirstChild("Spawn")
 	if spawn and spawn:IsA("BasePart") then
-		Room.yardSpawn = CFrame.new(spawn.Position.X, 3, spawn.Position.Z)
+		Room.yardSpawn = CFrame.new(spawn.Position.X, Config.FloorTop + 3, spawn.Position.Z)
 	else
-		Room.yardSpawn = CFrame.new(0, 3, Config.RoomSize / 2 + 1 + Config.YardDepth * 0.75)
+		Room.yardSpawn = CFrame.new(0, Config.FloorTop + 3, Config.RoomSize / 2 + 1 + Config.YardDepth * 0.75)
 	end
 	local van = room:FindFirstChild("Van")
 	if van and van:IsA("Model") then

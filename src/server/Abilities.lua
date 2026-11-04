@@ -69,7 +69,7 @@ local function placementCFrame(char: Model, distance: number): CFrame
 	local _, yaw = base:ToEulerAnglesYXZ()
 	local flat = CFrame.new(base.Position) * CFrame.Angles(0, yaw, 0)
 	local pos = (flat * CFrame.new(0, 0, -distance)).Position
-	return CFrame.new(pos.X, 0, pos.Z) * CFrame.Angles(0, yaw, 0)
+	return CFrame.new(pos.X, Config.FloorTop, pos.Z) * CFrame.Angles(0, yaw, 0)
 end
 
 local function register(s: Structure)

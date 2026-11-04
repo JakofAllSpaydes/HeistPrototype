@@ -26,7 +26,7 @@ local VAN_GAP = 7 -- the van brakes this far west of the line's west end
 -- Slot i of n in the crew line, centered on the arena spawn, facing north into the arena.
 function RunStart.lineCFrame(i: number, n: number): CFrame
 	local x = Room.arenaSpawn.X + (i - (n + 1) / 2) * LINE_GAP
-	return CFrame.new(x, 3, Room.arenaSpawn.Z + LINE_Z)
+	return CFrame.new(x, Config.FloorTop + 3, Room.arenaSpawn.Z + LINE_Z)
 end
 
 -- Where the van stops for a line of n: just west of it, still facing north.

@@ -71,7 +71,7 @@ function WeaponRoll.dustRing(position: Vector3, size: number, color: Color3?)
 	local ring = Instance.new("Part")
 	ring.Shape = Enum.PartType.Cylinder
 	ring.Size = Vector3.new(0.2, 1, 1)
-	ring.CFrame = CFrame.new(position.X, 0.3, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.CFrame = CFrame.new(position.X, Config.FloorTop + 0.3, position.Z) * CFrame.Angles(0, 0, math.rad(90))
 	ring.Anchored = true
 	ring.CanCollide = false
 	ring.CanQuery = false
@@ -179,7 +179,7 @@ function WeaponRoll.groundCFrameInFront(char: Model, distance: number): CFrame
 	local base = if root then root.CFrame else char:GetPivot()
 	local flat = CFrame.new(base.Position) * CFrame.Angles(0, select(2, base:ToEulerAnglesYXZ()), 0)
 	local pos = (flat * CFrame.new(0, 0, -distance)).Position
-	pos = Vector3.new(pos.X, 0.35, pos.Z)
+	pos = Vector3.new(pos.X, Config.FloorTop + 0.35, pos.Z)
 	return CFrame.new(pos)
 		* CFrame.Angles(0, math.random() * math.pi * 2, 0)
 		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))

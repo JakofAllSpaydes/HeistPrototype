@@ -101,7 +101,7 @@ local function blastRing(position: Vector3, radius: number, color: Color3)
 	local ring = Instance.new("Part")
 	ring.Shape = Enum.PartType.Cylinder
 	ring.Size = Vector3.new(0.3, 1, 1)
-	ring.CFrame = CFrame.new(position.X, 0.4, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.CFrame = CFrame.new(position.X, Config.FloorTop + 0.4, position.Z) * CFrame.Angles(0, 0, math.rad(90))
 	ring.Anchored = true
 	ring.CanCollide = false
 	ring.CanQuery = false

@@ -75,12 +75,12 @@ function BigCrate.drop(at: Vector3?)
 	local n = weaponCount()
 	local landPos: Vector3
 	if at then
-		landPos = Vector3.new(at.X, 0, at.Z)
+		landPos = Vector3.new(at.X, Config.FloorTop, at.Z)
 	else
 		local angle = math.random() * math.pi * 2
 		landPos = Vector3.new(
 			math.cos(angle) * Config.BigCrateDistanceFromCenter,
-			0,
+			Config.FloorTop,
 			math.sin(angle) * Config.BigCrateDistanceFromCenter
 		)
 	end

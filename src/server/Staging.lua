@@ -148,7 +148,7 @@ function Staging.spawnCFrame(_player: Player): CFrame?
 	if World.state == "Staging" then
 		return nil
 	end
-	return CFrame.new(Room.arenaSpawn + Vector3.new((math.random() - 0.5) * 8, 3, 6))
+	return CFrame.new(Room.arenaSpawn + Vector3.new((math.random() - 0.5) * 8, 3, 6)) -- arenaSpawn sits on the floor top
 end
 
 -- Back to the yard: clean arena, van put away (it only appears in the start animation), fresh state with
