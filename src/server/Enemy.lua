@@ -495,15 +495,16 @@ api.spawnAt = function(archetype: string, position: Vector3): Model
 end
 
 ------------------------------------------------------------------ Status effects
--- Flashbang: the enemy stops where it stands and does not attack until the stun ends. Head goes white.
-function Enemy.stun(model: Model, seconds: number)
+-- Flashbang: the enemy stops where it stands and does not attack until the stun ends. Head goes white (or
+-- `headColor`: a CRYO freeze is ice blue).
+function Enemy.stun(model: Model, seconds: number, headColor: Color3?)
 	local d = active[model]
 	if not d or d.dead then
 		return
 	end
 	d.stunUntil = math.max(d.stunUntil, os.clock() + seconds)
 	d.humanoid:MoveTo(d.root.Position)
-	d.head.Color = Color3.new(1, 1, 1)
+	d.head.Color = headColor or Color3.new(1, 1, 1)
 	if d.brain.onStun then
 		d.brain.onStun(d, api)
 	end
@@ -701,10 +702,15 @@ local function ragdoll(d: Data, hit: Hit?, overkill: number)
 	end)
 end
 
--- Match cash a kill pays (before greed): the row's cash x elite x the heat multiplier.
+-- Match cash a kill pays (before CASH GAIN): the row's cash x elite x the wave multiplier (CashWaveMult on the
+-- enemy's own wave) x the heat multiplier.
 function Enemy.cashFor(model: Model): number
 	local d = active[model]
-	return if d then math.round(d.cashValue * World.cashMult()) else 0
+	if not d then
+		return 0
+	end
+	local waveMult = 1 + Config.CashWaveMult * math.max(0, d.wave - 1)
+	return math.round(d.cashValue * waveMult * World.cashMult())
 end
 
 -- A player kill (attacker set) knocks the body over while the floor has room (ActiveRagdolls); clears,

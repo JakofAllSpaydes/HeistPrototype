@@ -367,7 +367,7 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	if success then
 		for _, p in World.runAudience() do
 			local state = PlayerState.get(p)
-			Economy.addCash(state, Config.SideJobReward)
+			Economy.addEarned(state, Config.SideJobReward) -- x CASH GAIN
 			state.gold += Config.SideJobGold
 			state.jobsDone += 1
 		end

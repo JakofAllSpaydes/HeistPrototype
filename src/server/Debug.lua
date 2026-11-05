@@ -99,6 +99,10 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		state.forceTradeoff = true
 		toast(player, "NEXT PICK-3 HAS A TRADEOFF")
 	end,
+	ForceElement = function(player, state, _args)
+		state.forceElement = true
+		toast(player, "NEXT PICK-3 HAS AN ELEMENT")
+	end,
 	DropCrate = function(_player, _state, _args)
 		BigCrate.drop()
 	end,
@@ -160,6 +164,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	MinigameStats = function(_player, _state, _args)
 		Minigames.printStats()
 		Heat.printStats()
+		Economy.printStats()
 	end,
 	-- The boss without the cutscene, at the marker nearest the player.
 	SpawnBoss = function(player, _state, _args)

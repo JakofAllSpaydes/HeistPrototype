@@ -38,6 +38,8 @@ local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
 local Boss = require(script.Parent.Boss)
 local Roster = require(script.Parent.Roster)
+local Economy = require(script.Parent.Economy)
+local Elements = require(script.Parent.Elements)
 
 Profiles.init()
 PlayerState.init()
@@ -51,6 +53,7 @@ end
 Enemy.onDeath = function(d)
 	Heat.onEnemyDead(d.wave)
 end
+Elements.init()
 Combat.init()
 UpgradeShop.init()
 WeaponRoll.init()
@@ -132,6 +135,7 @@ local function runWaves()
 		end
 
 		BigCrate.onWaveEnd()
+		Economy.logWave(wave, World.partyPlayers())
 		if advanced then
 			Log.event("Wave", "Wave %d rolled into the next by AUTO SKIP, %d still alive", wave, Enemy.count())
 		else
@@ -204,6 +208,7 @@ task.spawn(function()
 		World.wave = 1
 		Heat.reset()
 		Hub.beginRun()
+		Economy.resetRun(World.partyPlayers())
 		setState("Intro")
 		Log.event(
 			"Run",

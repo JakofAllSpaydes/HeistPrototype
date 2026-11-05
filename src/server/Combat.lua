@@ -1,6 +1,7 @@
 --!strict
 -- Hitscan validation, damage, kill cash. Raycasts from the server-side head along the client direction.
--- Upgrade effects resolved here: crit, headshot, pierce, ricochet, splash, multishot, lifesteal, greed.
+-- Upgrade effects resolved here: crit, headshot, pierce, ricochet, splash, multishot, lifesteal, CASH GAIN, and the
+-- element procs (rolled once per shot, applied through Elements to every enemy the shot hits directly).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -12,6 +13,7 @@ local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
+local Elements = require(script.Parent.Elements)
 local World = require(script.Parent.World)
 
 local Combat = {}
@@ -33,6 +35,8 @@ type Shooter = {
 	stats: Types.Computed,
 	char: Model,
 	weapon: Weapons.Weapon,
+	procs: Elements.Procs, -- this shot's element rolls (one per element per trigger pull)
+	procced: { [Model]: boolean }, -- enemies this shot already applied its elements to (pellets, pierce)
 }
 
 -- Distance falloff multiplier for the shooter's archetype (Config.FalloffByArchetype).
@@ -80,8 +84,8 @@ local function dealDamage(
 	})
 	local cash = 0
 	if killed then
-		-- The archetype's cash (x elite, x heat) x greed.
-		cash = math.round(killCash * shooter.stats.greed)
+		-- The archetype's cash (x wave, x elite, x heat) x CASH GAIN.
+		cash = math.round(killCash * shooter.stats.cashGain)
 		Economy.addCash(shooter.state, cash)
 	end
 	heal(shooter, dmg * shooter.stats.lifesteal / 100)
@@ -131,6 +135,11 @@ local function bulletHit(
 		* (if headshot then st.headshotMult else 1)
 		* (if crit then Config.CritDmgMult else 1)
 	local dir = if travel.Magnitude > 0.1 then travel.Unit else nil
+	-- Elements go on before the damage so a burn or freeze lands even when the hit is not the kill.
+	if shooter.procs.any and not shooter.procced[model] then
+		shooter.procced[model] = true
+		Elements.apply(shooter.player, st, model, shooter.procs, dir, position)
+	end
 	dealDamage(shooter, model, dmg, position, { headshot = headshot, crit = crit, dir = dir }, true)
 
 	if st.ricochet > 0 and math.random() * 100 < st.ricochet then
@@ -250,7 +259,15 @@ function Combat.init()
 			state.lastShotAt = now
 
 			local weapon = Weapons.ById[state.held.weaponId]
-			local shooter: Shooter = { player = player, state = state, stats = st, char = char, weapon = weapon }
+			local shooter: Shooter = {
+				player = player,
+				state = state,
+				stats = st,
+				char = char,
+				weapon = weapon,
+				procs = Elements.roll(st),
+				procced = {},
+			}
 			local dir = direction.Unit
 			local baseFilter: { Instance } = { char, groundLoot, effects }
 			local spread = weapon.spread * st.spreadMult * (if state.downed then Config.DownedSpreadMult else 1)

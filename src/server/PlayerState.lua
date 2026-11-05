@@ -36,6 +36,9 @@ export type State = {
 	pityStreak: number,
 	forcedRarity: number?,
 	forceTradeoff: boolean,
+	forceElement: boolean, -- debug: the next pick-3 holds an element card
+	waveCash: number, -- cash earned since the last wave end (the income log)
+	waveUpgrades: number, -- upgrades bought since the last wave end
 	god: boolean,
 	lastShotAt: number,
 	lastSwapAt: number,
@@ -89,6 +92,9 @@ local function freshState(player: Player, joinIndex: number): State
 		pityStreak = 0,
 		forcedRarity = nil,
 		forceTradeoff = false,
+		forceElement = false,
+		waveCash = 0,
+		waveUpgrades = 0,
 		god = false,
 		lastShotAt = 0,
 		lastSwapAt = 0,
@@ -491,12 +497,23 @@ function PlayerState.inParty(state: State): boolean
 	return World.isInParty(state.player)
 end
 
+-- An ability's cooldown for this player: the Config base less ABILITY COOLDOWN (capped in Stats).
+function PlayerState.abilityCooldown(state: State, abilityId: string): number
+	local base = Config.AbilityCooldown[abilityId] or 10
+	return base * math.max(0.05, 1 - PlayerState.computed(state).abilityCdr)
+end
+
+-- ABILITY POWER: ability damage, heal and placeable HP multiplier.
+function PlayerState.abilityPower(state: State): number
+	return PlayerState.computed(state).abilityPower
+end
+
 local function abilityView(state: State): { [string]: Types.Ability }
 	local out: { [string]: Types.Ability } = {}
 	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
 	for _, a in class.abilities do
 		out[a.id] = {
-			cooldown = Config.AbilityCooldown[a.id] or 10,
+			cooldown = PlayerState.abilityCooldown(state, a.id),
 			cooldownEndsAt = state.cooldowns[a.id] or 0,
 			activeUntil = if state.buffId == a.id then state.buffUntil else nil,
 		}

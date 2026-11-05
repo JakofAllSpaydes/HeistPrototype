@@ -56,18 +56,21 @@ local function floatText(position: Vector3, text: string, color: Color3, size: n
 	)
 end
 
+-- The color is captured fresh on every flash that is not already mid-flash, so an element tint (StatusFx) that
+-- changed the body since the last hit is what comes back.
 local function flashEnemy(model: Model)
 	for _, p in model:GetChildren() do
 		if p:IsA("BasePart") and p.Name ~= "Head" then
-			local original = p:GetAttribute("OrigColor") :: Color3?
-			if not original then
-				original = p.Color
-				p:SetAttribute("OrigColor", original)
+			if p:GetAttribute("Flashing") ~= true then
+				p:SetAttribute("OrigColor", p.Color)
 			end
+			local original = p:GetAttribute("OrigColor") :: Color3?
+			p:SetAttribute("Flashing", true)
 			p.Color = Theme.Colors.red
 			task.delay(0.08, function()
 				if p.Parent and original then
 					p.Color = original
+					p:SetAttribute("Flashing", nil)
 				end
 			end)
 		end

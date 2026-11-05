@@ -591,6 +591,16 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    The prompt is gone while a roll plays; the tag reads `1 ROLL LEFT`; the crate closes after its last roll or 45s
    (`CrateLifetimeSec`), and guns on the floor keep their own 30s timers. Boss crate: its first roll is a Legendary.
    Force rarity from the debug panel applies to your next crate roll.
+2. Upgrades: pick-3 cards now include INCENDIARY / CRYO / CONCUSSIVE (orange `Element` on the debug panel forces
+   one), ABILITY COOLDOWN, ABILITY POWER and CASH GAIN (no Greed). Take INCENDIARY: the tracker tile reads `15%`;
+   roughly one shot in seven sets a target orange with embers and it burns for 3s (small numbers, kill cash to you).
+   CRYO: tinted blue and slower with a shard crackle; three procs inside 2s freeze it ice-blue for 1s (no walking, no
+   swings). CONCUSSIVE: a white ring and the enemy slides back about 8 studs (a Heavy or TITAN half that; TITAN keeps
+   attacking). Take one again: the chance on the tile goes up. ABILITY COOLDOWN shows `-8%` on its tile and the ability
+   sweeps get shorter; ABILITY POWER raises turret / barricade HP and heals; CASH GAIN raises kill, bag and job cash.
+   Tradeoff cards are rarer and never on an element card; a malus never lands on an element or CASH GAIN. Kill cash
+   grows 10% a wave (`CashWaveMult`); every wave end prints `[GHS Income] wave N cash earned X upgrades bought Y
+   (name)` and debug `Stats` adds the run's upgrades per player per wave.
 
 ## Layout
 

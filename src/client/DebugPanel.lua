@@ -160,10 +160,13 @@ local function build()
 	end
 
 	local r6 = row(panel, 7, rh)
-	btn(r6, "Force tradeoff", 0.5, function()
+	btn(r6, "Tradeoff", 0.34, function()
 		send("ForceTradeoff")
 	end)
-	btn(r6, "Drop crate", 0.5, function()
+	btn(r6, "Element", 0.33, function()
+		send("ForceElement")
+	end, Color3.fromHex("FF8A3C"))
+	btn(r6, "Drop crate", 0.33, function()
 		send("DropCrate")
 	end, Theme.Colors.gold)
 

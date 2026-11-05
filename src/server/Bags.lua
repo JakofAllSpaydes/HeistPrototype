@@ -362,7 +362,7 @@ function Bags.collect(player: Player, b: Bag)
 		toast = string.format(Lines.bagBanked, string.upper(player.Name), b.value)
 	else
 		for _, p in World.runAudience() do
-			Economy.addCash(PlayerState.get(p), b.value)
+			Economy.addEarned(PlayerState.get(p), b.value) -- each member's own CASH GAIN
 		end
 		toast = string.format(Lines.bagGrabbed, string.upper(player.Name), "$" .. tostring(b.value))
 	end

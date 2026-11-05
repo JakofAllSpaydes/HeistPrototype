@@ -22,6 +22,12 @@ local function points(upgrades: { [string]: Types.TrackerItem }, id: string): nu
 	return if u then u.pct else 0
 end
 
+-- An element's effect power (1 on the first take).
+local function power(upgrades: { [string]: Types.TrackerItem }, id: string): number
+	local u = upgrades[id]
+	return if u and u.power then u.power else 1
+end
+
 -- Multiplier for a multiplicative stat, floored so a pile of maluses never hits zero or flips sign.
 local function mult(upgrades: { [string]: Types.TrackerItem }, id: string): number
 	return math.max(0.2, 1 + pct(upgrades, id))
@@ -69,7 +75,15 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		moveSpeed = Config.PlayerWalkSpeed * mult(upgrades, "MoveSpeed") * b.moveSpeedMult,
 		critChance = math.max(0, Config.BaseCritChancePct + (if crit then crit.pct else 0)),
 		headshotMult = Config.HeadshotMult * mult(upgrades, "HeadshotMult"),
-		greed = mult(upgrades, "Greed"),
+		cashGain = mult(upgrades, "CashGain"),
+		abilityCdr = math.clamp(points(upgrades, "AbilityCooldown"), -100, Config.AbilityCooldownCap) / 100,
+		abilityPower = mult(upgrades, "AbilityPower"),
+		incendiaryChance = math.max(0, points(upgrades, "Incendiary")),
+		incendiaryPower = power(upgrades, "Incendiary"),
+		cryoChance = math.max(0, points(upgrades, "Cryo")),
+		cryoPower = power(upgrades, "Cryo"),
+		concussiveChance = math.max(0, points(upgrades, "Concussive")),
+		concussivePower = power(upgrades, "Concussive"),
 		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3),
 		pierce = math.max(0, math.floor(points(upgrades, "Pierce")))
 			+ Weapons.builtInPierce(w, held.rarity)

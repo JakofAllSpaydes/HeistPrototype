@@ -1,29 +1,82 @@
 --!strict
--- Stat list, display names per stat x tier, magnitude matrix and tradeoff rules for the pick-3.
+-- Stat list, display names per stat x tier, magnitude matrix and tradeoff rules for the pick-3 and the dealer.
+-- Brief 5: every stat has a category (gun | element | utility); the generator draws a category by
+-- Config.CategoryWeights, then a stat inside it.
 local Config = require(script.Parent.Config)
 
 -- unit: "%" for percent stats, "" for flat counts (Pierce). additive = added in points, not multiplying a base.
--- noMalus: never picked as the malus side of a tradeoff card (flat counts would go negative).
-export type Stat = { id: string, name: string, short: string, additive: boolean, unit: string, noMalus: boolean? }
+-- noMalus: never picked as the malus side of a tradeoff card (flat counts would go negative; elements; cash gain).
+-- negative: the stored value is shown negated (ABILITY COOLDOWN +12 in the tracker reads "-12%").
+export type Stat = {
+	id: string,
+	name: string,
+	short: string,
+	additive: boolean,
+	unit: string,
+	category: string,
+	noMalus: boolean?,
+	negative: boolean?,
+}
 
 local Upgrades = {}
 
--- Prototype list is gun-focused plus Move Speed so every pick is felt. Max HP, HP Regen and Greed are
--- still supported by Stats if you add them back here (names and magnitudes below).
+Upgrades.Categories = { "gun", "element", "utility" }
+
 Upgrades.Stats = {
-	{ id = "Damage", name = "Damage", short = "DMG", additive = false, unit = "%" },
-	{ id = "FireRate", name = "Fire Rate", short = "RPM", additive = false, unit = "%" },
-	{ id = "MagSize", name = "Mag Size", short = "MAG", additive = false, unit = "%" },
-	{ id = "ReloadSpeed", name = "Reload Speed", short = "RLD", additive = false, unit = "%" },
-	{ id = "CritChance", name = "Crit Chance", short = "CRT", additive = true, unit = "%" },
-	{ id = "HeadshotMult", name = "Headshot Mult", short = "HS", additive = false, unit = "%" },
-	{ id = "MoveSpeed", name = "Move Speed", short = "SPD", additive = false, unit = "%" },
-	{ id = "Accuracy", name = "Accuracy", short = "ACC", additive = false, unit = "%" },
-	{ id = "Pierce", name = "Pierce", short = "PRC", additive = true, unit = "", noMalus = true },
-	{ id = "Ricochet", name = "Ricochet", short = "RIC", additive = true, unit = "%" },
-	{ id = "Splash", name = "Splash", short = "SPL", additive = true, unit = "%" },
-	{ id = "Multishot", name = "Multishot", short = "MLT", additive = true, unit = "%" },
-	{ id = "Lifesteal", name = "Lifesteal", short = "LFS", additive = true, unit = "%" },
+	{ id = "Damage", name = "Damage", short = "DMG", additive = false, unit = "%", category = "gun" },
+	{ id = "FireRate", name = "Fire Rate", short = "RPM", additive = false, unit = "%", category = "gun" },
+	{ id = "MagSize", name = "Mag Size", short = "MAG", additive = false, unit = "%", category = "gun" },
+	{ id = "ReloadSpeed", name = "Reload Speed", short = "RLD", additive = false, unit = "%", category = "gun" },
+	{ id = "CritChance", name = "Crit Chance", short = "CRT", additive = true, unit = "%", category = "gun" },
+	{ id = "HeadshotMult", name = "Headshot Mult", short = "HS", additive = false, unit = "%", category = "gun" },
+	{ id = "MoveSpeed", name = "Move Speed", short = "SPD", additive = false, unit = "%", category = "gun" },
+	{ id = "Accuracy", name = "Accuracy", short = "ACC", additive = false, unit = "%", category = "gun" },
+	{ id = "Pierce", name = "Pierce", short = "PRC", additive = true, unit = "", category = "gun", noMalus = true },
+	{ id = "Ricochet", name = "Ricochet", short = "RIC", additive = true, unit = "%", category = "gun" },
+	{ id = "Splash", name = "Splash", short = "SPL", additive = true, unit = "%", category = "gun" },
+	{ id = "Multishot", name = "Multishot", short = "MLT", additive = true, unit = "%", category = "gun" },
+	{ id = "Lifesteal", name = "Lifesteal", short = "LFS", additive = true, unit = "%", category = "gun" },
+	-- Elements: the value is the proc chance per shot in percent. The first take grants the effect at its base
+	-- chance (Config.*Chance); later takes add Magnitude[tier] chance and ElementPowerByTier[tier] effect power.
+	{
+		id = "Incendiary",
+		name = "Incendiary",
+		short = "INC",
+		additive = true,
+		unit = "%",
+		category = "element",
+		noMalus = true,
+	},
+	{ id = "Cryo", name = "Cryo", short = "CRY", additive = true, unit = "%", category = "element", noMalus = true },
+	{
+		id = "Concussive",
+		name = "Concussive",
+		short = "CON",
+		additive = true,
+		unit = "%",
+		category = "element",
+		noMalus = true,
+	},
+	-- Utility.
+	{
+		id = "AbilityCooldown",
+		name = "Ability Cooldown",
+		short = "CDR",
+		additive = true,
+		unit = "%",
+		category = "utility",
+		negative = true,
+	},
+	{ id = "AbilityPower", name = "Ability Power", short = "PWR", additive = false, unit = "%", category = "utility" },
+	{
+		id = "CashGain",
+		name = "Cash Gain",
+		short = "CSH",
+		additive = false,
+		unit = "%",
+		category = "utility",
+		noMalus = true,
+	},
 } :: { Stat }
 
 -- Card name per stat x tier (1..5).
@@ -37,16 +90,22 @@ Upgrades.TierNames = {
 	MoveSpeed = { "Light Feet", "Sprinter", "Runner", "Blur", "Afterimage" },
 	CritChance = { "Lucky Shot", "Keen Eye", "Marksman", "Deadeye", "Executioner" },
 	HeadshotMult = { "Aim High", "Skull Cracker", "Brain Buster", "Decapitator", "Headhunter" },
-	Greed = { "Pocket Change", "Loose Cash", "Big Spender", "High Roller", "Kingpin" },
 	Accuracy = { "Steady Hands", "Tight Grouping", "Laser Focus", "Surgical", "Pinpoint" },
 	Pierce = { "Punch Through", "Drill Rounds", "Overpenetrate", "Line Breaker", "Railgun" },
 	Ricochet = { "Lucky Bounce", "Trick Shot", "Pinball", "Bank Shot", "Pool Shark" },
 	Splash = { "Hot Rounds", "Frag Tips", "Blast Caps", "Demolition", "Fireworks" },
 	Multishot = { "Double Tap", "Twin Bore", "Scatter", "Volley", "Wall of Lead" },
 	Lifesteal = { "Vampire Rounds", "Bloodletter", "Leech", "Siphon", "Hemophage" },
+	Incendiary = { "Hot Lead", "Ember Rounds", "Firebrand", "Inferno", "Dragon's Breath" },
+	Cryo = { "Chill Rounds", "Frostbite", "Cold Snap", "Deep Freeze", "Absolute Zero" },
+	Concussive = { "Thumper", "Shockwave", "Concussor", "Sledgehammer", "Thunderclap" },
+	AbilityCooldown = { "Quick Reset", "Fast Recharge", "Overcharged", "Hair Trigger", "Perpetual" },
+	AbilityPower = { "Amped", "Boosted", "Supercharged", "Overload", "Maximum" },
+	CashGain = { "Pocket Change", "Loose Cash", "Big Spender", "High Roller", "Kingpin" },
 } :: { [string]: { string } }
 
--- Magnitude per stat x tier (1..5). Percent for "%" stats, flat count for "" stats.
+-- Magnitude per stat x tier (1..5). Percent for "%" stats, flat count for "" stats. Elements: the chance a later
+-- take adds (the first take is the base chance in Config).
 Upgrades.Magnitude = {
 	Damage = { 15, 22, 30, 40, 55 },
 	FireRate = { 12, 18, 25, 35, 50 },
@@ -57,13 +116,18 @@ Upgrades.Magnitude = {
 	MoveSpeed = { 8, 12, 16, 22, 30 },
 	CritChance = { 5, 10, 15, 22, 30 },
 	HeadshotMult = { 20, 30, 45, 60, 80 },
-	Greed = { 15, 25, 35, 50, 70 },
 	Accuracy = { 20, 30, 40, 55, 70 }, -- % less spread
 	Pierce = { 1, 1, 2, 2, 3 }, -- extra enemies a bullet passes through
 	Ricochet = { 15, 25, 35, 50, 65 }, -- % chance a hit bounces to a nearby enemy
 	Splash = { 30, 45, 60, 80, 100 }, -- % of the killing hit dealt to enemies near a kill
 	Multishot = { 15, 25, 35, 50, 70 }, -- % chance each shot fires an extra bullet
 	Lifesteal = { 3, 5, 8, 12, 16 }, -- % of damage dealt healed
+	Incendiary = { 3, 4, 6, 8, 10 }, -- chance points per later take
+	Cryo = { 3, 4, 6, 8, 10 },
+	Concussive = { 2, 3, 4, 6, 8 },
+	AbilityCooldown = { 5, 8, 12, 16, 22 }, -- % shorter cooldowns (capped at Config.AbilityCooldownCap)
+	AbilityPower = { 8, 12, 18, 25, 35 }, -- % more ability damage, heal and placeable HP
+	CashGain = { 15, 25, 35, 50, 70 }, -- % more cash from kills, bags and job payouts
 } :: { [string]: { number } }
 
 Upgrades.TradeoffChance = Config.TradeoffChance
@@ -76,6 +140,21 @@ function Upgrades.byId(id: string): Stat?
 		end
 	end
 	return nil
+end
+
+function Upgrades.category(statId: string): string
+	local s = Upgrades.byId(statId)
+	return if s then s.category else "gun"
+end
+
+function Upgrades.isElement(statId: string): boolean
+	return Upgrades.category(statId) == "element"
+end
+
+-- The base proc chance (percent) an element's first take grants.
+function Upgrades.elementBase(statId: string): number
+	local base = (Config :: any)[statId .. "Chance"]
+	return if typeof(base) == "number" then base * 100 else 10
 end
 
 function Upgrades.magnitude(statId: string, tier: number): number
@@ -108,20 +187,36 @@ local function fmtValue(value: number): string
 	return if v == math.floor(v) then string.format("%d", v) else string.format("%.1f", v)
 end
 
--- "+11%" / "-5%" / "+1" (flat)
+-- "+11%" / "-5%" / "+1" (flat); stats stored as a reduction (ability cooldown) read with the sign flipped.
 function Upgrades.pctText(value: number, statId: string?): string
-	local sign = if value >= 0 then "+" else "-"
-	return string.format("%s%s%s", sign, fmtValue(value), if statId then Upgrades.unit(statId) else "%")
+	local s = if statId then Upgrades.byId(statId) else nil
+	local shown = if s and s.negative then -value else value
+	local sign = if shown >= 0 then "+" else "-"
+	return string.format("%s%s%s", sign, fmtValue(shown), if statId then Upgrades.unit(statId) else "%")
 end
 
--- "+11% DAMAGE" / "-5% FIRE RATE" / "+1 PIERCE"
+-- "+11% DAMAGE" / "-5% FIRE RATE" / "+1 PIERCE" / "+15% INCENDIARY"
 function Upgrades.effectLine(statId: string, value: number): string
 	return string.format("%s %s", Upgrades.pctText(value, statId), string.upper(Upgrades.statName(statId)))
 end
 
--- "T1 +8 · T2 +11 · T3 +15 · T4 +20 · T5 +28"
+-- The tracker badge: elements show the proc chance ("15%"), utility the running total ("-12%"), gun stats the count.
+function Upgrades.badgeText(statId: string, item: { count: number, pct: number }): string
+	local cat = Upgrades.category(statId)
+	if cat == "element" then
+		return string.format("%s%%", fmtValue(item.pct))
+	elseif cat == "utility" then
+		return Upgrades.pctText(item.pct, statId)
+	end
+	return string.format("x%d", item.count)
+end
+
+-- "T1 +8 · T2 +11 · T3 +15 · T4 +20 · T5 +28" (elements lead with the first take's base chance)
 function Upgrades.tierTable(statId: string): string
 	local parts = {}
+	if Upgrades.isElement(statId) then
+		table.insert(parts, string.format("FIRST %s%%", fmtValue(Upgrades.elementBase(statId))))
+	end
 	for tier, v in Upgrades.Magnitude[statId] do
 		table.insert(parts, string.format("T%d +%s", tier, fmtValue(v)))
 	end

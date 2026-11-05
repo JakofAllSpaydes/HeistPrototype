@@ -209,7 +209,7 @@ local Config = {
 
 	------------------------------------------------------------------ Combat
 	StartingCash = 3000, -- Match Cash at run start (brief says 0; raised for testing)
-	-- Kill cash is the archetype's `cash` row (Enemies) x greed x the elite and heat multipliers.
+	-- Kill cash is the archetype's `cash` row (Enemies) x the wave, elite and heat multipliers x CASH GAIN (CashWaveMult).
 	HoldToFire = true, -- true: every weapon fires while LMB is held; false: Weapons.auto decides
 	HeadshotMult = 1.5,
 	CritDmgMult = 2, -- damage multiplier when a crit lands (Crit Chance upgrade)
@@ -286,9 +286,34 @@ local Config = {
 	CardFlipStagger = 0.07, -- unused by the slot roll, kept for the flip variant
 	CardRollSec = 0.45, -- each card's mini slot roll; starts as the card deals in
 	CardRollStagger = 0.07, -- gap between card rolls starting
-	TradeoffChance = { 0, 0.1, 0.25, 0.4, 0.5 }, -- per tier 1..5
-	TradeoffMalusRatio = 0.5, -- malus = one other stat at this ratio of the buff
+	TradeoffChance = { 0, 0.05, 0.12, 0.2, 0.25 }, -- per tier 1..5 (brief 5 halved); never on element cards
+	TradeoffMalusRatio = 0.5, -- malus = one other stat at this ratio of the buff (never an element or CASH GAIN)
 	TrackerCols = 10,
+
+	------------------------------------------------------------------ Upgrades (brief 5: categories, elements, utility, income)
+	-- The pick-3 and the dealer draw a category by these weights, then a stat inside it.
+	CategoryWeights = { gun = 60, element = 25, utility = 15 },
+	-- Elements proc per shot (one roll per trigger pull; every enemy that shot hits directly gets it). Each element
+	-- stacks its own chance and all three can be held. The first take grants the base chance below; later takes add
+	-- the card's chance (Upgrades.Magnitude) and ElementPowerByTier to the effect's power (burn DPS, slow and freeze
+	-- strength, knockback distance).
+	ElementPowerByTier = { 0.1, 0.15, 0.2, 0.3, 0.4 },
+	IncendiaryChance = 0.15,
+	IncendiaryDps = 6, -- burn on the enemy, ticking every FieldTickSec
+	IncendiaryBurnSec = 3, -- a new proc refreshes the burn
+	CryoChance = 0.15,
+	CryoSlowPct = 0.3, -- walk speed down this share...
+	CryoSlowSec = 2, -- ...for this long; also the stack window
+	CryoStacksToFreeze = 3, -- this many procs inside the window freeze the enemy...
+	CryoFreezeSec = 1.0, -- ...for this long (no move, no attack)
+	ConcussiveChance = 0.1,
+	ConcussiveStuds = 8, -- knockback along the shot
+	ConcussiveHeavyMult = 0.5, -- Heavy and the boss take this share of the knockback (the boss is never interrupted)
+	ConcussiveStunSec = 0.3, -- the interrupt: a short stun that cancels the attack being wound up
+	ConcussiveSlideSec = 0.15, -- the knockback slide takes this long
+	AbilityCooldownCap = 60, -- ABILITY COOLDOWN never takes more than this % off
+	-- Kill cash = archetype cash x (1 + CashWaveMult x (wave - 1)) x elite x heat x CASH GAIN.
+	CashWaveMult = 0.1,
 
 	------------------------------------------------------------------ Ground loot
 	SwapCooldownSec = 0.5, -- after a swap, further swaps are ignored for this long (anti-spam mid-combat)

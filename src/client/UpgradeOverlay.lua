@@ -112,8 +112,9 @@ local function buildTrackerTile(
 		ZIndex = 3,
 		Parent = tile,
 	})
+	-- Elements show the proc chance, utility stats the running total, gun stats the count.
 	local badge, badgeLabel =
-		UI.pill(tile, string.format("x%d", item.count), Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
+		UI.pill(tile, Upgrades.badgeText(statId, item), Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
 	badge.AnchorPoint = Vector2.new(1, 1)
 	badge.Position = UDim2.new(1, S(4), 1, S(4))
 	badge.ZIndex = 4

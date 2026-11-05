@@ -132,7 +132,7 @@ local function part(props: { [string]: any }): Part
 	return p
 end
 
--- Damage one enemy on the owner's behalf: kill cash with the owner's greed, the Hit juice to the owner.
+-- Damage one enemy on the owner's behalf: kill cash with the owner's CASH GAIN, the Hit juice to the owner.
 -- `hit` says how a kill throws the body (nil: the tick slump, Config.RagdollTickForce).
 local function hitEnemy(
 	owner: Player,
@@ -155,7 +155,7 @@ local function hitEnemy(
 	local state = PlayerState.get(owner)
 	local cash = 0
 	if killed then
-		cash = math.round(killCash * PlayerState.computed(state).greed)
+		cash = math.round(killCash * PlayerState.computed(state).cashGain)
 		Economy.addCash(state, cash)
 	end
 	Remotes.Juice:FireClient(owner, "Hit", {
@@ -342,9 +342,10 @@ local function placeTurret(player: Player, state: PlayerState.State, char: Model
 	local lv = level(state, "turret")
 	local s = newStructure("turret", player, model, base, Config.TurretLifetime)
 	s.attackable = true
-	s.hp = math.round(grown("turret", "Hp", Config.TurretHP, lv))
+	local pw = PlayerState.abilityPower(state)
+	s.hp = math.round(grown("turret", "Hp", Config.TurretHP, lv) * pw)
 	s.maxHP = s.hp
-	s.dmg = grown("turret", "Damage", Config.TurretDmg, lv)
+	s.dmg = grown("turret", "Damage", Config.TurretDmg, lv) * pw
 	s.head = head
 	s.fill = hpBar(base, COLOR.gold)
 	placed(s, COLOR.gold)
@@ -377,7 +378,7 @@ local function placeBarricade(player: Player, state: PlayerState.State, char: Mo
 	local lv = level(state, "barricade")
 	local s = newStructure("barricade", player, model, wall, Config.BarricadeLifetime)
 	s.attackable = true
-	s.hp = math.round(grown("barricade", "Hp", Config.BarricadeHP, lv))
+	s.hp = math.round(grown("barricade", "Hp", Config.BarricadeHP, lv) * PlayerState.abilityPower(state))
 	s.maxHP = s.hp
 	s.fill = hpBar(wall, COLOR.grey)
 	placed(s, COLOR.gold)
@@ -652,7 +653,7 @@ local function stimShot(player: Player, state: PlayerState.State, _char: Model)
 		state,
 		"stimshot",
 		Config.StimShotDuration,
-		grown("stimshot", "Heal", Config.StimShotHeal, level(state, "stimshot"))
+		grown("stimshot", "Heal", Config.StimShotHeal, level(state, "stimshot")) * PlayerState.abilityPower(state)
 	)
 end
 
@@ -665,7 +666,7 @@ local function placeMedBag(player: Player, state: PlayerState.State, char: Model
 		pos,
 		Config.MedBagRadius,
 		Config.MedBagLifetime,
-		grown("medbag", "HealPerSec", Config.MedBagHealPerSec, lv),
+		grown("medbag", "HealPerSec", Config.MedBagHealPerSec, lv) * PlayerState.abilityPower(state),
 		1
 	)
 	World.fireRun(
@@ -680,9 +681,10 @@ local function placeHealTurret(player: Player, state: PlayerState.State, char: M
 	local lv = level(state, "healturret")
 	local s = newStructure("healturret", player, model, base, Config.HealTurretLifetime)
 	s.attackable = true
-	s.hp = math.round(grown("healturret", "Hp", Config.HealTurretHP, lv))
+	local pw = PlayerState.abilityPower(state)
+	s.hp = math.round(grown("healturret", "Hp", Config.HealTurretHP, lv) * pw)
 	s.maxHP = s.hp
-	s.heal = grown("healturret", "BeamHeal", Config.HealTurretBeamHeal, lv)
+	s.heal = grown("healturret", "BeamHeal", Config.HealTurretBeamHeal, lv) * pw
 	s.head = head
 	s.fill = hpBar(base, COLOR.green)
 	placed(s, COLOR.green)
@@ -782,7 +784,7 @@ local function placeClaymore(player: Player, state: PlayerState.State, char: Mod
 	model.Parent = folder
 	local lv = level(state, "claymore")
 	local s = newStructure("claymore", player, model, body, Config.ClaymoreLifetime)
-	s.dmg = grown("claymore", "ClaymoreDamage", Config.ClaymoreDamage, lv)
+	s.dmg = grown("claymore", "ClaymoreDamage", Config.ClaymoreDamage, lv) * PlayerState.abilityPower(state)
 	s.armedAt = now() + Config.ClaymoreArmSec
 	placed(s, Color3.fromHex("4D9FE8"), 3)
 	Log.event("Ability", "%s planted a claymore (LV %d: %d dmg)", player.Name, lv, math.round(s.dmg))
@@ -840,7 +842,7 @@ end
 ------------------------------------------------------------------ TORCH
 local function throwMolotov(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "molotov")
-	local burn = grown("molotov", "BurnPerSec", Config.MolotovBurnPerSec, lv)
+	local burn = grown("molotov", "BurnPerSec", Config.MolotovBurnPerSec, lv) * PlayerState.abilityPower(state)
 	local slowPct = math.min(90, grown("molotov", "MoveSlowPct", Config.MolotovMoveSlowPct, lv))
 	throw(char, COLOR.fire, true, function(pos: Vector3)
 		placeField("molotov", player, pos, Config.MolotovRadius, Config.MolotovLifetime, burn, 1 - slowPct / 100)
@@ -862,9 +864,10 @@ local function placeFlameTurret(player: Player, state: PlayerState.State, char: 
 	local lv = level(state, "flameturret")
 	local s = newStructure("flameturret", player, model, base, Config.FlameTurretLifetime)
 	s.attackable = true
-	s.hp = math.round(grown("flameturret", "Hp", Config.FlameTurretHP, lv))
+	local pw = PlayerState.abilityPower(state)
+	s.hp = math.round(grown("flameturret", "Hp", Config.FlameTurretHP, lv) * pw)
 	s.maxHP = s.hp
-	s.dmg = grown("flameturret", "FlameDps", Config.FlameTurretDps, lv)
+	s.dmg = grown("flameturret", "FlameDps", Config.FlameTurretDps, lv) * pw
 	s.head = head
 	s.fill = hpBar(base, COLOR.red)
 	placed(s, COLOR.fire)
@@ -934,9 +937,10 @@ local function placeOilDrum(player: Player, state: PlayerState.State, char: Mode
 	local lv = level(state, "oildrum")
 	local s = newStructure("oildrum", player, model, drum, Config.OilDrumLifetime)
 	s.attackable = true
-	s.hp = Config.OilDrumHP
+	local pw = PlayerState.abilityPower(state)
+	s.hp = math.round(Config.OilDrumHP * pw)
 	s.maxHP = s.hp
-	s.dmg = grown("oildrum", "DrumBurnPerSec", Config.OilDrumBurnPerSec, lv)
+	s.dmg = grown("oildrum", "DrumBurnPerSec", Config.OilDrumBurnPerSec, lv) * pw
 	s.slowMult = 1 - math.min(90, grown("oildrum", "DrumMoveSlowPct", Config.OilDrumMoveSlowPct, lv)) / 100
 	s.fill = hpBar(drum, COLOR.fire)
 	placed(s, COLOR.fire)
@@ -1020,7 +1024,7 @@ function Abilities.use(player: Player, id: any, aim: any)
 		return
 	end
 	handler(player, state, char, aimPoint)
-	state.cooldowns[id] = now() + (Config.AbilityCooldown[id] or 10)
+	state.cooldowns[id] = now() + PlayerState.abilityCooldown(state, id)
 	state.dirty = true
 end
 
