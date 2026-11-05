@@ -321,8 +321,9 @@ stand or prop within `ShopReadRadius` opens a panel with the effect lines curren
 **Pause (brief 5, `Pause.lua`, `PauseUI.lua`).** VOTE TO PAUSE (P, the PAUSE pill on the wave bar, the scoreboard) in a wave, the
 intermission or the dealer break; unanimous, solo at once, one per `PauseCooldownWaves`. Frozen: enemies, damage,
 movement and fire, and every timer (bleed, floor guns, crates, side jobs, the vault, the dealer, ability lifetimes and
-cooldowns, spawns, the heat clock, the intermission, the run clock). `PAUSED · names` with RESUME (anyone); auto-resume
-at `PauseMaxSec` after a `PauseCountdownSec` countdown. Modules join through `Pause.active`, `Pause.delay`,
+cooldowns, spawns, the heat clock, the intermission, the run clock). `PAUSED · names` with the time left and two votes:
+VOTE TO EXTEND (+`PauseExtendSec`, as often as everyone agrees) and VOTE TO RESUME (everyone; solo at once); it resumes
+by itself at `PauseMaxSec` (5 min, plus extensions) after a `PauseCountdownSec` countdown. No limit on how often. Modules join through `Pause.active`, `Pause.delay`,
 `Pause.onTick` and `Pause.onResume`.
 
 **Crew call / side job.** A call from MARLOW on wave 1 and every `SideJobEveryWaves` (2) waves, kind rolled from
@@ -1022,6 +1023,14 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   `ConcussiveInterruptSec`; lower base numbers). Placeables sit in a `Structure` collision group (no player
   collision). Weapons tab: LV in the tile top bar (`nameTag`, `noPill`), the info line beside the name, a MASTERY bar
   in the detail, MASTERY tags on mastery wraps (`sourceTag`, where EVENT tags go later).
+
+- **Round 15c (4 Nov, feedback)** — the mastery panel is one shared `MetaUI.masteryPanel` (title and diamonds in a
+  list, `NEXT · UNLOCK SKIN`, the X / Y count inside a taller bar). Weapons detail: the info line centers on the
+  name, a shorter well, EQUIP and CUSTOMIZE share one row (`EQUIP` / `EQUIPPED`), so nothing runs off the panel.
+  Pause: no cooldown (`PauseCooldownWaves` gone), 5 minutes (`PauseMaxSec` 300) with VOTE TO EXTEND
+  (`PauseExtendSec`, stacks) and VOTE TO RESUME, both unanimous. Elements read as ammo: Fire / Ice / Impact Ammo
+  (`FIR` / `ICE` / `IMP`); a new one shows `NEW · BURN ON EVERY SHOT`, later takes `+30% BURN` / `SLOW` / `IMPACT`
+  (`Upgrades.cardTexts`, `effectLine`, `effectName`; the dealer and the tracker tooltip the same).
 
 ## Open design notes (not built)
 

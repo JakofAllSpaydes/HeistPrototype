@@ -111,13 +111,13 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 	local color = Rarity.color(rarity)
 	local well = UI.frame({
 		BackgroundColor3 = color,
-		Size = UDim2.new(1, 0, 0, S(150)),
+		Size = UDim2.new(1, 0, 0, S(130)),
 		LayoutOrder = 1,
 		Parent = card,
 	})
 	UI.corner(well, S(8))
 	UI.stroke(well, Theme.Colors.white, S(1.5), 0.6)
-	local ic = UI.gunIcon(well, Theme.Colors.white, S(130))
+	local ic = UI.gunIcon(well, Theme.Colors.white, S(115))
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.fromScale(0.5, 0.5)
 	if w then
@@ -136,7 +136,8 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 		ClipsDescendants = true,
 		Parent = card,
 	})
-	UI.list(nameRow, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Bottom)
+	-- Both labels fill the row and center vertically, so the small info line sits on the name's middle line.
+	UI.list(nameRow, Enum.FillDirection.Horizontal, S(10), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 	UI.text({
 		Text = if w then w.displayName else (show and show.displayName or "?"),
 		Font = Theme.Fonts.body,
@@ -159,9 +160,9 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 		TextSize = S(10),
 		TextColor3 = if isOwned then Theme.Colors.gold else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Bottom,
+		TextYAlignment = Enum.TextYAlignment.Center,
 		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 0, S(22)),
+		Size = UDim2.new(0, 0, 1, 0),
 		LayoutOrder = 2,
 		Parent = nameRow,
 	})
@@ -236,22 +237,31 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 			scene.refresh()
 		end
 	end)
+	-- EQUIP and CUSTOMIZE share one row so the column never runs past the panel.
+	local pair = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, S(44)),
+		LayoutOrder = 21,
+		Parent = card,
+	})
+	UI.list(pair, Enum.FillDirection.Horizontal, S(8))
 	local isStarter = profile and profile.starterWeaponId == w.id
-	if isStarter then
-		MetaUI.button(card, 21, "EQUIPPED AS STARTER", "disabled", nil)
-	else
-		MetaUI.button(card, 21, "EQUIP STARTER", "blue", function()
+	local equip = if isStarter
+		then MetaUI.button(pair, 1, "EQUIPPED", "disabled", nil)
+		else MetaUI.button(pair, 1, "EQUIP", "blue", function()
 			local r = scene.request("equipStarter", { weaponId = w.id })
 			if r.ok then
 				scene.refresh()
 			end
 		end)
-	end
-	MetaUI.button(card, 22, "CUSTOMIZE", "pink", function()
+	local custom = MetaUI.button(pair, 2, "CUSTOMIZE", "pink", function()
 		customize = true
 		wrapsOpen = false
 		scene.refresh()
 	end)
+	for _, b in { equip, custom } do
+		b.Size = UDim2.new(0.5, -S(4), 1, 0)
+	end
 end
 
 ------------------------------------------------------------------ Customize (center zoom)

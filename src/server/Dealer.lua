@@ -314,6 +314,19 @@ local function effectLines(state: PlayerState.State, card: Types.Card): { string
 	local function line(statId: string, delta: number): string
 		local item = state.upgrades[statId]
 		local now = if item then item.pct else 0
+		-- Elements read by their effect: "BURN ON EVERY SHOT" for new ammo, "BURN +100% → +130%" after.
+		local effect = Upgrades.effectName(statId)
+		if effect then
+			if not item then
+				return effect .. " ON EVERY SHOT"
+			end
+			return string.format(
+				"%s %s → %s",
+				effect,
+				Upgrades.pctText(now, statId),
+				Upgrades.pctText(math.round((now + delta) * 10) / 10, statId)
+			)
+		end
 		return string.format(
 			"%s %s → %s",
 			string.upper(Upgrades.statName(statId)),

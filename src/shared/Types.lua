@@ -129,7 +129,6 @@ export type Sync = {
 		needed: number,
 		myVote: boolean,
 		canVote: boolean,
-		cooldownWaves: number,
 	}?,
 }
 

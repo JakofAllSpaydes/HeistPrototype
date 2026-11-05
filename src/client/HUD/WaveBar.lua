@@ -187,9 +187,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			return
 		end
 		local can = pv.canVote == true
-		pauseLabel.Text = if not can and not pv.myVote
-			then string.format("PAUSE IN %d", tonumber(pv.cooldownWaves) or 0)
-			else string.format("PAUSE %d / %d", tonumber(pv.votes) or 0, tonumber(pv.needed) or 1)
+		pauseLabel.Text = string.format("PAUSE %d / %d", tonumber(pv.votes) or 0, tonumber(pv.needed) or 1)
 		pauseLabel.TextColor3 = if pv.myVote
 			then Theme.Colors.bg
 			elseif can then Theme.Colors.text

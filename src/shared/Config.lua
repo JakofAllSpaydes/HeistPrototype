@@ -600,9 +600,9 @@ local Config = {
 	ShopRerollPrice = 150, -- REROLL: your eight stands again; doubles per use
 
 	------------------------------------------------------------------ Pause (brief 5; Pause.lua)
-	PauseMaxSec = 180, -- a pause resumes by itself here...
+	PauseMaxSec = 300, -- a pause lasts this long, then resumes by itself...
+	PauseExtendSec = 300, -- ...VOTE TO EXTEND (everyone) adds this, as many times as the party agrees
 	PauseCountdownSec = 10, -- ...after this long a countdown on the overlay
-	PauseCooldownWaves = 5, -- one pause per this many waves
 
 	------------------------------------------------------------------ Boss (TITAN, Boss.lua; step 5 of brief 4)
 	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)

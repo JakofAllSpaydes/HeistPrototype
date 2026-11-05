@@ -29,7 +29,7 @@ local DEFS: { [string]: string } = {
 	Meta = "RemoteFunction", -- client -> server: action, args; returns { ok, reason?, toast? } (unlock / upgrade / equip)
 	-- Brief 5: the dealer break and the pause
 	DealerAction = "RemoteEvent", -- client -> server: "buy" (stand index | "crate" | "heal" | "reroll") | "skip" | "teleport"
-	PauseAction = "RemoteEvent", -- client -> server: "vote" | "unvote" | "resume"
+	PauseAction = "RemoteEvent", -- client -> server: "vote" | "unvote" (to pause) | "extend" | "resume" (votes while paused)
 }
 
 local folder: Instance

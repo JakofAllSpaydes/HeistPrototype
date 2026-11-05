@@ -151,9 +151,10 @@ local function buildTrackerTile(
 	UI.stroke(tip, Theme.Colors.grey, S(1))
 	UI.text({
 		Text = string.format(
-			"%s · %s TOTAL\n%s",
+			"%s · %s %s\n%s",
 			string.upper(Upgrades.statName(statId)),
 			Upgrades.pctText(item.pct, statId),
+			Upgrades.effectName(statId) or "TOTAL", -- elements: "FIRE AMMO · +130% BURN"
 			Upgrades.tierTable(statId)
 		),
 		TextSize = S(11),
@@ -281,9 +282,11 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		Size = UDim2.new(1, -S(16), 0, S(28)),
 		Parent = inner,
 	}))
-	-- Rarity reads from the card color alone; no pill, no TAKE hint.
+	-- Rarity reads from the card color alone; no pill, no TAKE hint. Elements read "NEW / BURN ON EVERY SHOT" or
+	-- "+30% / BURN" (Upgrades.cardTexts).
+	local bigText, smallText = Upgrades.cardTexts(card.stat, card.pct)
 	detail(UI.text({
-		Text = Upgrades.pctText(card.pct, card.stat),
+		Text = bigText,
 		Font = Theme.Fonts.display,
 		TextSize = S(48),
 		TextColor3 = Theme.Colors.cash,
@@ -292,7 +295,7 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		Parent = inner,
 	}))
 	detail(UI.text({
-		Text = string.upper(Upgrades.statName(card.stat)),
+		Text = smallText,
 		Font = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.cash,

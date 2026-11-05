@@ -4,7 +4,8 @@
 -- enemies and their hazards stand still, nobody takes damage, players cannot move or fire, and every timer
 -- stops (bleed, floor guns, crates, side jobs, the vault, the dealer, ability lifetimes and cooldowns, spawns,
 -- the heat clock, the intermission and the run clock). A `PAUSED · <names>` overlay with RESUME any player can
--- press; at PauseMaxSec it resumes by itself after a 10s countdown. One pause per PauseCooldownWaves waves.
+-- press; at PauseMaxSec it resumes by itself after a 10s countdown. No limit on how often: solo pauses at once,
+-- a party pauses whenever everyone votes.
 --
 -- How modules join in: `Pause.active()` to skip work, `Pause.delay(sec, fn)` for timers that must not run out
 -- while paused, `Pause.onTick(fn)` to push deadlines forward by dt every frame of a pause, and `Pause.onResume(fn)`
@@ -24,8 +25,10 @@ local Pause = {}
 local paused = false
 local startedAt = 0 -- server time the pause began
 local resumeAt = 0 -- server time it resumes by itself
-local lastPauseWave = -math.huge
 local votes: { [number]: boolean } = {}
+-- While paused: VOTE TO EXTEND (+PauseExtendSec, stack as often as everyone agrees) and VOTE TO RESUME.
+local extendVotes: { [number]: boolean } = {}
+local resumeVotes: { [number]: boolean } = {}
 local tickHooks: { (number) -> () } = {}
 local resumeHooks: { (number) -> () } = {}
 local freezeHook: ((boolean) -> ())? = nil
@@ -80,7 +83,7 @@ local function allowedState(): boolean
 end
 
 function Pause.canVote(): boolean
-	return not paused and allowedState() and World.wave - lastPauseWave >= Config.PauseCooldownWaves
+	return not paused and allowedState()
 end
 
 local function names(): string
@@ -91,14 +94,18 @@ local function names(): string
 	return table.concat(out, ", ")
 end
 
-local function voteCount(): number
+local function countIn(set: { [number]: boolean }): number
 	local n = 0
 	for _, p in World.runAudience() do
-		if votes[p.UserId] then
+		if set[p.UserId] then
 			n += 1
 		end
 	end
 	return n
+end
+
+local function voteCount(): number
+	return countIn(votes)
 end
 
 -- The sync view: Types.Sync.pause.
@@ -113,7 +120,11 @@ function Pause.view(player: Player): any
 		needed = #World.runAudience(),
 		myVote = votes[player.UserId] == true,
 		canVote = Pause.canVote(),
-		cooldownWaves = math.max(0, Config.PauseCooldownWaves - (World.wave - lastPauseWave)),
+		extendVotes = countIn(extendVotes),
+		resumeVotes = countIn(resumeVotes),
+		myExtend = extendVotes[player.UserId] == true,
+		myResume = resumeVotes[player.UserId] == true,
+		extendSec = Config.PauseExtendSec,
 	}
 end
 
@@ -125,8 +136,9 @@ local function begin()
 	paused = true
 	startedAt = Workspace:GetServerTimeNow()
 	resumeAt = startedAt + Config.PauseMaxSec
-	lastPauseWave = World.wave
 	table.clear(votes)
+	table.clear(extendVotes)
+	table.clear(resumeVotes)
 	if freezeHook then
 		freezeHook(true)
 	end
@@ -168,7 +180,29 @@ function Pause.vote(player: Player, on: boolean)
 	end
 end
 
--- Debug: pause / resume at once, no vote or cooldown.
+-- While paused: toggle this player's extend or resume vote; when everyone agrees it happens (solo: at once).
+local function pausedVote(player: Player, kind: string)
+	if not paused or not World.isInParty(player) then
+		return
+	end
+	local set = if kind == "extend" then extendVotes else resumeVotes
+	set[player.UserId] = not set[player.UserId] or nil
+	local need = #World.runAudience()
+	if countIn(set) >= need then
+		if kind == "extend" then
+			table.clear(extendVotes)
+			resumeAt += Config.PauseExtendSec
+			World.fireRun("PauseExtended", { resumeAt = resumeAt, extendSec = Config.PauseExtendSec })
+			print(string.format("[GHS Pause] extended by %ds", Config.PauseExtendSec))
+		else
+			Pause.resume(player.Name)
+			return
+		end
+	end
+	dirtyAll()
+end
+
+-- Debug: pause / resume at once, no vote.
 function Pause.debugToggle(player: Player)
 	if paused then
 		Pause.resume(player.Name)
@@ -183,7 +217,6 @@ function Pause.reset()
 		Pause.resume("reset")
 	end
 	table.clear(votes)
-	lastPauseWave = -math.huge
 end
 
 function Pause.init()
@@ -192,12 +225,14 @@ function Pause.init()
 			Pause.vote(player, true)
 		elseif action == "unvote" then
 			Pause.vote(player, false)
-		elseif action == "resume" and paused and World.isInParty(player) then
-			Pause.resume(player.Name)
+		elseif action == "extend" or action == "resume" then
+			pausedVote(player, action)
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		votes[player.UserId] = nil
+		extendVotes[player.UserId] = nil
+		resumeVotes[player.UserId] = nil
 	end)
 	RunService.Heartbeat:Connect(function(dt)
 		if not paused then

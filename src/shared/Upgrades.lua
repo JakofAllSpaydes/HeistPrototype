@@ -16,6 +16,7 @@ export type Stat = {
 	category: string,
 	noMalus: boolean?,
 	negative: boolean?,
+	effect: string?, -- elements: the effect the percent raises (Burn / Slow / Impact)
 }
 
 local Upgrades = {}
@@ -38,20 +39,32 @@ Upgrades.Stats = {
 	{ id = "Lifesteal", name = "Lifesteal", short = "LFS", additive = true, unit = "%", category = "gun" },
 	-- Elements: the value is the effect's power in percent; every shot applies it. The first take grants 100% (the
 	-- Config numbers); later takes add Magnitude[tier] (stronger burn and faster ticks, more slow, more knockback).
+	-- Player-facing names are the ammo; `effect` is what the percent raises (the ids stay for saves and Config keys).
 	{
 		id = "Incendiary",
-		name = "Incendiary",
-		short = "INC",
+		name = "Fire Ammo",
+		short = "FIR",
+		effect = "Burn",
 		additive = true,
 		unit = "%",
 		category = "element",
 		noMalus = true,
 	},
-	{ id = "Cryo", name = "Cryo", short = "CRY", additive = true, unit = "%", category = "element", noMalus = true },
+	{
+		id = "Cryo",
+		name = "Ice Ammo",
+		short = "ICE",
+		effect = "Slow",
+		additive = true,
+		unit = "%",
+		category = "element",
+		noMalus = true,
+	},
 	{
 		id = "Concussive",
-		name = "Concussive",
-		short = "CON",
+		name = "Impact Ammo",
+		short = "IMP",
+		effect = "Impact",
 		additive = true,
 		unit = "%",
 		category = "element",
@@ -96,9 +109,9 @@ Upgrades.TierNames = {
 	Splash = { "Hot Rounds", "Frag Tips", "Blast Caps", "Demolition", "Fireworks" },
 	Multishot = { "Double Tap", "Twin Bore", "Scatter", "Volley", "Wall of Lead" },
 	Lifesteal = { "Vampire Rounds", "Bloodletter", "Leech", "Siphon", "Hemophage" },
-	Incendiary = { "Hot Lead", "Ember Rounds", "Firebrand", "Inferno", "Dragon's Breath" },
-	Cryo = { "Chill Rounds", "Frostbite", "Cold Snap", "Deep Freeze", "Absolute Zero" },
-	Concussive = { "Thumper", "Shockwave", "Concussor", "Sledgehammer", "Thunderclap" },
+	Incendiary = { "Fire Ammo", "Fire Ammo", "Fire Ammo", "Fire Ammo", "Fire Ammo" },
+	Cryo = { "Ice Ammo", "Ice Ammo", "Ice Ammo", "Ice Ammo", "Ice Ammo" },
+	Concussive = { "Impact Ammo", "Impact Ammo", "Impact Ammo", "Impact Ammo", "Impact Ammo" },
 	AbilityCooldown = { "Quick Reset", "Fast Recharge", "Overcharged", "Hair Trigger", "Perpetual" },
 	AbilityPower = { "Amped", "Boosted", "Supercharged", "Overload", "Maximum" },
 	CashGain = { "Pocket Change", "Loose Cash", "Big Spender", "High Roller", "Kingpin" },
@@ -194,8 +207,39 @@ function Upgrades.pctText(value: number, statId: string?): string
 	return string.format("%s%s%s", sign, fmtValue(shown), if statId then Upgrades.unit(statId) else "%")
 end
 
--- "+11% DAMAGE" / "-5% FIRE RATE" / "+1 PIERCE" / "+15% INCENDIARY"
+-- An element's effect noun in caps ("BURN"), nil for other stats.
+function Upgrades.effectName(statId: string): string?
+	local s = Upgrades.byId(statId)
+	return if s and s.effect then string.upper(s.effect) else nil
+end
+
+-- An element card that grants the ammo (the first take, 100%) rather than strengthening it.
+function Upgrades.isNewElement(statId: string, value: number): boolean
+	return Upgrades.isElement(statId) and value >= Upgrades.elementBase(statId)
+end
+
+-- What a card shows: the big line and the small line under it. Gun / utility: "+22%" over "DAMAGE". Elements:
+-- "NEW" over "BURN ON EVERY SHOT" for the first take, then "+30%" over "BURN".
+function Upgrades.cardTexts(statId: string, value: number): (string, string)
+	local effect = Upgrades.effectName(statId)
+	if effect then
+		if Upgrades.isNewElement(statId, value) then
+			return "NEW", effect .. " ON EVERY SHOT"
+		end
+		return Upgrades.pctText(value, statId), effect
+	end
+	return Upgrades.pctText(value, statId), string.upper(Upgrades.statName(statId))
+end
+
+-- "+11% DAMAGE" / "-5% FIRE RATE" / "+1 PIERCE" / "+30% BURN" / "FIRE AMMO · BURN ON EVERY SHOT"
 function Upgrades.effectLine(statId: string, value: number): string
+	local effect = Upgrades.effectName(statId)
+	if effect then
+		if Upgrades.isNewElement(statId, value) then
+			return string.format("%s · %s ON EVERY SHOT", string.upper(Upgrades.statName(statId)), effect)
+		end
+		return string.format("%s %s", Upgrades.pctText(value, statId), effect)
+	end
 	return string.format("%s %s", Upgrades.pctText(value, statId), string.upper(Upgrades.statName(statId)))
 end
 
