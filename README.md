@@ -50,7 +50,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 | Buy an upgrade pick (also the clickable tile, left column). Weapons come only from gun crates. |
 | F on a gun crate | `OPEN` (a `GUN CRATE` tag over it): every roll the crate holds plays back to back on the reel above it, seen by everyone, and each gun ejects onto the floor beside it as loot anyone can take. |
-| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange` (52); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
+| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange` (100); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
 | P | Vote to pause (in a wave, the intermission or the dealer break; solo pauses at once). Also on the dealer card and the scoreboard. RESUME on the overlay (anyone). |
 | T / V / F at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
@@ -1071,6 +1071,9 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
 
 - **Round 15l (5 Nov, feedback)** — with the dial more lenient, the Safe asks for more: `SafeNumbersByTier` 3 / 4 / 5
   (was 2 / 3 / 4), and the vault follows the wave bracket through all three tiers again (`VaultSafeTierMax` 3).
+
+- **Round 15m (5 Nov, feedback)** — `ThrowMaxRange` 100; `ThrowFlightRefStuds` 45 so a full-range throw flies about
+  1.3s.
 
 ## Open design notes (not built)
 

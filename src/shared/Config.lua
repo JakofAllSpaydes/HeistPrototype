@@ -406,9 +406,9 @@ local Config = {
 	},
 	StructurePlaceDistance = 5, -- studs in front of the player (placeables: turrets, barricade, oil drum, med bag, claymore)
 	ThrowDistance = 12, -- studs in front of the player a thrown ability lands when no aim point comes with it (flashbang, molotov)
-	ThrowMaxRange = 52, -- thrown abilities land at the cursor's floor point, no further than this from the player (Round 15k: doubled)
+	ThrowMaxRange = 100, -- thrown abilities land at the cursor's floor point, no further than this from the player
 	ThrowArcPerStud = 0.12, -- the throw's arc peaks this many studs high per stud of distance (never under 1.5)
-	ThrowFlightRefStuds = 26, -- throws up to this far take ThrowFlightSec; further ones take proportionally longer
+	ThrowFlightRefStuds = 45, -- throws up to this far take ThrowFlightSec; further ones take proportionally longer (100 studs ~1.3s)
 	ThrowFlightSec = 0.6, -- the throw's arc takes this long, then it goes off
 	FieldTickSec = 0.5, -- ground fields (med bag, molotov, drum fire) apply their per-second numbers this often
 	-- INITIATE (brief 5): Frag / Adrenaline / Claymore
