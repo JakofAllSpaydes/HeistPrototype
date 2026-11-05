@@ -35,6 +35,7 @@ type Status = {
 	chillProcs: { number },
 	frozenUntil: number,
 	lastInterrupt: number, -- CONCUSSIVE's interrupt cooldown
+	lastFreeze: number, -- CRYO's freeze cooldown
 }
 
 export type Procs = { incendiary: boolean, cryo: boolean, concussive: boolean, any: boolean }
@@ -63,6 +64,7 @@ local function statusOf(model: Model): Status
 			chillProcs = {},
 			frozenUntil = 0,
 			lastInterrupt = -math.huge,
+			lastFreeze = -math.huge,
 		}
 		statuses[model] = s
 	end
@@ -136,13 +138,24 @@ function Elements.burn(model: Model, owner: Player?, dps: number, seconds: numbe
 end
 
 local function chill(model: Model, power: number)
+	local d = Enemy.data(model)
+	if not d then
+		return
+	end
+	local boss = d.row.boss == true
 	local s = statusOf(model)
 	local now = os.clock()
+	-- The boss takes CryoBossSlowMult of the slow and never freezes (a freeze is a stun: it would cancel its
+	-- attacks over and over).
 	local slowPct = math.clamp(Config.CryoSlowPct * power, 0, Config.CryoSlowCap)
+		* (if boss then Config.CryoBossSlowMult else 1)
 	Enemy.slow(model, 1 - slowPct, Config.CryoSlowSec)
 	s.chillUntil = now + Config.CryoSlowSec
 	model:SetAttribute("Chilled", true)
-	-- Stacks inside the window: the Nth freezes.
+	if boss then
+		return
+	end
+	-- Stacks inside the window: the Nth freezes, at most once per CryoFreezeCooldownSec so nothing is frozen for good.
 	local kept = {}
 	for _, t in s.chillProcs do
 		if now - t <= Config.CryoSlowSec then
@@ -151,8 +164,9 @@ local function chill(model: Model, power: number)
 	end
 	table.insert(kept, now)
 	s.chillProcs = kept
-	if #kept >= Config.CryoStacksToFreeze then
+	if #kept >= Config.CryoStacksToFreeze and now - s.lastFreeze >= Config.CryoFreezeCooldownSec then
 		s.chillProcs = {}
+		s.lastFreeze = now
 		local sec = Config.CryoFreezeSec * power
 		s.frozenUntil = now + sec
 		Enemy.stun(model, sec, Color3.fromHex("BFE6FF"))

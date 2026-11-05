@@ -1048,6 +1048,10 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   slides in under it with `DEALER · 1:30`, TELEPORT [T] and SKIP n/m [V]; it slides out when the break ends. Nothing
   sits top-center any more.
 
+- **Round 15g (4 Nov, feedback)** — no freeze lock: TITAN never freezes and takes `CryoBossSlowMult` (half) of Ice
+  Ammo's slow; any other enemy freezes at most once per `CryoFreezeCooldownSec` (3s). Impact Ammo already never
+  interrupts the boss.
+
 ## Open design notes (not built)
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;
