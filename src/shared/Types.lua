@@ -77,6 +77,8 @@ export type Sync = {
 	heat: number,
 	cash: number,
 	gold: number,
+	banked: number, -- the team's Banked total (gold bags) this run
+	bags: number, -- bags this player collected this run
 	maxHP: number,
 	held: HeldView,
 	stats: Computed,

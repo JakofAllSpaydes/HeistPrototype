@@ -66,6 +66,7 @@ export type State = {
 	gold: number, -- side job Gold earned this run, paid with the payout
 	jobsDone: number, -- side jobs completed this run (everyone in the run gets the credit)
 	minigamesDone: number, -- minigames finished this run
+	bags: number, -- bags this player collected this run (cash or gold)
 	pose: number, -- index into Config.Poses, rolled at run start
 	maskColor: string, -- hex, the equipped mask's color
 	joinIndex: number, -- order the player joined the server (ties, line-ups)
@@ -118,6 +119,7 @@ local function freshState(player: Player, joinIndex: number): State
 		gold = 0,
 		jobsDone = 0,
 		minigamesDone = 0,
+		bags = 0,
 		pose = 1,
 		maskColor = Masks.ById[Masks.Default].color,
 		joinIndex = joinIndex,
@@ -530,6 +532,8 @@ function PlayerState.buildSync(state: State): Types.Sync
 		heat = World.heat,
 		cash = state.cash,
 		gold = state.gold,
+		banked = World.banked,
+		bags = state.bags,
 		maxHP = st.maxHP,
 		held = {
 			weaponId = w.id,

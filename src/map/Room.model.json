@@ -48,52 +48,6 @@
     },
     {
       "className": "Part",
-      "name": "WallN",
-      "properties": {
-        "Anchored": true,
-        "BottomSurface": "Smooth",
-        "CFrame": {
-          "CFrame": {
-            "orientation": [
-              [
-                1,
-                0,
-                0
-              ],
-              [
-                0,
-                1,
-                0
-              ],
-              [
-                0,
-                0,
-                1
-              ]
-            ],
-            "position": [
-              0,
-              6,
-              -100.5
-            ]
-          }
-        },
-        "Color": [
-          0.17,
-          0.17,
-          0.2
-        ],
-        "Material": "Concrete",
-        "Size": [
-          202,
-          12,
-          1
-        ],
-        "TopSurface": "Smooth"
-      }
-    },
-    {
-      "className": "Part",
       "name": "WallE",
       "properties": {
         "Anchored": true,
@@ -366,6 +320,785 @@
           0.4,
           12,
           1.2
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "WallN_L",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -53.5,
+              6,
+              -100.5
+            ]
+          }
+        },
+        "Color": [
+          0.17,
+          0.17,
+          0.2
+        ],
+        "Material": "Concrete",
+        "Size": [
+          95,
+          12,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "WallN_R",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              53.5,
+              6,
+              -100.5
+            ]
+          }
+        },
+        "Color": [
+          0.17,
+          0.17,
+          0.2
+        ],
+        "Material": "Concrete",
+        "Size": [
+          95,
+          12,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultDoor",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              6,
+              -100.5
+            ]
+          }
+        },
+        "Color": [
+          0.27,
+          0.28,
+          0.31
+        ],
+        "Material": "DiamondPlate",
+        "Size": [
+          12,
+          12,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultBeaconL",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -6.25,
+              6,
+              -100.5
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.91,
+          0.71,
+          0.3
+        ],
+        "Material": "Neon",
+        "Size": [
+          0.5,
+          12,
+          1.4
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultBeaconR",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              6.25,
+              6,
+              -100.5
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.91,
+          0.71,
+          0.3
+        ],
+        "Material": "Neon",
+        "Size": [
+          0.5,
+          12,
+          1.4
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultSign",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              10.8,
+              -99.8
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.1,
+          0.1,
+          0.12
+        ],
+        "Material": "SmoothPlastic",
+        "Size": [
+          10,
+          2,
+          0.3
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultFloor",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              -0.5,
+              -113
+            ]
+          }
+        },
+        "Color": [
+          0.11,
+          0.11,
+          0.13
+        ],
+        "Material": "Concrete",
+        "Size": [
+          24,
+          2,
+          24
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultWallN",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              6,
+              -125.5
+            ]
+          }
+        },
+        "Color": [
+          0.17,
+          0.17,
+          0.2
+        ],
+        "Material": "Concrete",
+        "Size": [
+          26,
+          12,
+          1
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultWallE",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              12.5,
+              6,
+              -113.5
+            ]
+          }
+        },
+        "Color": [
+          0.17,
+          0.17,
+          0.2
+        ],
+        "Material": "Concrete",
+        "Size": [
+          1,
+          12,
+          25
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultWallW",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -12.5,
+              6,
+              -113.5
+            ]
+          }
+        },
+        "Color": [
+          0.17,
+          0.17,
+          0.2
+        ],
+        "Material": "Concrete",
+        "Size": [
+          1,
+          12,
+          25
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultCeiling",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              12.5,
+              -113.5
+            ]
+          }
+        },
+        "Color": [
+          0.17,
+          0.17,
+          0.2
+        ],
+        "Material": "Concrete",
+        "Size": [
+          26,
+          1,
+          26
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "children": [
+        {
+          "className": "PointLight",
+          "name": "Light",
+          "properties": {
+            "Brightness": 2,
+            "Color": [
+              1,
+              0.95,
+              0.85
+            ],
+            "Enabled": false,
+            "Range": 30,
+            "Shadows": false
+          }
+        }
+      ],
+      "className": "Part",
+      "name": "VaultLight1",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              11.9,
+              -119.72
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          1,
+          0.95,
+          0.85
+        ],
+        "Material": "Neon",
+        "Size": [
+          12,
+          0.2,
+          4
+        ],
+        "TopSurface": "Smooth",
+        "Transparency": 0.6
+      }
+    },
+    {
+      "children": [
+        {
+          "className": "PointLight",
+          "name": "Light",
+          "properties": {
+            "Brightness": 2,
+            "Color": [
+              1,
+              0.95,
+              0.85
+            ],
+            "Enabled": false,
+            "Range": 30,
+            "Shadows": false
+          }
+        }
+      ],
+      "className": "Part",
+      "name": "VaultLight2",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              11.9,
+              -106.28
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          1,
+          0.95,
+          0.85
+        ],
+        "Material": "Neon",
+        "Size": [
+          12,
+          0.2,
+          4
+        ],
+        "TopSurface": "Smooth",
+        "Transparency": 0.6
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultGas",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              0,
+              11,
+              -113
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.5,
+          0.9,
+          0.4
+        ],
+        "Material": "Neon",
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "TopSurface": "Smooth",
+        "Transparency": 1
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultShelfW",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              -10.5,
+              2,
+              -114
+            ]
+          }
+        },
+        "Color": [
+          0.27,
+          0.28,
+          0.31
+        ],
+        "Material": "Metal",
+        "Size": [
+          2,
+          3,
+          18
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "VaultShelfE",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              10.5,
+              2,
+              -114
+            ]
+          }
+        },
+        "Color": [
+          0.27,
+          0.28,
+          0.31
+        ],
+        "Material": "Metal",
+        "Size": [
+          2,
+          3,
+          18
         ],
         "TopSurface": "Smooth"
       }

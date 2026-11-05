@@ -74,7 +74,6 @@ local amber = { 0.91, 0.71, 0.3 }
 ------------------------------------------------------------------ Arena
 -- Floor: 2 studs thick, top face at FloorTop (above the default Baseplate's top at y = 0, so no z-fighting).
 part("Floor", { size, 2, size }, { 0, floorTop - 1, 0 }, darker, "Concrete")
-part("WallN", { size + 2, wallH, 1 }, { 0, wallH / 2, -half - 0.5 }, dark, "Concrete")
 part("WallE", { 1, wallH, size + 2 }, { half + 0.5, wallH / 2, 0 }, dark, "Concrete")
 part("WallW", { 1, wallH, size + 2 }, { -half - 0.5, wallH / 2, 0 }, dark, "Concrete")
 
@@ -92,6 +91,69 @@ for _, side in { -1, 1 } do
 		amber,
 		"Neon",
 		{ CanCollide = false }
+	)
+end
+
+-- North wall carries the vault: two segments round a VaultDoorWidth opening, a heavy door that slides up,
+-- an amber frame (the beacon), a VAULT sign, and a VaultSize closet behind it with a ceiling, two light
+-- panels and a gas anchor in the ceiling. The server reads every Vault* part by name.
+local vs = Config.VaultSize
+local vdHalf = Config.VaultDoorWidth / 2
+local nSeg = (size + 2) / 2 - vdHalf
+local nSegCenter = vdHalf + nSeg / 2
+local steel = { 0.27, 0.28, 0.31 }
+part("WallN_L", { nSeg, wallH, 1 }, { -nSegCenter, wallH / 2, -half - 0.5 }, dark, "Concrete")
+part("WallN_R", { nSeg, wallH, 1 }, { nSegCenter, wallH / 2, -half - 0.5 }, dark, "Concrete")
+part("VaultDoor", { Config.VaultDoorWidth, wallH, 1 }, { 0, wallH / 2, -half - 0.5 }, steel, "DiamondPlate")
+for _, side in { -1, 1 } do
+	part(
+		if side < 0 then "VaultBeaconL" else "VaultBeaconR",
+		{ 0.5, wallH, 1.4 },
+		{ side * (vdHalf + 0.25), wallH / 2, -half - 0.5 },
+		amber,
+		"Neon",
+		{ CanCollide = false }
+	)
+end
+part("VaultSign", { 10, 2, 0.3 }, { 0, wallH - 1.2, -half + 0.2 }, { 0.1, 0.1, 0.12 }, "SmoothPlastic", {
+	CanCollide = false,
+})
+local vFront = -half - 1 -- the closet's open edge, just past the wall
+local vCenterZ = vFront - vs / 2
+part("VaultFloor", { vs, 2, vs }, { 0, floorTop - 1, vCenterZ }, { 0.11, 0.11, 0.13 }, "Concrete")
+part("VaultWallN", { vs + 2, wallH, 1 }, { 0, wallH / 2, vFront - vs - 0.5 }, dark, "Concrete")
+part("VaultWallE", { 1, wallH, vs + 1 }, { vs / 2 + 0.5, wallH / 2, vCenterZ - 0.5 }, dark, "Concrete")
+part("VaultWallW", { 1, wallH, vs + 1 }, { -vs / 2 - 0.5, wallH / 2, vCenterZ - 0.5 }, dark, "Concrete")
+part("VaultCeiling", { vs + 2, 1, vs + 2 }, { 0, wallH + 0.5, vCenterZ - 0.5 }, dark, "Concrete")
+for i, sz in { -0.28, 0.28 } do
+	local light = part(
+		"VaultLight" .. i,
+		{ vs * 0.5, 0.2, 4 },
+		{ 0, wallH - 0.1, vCenterZ + sz * vs },
+		{ 1, 0.95, 0.85 },
+		"Neon",
+		{ CanCollide = false, Transparency = 0.6 }
+	)
+	light.children = {
+		{
+			name = "Light",
+			className = "PointLight",
+			properties = { Brightness = 2, Range = 30, Color = { 1, 0.95, 0.85 }, Shadows = false, Enabled = false },
+		},
+	}
+end
+part("VaultGas", { 1, 1, 1 }, { 0, wallH - 1, vCenterZ }, { 0.5, 0.9, 0.4 }, "Neon", {
+	CanCollide = false,
+	Transparency = 1,
+})
+-- Two low shelves along the side walls so the room reads as a vault.
+for _, sx in { -1, 1 } do
+	part(
+		if sx < 0 then "VaultShelfW" else "VaultShelfE",
+		{ 2, 3, vs - 6 },
+		{ sx * (vs / 2 - 1.5), floorTop + 1.5, vCenterZ - 1 },
+		steel,
+		"Metal"
 	)
 end
 

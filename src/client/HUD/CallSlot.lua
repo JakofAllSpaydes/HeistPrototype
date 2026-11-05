@@ -2,6 +2,9 @@
 -- The one slot under the wave bar. Crew call frames, the timer pill and the ARMS DROP banner live here.
 -- A toast temporarily hides whatever else is in the slot.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Lines = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CrewCall"):WaitForChild("Lines"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -120,6 +123,34 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			end
 		elseif name == "SkipPassed" then
 			component.toast("SKIP VOTE PASSED", Theme.Colors.cash, 1)
+		elseif name == "BagsDropped" then
+			local parts = {}
+			if (tonumber(data.cash) or 0) > 0 then
+				table.insert(parts, string.format("%d CASH", data.cash))
+			end
+			if (tonumber(data.gold) or 0) > 0 then
+				table.insert(parts, string.format("%d GOLD", data.gold))
+			end
+			component.toast(string.format(Lines.bagsDropped, table.concat(parts, " · ")), Theme.Colors.cash, 1.2)
+		elseif name == "BagCollected" then
+			component.toast(
+				tostring(data.toast),
+				if data.kind == "gold" then Theme.Colors.gold else Theme.Colors.cash,
+				1.1
+			)
+		elseif name == "VaultOpen" then
+			component.toast(tostring(data.toast or Lines.vault.openToast), Theme.Colors.amber, 1.3)
+		elseif name == "VaultGas" then
+			component.toast(
+				if data.phase == "warn"
+					then string.format(
+						"GAS IN %ds",
+						math.max(0, math.ceil((tonumber(data.endsAt) or 0) - ClientState.serverNow()))
+					)
+					else "GAS",
+				Theme.Colors.red,
+				1.2
+			)
 		end
 	end
 

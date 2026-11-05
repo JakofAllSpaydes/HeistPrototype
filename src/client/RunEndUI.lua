@@ -34,6 +34,7 @@ local stampFrame: Frame? = nil
 local summaryShownAt = -1
 local hiddenForMvp: { Instance } = {} -- the rest of the crew and their tags, hidden locally for the MVP beat
 local goldLabel: TextLabel? = nil
+local bankedLabel: TextLabel? = nil
 
 -- Camera framing: characters stand about 5 studs tall with the root 3 up, so chest is ~3 and the head ~5.
 local EYE_LINE = 2.6
@@ -113,6 +114,7 @@ local function teardown()
 	dim = nil
 	stampFrame = nil
 	goldLabel = nil
+	bankedLabel = nil
 	lobbyButton = nil
 	summaryShownAt = -1
 	chosen = false
@@ -222,7 +224,8 @@ local function showSummary(d: any)
 	local vp = camera.ViewportSize
 	local W = math.min(math.floor(vp.X * 0.9), S(700))
 	local rowH = S(30)
-	local H = S(84) + S(24) + rowH * n + S(72) + S(28)
+	local headerH = S(140)
+	local H = headerH + S(24) + rowH * n + S(72) + S(28)
 	H = math.min(H, math.floor(vp.Y * 0.94))
 	local panel = UI.frame({
 		Name = "Summary",
@@ -239,44 +242,74 @@ local function showSummary(d: any)
 	UI.tween(panel, { Position = UDim2.fromScale(0.5, 0.5) }, 0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	UI.sound(Theme.Sounds.call, 1, 0.6)
 
-	-- Headline: the meta currency this run earned (cash is the per-run currency and sits in the rows).
+	-- Headline: TOTAL BANKED (the team's gold bags, paid to everyone) above GOLD EARNED (the run payout
+	-- plus your side job gold). Cash is the per-run currency and sits in the rows.
+	UI.text({
+		Text = "TOTAL BANKED",
+		Font = Theme.Fonts.display,
+		TextSize = S(16),
+		TextColor3 = Theme.Colors.textDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(24), S(12)),
+		Size = UDim2.fromOffset(S(300), S(20)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	bankedLabel = UI.text({
+		Text = "◆ 0",
+		Font = Theme.Fonts.display,
+		TextSize = S(40),
+		TextColor3 = Theme.Colors.gold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(24), S(30)),
+		Size = UDim2.fromOffset(S(360), S(46)),
+		ZIndex = 11,
+		Parent = panel,
+	})
 	UI.text({
 		Text = "GOLD EARNED",
 		Font = Theme.Fonts.display,
-		TextSize = S(18),
+		TextSize = S(12),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(24), S(14)),
-		Size = UDim2.fromOffset(S(300), S(22)),
+		Position = UDim2.fromOffset(S(24), S(78)),
+		Size = UDim2.fromOffset(S(300), S(16)),
 		ZIndex = 11,
 		Parent = panel,
 	})
 	goldLabel = UI.text({
 		Text = "+0",
 		Font = Theme.Fonts.display,
-		TextSize = S(44),
+		TextSize = S(26),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(24), S(34)),
-		Size = UDim2.fromOffset(S(360), S(50)),
+		Position = UDim2.fromOffset(S(24), S(92)),
+		Size = UDim2.fromOffset(S(360), S(30)),
 		ZIndex = 11,
 		Parent = panel,
 	})
-	-- Your own row: NEW PERSONAL BEST callout under the headline when the run beat your top wave.
+	-- Your own row: NEW BEST callouts under the headline when the run beat your top wave or top banked.
 	local myRow: any = nil
 	for _, row in rows do
 		if row.userId == player.UserId then
 			myRow = row
 		end
 	end
+	local bests = {}
+	if myRow and myRow.newBest then
+		table.insert(bests, "★ NEW PERSONAL BEST WAVE")
+	end
+	if myRow and myRow.newBestBanked then
+		table.insert(bests, "★ NEW BEST BANKED")
+	end
 	UI.text({
-		Text = if myRow and myRow.newBest then "★ NEW PERSONAL BEST" else "PAID TO YOUR PROFILE",
-		Font = if myRow and myRow.newBest then Theme.Fonts.display else Theme.Fonts.body,
-		TextSize = if myRow and myRow.newBest then S(14) else S(10),
-		TextColor3 = if myRow and myRow.newBest then Theme.Colors.cash else Theme.Colors.grey,
+		Text = if #bests > 0 then table.concat(bests, "  ·  ") else "PAID TO YOUR PROFILE",
+		Font = if #bests > 0 then Theme.Fonts.display else Theme.Fonts.body,
+		TextSize = if #bests > 0 then S(13) else S(10),
+		TextColor3 = if #bests > 0 then Theme.Colors.cash else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(26), S(80)),
-		Size = UDim2.fromOffset(S(300), S(14)),
+		Position = UDim2.fromOffset(S(26), S(124)),
+		Size = UDim2.fromOffset(S(400), S(14)),
 		ZIndex = 11,
 		Parent = panel,
 	})
@@ -305,7 +338,7 @@ local function showSummary(d: any)
 		{ title = "REVIVES", w = 0.11, align = Enum.TextXAlignment.Center },
 	}
 	local tableX, tableW = S(24), W - S(48)
-	local y = S(96)
+	local y = headerH
 	local function cell(
 		parent: Instance,
 		text: string,
@@ -524,10 +557,17 @@ local function step(_dt: number)
 	camera.CFrame = cf
 	camera.Focus = cf
 
-	-- Summary count-ups and the lobby countdown.
+	-- Summary count-ups (TOTAL BANKED first, then GOLD EARNED) and the lobby countdown.
 	if summaryShownAt >= 0 then
 		local e = os.clock() - summaryShownAt
-		local k = easeOut(e / math.max(d.countUpSec or 1, 0.05))
+		local countUp = math.max(d.countUpSec or 1, 0.05)
+		local k = easeOut(e / countUp)
+		local k2 = easeOut((e - countUp) / countUp)
+		if bankedLabel then
+			local banked = tonumber(d.banked) or 0
+			bankedLabel.Text = string.format("◆ %d", math.floor(banked * k))
+			bankedLabel.TextSize = if k < 1 then UI.S(40 + 6 * math.sin(e * 30)) else UI.S(40)
+		end
 		if goldLabel then
 			-- Your own GOLD EARNED: the run payout plus your side job gold (falls back to the base figure).
 			local mine = d.gold or 0
@@ -536,8 +576,8 @@ local function step(_dt: number)
 					mine = row.gold
 				end
 			end
-			goldLabel.Text = string.format("+%d", math.floor(mine * k))
-			goldLabel.TextSize = if k < 1 then UI.S(44 + 6 * math.sin(e * 30)) else UI.S(44)
+			goldLabel.Text = string.format("+%d", math.floor(mine * k2))
+			goldLabel.TextSize = if k2 > 0 and k2 < 1 then UI.S(26 + 4 * math.sin(e * 30)) else UI.S(26)
 		end
 		if lobbyButton and not chosen then
 			local left = math.max(0, math.ceil((d.autoLobbySec or 30) - e))

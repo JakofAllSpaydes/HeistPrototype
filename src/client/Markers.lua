@@ -67,7 +67,15 @@ function Markers.remove(id: string)
 	end)
 end
 
-function Markers.add(id: string, position: Vector3, color: Color3, titleText: string, subText: string, endsAt: number)
+function Markers.add(
+	id: string,
+	position: Vector3,
+	color: Color3,
+	titleText: string,
+	subText: string,
+	endsAt: number,
+	glyph: string?
+)
 	Markers.remove(id)
 	local S = UI.S
 	local att = Instance.new("Attachment")
@@ -164,7 +172,7 @@ function Markers.add(id: string, position: Vector3, color: Color3, titleText: st
 	UI.corner(compact, S(15))
 	UI.stroke(compact, Theme.Colors.black, S(1.5), 0.4)
 	UI.text({
-		Text = "!",
+		Text = glyph or "!",
 		Font = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.bg,
@@ -264,6 +272,45 @@ function Markers.init()
 			end
 		elseif name == "CallEnd" or name == "CallCleared" then
 			Markers.remove("job")
+		elseif name == "BagSpawned" and typeof(data.position) == "Vector3" then
+			-- Bag beacons read through walls: kind, the hold hint and the value; a $ / ◆ badge far away.
+			local gold = data.kind == "gold"
+			local value = tonumber(data.value) or 0
+			Markers.add(
+				"bag" .. tostring(data.id),
+				data.position,
+				if gold then Theme.Colors.gold else Theme.Colors.cash,
+				if gold then "GOLD BAG" else "CASH BAG",
+				string.format("HOLD F · %s", if gold then "◆ " .. tostring(value) else "$" .. tostring(value)),
+				0,
+				if gold then "◆" else "$"
+			)
+		elseif name == "BagCollected" or name == "BagFizzled" then
+			Markers.remove("bag" .. tostring(data.id))
+		elseif name == "VaultOpen" and typeof(data.position) == "Vector3" then
+			Markers.add(
+				"vault",
+				data.position,
+				Theme.Colors.amber,
+				tostring(data.name or "VAULT"),
+				tostring(data.hint or Lines.vault.lootHint),
+				tonumber(data.endsAt) or 0,
+				"◆"
+			)
+		elseif name == "VaultGas" then
+			if data.phase == "warn" then
+				local left = math.max(0, math.ceil((tonumber(data.endsAt) or 0) - ClientState.serverNow()))
+				Markers.setSub("vault", string.format(Lines.vault.gasWarnHint, left), Theme.Colors.red)
+			else
+				Markers.setSub("vault", Lines.vault.gasHint, Theme.Colors.red)
+			end
+		elseif name == "VaultSealed" or name == "HubEnter" then
+			Markers.remove("vault")
+			if name == "HubEnter" then
+				for id in table.clone(markers) do
+					Markers.remove(id)
+				end
+			end
 		end
 	end)
 

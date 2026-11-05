@@ -38,8 +38,11 @@ export type Row = {
 	selfRevives: number,
 	reviveAll: number,
 	jobs: number, -- side jobs + minigames completed
+	bags: number, -- bags this player collected
 	gold: number, -- GOLD EARNED: the run payout (GDD_7 formula) plus this player's side job Gold
+	banked: number, -- TOTAL BANKED: the team's gold bag total, paid in full to everyone
 	newBest: boolean, -- the run's wave beat this player's top wave
+	newBestBanked: boolean, -- the banked total beat this player's best
 	score: number,
 	lineIndex: number,
 	model: Model?, -- dummies only
@@ -198,8 +201,11 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 		selfRevives = 0,
 		reviveAll = 0,
 		jobs = math.random(0, 3),
+		bags = math.random(0, 3),
 		gold = World.payoutBase(),
+		banked = World.banked,
 		newBest = false,
+		newBestBanked = false,
 		score = RunEnd.mvpScore(kills, cash, revives),
 		lineIndex = i,
 		model = d.model,
@@ -208,12 +214,14 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 end
 
 -- Payout at the final summary (GDD_7): base = (sum over cleared waves + GoldPerObjective x objectives) x
--- DiffGoldMult, plus the side job Gold already granted per job. Lands in the profile at once, with the
--- top wave and the lifetime stats. Players who left before the summary earn nothing.
-local function payout(p: Player, s: PlayerState.State, base: number): (number, boolean)
+-- DiffGoldMult, plus the side job Gold already granted per job, plus the team's TOTAL BANKED in full.
+-- Lands in the profile at once, with the top wave, the top banked and the lifetime stats. Players who left
+-- before the summary earn nothing.
+local function payout(p: Player, s: PlayerState.State, base: number, banked: number): (number, boolean, boolean)
 	local earned = base + s.gold
 	local profile = s.profile or Profiles.get(p)
 	local newBest = false
+	local newBestBanked = false
 	if profile then
 		local key = World.partyKey()
 		local top = profile.topWave[key] or 0
@@ -221,21 +229,30 @@ local function payout(p: Player, s: PlayerState.State, base: number): (number, b
 			profile.topWave[key] = World.wave
 			newBest = true
 		end
+		local topB = profile.topBanked[key] or 0
+		if banked > topB then
+			profile.topBanked[key] = banked
+			newBestBanked = banked > 0
+		end
 		profile.stats.kills += s.kills
 		profile.stats.matchesPlayed += 1
-		Profiles.grantPayout(p, earned, "run payout")
+		profile.stats.bagsCollected += s.bags
+		profile.stats.goldBanked += banked
+		Profiles.grantPayout(p, earned + banked, "run payout")
 	end
 	Log.event(
 		"Payout",
-		"%s earned %d gold (base %d + %d side job), wave %d%s",
+		"%s earned %d gold (base %d + %d side job) + %d banked, wave %d%s%s",
 		p.Name,
 		earned,
 		base,
 		s.gold,
+		banked,
 		World.wave,
-		if newBest then ", NEW PERSONAL BEST" else ""
+		if newBest then ", NEW PERSONAL BEST" else "",
+		if newBestBanked then ", NEW BEST BANKED" else ""
 	)
-	return earned, newBest
+	return earned, newBest, newBestBanked
 end
 
 -- Yields through the sequence and the summary. Returns "again" | "lobby".
@@ -246,6 +263,7 @@ function RunEnd.play(): string
 	local n = #players + dummyCount
 	local beats = Config.RunEndBeats
 	local base = World.payoutBase()
+	local banked = World.banked
 
 	-- Real rows and totals.
 	local rows: { Row } = {}
@@ -253,7 +271,7 @@ function RunEnd.play(): string
 	local topKills, topCash = 0, 0
 	for i, p in players do
 		local s = PlayerState.get(p)
-		local earned, newBest = payout(p, s, base)
+		local earned, newBest, newBestBanked = payout(p, s, base, banked)
 		rows[i] = {
 			userId = p.UserId,
 			name = p.Name,
@@ -269,8 +287,11 @@ function RunEnd.play(): string
 			selfRevives = s.selfRevives,
 			reviveAll = s.reviveAllUsed,
 			jobs = s.jobsDone + s.minigamesDone,
+			bags = s.bags,
 			gold = earned,
+			banked = banked,
 			newBest = newBest,
+			newBestBanked = newBestBanked,
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}
@@ -337,7 +358,8 @@ function RunEnd.play(): string
 				model = mvp.model,
 			}
 			else nil,
-		totalBanked = total,
+		totalBanked = total, -- cash collected by the crew (the bill rain scales on it)
+		banked = banked, -- TOTAL BANKED (gold bags), the headline
 		gold = gold,
 		wave = World.wave,
 		heat = World.heat,
@@ -351,9 +373,10 @@ function RunEnd.play(): string
 	})
 	Log.event(
 		"Run",
-		"run end: wave %d, total banked $%d, payout base %d gold, %d bills, MVP %s (%s)",
+		"run end: wave %d, cash collected $%d, banked %d, payout base %d gold, %d bills, MVP %s (%s)",
 		World.wave,
 		total,
+		banked,
 		gold,
 		rainCount,
 		if mvp then mvp.name else "none",

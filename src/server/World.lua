@@ -33,6 +33,7 @@ local World = {
 	-- Payout accumulators for the run (GDD_7 payout). Survive REVIVE EVERYBODY saves; paid once at the summary.
 	runGold = 0, -- sum over cleared waves of GoldPerWaveBase + GoldPerWaveAdd x (wave - 1)
 	objectivesDone = 0, -- side jobs completed this run
+	banked = 0, -- the team's Banked total from gold bags (TOTAL BANKED, paid in full to every member at the summary)
 }
 
 -- True while a run is on: waves can spawn, downs count, cash is Match Cash.

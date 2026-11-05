@@ -23,7 +23,7 @@ type Session = {
 	onDone: ((Player) -> ())?, -- side job hook
 }
 
-export type OpenOpts = { position: Vector3?, onDone: ((Player) -> ())? }
+export type OpenOpts = { position: Vector3?, onDone: ((Player) -> ())?, tier: number? }
 type Result = { sec: number, misses: number, outcome: string, tier: number }
 
 local Minigames = {}
@@ -81,7 +81,7 @@ function Minigames.open(player: Player, name: string, opts: OpenOpts?)
 		token = nextToken,
 		player = player,
 		name = name,
-		tier = World.minigameTier,
+		tier = if opts and opts.tier then math.clamp(math.floor(opts.tier), 1, 3) else World.minigameTier,
 		startedAt = os.clock(),
 		onDone = if opts then opts.onDone else nil,
 	}

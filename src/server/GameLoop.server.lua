@@ -34,6 +34,8 @@ local Downed = require(script.Parent.Downed)
 local RunStart = require(script.Parent.RunStart)
 local RunEnd = require(script.Parent.RunEnd)
 local Heat = require(script.Parent.Heat)
+local Bags = require(script.Parent.Bags)
+local VaultJob = require(script.Parent.VaultJob)
 
 Profiles.init()
 PlayerState.init()
@@ -56,6 +58,7 @@ Hub.init()
 Queue.init()
 Meta.init()
 Minigames.init()
+VaultJob.init()
 RunEnd.init()
 Debug.init()
 
@@ -103,6 +106,7 @@ local function runWaves()
 		)
 		BigCrate.onWaveStart(wave)
 		CrewCall.onWaveStart(wave)
+		Bags.onWaveStart(wave)
 
 		local advanced = Spawner.runWave(wave)
 		if World.runOver then
@@ -170,6 +174,7 @@ task.spawn(function()
 		World.runId += 1
 		World.runGold = 0
 		World.objectivesDone = 0
+		World.banked = 0
 
 		-- Run start: fresh run state for the party, then the drive-in sequence (IntroSec); WAVE 1 follows.
 		World.wave = 1

@@ -31,7 +31,8 @@ export type Profile = {
 	emotes: { owned: { [string]: boolean }, squad: string, mvp: string }, -- line-up pose and MVP flex
 	wraps: { owned: { [string]: boolean } },
 	topWave: { [string]: number }, -- "TheBank:Normal" -> wave
-	stats: { kills: number, matchesPlayed: number, goldEarned: number },
+	topBanked: { [string]: number }, -- "TheBank:Normal" -> best TOTAL BANKED in one run
+	stats: { kills: number, matchesPlayed: number, goldEarned: number, bagsCollected: number, goldBanked: number },
 	pendingPayout: number, -- Gold granted this session that has not reached the store yet
 	version: number,
 }
@@ -101,7 +102,8 @@ function Profiles.fresh(): Profile
 		end)(),
 		wraps = { owned = {} },
 		topWave = { ["TheBank:Normal"] = 0 },
-		stats = { kills = 0, matchesPlayed = 0, goldEarned = 0 },
+		topBanked = { ["TheBank:Normal"] = 0 },
+		stats = { kills = 0, matchesPlayed = 0, goldEarned = 0, bagsCollected = 0, goldBanked = 0 },
 		pendingPayout = 0,
 		version = VERSION,
 	}
@@ -196,6 +198,13 @@ local function migrate(raw: any): Profile
 		for k, v in raw.topWave do
 			if typeof(k) == "string" and typeof(v) == "number" then
 				p.topWave[k] = math.floor(v)
+			end
+		end
+	end
+	if typeof(raw.topBanked) == "table" then
+		for k, v in raw.topBanked do
+			if typeof(k) == "string" and typeof(v) == "number" then
+				p.topBanked[k] = math.floor(v)
 			end
 		end
 	end

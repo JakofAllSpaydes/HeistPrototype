@@ -20,6 +20,8 @@ local CrewCall = require(script.Parent.CrewCall)
 local WeaponRoll = require(script.Parent.WeaponRoll)
 local Abilities = require(script.Parent.Abilities)
 local Squad = require(script.Parent.Squad)
+local Bags = require(script.Parent.Bags)
+local VaultJob = require(script.Parent.VaultJob)
 
 local Hub = {}
 
@@ -208,6 +210,8 @@ function Hub.clearArena()
 	WeaponRoll.clearAll()
 	Abilities.clearAll()
 	Squad.clear()
+	Bags.clearAll()
+	VaultJob.resetRun()
 	World.spawnsPaused = false
 	World.enemiesLeft = 0
 end

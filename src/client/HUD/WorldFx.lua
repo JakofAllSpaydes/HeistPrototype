@@ -285,6 +285,15 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		ZIndex = 0,
 		Parent = gui,
 	})
+	-- Vault gas: a sickly green tint while you stand in it.
+	local gasTint = UI.frame({
+		Name = "GasTint",
+		BackgroundColor3 = Color3.fromRGB(150, 220, 110),
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 0,
+		Parent = gui,
+	})
 
 	-- Enemy spawn puff: a dark ring where each enemy appears. Every enemy also gets its flinch watcher
 	-- (the server stamps FlinchAt on a hit; a white pop reads as the hit reaction on every client) and the
@@ -574,6 +583,49 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		elseif name == "PlateOff" and typeof(data.position) == "Vector3" then
 			sparks(data.position, Color3.fromRGB(200, 205, 215), 14, 22)
 			soundAtPoint(data.position, Theme.Sounds.crunch, 0.6, 0.6, 120)
+		elseif name == "BagCollected" and typeof(data.position) == "Vector3" then
+			-- The bag pops in a money burst; the number floats where it stood.
+			local gold = data.kind == "gold"
+			local color = if gold then Theme.Colors.gold else Theme.Colors.cash
+			sparks(data.position + Vector3.new(0, 1, 0), color, 24, 26)
+			blastRing(data.position, 5, color)
+			floatText(
+				data.position + Vector3.new(0, 2, 0),
+				if gold then "◆ +" .. tostring(data.value) else "+" .. UI.fmtCash(tonumber(data.value) or 0),
+				color,
+				26,
+				4,
+				1.1
+			)
+			UI.sound(Theme.Sounds.take, if gold then 0.9 else 1.3, 0.5)
+			UI.sound(Theme.Sounds.reelLand, 1.2, 0.3)
+		elseif name == "VaultGasTint" then
+			UI.tween(gasTint, { BackgroundTransparency = if data.on then 0.55 else 1 }, 0.4)
+			if data.on then
+				UI.sound(Theme.Sounds.hurt, 0.6, 0.3)
+			end
+		elseif name == "VaultOpen" and typeof(data.position) == "Vector3" then
+			blastRing(data.position, 12, Theme.Colors.amber)
+			UI.sound(Theme.Sounds.swap, 0.45, 0.7)
+			UI.sound(Theme.Sounds.crate, 0.8, 0.6)
+			ClientState.Juice:Fire("Shake", { amp = 0.3, dur = 0.35 })
+		elseif name == "VaultGas" then
+			if data.phase == "warn" then
+				-- The alarm: three low blasts.
+				task.spawn(function()
+					for i = 1, 3 do
+						UI.sound(Theme.Sounds.deny, 0.5, 0.6)
+						task.wait(0.35)
+					end
+				end)
+			else
+				UI.sound(Theme.Sounds.swap, 0.35, 0.8)
+			end
+		elseif name == "VaultSealed" and typeof(data.position) == "Vector3" then
+			UI.sound(Theme.Sounds.crunch, 0.5, 0.6)
+			blastRing(data.position, 8, Theme.Colors.grey)
+		elseif name == "HubEnter" then
+			gasTint.BackgroundTransparency = 1
 		elseif name == "Knockback" and typeof(data.dir) == "Vector3" then
 			-- A Heavy's hit: this client owns its character's physics, so the throw is applied here.
 			local char = Players.LocalPlayer.Character

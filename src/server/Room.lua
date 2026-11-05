@@ -11,6 +11,22 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 export type Zone = { index: number, pad: BasePart, gate: BasePart?, billboardAnchor: BasePart? }
 export type Station = { tab: string, panel: BasePart, label: BasePart }
+-- The vault closet on the north wall (brief 4): the sliding door, its amber frame (the beacon), the sign,
+-- the ceiling lights, the gas anchor and the floor volume that counts as "inside".
+export type Vault = {
+	door: BasePart,
+	doorClosed: CFrame,
+	doorOpen: CFrame,
+	beacons: { BasePart },
+	sign: BasePart?,
+	lights: { BasePart },
+	gas: BasePart?,
+	front: Vector3, -- floor point just outside the door (markers, the prompt)
+	minX: number,
+	maxX: number,
+	minZ: number,
+	maxZ: number,
+}
 
 local Room = {
 	center = Vector3.new(0, 0, 0),
@@ -29,6 +45,7 @@ local Room = {
 	tierPadBase = nil :: BasePart?,
 	zones = {} :: { Zone }, -- queue zones, QueueZone1..N
 	stations = {} :: { Station },
+	vault = nil :: Vault?, -- nil when the map has no VaultDoor (the vault job is then never drawn)
 }
 
 local function part(
@@ -77,7 +94,65 @@ local function buildFallback(): Folder
 	local floorTop = Config.FloorTop
 	local concrete = Enum.Material.Concrete
 	part("Floor", Vector3.new(size, 2, size), CFrame.new(0, floorTop - 1, 0), darker, concrete, room)
-	part("WallN", Vector3.new(size + 2, wallH, 1), CFrame.new(0, wallH / 2, -half - 0.5), dark, concrete, room)
+	-- North wall with the vault closet (mirrors genmap without the shelves and sign).
+	local vs = Config.VaultSize
+	local vdHalf = Config.VaultDoorWidth / 2
+	local nSeg = (size + 2) / 2 - vdHalf
+	local nSegCenter = vdHalf + nSeg / 2
+	local steel = Color3.fromRGB(70, 72, 80)
+	part("WallN_L", Vector3.new(nSeg, wallH, 1), CFrame.new(-nSegCenter, wallH / 2, -half - 0.5), dark, concrete, room)
+	part("WallN_R", Vector3.new(nSeg, wallH, 1), CFrame.new(nSegCenter, wallH / 2, -half - 0.5), dark, concrete, room)
+	part(
+		"VaultDoor",
+		Vector3.new(Config.VaultDoorWidth, wallH, 1),
+		CFrame.new(0, wallH / 2, -half - 0.5),
+		steel,
+		Enum.Material.DiamondPlate,
+		room
+	)
+	for _, side in { -1, 1 } do
+		local beacon = part(
+			if side < 0 then "VaultBeaconL" else "VaultBeaconR",
+			Vector3.new(0.5, wallH, 1.4),
+			CFrame.new(side * (vdHalf + 0.25), wallH / 2, -half - 0.5),
+			amber,
+			Enum.Material.Neon,
+			room
+		)
+		beacon.CanCollide = false
+	end
+	local vFront = -half - 1
+	local vCenterZ = vFront - vs / 2
+	part("VaultFloor", Vector3.new(vs, 2, vs), CFrame.new(0, floorTop - 1, vCenterZ), darker, concrete, room)
+	part("VaultWallN", Vector3.new(vs + 2, wallH, 1), CFrame.new(0, wallH / 2, vFront - vs - 0.5), dark, concrete, room)
+	part(
+		"VaultWallE",
+		Vector3.new(1, wallH, vs + 1),
+		CFrame.new(vs / 2 + 0.5, wallH / 2, vCenterZ - 0.5),
+		dark,
+		concrete,
+		room
+	)
+	part(
+		"VaultWallW",
+		Vector3.new(1, wallH, vs + 1),
+		CFrame.new(-vs / 2 - 0.5, wallH / 2, vCenterZ - 0.5),
+		dark,
+		concrete,
+		room
+	)
+	part(
+		"VaultCeiling",
+		Vector3.new(vs + 2, 1, vs + 2),
+		CFrame.new(0, wallH + 0.5, vCenterZ - 0.5),
+		dark,
+		concrete,
+		room
+	)
+	local gas =
+		part("VaultGas", Vector3.new(1, 1, 1), CFrame.new(0, wallH - 1, vCenterZ), amber, Enum.Material.Neon, room)
+	gas.CanCollide = false
+	gas.Transparency = 1
 	part("WallE", Vector3.new(1, wallH, size + 2), CFrame.new(half + 0.5, wallH / 2, 0), dark, concrete, room)
 	part("WallW", Vector3.new(1, wallH, size + 2), CFrame.new(-half - 0.5, wallH / 2, 0), dark, concrete, room)
 	local doorHalf = Config.DoorWidth / 2
@@ -400,6 +475,44 @@ function Room.build()
 		end
 	end
 
+	-- The vault closet.
+	Room.vault = nil
+	local door = room:FindFirstChild("VaultDoor")
+	if door and door:IsA("BasePart") then
+		local beacons = {}
+		for _, name in { "VaultBeaconL", "VaultBeaconR" } do
+			local b = room:FindFirstChild(name)
+			if b and b:IsA("BasePart") then
+				table.insert(beacons, b)
+			end
+		end
+		local lights = {}
+		for i = 1, 4 do
+			local l = room:FindFirstChild("VaultLight" .. i)
+			if l and l:IsA("BasePart") then
+				table.insert(lights, l)
+			end
+		end
+		local sign = room:FindFirstChild("VaultSign")
+		local gas = room:FindFirstChild("VaultGas")
+		local vs = Config.VaultSize
+		local front = -(Config.RoomSize / 2 + 1)
+		Room.vault = {
+			door = door,
+			doorClosed = door.CFrame,
+			doorOpen = door.CFrame + Vector3.new(0, door.Size.Y, 0),
+			beacons = beacons,
+			sign = if sign and sign:IsA("BasePart") then sign else nil,
+			lights = lights,
+			gas = if gas and gas:IsA("BasePart") then gas else nil,
+			front = Vector3.new(door.Position.X, Config.FloorTop, door.Position.Z + 4),
+			minX = door.Position.X - vs / 2,
+			maxX = door.Position.X + vs / 2,
+			minZ = front - vs,
+			maxZ = front,
+		}
+	end
+
 	Lighting.Ambient = Color3.fromRGB(70, 70, 80)
 	Lighting.OutdoorAmbient = Color3.fromRGB(90, 90, 100)
 	Lighting.Brightness = 2
@@ -408,6 +521,15 @@ end
 
 function Room.randomSpawnPoint(): Vector3
 	return Room.spawnPoints[math.random(#Room.spawnPoints)]
+end
+
+-- Inside the vault closet's floor volume (XZ), past the door line.
+function Room.insideVault(position: Vector3): boolean
+	local v = Room.vault
+	if not v then
+		return false
+	end
+	return position.X >= v.minX and position.X <= v.maxX and position.Z >= v.minZ and position.Z <= v.maxZ
 end
 
 function Room.randomPillar(): Vector3

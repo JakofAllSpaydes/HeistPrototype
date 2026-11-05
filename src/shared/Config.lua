@@ -340,6 +340,7 @@ local Config = {
 		Charges = 1,
 		Safe = 1,
 		Freq = 1,
+		vault = 1, -- CRACK THE VAULT (from VaultJobMinWave, once per run when VaultJobOnce)
 	},
 	SideJobCaptureSec = 10, -- seconds a player must stand in the circle; pauses while nobody is inside
 	SideJobCaptureRadius = 7, -- studs
@@ -446,6 +447,33 @@ local Config = {
 	HeatSpawnPerStar = 0.08,
 	HeatBracketShift = 1,
 	HeatShiftStars = 4,
+
+	------------------------------------------------------------------ Bags (Bags.lua; spots in BagSpots.lua)
+	CashBagBase = 150, -- a cash bag pays CashBagBase x (1 + CashBagPerWave x wave) match cash to every member
+	CashBagPerWave = 0.25,
+	GoldBagValue = 25, -- a gold bag adds GoldBagValue x (1 + GoldBagPerWave x wave) to the team's Banked total
+	GoldBagPerWave = 0.1,
+	CashBagsPerWave = 2, -- spawned at every wave start (not the boss cutscene), up to MaxActiveBags
+	GoldBagsPerWave = 1,
+	MaxActiveBags = 6, -- caps the wave-start trickle; bursts (boss, vault) bypass it
+	BagCollectSec = 1.0, -- hold F on a bag
+	BagFarMult = 3, -- spot weight beyond BagFarDistance from the crew...
+	BagFarDistance = 60,
+	BagNearMult = 0.25, -- ...and within BagNearDistance
+	BagNearDistance = 25,
+	GoldBagMinDistance = 50, -- gold bags never spawn closer than this to any player (when a spot allows it)
+
+	------------------------------------------------------------------ Vault (the arena's vault closet; VaultJob.lua; regenerate the map after changing sizes)
+	VaultSize = 24, -- the closet is this square, on the north wall
+	VaultDoorWidth = 12,
+	VaultBagSpots = 10, -- bag spots inside (BagSpots.Vault)
+	VaultJobMinWave = 3, -- CRACK THE VAULT can be drawn from this wave (weight in SideJobKindWeights)
+	VaultJobOnce = true, -- at most once per run (a failed draw can come back)
+	VaultBurstCash = 6, -- bags dropped inside when it opens
+	VaultBurstGold = 4,
+	VaultOpenSec = 60, -- the loot window from the door opening
+	VaultGasWarnSec = 10, -- alarm, strobe and MARLOW's warning this long before the gas
+	VaultGasDps = 8, -- to any player inside once the gas is in (stops the moment they step out)
 
 	------------------------------------------------------------------ Boss (TITAN, Boss.lua; step 5 of brief 4)
 	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)

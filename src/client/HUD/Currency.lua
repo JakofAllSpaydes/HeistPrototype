@@ -64,32 +64,34 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		UI.punch(plus, 0.9, 0.15) -- Robux products are out of scope
 	end)
 
-	-- Gold row
-	local goldRow = UI.frame({
+	-- Banked row: the team's gold bag total, ticks on every bank.
+	local bankedRow = UI.frame({
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, S(26)),
 		Position = UDim2.fromOffset(0, S(42)),
 		Parent = root,
 	})
-	local bar = UI.frame({
-		BackgroundColor3 = Theme.Colors.gold,
-		Size = UDim2.fromOffset(S(24), S(12)),
-		Position = UDim2.fromOffset(S(3), S(7)),
-		Rotation = -8,
-		Parent = goldRow,
-	})
-	UI.corner(bar, S(3))
 	UI.text({
-		Name = "Gold",
-		Text = "0",
+		Text = "◆",
 		Font = Theme.Fonts.display,
-		TextSize = S(20),
+		TextSize = S(18),
+		TextColor3 = Theme.Colors.gold,
+		Position = UDim2.fromOffset(S(5), 0),
+		Size = UDim2.fromOffset(S(22), S(26)),
+		Parent = bankedRow,
+	})
+	local bankedLabel = UI.text({
+		Name = "Banked",
+		Text = "0 BANKED",
+		Font = Theme.Fonts.display,
+		TextSize = S(18),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(S(40), 0),
 		Size = UDim2.new(1, -S(40), 1, 0),
-		Parent = goldRow,
+		Parent = bankedRow,
 	})
+	UI.stroke(bankedLabel, Theme.Colors.black, S(1.5), 0.4)
 
 	local shown = 0
 	local target = 0
@@ -111,7 +113,16 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.frame = root
 	component.cashLabel = cashLabel
 
+	local shownBanked = -1
 	function component.update(sync: any)
+		local banked = tonumber(sync.banked) or 0
+		if banked ~= shownBanked then
+			bankedLabel.Text = string.format("%s BANKED", UI.fmtNum(banked))
+			if shownBanked >= 0 and banked > shownBanked then
+				UI.punch(bankedLabel, 1.2, 0.3)
+			end
+			shownBanked = banked
+		end
 		if sync.cash ~= target then
 			target = sync.cash
 			if target > shown then

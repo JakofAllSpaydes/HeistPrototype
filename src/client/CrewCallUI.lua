@@ -444,10 +444,91 @@ local function onCallEnd(data: any)
 	end)
 end
 
+-- A pill with no card first (the open vault's VAULT · 0:60 timer).
+local function showPill(data: any)
+	destroyActive()
+	callToken += 1
+	local box, inner = buildBox(PILL_H)
+	local pill, timer, stroke = buildPill(inner, data)
+	active = { data = data, box = box, inner = inner, timerLabel = timer, stroke = stroke, token = callToken }
+	slideIn(inner)
+	UI.punch(pill, 1.1, 0.3)
+end
+
+local function slideOutActive()
+	local call = active
+	if not call or not call.box or not call.box.Parent then
+		return
+	end
+	local token = call.token
+	local out = slideOut(call.inner)
+	out.Completed:Wait()
+	if active and active.token == token then
+		destroyActive()
+	end
+end
+
+-- The vault: VAULT pill while the loot window runs, MARLOW's gas card at the warning (collapses back
+-- to the pill, red under CallPillWarnSec), gone when the room seals.
+local function onVaultOpen(data: any)
+	showPill({
+		id = "vault",
+		jobKind = "vault",
+		kind = "door",
+		name = tostring(data.name or Lines.vault.pillName),
+		crewLead = Lines.vault.crewLead,
+		typeLabel = Lines.vault.typeLabel,
+		text = {},
+		rewardLine = "",
+		rewardShort = tostring(data.hint or Lines.vault.lootHint),
+		endsAt = tonumber(data.endsAt) or 0,
+		duration = tonumber(data.openSec) or Config.VaultOpenSec,
+	})
+end
+
+local function onVaultGas(data: any)
+	if data.phase == "warn" then
+		onCallStart({
+			id = "vault",
+			jobKind = "vault",
+			kind = "door",
+			name = Lines.vault.pillName,
+			crewLead = tostring(data.crewLead or Lines.vault.crewLead),
+			typeLabel = tostring(data.title or Lines.vault.gasTitle),
+			text = data.text or Lines.vault.gasText,
+			rewardLine = "",
+			rewardShort = Lines.vault.gasHint,
+			endsAt = tonumber(data.endsAt) or 0,
+			duration = Config.VaultGasWarnSec,
+		})
+	else
+		local call = active
+		if call and call.data and call.data.id == "vault" then
+			call.data.endsAt = nil
+			if call.timerLabel then
+				call.timerLabel.Text = Lines.vault.gasTitle
+				call.timerLabel.TextColor3 = Theme.Colors.red
+			end
+		end
+	end
+end
+
 function CrewCallUI.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "CallStart" then
 			onCallStart(data)
+		elseif name == "VaultOpen" then
+			-- The result card for the job is still up: the pill takes over after it has had its hold.
+			task.delay(Config.CallHoldSec + 0.35, function()
+				onVaultOpen(data)
+			end)
+		elseif name == "VaultGas" then
+			onVaultGas(data)
+		elseif name == "VaultSealed" then
+			local call = active
+			if call and call.data and call.data.id == "vault" then
+				task.spawn(slideOutActive)
+			end
 		elseif name == "JobProgress" then
 			local call = active
 			if call and call.data and call.data.id == data.id then

@@ -19,12 +19,13 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Minigames = require(script.Parent.Minigames)
 local Heat = require(script.Parent.Heat)
+local VaultJob = require(script.Parent.VaultJob)
 
 type Job = {
 	id: number,
-	kind: string, -- hack | capture
+	kind: string, -- hack | capture | <minigame> | vault
 	endsAt: number,
-	beacon: Model,
+	beacon: Model?, -- nil for the vault (its door frame is the beacon)
 	fill: BasePart?, -- capture: the disc that grows with progress
 	active: boolean,
 	position: Vector3,
@@ -56,6 +57,8 @@ end
 local function copyFor(kind: string): any
 	if kind == "capture" then
 		return Lines.capture
+	elseif kind == "vault" then
+		return Lines.vault
 	elseif not isMinigame(kind) then
 		return Lines.job
 	end
@@ -76,16 +79,22 @@ local function copyFor(kind: string): any
 	}
 end
 
--- Weighted roll over Config.SideJobKindWeights.
+-- Weighted roll over Config.SideJobKindWeights. The vault only when it can be drawn this wave.
 local function rollKind(): string
+	local function weight(kind: string, w: number): number
+		if kind == "vault" and not VaultJob.available(World.wave) then
+			return 0
+		end
+		return math.max(0, w)
+	end
 	local total = 0
-	for _, w in Config.SideJobKindWeights do
-		total += math.max(0, w)
+	for kind, w in Config.SideJobKindWeights do
+		total += weight(kind, w)
 	end
 	local r = math.random() * total
 	for kind, w in Config.SideJobKindWeights do
-		r -= math.max(0, w)
-		if r <= 0 then
+		r -= weight(kind, w)
+		if r <= 0 and weight(kind, w) > 0 then
 			return kind
 		end
 	end
@@ -252,9 +261,18 @@ function CrewCall.trigger()
 	local position = pillar + toCenter * (Config.PillarSize / 2 + radius + 1)
 	local endsAt = Workspace:GetServerTimeNow() + Config.SideJobDurationSec
 	local thisJob: Job
-	local beacon: Model
+	local beacon: Model? = nil
 	local fill: BasePart? = nil
-	if kind == "capture" then
+	if kind == "vault" then
+		-- The vault: no random beacon, the door frame turns blue and F at the door opens the Safe dial.
+		position = VaultJob.front()
+		VaultJob.startJob(function(player)
+			if job == thisJob and thisJob.active then
+				Log.event("Call", "%s cracked the vault for Side Job #%d", player.Name, thisJob.id)
+				CrewCall.finish(true)
+			end
+		end)
+	elseif kind == "capture" then
 		beacon, fill = buildCaptureBeacon(position)
 	elseif isMinigame(kind) then
 		-- The prompt opens the minigame at the beacon; a validated done finishes the job. Fails can retry.
@@ -338,7 +356,9 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	end
 	j.active = false
 	job = nil
-	j.beacon:Destroy()
+	if j.beacon then
+		j.beacon:Destroy()
+	end
 	updateInsideSet(j, {}) -- nobody is capturing a finished job
 	local copy = copyFor(j.kind)
 	if success then
@@ -349,12 +369,16 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 			state.jobsDone += 1
 		end
 		World.addObjective()
-		if Config.SideJobRewardCrate then
+		-- The vault's reward is the room itself: no crate for that kind.
+		if Config.SideJobRewardCrate and j.kind ~= "vault" then
 			BigCrate.drop(j.position)
 		end
 		Heat.onJobDone() -- lands as +HeatJob at this wave's end
 	elseif not silent then
 		Heat.onJobFailed()
+	end
+	if j.kind == "vault" then
+		VaultJob.jobEnded(success)
 	end
 	if silent then
 		-- Run ended or debug reset: the card, pill and marker just go away on every client.

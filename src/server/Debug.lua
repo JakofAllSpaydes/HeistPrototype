@@ -24,6 +24,8 @@ local Downed = require(script.Parent.Downed)
 local Profiles = require(script.Parent.Profiles)
 local Queue = require(script.Parent.Queue)
 local Heat = require(script.Parent.Heat)
+local Bags = require(script.Parent.Bags)
+local VaultJob = require(script.Parent.VaultJob)
 
 local Debug = {}
 
@@ -156,6 +158,27 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	MinigameStats = function(_player, _state, _args)
 		Minigames.printStats()
 		Heat.printStats()
+	end,
+	SpawnBag = function(player, _state, args)
+		Bags.debugSpawn(player, tostring(args))
+	end,
+	OpenVault = function(player, _state, _args)
+		if VaultJob.phase == "closed" or VaultJob.phase == "job" then
+			if VaultJob.phase == "job" then
+				CrewCall.finish(true)
+			else
+				VaultJob.open()
+			end
+		else
+			toast(player, "VAULT IS " .. string.upper(VaultJob.phase))
+		end
+	end,
+	GasVault = function(player, _state, _args)
+		if VaultJob.phase == "open" or VaultJob.phase == "warn" then
+			VaultJob.debugGas()
+		else
+			toast(player, "VAULT IS " .. string.upper(VaultJob.phase))
+		end
 	end,
 	SetHeat = function(player, _state, args)
 		local n = tonumber(args)
