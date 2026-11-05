@@ -24,7 +24,10 @@ local function show(data: any)
 	if overlay then
 		overlay.gui:Destroy()
 	end
-	local S = UI.S
+	-- Phones render UI.S at about half scale: RESUME stays a thumb-sized target there.
+	local function S(n: number): number
+		return UI.S(n * (if ClientState.isMobile then 1.4 else 1))
+	end
 	local gui = UI.new("ScreenGui", {
 		Name = "PauseOverlay",
 		IgnoreGuiInset = true,

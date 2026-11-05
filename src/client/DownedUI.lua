@@ -218,30 +218,35 @@ local function buildPrompt()
 	promptGui = gui
 	-- The reviver's bar, centered under the crosshair (the crosshair ring stays as the peripheral cue).
 	do
-		local w = S(if ClientState.isMobile then 240 else 300)
+		-- Phones render UI.S at about half scale: the bar and its label are sized up there.
+		local mobile = ClientState.isMobile
+		local function B(n: number): number
+			return S(n * (if mobile then 1.4 else 1))
+		end
+		local w = B(300)
 		local root = UI.frame({
 			Name = "ReviveBar",
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0.5, S(78)),
-			Size = UDim2.fromOffset(w, S(44)),
+			Position = UDim2.new(0.5, 0, 0.5, B(78)),
+			Size = UDim2.fromOffset(w, B(44)),
 			Visible = false,
 			Parent = gui,
 		})
 		local label = UI.text({
 			Text = "",
 			Font = Theme.Fonts.display,
-			TextSize = S(17),
+			TextSize = B(17),
 			TextColor3 = Theme.Colors.cash,
-			Size = UDim2.new(1, 0, 0, S(22)),
+			Size = UDim2.new(1, 0, 0, B(22)),
 			Parent = root,
 		})
 		UI.stroke(label, Theme.Colors.black, S(2), 0.3)
 		local back = UI.frame({
 			BackgroundColor3 = Theme.Colors.panel2,
 			BackgroundTransparency = 0.1,
-			Position = UDim2.fromOffset(0, S(24)),
-			Size = UDim2.new(1, 0, 0, S(14)),
+			Position = UDim2.fromOffset(0, B(24)),
+			Size = UDim2.new(1, 0, 0, B(14)),
 			Parent = root,
 		})
 		UI.corner(back, S(7))

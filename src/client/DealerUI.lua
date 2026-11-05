@@ -45,6 +45,11 @@ local card: { root: Frame, title: TextLabel, teleport: TextButton, skip: TextBut
 local screen: ScreenGui? = nil
 local active = false
 
+-- Phones render UI.S at about half scale: the card, tags and panels are sized up there for thumbs.
+local function MS(n: number): number
+	return UI.S(n * (if ClientState.isMobile then 1.4 else 1))
+end
+
 local function fmt(seconds: number): string
 	local s = math.max(0, math.ceil(seconds))
 	return string.format("%d:%02d", s // 60, s % 60)
@@ -129,7 +134,7 @@ local function propTag(it: Item)
 	att.WorldPosition = it.position + Vector3.new(0, 2.2, 0)
 	att.Parent = Workspace.Terrain
 	it.tag = att
-	local S = UI.S
+	local S = MS
 	local gui = Instance.new("BillboardGui")
 	gui.Adornee = att
 	gui.Size = UDim2.fromOffset(S(120), S(40))
@@ -197,7 +202,7 @@ end
 
 local function openPanel(it: Item)
 	closePanel()
-	local S = UI.S
+	local S = MS
 	local att = Instance.new("Attachment")
 	att.WorldPosition = it.position + Vector3.new(0, 3.2, 0)
 	att.Parent = Workspace.Terrain
@@ -337,7 +342,7 @@ local function buildCard()
 		card.root:Destroy()
 		card = nil
 	end
-	local S = UI.S
+	local S = MS
 	local s = screen
 	if not s or not s.Parent then
 		s = UI.new("ScreenGui", {
@@ -350,7 +355,8 @@ local function buildCard()
 		screen = s
 	end
 	local mobile = ClientState.isMobile
-	local W = S(if mobile then 360 else 440)
+	local vp = (Workspace.CurrentCamera :: Camera).ViewportSize
+	local W = math.min(S(440), math.floor(vp.X * 0.94)) -- never wider than the phone
 	local root = UI.frame({
 		Name = "DealerCard",
 		BackgroundColor3 = Theme.Colors.panel,

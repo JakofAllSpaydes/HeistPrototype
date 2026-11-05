@@ -78,8 +78,11 @@ local function addTag(model: Instance)
 	if not body then
 		return
 	end
-	-- Pixel sized so it reads at any distance, small enough to stay out of the way.
-	local S = UI.S
+	-- Pixel sized so it reads at any distance, small enough to stay out of the way (half again on a phone).
+	local mult = if ClientState.isMobile then 1.5 else 1
+	local function S(n: number): number
+		return UI.S(n * mult)
+	end
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "CrateTag"
 	gui.Adornee = body
@@ -171,7 +174,8 @@ local function playReel(data: any)
 	end
 	local S = UI.S
 	local mobile = ClientState.isMobile
-	local cardPx = S(if mobile then 96 else 110)
+	-- Phones render UI.S at about half scale: the reel card is sized up there so it reads across the arena.
+	local cardPx = S(if mobile then 160 else 110)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "CrateReel"
 	gui.Adornee = body
@@ -205,7 +209,7 @@ local function playReel(data: any)
 	local name = UI.text({
 		Text = "",
 		Font = Theme.Fonts.display,
-		TextSize = S(if mobile then 15 else 16),
+		TextSize = S(if mobile then 24 else 16),
 		TextColor3 = Theme.Colors.text,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0.42, cardPx / 2 + S(4)),
