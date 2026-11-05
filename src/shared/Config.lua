@@ -526,7 +526,7 @@ local Config = {
 	VaultDoorWidth = 12,
 	VaultBagSpots = 10, -- bag spots inside (BagSpots.Vault)
 	VaultJobMinWave = 3, -- CRACK THE VAULT can be drawn from this wave (weight in SideJobKindWeights)
-	VaultSafeTierMax = 2, -- the vault's Safe dial follows the wave bracket up to this tier (2 = three numbers at most)
+	VaultSafeTierMax = 3, -- the vault's Safe dial follows the wave bracket up to this tier (SafeNumbersByTier: 3 / 4 / 5)
 	VaultJobOnce = false, -- true: at most once per run (a failed draw can come back); false: a sealed vault resets for the next draw
 	VaultJobEveryWaves = 5, -- testing: the vault job is forced at every multiple of this wave (0 = random draws only)
 	VaultBurstCash = 6, -- bags dropped inside when it opens
@@ -762,7 +762,7 @@ local Config = {
 	SafeLockSec = 0.3, -- hold inside the hot range this long to lock a number...
 	SafeHotGraceSec = 0.2, -- ...a wobble out of it shorter than this keeps the hold
 	SafeWrongWayDeg = 40, -- turning against the direction this far (outside the warm range) reads WRONG WAY; backing up near the number never does
-	SafeNumbersByTier = { 2, 3, 4 },
+	SafeNumbersByTier = { 3, 4, 5 }, -- numbers to lock per tier (Round 15l: raised with the more lenient dial)
 	FreqTolerance = 0.06, -- the two waves count as overlapping within this share of the fixed frequency
 	FreqLockSec = 0.5, -- hold the overlap this long to lock
 	FreqLocksByTier = { 1, 2, 3 },

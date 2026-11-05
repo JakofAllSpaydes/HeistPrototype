@@ -1069,6 +1069,9 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
 - **Round 15k (5 Nov, feedback)** — thrown abilities (frag, molotov, flashbang) reach twice as far (`ThrowMaxRange`
   52, was 26); longer throws arc higher (`ThrowArcPerStud`) and take proportionally longer past `ThrowFlightRefStuds`.
 
+- **Round 15l (5 Nov, feedback)** — with the dial more lenient, the Safe asks for more: `SafeNumbersByTier` 3 / 4 / 5
+  (was 2 / 3 / 4), and the vault follows the wave bracket through all three tiers again (`VaultSafeTierMax` 3).
+
 ## Open design notes (not built)
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;
