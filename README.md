@@ -601,6 +601,15 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    Tradeoff cards are rarer and never on an element card; a malus never lands on an element or CASH GAIN. Kill cash
    grows 10% a wave (`CashWaveMult`); every wave end prints `[GHS Income] wave N cash earned X upgrades bought Y
    (name)` and debug `Stats` adds the run's upgrades per player per wave.
+3. Revive (2 players; `Down me` on one): the reviver holding F sees a bar under the crosshair, `REVIVING NAME 2.4s`,
+   filling over 3s with a tick every 0.5s; letting go turns it red and it snaps back; finishing flashes green with
+   `REVIVED`. The downed player's red bleed bar gains a green fill matching it and reads `NAME IS REVIVING YOU`; the
+   marker over their head shows the same fill to everyone; on the stand-up their bar pulses green, the camera eases
+   up from the floor and `REVIVED BY NAME` toasts as before. Callouts: getting downed sends your teammates (never you) a
+   red card in the top-right with your Roblox headshot, your name and `I'M DOWN, HELP!` (or another line, never the
+   same twice in a row) for 2.5s; revived → `Thanks, I owe you.` / `Back in it.`; bled out → `I'm out. Finish the job.`;
+   REVIVE EVERYBODY → a gold `NAME brought everyone back.` to everyone. A callout waits while MARLOW's card is up and
+   during the boss cutscene.
 
 ## Layout
 

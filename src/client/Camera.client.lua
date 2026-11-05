@@ -155,6 +155,7 @@ local function setHidden(char: Model?, hidden: boolean)
 	end
 end
 
+local pivotYNow = 1.5
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
 	local requested = ClientState.requestCameraYaw
@@ -216,9 +217,11 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	end
 
 	local rot = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)
-	-- Downed: the pivot drops to DownedCameraHeight above the floor (the root sits 3 studs up).
-	local pivotY = if ClientState.downed then Config.DownedCameraHeight - 3 else 1.5
-	local pivot = root.Position + Vector3.new(0, pivotY, 0)
+	-- Downed: the pivot drops to DownedCameraHeight above the floor (the root sits 3 studs up). It eases there and
+	-- back, so a revive lifts the camera with the stand-up instead of snapping.
+	local targetY = if ClientState.downed then Config.DownedCameraHeight - 3 else 1.5
+	pivotYNow += (targetY - pivotYNow) * math.clamp(dt * 6, 0, 1)
+	local pivot = root.Position + Vector3.new(0, pivotYNow, 0)
 	local camPos: Vector3
 	if firstPerson then
 		local head = char:FindFirstChild("Head") :: BasePart?

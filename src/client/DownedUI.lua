@@ -22,7 +22,22 @@ local DownedUI = {}
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-type Mark = { userId: number, name: string, bleedEndsAt: number, gui: BillboardGui?, seconds: TextLabel? }
+type Mark = {
+	userId: number,
+	name: string,
+	bleedEndsAt: number,
+	gui: BillboardGui?,
+	seconds: TextLabel?,
+	bar: Frame?, -- the revive progress fill, visible to the whole party
+}
+-- The reviver's centered bar (brief 5): REVIVING <NAME> with the seconds left, ticks every 0.5s, a green flash
+-- and REVIVED on completion, a red snap-back on release.
+type ReviveBar = { root: Frame, fill: Frame, label: TextLabel, stroke: UIStroke }
+local reviveBar: ReviveBar? = nil
+local barProgress = 0 -- predicted locally while holding, never behind the server's number
+local barTarget: string? = nil
+local barTick = 0
+local barDone = false
 local marks: { [number]: Mark } = {}
 local crawl: AnimationTrack? = nil
 local holdingKey = false
@@ -79,7 +94,7 @@ end
 -- Marker over a downed teammate: red cross, name, bleed seconds, REVIVE. Not shown over yourself.
 local function addMark(userId: number, name: string, bleedEndsAt: number)
 	removeMark(userId)
-	local m: Mark = { userId = userId, name = name, bleedEndsAt = bleedEndsAt, gui = nil, seconds = nil }
+	local m: Mark = { userId = userId, name = name, bleedEndsAt = bleedEndsAt, gui = nil, seconds = nil, bar = nil }
 	marks[userId] = m
 	if userId == player.UserId then
 		return
@@ -156,8 +171,26 @@ local function addMark(userId: number, name: string, bleedEndsAt: number)
 		local pill = UI.pill(frame, "REVIVE", Theme.Colors.red, Theme.Colors.bg, S(16), S(10))
 		pill.AnchorPoint = Vector2.new(0.5, 1)
 		pill.Position = UDim2.new(0.5, 0, 1, -S(6))
+		-- The revive fill along the bottom edge: the party sees who is getting up.
+		local track = UI.frame({
+			BackgroundColor3 = Theme.Colors.bg,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(2)),
+			Size = UDim2.new(1, -S(12), 0, S(3)),
+			ZIndex = 2,
+			Parent = frame,
+		})
+		UI.corner(track, S(2))
+		local bar = UI.frame({
+			BackgroundColor3 = Theme.Colors.cash,
+			Size = UDim2.fromScale(0, 1),
+			ZIndex = 2,
+			Parent = track,
+		})
+		UI.corner(bar, S(2))
 		m.gui = gui
 		m.seconds = seconds
+		m.bar = bar
 		UI.punch(frame, 1.3, 0.4)
 	end)
 end
@@ -183,6 +216,44 @@ local function buildPrompt()
 		Parent = playerGui,
 	}) :: ScreenGui
 	promptGui = gui
+	-- The reviver's bar, centered under the crosshair (the crosshair ring stays as the peripheral cue).
+	do
+		local w = S(if ClientState.isMobile then 240 else 300)
+		local root = UI.frame({
+			Name = "ReviveBar",
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0.5, S(78)),
+			Size = UDim2.fromOffset(w, S(44)),
+			Visible = false,
+			Parent = gui,
+		})
+		local label = UI.text({
+			Text = "",
+			Font = Theme.Fonts.display,
+			TextSize = S(17),
+			TextColor3 = Theme.Colors.cash,
+			Size = UDim2.new(1, 0, 0, S(22)),
+			Parent = root,
+		})
+		UI.stroke(label, Theme.Colors.black, S(2), 0.3)
+		local back = UI.frame({
+			BackgroundColor3 = Theme.Colors.panel2,
+			BackgroundTransparency = 0.1,
+			Position = UDim2.fromOffset(0, S(24)),
+			Size = UDim2.new(1, 0, 0, S(14)),
+			Parent = root,
+		})
+		UI.corner(back, S(7))
+		local stroke = UI.stroke(back, Theme.Colors.black, S(1.5), 0.3)
+		local fill = UI.frame({
+			BackgroundColor3 = Theme.Colors.cash,
+			Size = UDim2.fromScale(0, 1),
+			Parent = back,
+		})
+		UI.corner(fill, S(7))
+		reviveBar = { root = root, fill = fill, label = label, stroke = stroke }
+	end
 	if ClientState.isMobile then
 		local button = UI.button({
 			Name = "ReviveButton",
@@ -265,6 +336,45 @@ local function setPrompt(name: string?)
 	end
 end
 
+-- Release before the end: the fill turns red and snaps back.
+local function snapBack()
+	local b = reviveBar
+	if not b or not b.root.Visible or barDone then
+		return
+	end
+	b.fill.BackgroundColor3 = Theme.Colors.red
+	b.label.TextColor3 = Theme.Colors.red
+	local tw = UI.tween(b.fill, { Size = UDim2.fromScale(0, 1) }, 0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	UI.shake(b.root, UI.S(3), 0.18)
+	tw.Completed:Once(function()
+		if not sentHold and b.root.Parent then
+			b.root.Visible = false
+		end
+	end)
+end
+
+-- Completed: a green flash and REVIVED, then the bar goes.
+local function barComplete()
+	local b = reviveBar
+	if not b then
+		return
+	end
+	barDone = true
+	b.root.Visible = true
+	b.fill.Size = UDim2.fromScale(1, 1)
+	b.fill.BackgroundColor3 = Theme.Colors.cash
+	b.label.Text = "REVIVED"
+	b.label.TextColor3 = Theme.Colors.cash
+	UI.punch(b.root, 1.25, 0.35)
+	UI.sound(Theme.Sounds.reelLand, 1.4, 0.6)
+	ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.2 })
+	task.delay(0.7, function()
+		if b.root.Parent and barDone then
+			b.root.Visible = false
+		end
+	end)
+end
+
 local function sendHold(on: boolean)
 	if on == sentHold then
 		return
@@ -273,6 +383,13 @@ local function sendHold(on: boolean)
 	Remotes.ReviveHold:FireServer(on)
 	if not on then
 		ClientState.reviveProgress = 0
+		if barProgress > 0 then
+			snapBack()
+		end
+		barProgress = 0
+		barTick = 0
+	else
+		barDone = false
 	end
 end
 
@@ -322,6 +439,10 @@ function DownedUI.init()
 		if name == "Downed" then
 			onDowned(data)
 		elseif name == "Revived" then
+			local bottomNow = HUD.get("bottom")
+			if bottomNow and tostring(data.by or "") ~= "self" then
+				bottomNow.revivePulse()
+			end
 			clearLocal()
 			local by = tostring(data.by or "")
 			HUD.get("toast")
@@ -350,6 +471,9 @@ function DownedUI.init()
 			local userId = tonumber(data.userId) or 0
 			ClientState.downedPlayers[userId] = nil
 			removeMark(userId)
+			if name == "PlayerRevived" and tostring(data.by or "") == player.Name and userId ~= player.UserId then
+				barComplete()
+			end
 			if name == "PlayerRevived" and userId ~= player.UserId then
 				local by = tostring(data.by or "")
 				HUD.get("callSlot").toast(
@@ -376,11 +500,20 @@ function DownedUI.init()
 				if m.seconds then
 					m.seconds.TextColor3 = if progress > 0 then Theme.Colors.cash else Theme.Colors.red
 				end
+				local bar = m.bar
+				if bar then
+					UI.tween(
+						bar,
+						{ Size = UDim2.fromScale(math.clamp(progress, 0, 1), 1) },
+						0.1,
+						Enum.EasingStyle.Linear
+					)
+				end
 			end
 			if userId == player.UserId then
 				local bottom = HUD.get("bottom")
 				if bottom then
-					bottom.setReviveRing(progress, data.reviver)
+					bottom.setReviveProgress(progress, data.reviver)
 					if endsAt then
 						bottom.setBleedEndsAt(endsAt)
 					end
@@ -389,10 +522,6 @@ function DownedUI.init()
 			if data.reviverId == player.UserId then
 				ClientState.reviveProgress = progress
 			end
-		elseif name == "CrewRevived" then
-			HUD.get("callSlot")
-				.toast(string.format("%s REVIVED THE CREW", string.upper(tostring(data.name))), Theme.Colors.gold, 1.8)
-			UI.sound(Theme.Sounds.legendary, 1, 0.6)
 		elseif name == "HubEnter" then
 			clearLocal()
 			clearMarks()
@@ -418,7 +547,7 @@ function DownedUI.init()
 	end)
 
 	-- Bleed seconds on the markers, the nearest downed teammate in reach, and the hold itself.
-	RunService.Heartbeat:Connect(function()
+	RunService.Heartbeat:Connect(function(dt)
 		local now = ClientState.serverNow()
 		local char = player.Character
 		local myRoot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -449,6 +578,31 @@ function DownedUI.init()
 		setPrompt(if canRevive and nearest then nearest.name else nil)
 		local hold = canRevive and (holdingKey or holdingTouch) and not ClientState.blocked()
 		sendHold(hold)
+		-- The reviver's bar: predicted locally so it fills smoothly, never behind the server's progress.
+		local b = reviveBar
+		if b and hold and nearest and not barDone then
+			barTarget = nearest.name
+			local holdSec = math.max(Config.ReviveHoldSec, 0.1)
+			barProgress = math.min(1, math.max(barProgress + dt / holdSec, ClientState.reviveProgress))
+			if not b.root.Visible then
+				b.root.Visible = true
+				UI.punch(b.root, 1.15, 0.2)
+			end
+			b.fill.BackgroundColor3 = Theme.Colors.cash
+			b.label.TextColor3 = Theme.Colors.cash
+			b.fill.Size = UDim2.fromScale(barProgress, 1)
+			b.label.Text = string.format(
+				"REVIVING %s  %.1fs",
+				string.upper(barTarget or ""),
+				math.max(0, (1 - barProgress) * holdSec)
+			)
+			local step = math.floor(barProgress * holdSec / math.max(Config.ReviveTickSec, 0.05))
+			if step > barTick then
+				barTick = step
+				UI.sound(Theme.Sounds.reelTick, 1 + barProgress * 0.8, 0.45)
+				UI.punch(b.fill, 1.06, 0.1)
+			end
+		end
 	end)
 end
 

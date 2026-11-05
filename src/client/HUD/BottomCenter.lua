@@ -1,7 +1,7 @@
 --!strict
 -- Bottom-center: health bar with cur / max and the held weapon slot (icon, name, rarity pill, DMG + RATE).
 -- Downed: the bar becomes a red bleed bar counting down from BleedOutSec, SELF-REVIVE sits on its right,
--- and a ring at its left end fills while a teammate holds the revive.
+-- and a green second fill mirrors a teammate's revive hold (`<NAME> IS REVIVING YOU`).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -17,8 +17,6 @@ local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 
 local BottomCenter = {}
-
-local RING_TICKS = 16
 
 function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S
@@ -57,7 +55,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		TextSize = math.max(9, hh - S(5)),
 		TextColor3 = Theme.Colors.bg,
 		Size = UDim2.fromScale(1, 1),
-		ZIndex = 2,
+		ZIndex = 3,
 		Parent = health,
 	})
 
@@ -94,45 +92,18 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Remotes.SelfRevive:FireServer()
 	end)
 
-	-- Revive ring at the bar's left end: fills while a teammate holds F on you.
-	local ringR = hh * 1.1
-	local ring = UI.frame({
-		Name = "ReviveRing",
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, -hw / 2, 0, hh / 2),
-		Size = UDim2.fromOffset(ringR * 2 + S(8), ringR * 2 + S(8)),
+	-- Brief 5: while a teammate holds the revive, a green second fill grows over the red bleed fill, mirroring
+	-- their progress, and the bar reads `<NAME> IS REVIVING YOU`.
+	local reviveFill = UI.frame({
+		Name = "ReviveFill",
+		BackgroundColor3 = Theme.Colors.cash,
+		Size = UDim2.fromScale(0, 1),
 		Visible = false,
-		ZIndex = 4,
-		Parent = root,
+		ZIndex = 2,
+		Parent = health,
 	})
-	local ringTicks: { Frame } = {}
-	for i = 1, RING_TICKS do
-		local a = (i - 1) / RING_TICKS * math.pi * 2 - math.pi / 2
-		local tick = UI.frame({
-			BackgroundColor3 = Theme.Colors.panel2,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, math.cos(a) * ringR, 0.5, math.sin(a) * ringR),
-			Size = UDim2.fromOffset(S(3), S(6)),
-			Rotation = math.deg(a) + 90,
-			ZIndex = 4,
-			Parent = ring,
-		})
-		UI.corner(tick, S(2))
-		ringTicks[i] = tick
-	end
-	local ringLabel = UI.text({
-		Text = "",
-		Font = Theme.Fonts.display,
-		TextSize = S(11),
-		TextColor3 = Theme.Colors.cash,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, S(2)),
-		Size = UDim2.fromOffset(S(140), S(14)),
-		ZIndex = 4,
-		Parent = ring,
-	})
-	UI.stroke(ringLabel, Theme.Colors.black, S(1), 0.4)
+	UI.corner(reviveFill, hh / 2)
+	local reviveBy: string? = nil
 
 	-- Weapon slot
 	local slotY = hh + S(10)
@@ -242,7 +213,11 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local remaining = math.max(0, bleedEndsAt - ClientState.serverNow())
 		fill.Size = UDim2.fromScale(math.clamp(remaining / math.max(Config.BleedOutSec, 0.1), 0, 1), 1)
 		local shown = math.ceil(remaining)
-		if shown ~= lastBleedShown then
+		local by = reviveBy
+		if by then
+			healthText.Text = string.format("%s IS REVIVING YOU", string.upper(by))
+			lastBleedShown = -1
+		elseif shown ~= lastBleedShown then
 			lastBleedShown = shown
 			healthText.Text = string.format("DOWNED · %ds", shown)
 			UI.punch(health, if shown <= 5 then 1.1 else 1.03, 0.2)
@@ -283,7 +258,9 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		bleeding = false
 		selfBtn.Visible = false
 		giveUpBtn.Visible = false
-		ring.Visible = false
+		reviveFill.Visible = false
+		reviveFill.Size = UDim2.fromScale(0, 1)
+		reviveBy = nil
 		healthText.TextColor3 = Theme.Colors.bg
 		healthStroke.Color = Theme.Colors.black
 		healthStroke.Transparency = 0.5
@@ -302,20 +279,40 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end
 
-	-- Teammate's revive hold on this player: 0 hides the ring.
-	function component.setReviveRing(progress: number, reviver: string?)
+	-- A teammate's revive hold on this player: the green fill follows their progress; 0 snaps it back.
+	function component.setReviveProgress(progress: number, reviver: string?)
 		if progress <= 0 then
-			if ring.Visible then
-				ring.Visible = false
+			reviveBy = nil
+			if reviveFill.Visible then
+				reviveFill.Visible = false
+				reviveFill.Size = UDim2.fromScale(0, 1)
 			end
 			return
 		end
-		ring.Visible = true
-		local lit = math.floor(progress * RING_TICKS + 0.5)
-		for i, tick in ringTicks do
-			tick.BackgroundColor3 = if i <= lit then Theme.Colors.cash else Theme.Colors.panel2
+		if not reviveFill.Visible then
+			reviveFill.Visible = true
+			UI.punch(health, 1.12, 0.25)
 		end
-		ringLabel.Text = if reviver then string.upper(reviver) else ""
+		reviveBy = reviver
+		UI.tween(reviveFill, { Size = UDim2.fromScale(math.clamp(progress, 0, 1), 1) }, 0.1, Enum.EasingStyle.Linear)
+	end
+
+	-- Revived: a green pulse on the bar.
+	function component.revivePulse()
+		local flash = UI.frame({
+			BackgroundColor3 = Theme.Colors.cash,
+			BackgroundTransparency = 0.1,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 4,
+			Parent = health,
+		})
+		UI.corner(flash, hh / 2)
+		UI.tween(flash, { BackgroundTransparency = 1, Size = UDim2.new(1, S(40), 1, S(16)) }, 0.5)
+		task.delay(0.55, function()
+			flash:Destroy()
+		end)
 	end
 
 	-- Any DPS change (upgrade, swap, tradeoff) floats the delta off the slot.

@@ -2,6 +2,7 @@
 -- Crew call component. Everything lives in one box in the top-right corner: the call card slides in
 -- from the right edge, collapses in place to the timer pill, expands back for the result card, then
 -- slides out. Result and arms-drop toasts go to the center slot with the other system notices.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -197,6 +198,8 @@ type CardSpec = {
 	rewardLine: string,
 	showTimer: boolean,
 	duration: number?,
+	portraitImage: string?, -- an ally callout: the player's headshot instead of MARLOW's silhouette
+	noPill: boolean?, -- no type pill beside the name
 }
 
 local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, UIStroke)
@@ -218,42 +221,60 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 		Parent = frame,
 	})
 	UI.corner(portrait, S(10))
-	local head = UI.frame({
-		BackgroundColor3 = Theme.Colors.grey,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, S(12)),
-		Size = UDim2.fromOffset(S(28), S(28)),
-		Parent = portrait,
-	})
-	UI.corner(head, S(14))
-	local shoulders = UI.frame({
-		BackgroundColor3 = Theme.Colors.grey,
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -S(14)),
-		Size = UDim2.fromOffset(S(56), S(30)),
-		Parent = portrait,
-	})
-	UI.corner(shoulders, S(12))
-	UI.text({
-		Text = Lines.portraitLabel,
-		TextSize = S(9),
-		TextColor3 = Theme.Colors.grey,
-		Position = UDim2.new(0, 0, 1, -S(14)),
-		Size = UDim2.new(1, 0, 0, S(12)),
-		Parent = portrait,
-	})
+	local head: GuiObject
+	if spec.portraitImage then
+		local img = UI.new("ImageLabel", {
+			BackgroundTransparency = 1,
+			Image = spec.portraitImage,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(0.94, 0.94),
+			Parent = portrait,
+		}) :: ImageLabel
+		UI.corner(img, S(9))
+		head = img
+	else
+		local silhouette = UI.frame({
+			BackgroundColor3 = Theme.Colors.grey,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, S(12)),
+			Size = UDim2.fromOffset(S(28), S(28)),
+			Parent = portrait,
+		})
+		UI.corner(silhouette, S(14))
+		head = silhouette
+		local shoulders = UI.frame({
+			BackgroundColor3 = Theme.Colors.grey,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(14)),
+			Size = UDim2.fromOffset(S(56), S(30)),
+			Parent = portrait,
+		})
+		UI.corner(shoulders, S(12))
+		UI.text({
+			Text = Lines.portraitLabel,
+			TextSize = S(9),
+			TextColor3 = Theme.Colors.grey,
+			Position = UDim2.new(0, 0, 1, -S(14)),
+			Size = UDim2.new(1, 0, 0, S(12)),
+			Parent = portrait,
+		})
+	end
 	local textX = h + S(4)
 	UI.text({
 		Text = spec.crewLead,
 		Font = Theme.Fonts.display,
 		TextSize = S(18),
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		Position = UDim2.fromOffset(textX, S(8)),
-		Size = UDim2.fromOffset(S(120), S(24)),
+		Size = if spec.noPill then UDim2.new(1, -textX - S(10), 0, S(24)) else UDim2.fromOffset(S(120), S(24)),
 		Parent = frame,
 	})
-	local labelPill = UI.pill(frame, spec.label, color, Theme.Colors.bg, S(16), S(10))
-	labelPill.Position = UDim2.fromOffset(textX + S(96), S(12))
+	if not spec.noPill then
+		local labelPill = UI.pill(frame, spec.label, color, Theme.Colors.bg, S(16), S(10))
+		labelPill.Position = UDim2.fromOffset(textX + S(96), S(12))
+	end
 	local timer = UI.text({
 		Text = if spec.duration then fmtTime(spec.duration) else "",
 		Font = Theme.Fonts.display,
@@ -542,12 +563,112 @@ local function onVaultGas(data: any)
 	end
 end
 
+------------------------------------------------------------------ Ally callouts (brief 5)
+-- A teammate's radio line: the crew-call shell with their Roblox headshot and name, a red frame (gold for Revive
+-- Everybody), CalloutSec on screen in its own box under the job pill. Callouts queue behind a live MARLOW card
+-- and wait out the boss cutscene; one older than CalloutMaxWaitSec is dropped.
+local calloutQueue: { any } = {}
+local calloutBusy = false
+local marlowUntil = 0 -- os.clock until which MARLOW's card owns the corner
+local headshots: { [number]: string } = {}
+
+local function holdMarlow(sec: number)
+	marlowUntil = math.max(marlowUntil, os.clock() + sec + 0.4)
+end
+
+local function headshot(userId: number): string
+	local cached = headshots[userId]
+	if cached then
+		return cached
+	end
+	local ok, url = pcall(function()
+		return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+	end)
+	local img = if ok and typeof(url) == "string" then url else ""
+	headshots[userId] = img
+	return img
+end
+
+local function calloutBlocked(): boolean
+	return os.clock() < marlowUntil or ClientState.cameraMode == "cinematic" or HUD.mode == "cinematic"
+end
+
+local function showCallout(data: any)
+	local S = UI.S
+	local h = home()
+	if not h then
+		return
+	end
+	local box = UI.frame({
+		Name = "CalloutBox",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(h.width, S(CARD_H)),
+		ClipsDescendants = true,
+	})
+	local inner = UI.frame({
+		Name = "Inner",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 1, 0),
+		Parent = box,
+	})
+	h.add(box, 2)
+	local color = if data.gold then Theme.Colors.gold else Theme.Colors.red
+	buildCard(inner, {
+		kind = "ally",
+		crewLead = string.upper(tostring(data.name or "")),
+		label = "",
+		labelColor = color,
+		text = { tostring(data.line or "") },
+		rewardLine = "",
+		showTimer = false,
+		portraitImage = headshot(tonumber(data.userId) or 0),
+		noPill = true,
+	})
+	slideIn(inner)
+	if data.gold then
+		UI.sound(Theme.Sounds.legendary, 1, 0.55)
+	else
+		UI.sound(Theme.Sounds.call, 1.2, 0.5)
+	end
+	task.wait(Config.CalloutSec)
+	if box.Parent then
+		local out = slideOut(inner)
+		out.Completed:Wait()
+	end
+	box:Destroy()
+end
+
+local function pumpCallouts()
+	if calloutBusy then
+		return
+	end
+	calloutBusy = true
+	task.spawn(function()
+		while #calloutQueue > 0 do
+			while calloutBlocked() do
+				task.wait(0.2)
+			end
+			local data = table.remove(calloutQueue, 1)
+			if data and os.clock() - (data.queuedAt or 0) <= Config.CalloutMaxWaitSec then
+				showCallout(data)
+			end
+		end
+		calloutBusy = false
+	end)
+end
+
 function CrewCallUI.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "CallStart" then
+			holdMarlow(Config.CallHoldSec)
 			onCallStart(data)
 		elseif name == "CrewLine" then
+			holdMarlow(tonumber(data.hold) or Config.CallHoldSec)
 			onCrewLine(data)
+		elseif name == "AllyCallout" and typeof(data) == "table" then
+			data.queuedAt = os.clock()
+			table.insert(calloutQueue, data)
+			pumpCallouts()
 		elseif name == "VaultOpen" then
 			-- The result card for the job is still up: the pill takes over after it has had its hold.
 			task.delay(Config.CallHoldSec + 0.35, function()
@@ -577,8 +698,10 @@ function CrewCallUI.init()
 				call.wasInside = data.inside == true
 			end
 		elseif name == "CallReminder" then
+			holdMarlow(Config.CallHoldSec)
 			onCallReminder(data)
 		elseif name == "CallEnd" then
+			holdMarlow(Config.CallHoldSec)
 			onCallEnd(data)
 		elseif name == "CrateIncoming" then
 			centerSlot().toast("ARMS DROP INCOMING", Theme.Colors.gold, 1)

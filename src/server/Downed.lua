@@ -17,6 +17,7 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local WeaponRoll = require(script.Parent.WeaponRoll)
 local Heat = require(script.Parent.Heat)
+local Callouts = require(Shared.Callouts)
 
 local Downed = {}
 
@@ -60,6 +61,32 @@ end
 
 local holding: { [Player]: boolean } = {}
 local lastSent: { [Player]: number } = {}
+
+-- Ally callouts: a random line per event, never the same one back to back, to teammates only (the speaker never
+-- hears their own), except Revive Everybody which goes to everyone in the run.
+local lastLine: { [string]: number } = {}
+local function callout(speaker: Player, event: string)
+	local pool = Callouts.Lines[event]
+	if not pool or #pool == 0 then
+		return
+	end
+	local i = math.random(#pool)
+	if #pool > 1 and i == lastLine[event] then
+		i = (i % #pool) + 1
+	end
+	lastLine[event] = i
+	local gold = Callouts.Gold[event] == true
+	local line = pool[i]
+	if string.find(line, "%%s") then
+		line = string.format(line, speaker.Name)
+	end
+	local payload = { userId = speaker.UserId, name = speaker.Name, event = event, line = line, gold = gold }
+	for _, p in World.runAudience() do
+		if gold or p ~= speaker then
+			Remotes.Juice:FireClient(p, "AllyCallout", payload)
+		end
+	end
+end
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -134,10 +161,12 @@ function Downed.down(player: Player)
 	})
 	World.fireRun("PlayerDowned", { userId = player.UserId, name = player.Name, bleedEndsAt = state.bleedEndsAt })
 	Heat.onDowned() -- counts against this wave's score (capped), lands at its end
+	callout(player, "downed")
 	Log.event("Downed", "%s is down (down #%d), bleeds out in %ds", player.Name, state.downs, Config.BleedOutSec)
 end
 
-function Downed.standUp(player: Player, hpPct: number, by: string)
+-- `quiet`: no callout (Revive Everybody stands the crew up under its own line).
+function Downed.standUp(player: Player, hpPct: number, by: string, quiet: boolean?)
 	local state = PlayerState.get(player)
 	local hum = humanoidOf(player)
 	if not hum then
@@ -164,6 +193,9 @@ function Downed.standUp(player: Player, hpPct: number, by: string)
 	state.dirty = true
 	Remotes.Juice:FireClient(player, "Revived", { by = by, hpPct = hpPct })
 	World.fireRun("PlayerRevived", { userId = player.UserId, name = player.Name, by = by })
+	if not quiet then
+		callout(player, "revived")
+	end
 	Log.event("Downed", "%s stood up (%s) at %d%% HP", player.Name, by, hpPct)
 end
 
@@ -184,6 +216,7 @@ function Downed.bleedOut(player: Player)
 	state.dirty = true
 	Remotes.Juice:FireClient(player, "BledOut", {})
 	World.fireRun("PlayerBledOut", { userId = player.UserId, name = player.Name })
+	callout(player, "bledOut")
 	Log.event("Downed", "%s bled out", player.Name)
 	local char = player.Character
 	player.Character = nil
@@ -209,17 +242,18 @@ function Downed.reviveEverybody(buyer: Player?)
 				char:WaitForChild("Humanoid", 5)
 				char:WaitForChild("HumanoidRootPart", 5)
 				task.wait()
-				Downed.standUp(player, Config.ReviveHPPct, who)
+				Downed.standUp(player, Config.ReviveHPPct, who, true)
 			end)
 		elseif state.downed then
 			count += 1
-			Downed.standUp(player, Config.ReviveHPPct, who)
+			Downed.standUp(player, Config.ReviveHPPct, who, true)
 		end
 	end
 	if buyer then
 		local bs = PlayerState.get(buyer)
 		bs.reviveAllUsed += 1
 		bs.dirty = true
+		callout(buyer, "reviveAll")
 	end
 	World.fireRun("CrewRevived", { name = who, count = count })
 	Log.event("Downed", "%s revived the crew (%d players)", who, count)

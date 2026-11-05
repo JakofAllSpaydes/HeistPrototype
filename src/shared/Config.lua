@@ -689,7 +689,11 @@ local Config = {
 	SelfReviveHPPct = 50,
 	ReviveInvulnSec = 1, -- no damage for this long after standing up
 	RevivePausesBleed = true, -- a teammate's revive hold freezes the bleed timer; letting go resumes it
+	ReviveTickSec = 0.5, -- the reviver's centered bar ticks this often while it fills
 	BusyTagOffset = 3.2, -- studs above a teammate's head for the LOCKPICK / HACKING / CAPTURING tag
+	-- Ally callouts (brief 5, lines in Callouts.lua): downed / revived / bled-out radio to teammates.
+	CalloutSec = 2.5, -- on screen this long
+	CalloutMaxWaitSec = 8, -- a callout still queued behind MARLOW or a cutscene after this long is dropped
 	RunOverSlowSec = 1, -- slow-mo under the RUN OVER stamp
 	-- The red screen and stamp stay this much longer, then the run end cutscene starts. The whole window
 	-- (RunOverSlowSec + RunOverHoldSec) is when REVIVE EVERYBODY still saves the run: the crew stands up and the
