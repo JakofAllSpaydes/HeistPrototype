@@ -36,8 +36,8 @@ Upgrades.Stats = {
 	{ id = "Splash", name = "Splash", short = "SPL", additive = true, unit = "%", category = "gun" },
 	{ id = "Multishot", name = "Multishot", short = "MLT", additive = true, unit = "%", category = "gun" },
 	{ id = "Lifesteal", name = "Lifesteal", short = "LFS", additive = true, unit = "%", category = "gun" },
-	-- Elements: the value is the proc chance per shot in percent. The first take grants the effect at its base
-	-- chance (Config.*Chance); later takes add Magnitude[tier] chance and ElementPowerByTier[tier] effect power.
+	-- Elements: the value is the effect's power in percent; every shot applies it. The first take grants 100% (the
+	-- Config numbers); later takes add Magnitude[tier] (stronger burn and faster ticks, more slow, more knockback).
 	{
 		id = "Incendiary",
 		name = "Incendiary",
@@ -104,8 +104,8 @@ Upgrades.TierNames = {
 	CashGain = { "Pocket Change", "Loose Cash", "Big Spender", "High Roller", "Kingpin" },
 } :: { [string]: { string } }
 
--- Magnitude per stat x tier (1..5). Percent for "%" stats, flat count for "" stats. Elements: the chance a later
--- take adds (the first take is the base chance in Config).
+-- Magnitude per stat x tier (1..5). Percent for "%" stats, flat count for "" stats. Elements: the power a later
+-- take adds (the first take is 100%).
 Upgrades.Magnitude = {
 	Damage = { 15, 22, 30, 40, 55 },
 	FireRate = { 12, 18, 25, 35, 50 },
@@ -122,9 +122,9 @@ Upgrades.Magnitude = {
 	Splash = { 30, 45, 60, 80, 100 }, -- % of the killing hit dealt to enemies near a kill
 	Multishot = { 15, 25, 35, 50, 70 }, -- % chance each shot fires an extra bullet
 	Lifesteal = { 3, 5, 8, 12, 16 }, -- % of damage dealt healed
-	Incendiary = { 3, 4, 6, 8, 10 }, -- chance points per later take
-	Cryo = { 3, 4, 6, 8, 10 },
-	Concussive = { 2, 3, 4, 6, 8 },
+	Incendiary = { 20, 30, 45, 60, 80 }, -- % power a later take adds (the first take is 100%)
+	Cryo = { 20, 30, 45, 60, 80 },
+	Concussive = { 20, 30, 45, 60, 80 },
 	AbilityCooldown = { 5, 8, 12, 16, 22 }, -- % shorter cooldowns (capped at Config.AbilityCooldownCap)
 	AbilityPower = { 8, 12, 18, 25, 35 }, -- % more ability damage, heal and placeable HP
 	CashGain = { 15, 25, 35, 50, 70 }, -- % more cash from kills, bags and job payouts
@@ -151,10 +151,9 @@ function Upgrades.isElement(statId: string): boolean
 	return Upgrades.category(statId) == "element"
 end
 
--- The base proc chance (percent) an element's first take grants.
-function Upgrades.elementBase(statId: string): number
-	local base = (Config :: any)[statId .. "Chance"]
-	return if typeof(base) == "number" then base * 100 else 10
+-- The power (percent) an element's first take grants: the effect at its Config numbers, on every shot.
+function Upgrades.elementBase(_statId: string): number
+	return 100
 end
 
 function Upgrades.magnitude(statId: string, tier: number): number
@@ -200,7 +199,7 @@ function Upgrades.effectLine(statId: string, value: number): string
 	return string.format("%s %s", Upgrades.pctText(value, statId), string.upper(Upgrades.statName(statId)))
 end
 
--- The tracker badge: elements show the proc chance ("15%"), utility the running total ("-12%"), gun stats the count.
+-- The tracker badge: elements show their power ("130%"), utility the running total ("-12%"), gun stats the count.
 function Upgrades.badgeText(statId: string, item: { count: number, pct: number }): string
 	local cat = Upgrades.category(statId)
 	if cat == "element" then
@@ -211,7 +210,7 @@ function Upgrades.badgeText(statId: string, item: { count: number, pct: number }
 	return string.format("x%d", item.count)
 end
 
--- "T1 +8 · T2 +11 · T3 +15 · T4 +20 · T5 +28" (elements lead with the first take's base chance)
+-- "T1 +8 · T2 +11 · T3 +15 · T4 +20 · T5 +28" (elements lead with the first take's 100%)
 function Upgrades.tierTable(statId: string): string
 	local parts = {}
 	if Upgrades.isElement(statId) then

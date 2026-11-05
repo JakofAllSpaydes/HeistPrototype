@@ -1,6 +1,6 @@
 --!strict
 -- The five classes and their three abilities (Q / E / Z), brief 5: INITIATE Frag / Adrenaline / Claymore,
--- ENGINEER Turret / Barricade / Overclock, DOC Stim Shot / Med Bag / Healing Turret, SHARPSHOOTER Eagle Eye /
+-- ENGINEER Turret / Barricade / Overclock, DOC Stim Shot / Med Bag / Healing Turret, SHARPSHOOTER Eagle Vision /
 -- Dead Eye / Flashbang, TORCH Molotov / Flame Turret / Oil Drum. All fifteen are live (Abilities.lua); every
 -- number comes from Config so the designer tunes there.
 -- `vars` lists the upgradeable variables shown as current > next in the Classes tab; everything else is static.
@@ -89,7 +89,7 @@ Classes.List = {
 		id = "ENGINEER",
 		name = "Engineer",
 		color = "D9822B",
-		glyph = "🔧", -- the wrench over the turret
+		glyph = "E",
 		abilities = {
 			ability({
 				id = "turret",
@@ -176,7 +176,7 @@ Classes.List = {
 		abilities = {
 			ability({
 				id = "eagleeye",
-				name = "Eagle Eye",
+				name = "Eagle Vision", -- id stays "eagleeye" for saved levels
 				hotkey = "Q",
 				system = "self",
 				price = 150,
@@ -185,7 +185,7 @@ Classes.List = {
 					var("EagleEyeBonusPct", "BONUS DMG", Config.EagleEyeBonusPct * 100, "%"),
 					var("EagleEyeRadius", "RADIUS", Config.EagleEyeRadius),
 				},
-				icon = "◉", -- an eye in a reticle
+				icon = "EGV",
 			}),
 			ability({
 				id = "deadeye",

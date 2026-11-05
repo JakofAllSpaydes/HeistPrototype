@@ -293,23 +293,21 @@ local Config = {
 	------------------------------------------------------------------ Upgrades (brief 5: categories, elements, utility, income)
 	-- The pick-3 and the dealer draw a category by these weights, then a stat inside it.
 	CategoryWeights = { gun = 60, element = 25, utility = 15 },
-	-- Elements proc per shot (one roll per trigger pull; every enemy that shot hits directly gets it). Each element
-	-- stacks its own chance and all three can be held. The first take grants the base chance below; later takes add
-	-- the card's chance (Upgrades.Magnitude) and ElementPowerByTier to the effect's power (burn DPS, slow and freeze
-	-- strength, knockback distance).
-	ElementPowerByTier = { 0.1, 0.15, 0.2, 0.3, 0.4 },
-	IncendiaryChance = 0.15,
-	IncendiaryDps = 6, -- burn on the enemy, ticking every FieldTickSec
-	IncendiaryBurnSec = 3, -- a new proc refreshes the burn
-	CryoChance = 0.15,
-	CryoSlowPct = 0.3, -- walk speed down this share...
+	-- Elements go on every shot (every enemy the shot hits directly) and all three can be held. The numbers below are
+	-- at power 1 (the first take, shown as 100%); every later take adds the card's percent (Upgrades.Magnitude) to the
+	-- power, which scales the burn DPS and tick rate, the slow and freeze, and the knockback.
+	IncendiaryDps = 5, -- burn on the enemy (x power)...
+	IncendiaryBurnSec = 2.5, -- ...each hit refreshes it...
+	IncendiaryTickRatePerPower = 0.5, -- ...and every extra 100% power ticks it this much faster
+	CryoSlowPct = 0.15, -- walk speed down this share (x power)...
+	CryoSlowCap = 0.7, -- ...never more than this...
 	CryoSlowSec = 2, -- ...for this long; also the stack window
-	CryoStacksToFreeze = 3, -- this many procs inside the window freeze the enemy...
-	CryoFreezeSec = 1.0, -- ...for this long (no move, no attack)
-	ConcussiveChance = 0.1,
-	ConcussiveStuds = 8, -- knockback along the shot
+	CryoStacksToFreeze = 10, -- this many hits inside the window freeze the enemy...
+	CryoFreezeSec = 0.8, -- ...for this long x power (no move, no attack)
+	ConcussiveStuds = 1.5, -- knockback along the shot (x power)
 	ConcussiveHeavyMult = 0.5, -- Heavy and the boss take this share of the knockback (the boss is never interrupted)
-	ConcussiveStunSec = 0.3, -- the interrupt: a short stun that cancels the attack being wound up
+	ConcussiveStunSec = 0.3, -- the interrupt: a short stun that cancels the attack being wound up...
+	ConcussiveInterruptSec = 1.5, -- ...at most this often per enemy
 	ConcussiveSlideSec = 0.15, -- the knockback slide takes this long
 	AbilityCooldownCap = 60, -- ABILITY COOLDOWN never takes more than this % off
 	-- Kill cash = archetype cash x (1 + CashWaveMult x (wave - 1)) x elite x heat x CASH GAIN.
@@ -333,14 +331,15 @@ local Config = {
 	RarityDmgMult = { 1, 1.3, 1.7, 2.3, 3.0 }, -- a legendary of any gun out-DPSes an epic of any other
 
 	------------------------------------------------------------------ Crates (brief 5: the only in-run weapon source)
-	-- A crate lands closed with party size + CrateRollsExtra rolls. F (OPEN) by any member spends one: the reel plays
-	-- on a billboard above the crate for everyone, then the gun ejects to a free spot CrateDropRadius out as floor loot.
-	-- Sources: the intro, side job success (not the vault), the boss (first roll a guaranteed Legendary).
+	-- A GUN CRATE lands closed holding party size + CrateRollsExtra rolls. F (OPEN) by any member plays them all back
+	-- to back: the sliding reel on a billboard above the crate for everyone, then each gun ejects to a free floor spot
+	-- CrateDropRadius out. Sources: the intro, side job success (not the vault), the boss (first roll a Legendary).
 	CrateRollsExtra = 1,
-	CrateReelSec = 0.6, -- seconds per reel step
-	CrateReelSteps = 6, -- icons the reel shows, the last one is the gun
-	CrateReelEase = { 1.5, 2.2 }, -- the last two steps last this x CrateReelSec (the ease-out into the land)
-	CrateLandHoldSec = 0.8, -- the landed icon holds this long before the gun ejects
+	RollDurationSec = 2.0, -- the row of icons slides this long and eases onto the gun
+	RollLandHoldSec = 0.5, -- the result shows this long before the gun ejects...
+	RollHighTierHoldSec = 0.3, -- ...plus this from Epic up
+	RollEjectSec = 0.4, -- the panel closes as the gun flies out
+	CrateRollGapSec = 0.3, -- then the next roll starts
 	CrateDropRadius = 6, -- studs from the crate the gun lands
 	CrateLifetimeSec = 45, -- the crate closes after this even with rolls left (floor guns keep their own timers)
 	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never
@@ -405,13 +404,12 @@ local Config = {
 	FieldTickSec = 0.5, -- ground fields (med bag, molotov, drum fire) apply their per-second numbers this often
 	-- INITIATE (brief 5): Frag / Adrenaline / Claymore
 	FragDamage = 120, -- to every enemy in the blast (x ABILITY POWER)
-	FragRadius = 9,
-	FragFuseSec = 1, -- it lands, blinks, then goes off
+	FragRadius = 9, -- it goes off the moment it lands
 	-- ENGINEER (brief 5): Turret / Barricade / Overclock
 	OverclockSec = 8, -- every friendly placeable fires / heals OverclockRateMult x for this long...
 	OverclockRateMult = 1.5,
 	OverclockShieldHp = 150, -- ...and every barricade gets a shield that absorbs damage first, gone with the buff
-	-- SHARPSHOOTER (brief 5): Eagle Eye / Dead Eye / Flashbang
+	-- SHARPSHOOTER (brief 5): Eagle Vision (id eagleeye, EagleEye* keys) / Dead Eye / Flashbang
 	EagleEyeRadius = 60, -- every enemy this close is marked through walls...
 	EagleEyeSec = 6, -- ...for this long...
 	EagleEyeBonusPct = 0.25, -- ...and takes this much more damage from any source while marked
@@ -529,7 +527,6 @@ local Config = {
 	-- Brief 5: the CRACK THE VAULT draw is impossible to miss.
 	VaultStampSec = 1.5, -- the center VAULT JOB stamp
 	VaultDoorPulseSec = 1.2, -- the door pulses amber (with a light) once per this, until cracked
-	VaultBeaconScale = 2.0, -- the vault job's beacon is this x the normal one, with a rotating diamond, never a badge
 	VaultArrowSec = 10, -- the chevron strip from the crew to the door stays this long
 
 	------------------------------------------------------------------ Progression (account level; Progression.lua, LevelRewards.lua)
@@ -579,7 +576,7 @@ local Config = {
 	-- SHARPSHOOTER
 	SharpHeadshotAdd = 0.3, -- I: added to the headshot multiplier
 	MarksmanKitReloadPct = 0.25, -- II: snipers and pistols reload this much faster...
-	MarksmanKitEagleEyePct = 0.15, -- ...and Eagle Eye's bonus damage goes up by this
+	MarksmanKitEagleEyePct = 0.15, -- ...and Eagle Vision's bonus damage goes up by this
 	DeadEyeHeadshotCdr = 0.2, -- III: every headshot during Dead Eye puts a round back and trims this off its cooldown
 	-- TORCH
 	TorchBurnRateMult = 2, -- I: your burns (fire fields, INCENDIARY) tick this much faster
@@ -590,9 +587,12 @@ local Config = {
 	DealerSec = 90,
 	DealerLine = "Dealer's set up by the van. Ninety seconds, then we're back on.", -- MARLOW's call (match DealerSec)
 	DealerStallPosition = Vector3.new(0, 0, 18), -- arena center for the prototype (clear of the center spawn)
-	DealerStock = 8, -- upgrade stands per player
-	DealerStandSpacing = 2.2, -- studs between stands on the table
-	DealerTeleportDistance = 6, -- TELEPORT TO DEALER lands you this far in front of the table
+	DealerStock = 8, -- upgrade cards per player
+	DealerArcRadius = 9, -- the tables stand on a half circle this far round the DEALER...
+	DealerTableAngles = { -58, 0, 58 }, -- ...at these angles (0 = straight toward the arena)
+	DealerPerTable = 3, -- cards per table (the last takes what is left)
+	DealerStandSpacing = 2.8, -- studs between cards on a table
+	DealerTeleportDistance = 4, -- TELEPORT TO DEALER (any number of times) lands you this far outside the middle table
 	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
 	ShopPriceByTier = { 100, 160, 260, 420, 700 }, -- x UpgradePriceMult ^ upgrades bought (placeholders)
 	ShopCratePrice = 800, -- ARMS DROP: a crate at the stall for the party

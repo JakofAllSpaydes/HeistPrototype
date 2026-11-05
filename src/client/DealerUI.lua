@@ -41,7 +41,7 @@ type Item = {
 local items: { Item } = {}
 local readRadius = 6
 local panel: { gui: BillboardGui, att: Attachment, frame: Frame, price: TextLabel, key: any }? = nil
-local card: { root: Frame, title: TextLabel, teleport: TextButton, skip: TextButton, pause: TextButton }? = nil
+local card: { root: Frame, title: TextLabel, teleport: TextButton, skip: TextButton }? = nil
 local screen: ScreenGui? = nil
 local active = false
 
@@ -81,9 +81,11 @@ local function standCard(it: Item, statId: string, tier: number)
 	if it.sold then
 		return
 	end
+	-- Pure UI over the table: always drawn on top, so no part ever hides it.
 	local gui = Instance.new("BillboardGui")
 	gui.Adornee = att
-	gui.Size = UDim2.fromScale(1.9, 2.5)
+	gui.Size = UDim2.fromScale(2.2, 2.9)
+	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.MaxDistance = 90
 	gui.Parent = att
@@ -362,7 +364,7 @@ local function buildCard()
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.08,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, S(if mobile then 64 else 92)),
+		Position = UDim2.new(0.5, 0, 0, S(if mobile then 80 else 120)), -- clear of the wave bar's pill stacks
 		Size = UDim2.fromOffset(W, S(if mobile then 86 else 90)),
 		Parent = s,
 	})
@@ -393,7 +395,7 @@ local function buildCard()
 			TextColor3 = Theme.Colors.bg,
 			TextWrapped = true,
 			BackgroundColor3 = color,
-			Size = UDim2.new(1 / 3, -S(4), 1, 0),
+			Size = UDim2.new(1 / 2, -S(4), 1, 0),
 			LayoutOrder = order,
 			Parent = row,
 		})
@@ -411,19 +413,15 @@ local function buildCard()
 	local skip = button(if hot then "SKIP [V]" else "SKIP", Theme.Colors.cash, 2, function()
 		Remotes.DealerAction:FireServer("skip")
 	end)
-	local pause = button(if hot then "VOTE TO PAUSE [P]" else "PAUSE", Theme.Colors.grey, 3, function()
-		local pv = ClientState.sync and (ClientState.sync :: any).pause
-		Remotes.PauseAction:FireServer(if pv and pv.myVote then "unvote" else "vote")
-	end)
 	root.Position = UDim2.new(0.5, 0, 0, -S(120))
 	UI.tween(
 		root,
-		{ Position = UDim2.new(0.5, 0, 0, S(if mobile then 64 else 92)) },
+		{ Position = UDim2.new(0.5, 0, 0, S(if mobile then 80 else 120)) },
 		0.4,
 		Enum.EasingStyle.Back,
 		Enum.EasingDirection.Out
 	)
-	card = { root = root, title = title, teleport = teleport, skip = skip, pause = pause }
+	card = { root = root, title = title, teleport = teleport, skip = skip }
 end
 
 local function paintCard()
@@ -444,27 +442,6 @@ local function paintCard()
 			if mobile then "" else " [V]"
 		)
 		c.skip.BackgroundColor3 = if dv.mySkip then Theme.Colors.gold else Theme.Colors.cash
-		c.teleport.AutoButtonColor = false
-		c.teleport.BackgroundTransparency = if dv.teleportUsed then 0.6 else 0
-		c.teleport.Text = if dv.teleportUsed
-			then "TELEPORT USED"
-			elseif mobile then "TELEPORT"
-			else "TELEPORT TO DEALER [T]"
-	end
-	local pv = sync.pause
-	if pv then
-		local can = pv.canVote == true
-		c.pause.BackgroundTransparency = if can or pv.myVote then 0 else 0.6
-		c.pause.Text = if not can and not pv.myVote
-			then string.format("PAUSE IN %d WAVES", tonumber(pv.cooldownWaves) or 0)
-			else string.format(
-				"%s %d/%d%s",
-				if pv.myVote then "PAUSE VOTED" else "VOTE TO PAUSE",
-				tonumber(pv.votes) or 0,
-				tonumber(pv.needed) or 1,
-				if ClientState.isMobile then "" else " [P]"
-			)
-		c.pause.BackgroundColor3 = if pv.myVote then Theme.Colors.gold else Theme.Colors.grey
 	end
 end
 

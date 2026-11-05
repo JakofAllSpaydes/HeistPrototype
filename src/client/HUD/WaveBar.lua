@@ -1,5 +1,6 @@
 --!strict
--- Top-center: WAVE N / NEXT WAVE IN N, heat stars, N LEFT, Auto Skip toggle left, skip Votes right (V).
+-- Top-center: WAVE N / NEXT WAVE IN N, heat stars, N LEFT, Auto Skip toggle with the skip Votes under it on the left
+-- (V), the PAUSE pill with its votes on the right (P).
 -- Big center banners on wave start / wave clear and the last seconds of the countdown.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -148,14 +149,14 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end)
 	end
 
-	-- Auto skip toggle (left) and skip votes (right).
+	-- Left: AUTO SKIP with the skip VOTES under it. Right: PAUSE with its votes (brief 5, always there in a run).
 	local autoSkip, autoSkipLabel = UI.pill(root, "AUTO SKIP", Theme.Colors.panel2, Theme.Colors.grey, S(24))
 	autoSkip.AnchorPoint = Vector2.new(1, 0)
 	autoSkip.Position = UDim2.new(0.5, -S(150), 0, S(12))
 	local autoStroke = UI.stroke(autoSkip, Theme.Colors.grey, S(1), 0.5)
 	local votes, votesLabel = UI.pill(root, "VOTES 0 / 1", Theme.Colors.panel2, Theme.Colors.grey, S(24))
-	votes.AnchorPoint = Vector2.new(0, 0)
-	votes.Position = UDim2.new(0.5, S(150), 0, S(12))
+	votes.AnchorPoint = Vector2.new(1, 0)
+	votes.Position = UDim2.new(0.5, -S(150), 0, S(42))
 	local votesStroke = UI.stroke(votes, Theme.Colors.grey, S(1), 0.5)
 	local votesHint = UI.text({
 		Text = if ClientState.isMobile then "TAP TO SKIP" else "V TO SKIP",
@@ -166,6 +167,48 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Visible = false,
 		Parent = votes,
 	})
+	local pause, pauseLabel = UI.pill(root, "PAUSE 0 / 1", Theme.Colors.panel2, Theme.Colors.grey, S(24))
+	pause.AnchorPoint = Vector2.new(0, 0)
+	pause.Position = UDim2.new(0.5, S(150), 0, S(12))
+	local pauseStroke = UI.stroke(pause, Theme.Colors.grey, S(1), 0.5)
+	UI.text({
+		Text = if ClientState.isMobile then "TAP TO PAUSE" else "P TO PAUSE",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		Position = UDim2.new(0, 0, 1, S(2)),
+		Size = UDim2.new(1, 0, 0, S(14)),
+		Parent = pause,
+	})
+	local pauseView: any = nil
+	local function paintPause()
+		local pv = pauseView
+		if not pv then
+			pauseLabel.Text = "PAUSE"
+			return
+		end
+		local can = pv.canVote == true
+		pauseLabel.Text = if not can and not pv.myVote
+			then string.format("PAUSE IN %d", tonumber(pv.cooldownWaves) or 0)
+			else string.format("PAUSE %d / %d", tonumber(pv.votes) or 0, tonumber(pv.needed) or 1)
+		pauseLabel.TextColor3 = if pv.myVote
+			then Theme.Colors.bg
+			elseif can then Theme.Colors.text
+			else Theme.Colors.grey
+		pause.BackgroundColor3 = if pv.myVote then Theme.Colors.gold else Theme.Colors.panel2
+		pause.BackgroundTransparency = if can or pv.myVote then 0 else 0.4
+		pauseStroke.Color = if can or pv.myVote then Theme.Colors.gold else Theme.Colors.grey
+		pauseStroke.Transparency = if can or pv.myVote then 0 else 0.5
+	end
+	pillButton(pause, function()
+		local pv = pauseView
+		if not pv or pv.active or (not pv.canVote and not pv.myVote) then
+			UI.shake(pause, S(2), 0.15)
+			UI.sound(Theme.Sounds.deny, 1.2, 0.25)
+			return
+		end
+		UI.sound(Theme.Sounds.toast, if pv.myVote then 0.9 else 1.4, 0.4)
+		Remotes.PauseAction:FireServer(if pv.myVote then "unvote" else "vote")
+	end)
 
 	local state = "Intro"
 	local endsAt = 0
@@ -353,6 +396,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		stars.Visible = inRun
 		autoSkip.Visible = inRun
 		votes.Visible = inRun
+		pause.Visible = inRun
 		if not inRun then
 			left.Visible = false
 			lastLeft = -1
@@ -360,6 +404,8 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end
 
 	function component.update(sync: any)
+		pauseView = sync.pause
+		paintPause()
 		local wasState = state
 		state = sync.waveState
 		endsAt = sync.intermissionEndsAt

@@ -186,8 +186,8 @@ function WeaponRoll.dropGun(state: PlayerState.State, gun: Types.Held, cframe: C
 end
 
 function WeaponRoll.swap(player: Player, gun: BasePart)
-	if not gun.Parent or gun.Parent ~= lootFolder then
-		return
+	if not gun.Parent or gun.Parent ~= lootFolder or gun:GetAttribute("Landing") == true then
+		return -- a crate gun still in its arc cannot be taken
 	end
 	if not withinReach(player, gun) then
 		return
@@ -198,7 +198,11 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 		return
 	end
 	state.lastSwapAt = now
-	local cf = gun.CFrame
+	-- The old gun always lands on the floor where the new one lay (never in the air over a crate).
+	local _, yaw = gun.CFrame:ToEulerAnglesYXZ()
+	local cf = CFrame.new(gun.Position.X, Config.FloorTop + 0.35, gun.Position.Z)
+		* CFrame.Angles(0, yaw, 0)
+		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
 	local newId = gun:GetAttribute("WeaponId") :: string
 	local newRarity = gun:GetAttribute("Rarity") :: number
 	local newLevel = tonumber(gun:GetAttribute("Level")) or 0

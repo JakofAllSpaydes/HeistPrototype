@@ -52,7 +52,7 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	local prompt = tag.prompt
 	if prompt then
 		-- A downed teammate in reach owns F: gun prompts step aside until they are up.
-		prompt.Enabled = not ClientState.reviveNearby
+		prompt.Enabled = not ClientState.reviveNearby and gun:GetAttribute("Landing") ~= true
 	end
 end
 

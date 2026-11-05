@@ -9,6 +9,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Classes = require(Shared:WaitForChild("Classes"))
 local AbilityGrowth = require(Shared:WaitForChild("AbilityGrowth"))
 local Prices = require(Shared:WaitForChild("Prices"))
+local Config = require(Shared:WaitForChild("Config"))
+local MasteryCopy = require(Shared:WaitForChild("MasteryCopy"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -72,6 +74,114 @@ local function futurePill(parent: Instance, order: number, onPick: () -> ()): Te
 		onPick()
 	end)
 	return b
+end
+
+-- Class mastery in the detail column: `MASTERY II` with the waves to the next tier and a bar, then one card per
+-- tier (numeral badge, passive name, what it does); earned tiers are gold, the next one is outlined green.
+local function masteryBlock(parent: Instance, order: number, classId: string, xp: number)
+	local S = UI.S
+	local tiers = Config.ClassMasteryTiers
+	local tier, into, need = MasteryCopy.progress(xp, tiers)
+	local head = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel,
+		Size = UDim2.new(1, 0, 0, S(40)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UI.corner(head, S(4))
+	UI.text({
+		Text = if tier > 0 then "MASTERY " .. MasteryCopy.Roman[tier] else "MASTERY",
+		Font = Theme.Fonts.display,
+		TextSize = S(15),
+		TextColor3 = if tier > 0 then Theme.Colors.gold else Theme.Colors.textDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(10), S(4)),
+		Size = UDim2.new(0.5, 0, 0, S(18)),
+		Parent = head,
+	})
+	UI.text({
+		Text = if need > 0 then string.format("%d / %d WAVES", into, need) else "MAXED",
+		Font = Theme.Fonts.body,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.textDim,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(10), 0, S(5)),
+		Size = UDim2.new(0.5, 0, 0, S(16)),
+		Parent = head,
+	})
+	local track = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		Position = UDim2.new(0, S(10), 1, -S(12)),
+		Size = UDim2.new(1, -S(20), 0, S(6)),
+		Parent = head,
+	})
+	UI.corner(track, S(3))
+	local fill = UI.frame({
+		BackgroundColor3 = if need > 0 then MetaUI.Green else Theme.Colors.gold,
+		Size = UDim2.fromScale(if need > 0 then math.clamp(into / need, 0, 1) else 1, 1),
+		Parent = track,
+	})
+	UI.corner(fill, S(3))
+	for t = 1, #tiers do
+		local earned = tier >= t
+		local isNext = t == tier + 1
+		local name, line = MasteryCopy.classReward(classId, t)
+		local row = UI.frame({
+			BackgroundColor3 = Theme.Colors.panel,
+			BackgroundTransparency = if earned or isNext then 0 else 0.4,
+			Size = UDim2.new(1, 0, 0, S(50)),
+			LayoutOrder = order + t,
+			Parent = parent,
+		})
+		UI.corner(row, S(6))
+		UI.stroke(
+			row,
+			if earned then Theme.Colors.gold elseif isNext then MetaUI.Green else Theme.Colors.black,
+			S(if earned or isNext then 2 else 1),
+			if earned or isNext then 0 else 0.5
+		)
+		local badge = UI.frame({
+			BackgroundColor3 = if earned then Theme.Colors.gold else Theme.Colors.panel2,
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, S(8), 0.5, 0),
+			Size = UDim2.fromOffset(S(32), S(32)),
+			Parent = row,
+		})
+		UI.corner(badge, S(6))
+		UI.text({
+			Text = MasteryCopy.Roman[t],
+			Font = Theme.Fonts.display,
+			TextSize = S(16),
+			TextColor3 = if earned then Theme.Colors.bg else Theme.Colors.textDim,
+			Size = UDim2.fromScale(1, 1),
+			Parent = badge,
+		})
+		local textX = S(48)
+		UI.text({
+			Text = name,
+			Font = Theme.Fonts.display,
+			TextSize = S(13),
+			TextColor3 = if earned then Theme.Colors.white else Theme.Colors.textDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Position = UDim2.fromOffset(textX, S(5)),
+			Size = UDim2.new(1, -textX - S(6), 0, S(16)),
+			Parent = row,
+		})
+		UI.text({
+			Text = line,
+			Font = Theme.Fonts.body,
+			TextSize = S(10),
+			TextColor3 = if earned then Theme.Colors.text else Theme.Colors.grey,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+			Position = UDim2.fromOffset(textX, S(22)),
+			Size = UDim2.new(1, -textX - S(6), 0, S(26)),
+			Parent = row,
+		})
+	end
 end
 
 -- Class pill: colored circle with the initial, name, lock when unowned, blue when selected.
@@ -269,15 +379,11 @@ function ClassesTab.render(scene: any)
 	UI.list(pills, Enum.FillDirection.Horizontal, S(6))
 	for i, c in Classes.List do
 		local own = profile ~= nil and profile.classes.owned[c.id] == true
-		local pill = classPill(pills, i, c, own, selected == c.id, equipped == c.id, function()
+		classPill(pills, i, c, own, selected == c.id, equipped == c.id, function()
 			selected = c.id
 			UI.sound(Theme.Sounds.toast, 1.25, 0.3)
 			scene.refresh()
 		end)
-		if own then
-			local m = profile.mastery and profile.mastery.classes and profile.mastery.classes[c.id]
-			MetaUI.masteryBar(pill, "class", c.id, if m then (tonumber(m.xp) or 0) else 0, S(4))
-		end
 	end
 	futurePill(pills, #Classes.List + 1, function()
 		scene.toast("MORE CLASSES COMING", "click")
@@ -296,24 +402,24 @@ function ClassesTab.render(scene: any)
 		abilityRow(scene, grid, 1 + i, rowH, class, a, isOwned)
 	end
 
-	-- Detail: tall well, name, status, the kit, action.
+	-- Detail: a shorter well, name, status, the class mastery (bar + three tier cards), action.
 	local ic = MetaUI.well(card, 1, Color3.fromHex(class.color), "class", class.glyph, Theme.Colors.white)
 	local well = ic.Parent
 	if well and well:IsA("Frame") then
-		well.Size = UDim2.new(1, 0, 0, S(220))
+		well.Size = UDim2.new(1, 0, 0, S(scene.mobile and 96 or 130))
 	end
 	MetaUI.heading(
 		card,
 		2,
 		class.name,
-		if equipped == class.id then "EQUIPPED" elseif isOwned then "UNLOCKED" else "LOCKED",
+		if equipped == class.id
+			then "EQUIPPED"
+			elseif isOwned then "UNLOCKED"
+			else "LOCKED · " .. (if class.free then "FREE" else MetaUI.fmtGold(Prices.class)),
 		if equipped == class.id then MetaUI.Green elseif isOwned then Theme.Colors.gold else Theme.Colors.grey
 	)
-	MetaUI.header(card, 5, "KIT")
-	for i, a in class.abilities do
-		MetaUI.statRow(card, 10 + i, a.hotkey, a.name, nil)
-	end
-	MetaUI.statRow(card, 15, "Price", if class.free then "FREE" else MetaUI.fmtGold(Prices.class), nil)
+	local m = profile and profile.mastery and profile.mastery.classes and profile.mastery.classes[class.id]
+	masteryBlock(card, 5, class.id, if m then (tonumber(m.xp) or 0) else 0)
 	if equipped == class.id then
 		MetaUI.button(card, 20, "EQUIPPED", "disabled", nil)
 	elseif isOwned then

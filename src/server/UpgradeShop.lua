@@ -3,7 +3,7 @@
 -- through the same generator (UpgradeShop.generate with a count) and applies it through UpgradeShop.applyCard.
 -- Cards draw a category by Config.CategoryWeights (gun / element / utility), then a stat inside it. Tradeoff
 -- cards roll at Config.TradeoffChance per tier, never on an element card, and the malus never lands on an element
--- or CASH GAIN. An element's first take grants its base chance; later takes add the card's chance and power.
+-- or CASH GAIN. An element goes on every shot: the first take grants 100% power, later takes add the card's percent.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
@@ -126,7 +126,6 @@ UpgradeShop.describeCards = describeCards
 
 local function applyStat(state: PlayerState.State, statId: string, pct: number, tier: number, isMalus: boolean)
 	local item = state.upgrades[statId]
-	local fresh = item == nil
 	if not item then
 		item = { count = 0, pct = 0, highestTier = 0, everMalus = false }
 		state.upgrades[statId] = item
@@ -139,14 +138,10 @@ local function applyStat(state: PlayerState.State, statId: string, pct: number, 
 	else
 		it.count += 1
 		it.highestTier = math.max(it.highestTier, tier)
-		if Upgrades.isElement(statId) then
-			-- The first take grants the effect at power 1; every later take adds its tier's power.
-			it.power = if fresh then 1 else (it.power or 1) + (Config.ElementPowerByTier[math.clamp(tier, 1, 5)] or 0)
-		end
 	end
 end
 
--- Grant an element at its base chance without a card (TORCH's HOT ROUNDS mastery at run start).
+-- Grant an element at its first-take power without a card (TORCH's HOT ROUNDS mastery at run start).
 function UpgradeShop.grantElement(state: PlayerState.State, statId: string)
 	if state.upgrades[statId] then
 		return

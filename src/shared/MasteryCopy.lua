@@ -103,7 +103,7 @@ local CLASS: { [string]: { () -> (string, string) } } = {
 			return "DEAD CENTER", string.format("Headshots +%s×", tostring(Config.SharpHeadshotAdd))
 		end,
 		function()
-			return "MARKSMAN'S KIT", "Snipers and pistols reload faster, Eagle Eye hits harder"
+			return "MARKSMAN'S KIT", "Snipers and pistols reload faster, Eagle Vision hits harder"
 		end,
 		function()
 			return "OVERDRIVE", "Dead Eye headshots refill your mag and reduces cooldown"

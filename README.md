@@ -48,11 +48,11 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | RMB (hold) | Aim down sights: narrower FOV, camera pulls in, half spread, tighter crosshair, lower sensitivity. `Ads*` in Config. With the cursor unlocked (Ctrl) it only pulls in a little and dragging rotates the camera. |
 | R | Reload. Tube-fed guns (`shellReload` in Weapons, currently the SPAS-12) load one shell per `reloadTime`; firing or R again stops at the current count. |
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
-| 2 | Buy an upgrade pick (also the clickable tile, left column). Weapons come only from arms crates; 1 does nothing. |
-| F on an arms crate | `OPEN`: spends one of the crate's rolls (`N ROLLS LEFT` over it). The reel plays above the crate for everyone and the gun ejects beside it as floor loot anyone can take. |
-| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle eye / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange`; placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
+| 1 | Buy an upgrade pick (also the clickable tile, left column). Weapons come only from gun crates. |
+| F on a gun crate | `OPEN` (a `GUN CRATE` tag over it): every roll the crate holds plays back to back on the reel above it, seen by everyone, and each gun ejects onto the floor beside it as loot anyone can take. |
+| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange`; placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
 | P | Vote to pause (in a wave, the intermission or the dealer break; solo pauses at once). Also on the dealer card and the scoreboard. RESUME on the overlay (anyone). |
-| T / V / F at the dealer | During the dealer break: T teleports you to the stall (once), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
+| T / V / F at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
 | F (hold `BagCollectSec`) | `COLLECT` a cash bag (match cash to everyone) or `BANK` a gold bag (ticks the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
 | F at the vault door | `CRACK` the vault while CRACK THE VAULT is the open side job: opens the Safe dial at the wave bracket's tier. |
@@ -237,10 +237,10 @@ multiplies damage by 1 / 1.3 / 1.7 / 2.3 / 3.0, so a legendary of anything beats
 **Arms crate (brief 5, `BigCrate.lua`, `CrateReelUI.lua`, timing in `CrateReel.lua`).** The only in-run weapon source.
 One drops at the intro, one after every completed side job (not the vault), one on TITAN's body (its first roll a
 guaranteed Legendary) and one per ARMS DROP at the dealer; `BigCrateWaveInterval = 0` means none per wave. It lands
-closed with party size + `CrateRollsExtra` rolls and an `N ROLLS LEFT` tag with a countdown. F (`OPEN`) by any member
-spends a roll: a billboard over the crate, seen by everyone, cycles `CrateReelSteps` gun icons in rarity frames at
-`CrateReelSec` each (the last two stretched by `CrateReelEase`) with 3D ticks rising in pitch, lands with the rarity
-juice (rays from Epic, the Legendary sting), holds `CrateLandHoldSec`, and the gun arcs out to a free spot
+closed with party size + `CrateRollsExtra` rolls and a `GUN CRATE` tag with a countdown. F (`OPEN`) by any member
+plays every roll back to back: a billboard over the crate, seen by everyone, carries the original weapon reel (a row of
+gun icons in rarity frames sliding under a gold marker for `RollDurationSec`, 3D ticks rising in pitch, the result line
+with DMG and RATE, the rarity juice), holds `RollLandHoldSec` (+`RollHighTierHoldSec` from Epic), and the gun arcs out to a free spot
 `CrateDropRadius` away as ordinary floor loot (distinct weapon types per crate while the party's owned pool lasts).
 Rarity: the wave bracket's odds, the crate floor `BigCrateRarityFloorByBracket`, the roller's pity. The prompt is gone
 while a roll plays; the crate closes at 0 rolls or after `CrateLifetimeSec`, and floor guns keep their own timers. The
@@ -248,17 +248,18 @@ NEW WEAPON tile, hotkey 1 and the weapon price are gone.
 
 **Upgrades.** Pick 1 of 3 cards (and the dealer's stands) from three categories drawn by `CategoryWeights` (gun 60 /
 element 25 / utility 15) before the stat: 13 gun stats (Damage, FireRate, MagSize, ReloadSpeed, CritChance, HeadshotMult,
-MoveSpeed, Accuracy, Pierce, Ricochet, Splash, Multishot, Lifesteal); three elements that proc once per shot on
+MoveSpeed, Accuracy, Pierce, Ricochet, Splash, Multishot, Lifesteal); three elements that go on every shot, on
 every enemy the shot hits (`Elements.lua`; look in `StatusFx.lua`): INCENDIARY (burn `IncendiaryDps` for
 `IncendiaryBurnSec`, orange tint and embers), CRYO (slow `CryoSlowPct` for `CryoSlowSec`, `CryoStacksToFreeze` procs
 in that window freeze for `CryoFreezeSec`, blue tint, frost shards, ice), CONCUSSIVE (a `ConcussiveStuds` slide along
 the shot and a `ConcussiveStunSec` interrupt, Heavy / boss `ConcussiveHeavyMult` and the boss is never interrupted,
-a white ring); the first take grants the base chance (`*Chance`), later takes add the card's chance and
-`ElementPowerByTier` power; and utility: ABILITY COOLDOWN (capped `AbilityCooldownCap`), ABILITY POWER (ability damage,
+a white ring); every hit applies the held elements; the first take is 100% power, later takes add the card's percent (burn DPS and
+tick rate `IncendiaryTickRatePerPower`, slow / freeze, knockback; CONCUSSIVE interrupts at most every
+`ConcussiveInterruptSec`); and utility: ABILITY COOLDOWN (capped `AbilityCooldownCap`), ABILITY POWER (ability damage,
 heal, placeable HP) and CASH GAIN (kills, bags, job payouts; it replaced Greed). Each card spins an icon reel at the top,
 lands on the stat, then the text reveals. Higher rarity = bigger punch/shake/flash/rays. Tradeoff cards (`TradeoffChance`,
 halved in brief 5) carry a malus line; never on an element card, and the malus never lands on an element or CASH GAIN.
-The tracker grid shows counts for gun stats, the proc chance for elements (`15%`) and the total for utility (`-12%`).
+The tracker grid shows counts for gun stats, the power for elements (`130%`) and the total for utility (`-12%`).
 Income: kill cash = archetype cash × (1 + `CashWaveMult` × (wave − 1)) × elite × heat × CASH GAIN; every wave end prints
 `[GHS Income] wave N cash earned X upgrades bought Y (name)` and debug Stats adds upgrades per player per wave
 (target 1–1.5 through wave 20).
@@ -269,7 +270,7 @@ barricade, healing turret, flame turret, oil drum) have HP bars and enemies walk
 claymore are not targeted. Ground fields (med bag, molotov, the fire a broken drum leaves) act every `FieldTickSec`
 on whoever stands in the circle. Thrown abilities (flashbang, molotov) arc `ThrowDistance` over `ThrowFlightSec`.
 Self buffs (stim, stim shot, dead eye) share one slot per player; the tile that fired shows the seconds left.
-- INITIATE: frag (thrown to the cursor, blinks `FragFuseSec`, then `FragDamage` to everything in `FragRadius`),
+- INITIATE: frag (thrown to the cursor, goes off the moment it lands: `FragDamage` to everything in `FragRadius`),
   adrenaline (6s move, fire-rate and reload-speed buff with FOV push; no heal. Ability id `stim`, `Adrenaline*` in
   Config), claymore (below, moved here from SHARPSHOOTER with its level).
 - ENGINEER (brief 5): turret (auto-fires at the nearest enemy, 150 HP, 30s), barricade (300 HP wall, 45s), overclock
@@ -280,7 +281,7 @@ Self buffs (stim, stim shot, dead eye) share one slot per player; the tile that 
   teammate with the lowest HP share in `HealTurretRange` for `HealTurretBeamHeal` a second, 30s).
 - Claymore (INITIATE's Z): planted, arms after `ClaymoreArmSec`, an enemy inside `ClaymoreTriggerRadius` sets it
   off for `ClaymoreDamage` to everything in `ClaymoreBlastRadius`, 60s.
-- SHARPSHOOTER: eagle eye (brief 5: every enemy within `EagleEyeRadius` glows red through walls for `EagleEyeSec` and
+- SHARPSHOOTER: eagle vision (brief 5: every enemy within `EagleEyeRadius` glows red through walls for `EagleEyeSec` and
   takes `EagleEyeBonusPct` more from any source), dead eye (8s: weapon damage +25%, move
   +20%, every bullet passes through `DeadEyePierce` more enemies; a fractional pierce like 2.2 is one more enemy
   at 20% damage), flashbang (thrown; every enemy in `FlashRadius` stops and stops swinging for `StunDuration`, head goes white).
@@ -303,7 +304,7 @@ up to `StimExtendCap`), ENGINEER (placeables +`EngineerPlaceablePct` HP and fire
 (med bag radius and healing turret range +`DocReachPct`; downed or bled-out allies inside stand up on their own over
 `AutoReviveSec`; the med bag heals `FieldHospitalHealMult` × over `FieldHospitalRadiusMult` × and allies inside deal
 +`FieldHospitalDmgPct`), SHARPSHOOTER (headshots +`SharpHeadshotAdd`; snipers and pistols reload `MarksmanKitReloadPct`
-faster and Eagle Eye +`MarksmanKitEagleEyePct`; headshots during Dead Eye put a round back and trim
+faster and Eagle Vision +`MarksmanKitEagleEyePct`; headshots during Dead Eye put a round back and trim
 `DeadEyeHeadshotCdr`), TORCH (burns tick `TorchBurnRateMult` × faster; runs start with INCENDIARY; burning kills trim
 `BackdraftCdr` off the Molotov). A tier crossed mid-run applies at once and drops the MasteryUp card under the wave bar
 (emblem, rays, sting, `AK-47 · MASTERY II`, the reward; `MasteryUI.lua`, `MasteryPopSec`). Weapon tiles and class pills
@@ -312,13 +313,12 @@ run's tier-ups.
 
 **Dealer break (brief 5, `Dealer.lua`, `DealerUI.lua`).** After every boss wave is cleared: state `Dealer` for
 `DealerSec` (no spawns, heat frozen, the clock only stops for a pause), MARLOW's `DealerLine`, a Part stall with an
-idling DEALER at `DealerStallPosition`, the top-center card (`DEALER · 1:30`, TELEPORT TO DEALER once, unanimous SKIP,
-VOTE TO PAUSE). Per-player stock: `DealerStock` stands from the pick-3 generator priced `ShopPriceByTier` × the
+idling DEALER at `DealerStallPosition`, the top-center card (`DEALER · 1:30`, TELEPORT TO DEALER any number of times, unanimous SKIP). Per-player stock: `DealerStock` stands from the pick-3 generator priced `ShopPriceByTier` × the
 upgrade escalation (each buy counts as an upgrade bought), drawn by each client on the same table; ARMS DROP
 (`ShopCratePrice`, a crate at the stall), HEAL ALL (`ShopHealPrice`), REROLL (`ShopRerollPrice`, doubling). The nearest
 stand or prop within `ShopReadRadius` opens a panel with the effect lines current → new; F (or BUY) buys.
 
-**Pause (brief 5, `Pause.lua`, `PauseUI.lua`).** VOTE TO PAUSE (P, the dealer card, the scoreboard) in a wave, the
+**Pause (brief 5, `Pause.lua`, `PauseUI.lua`).** VOTE TO PAUSE (P, the PAUSE pill on the wave bar, the scoreboard) in a wave, the
 intermission or the dealer break; unanimous, solo at once, one per `PauseCooldownWaves`. Frozen: enemies, damage,
 movement and fire, and every timer (bleed, floor guns, crates, side jobs, the vault, the dealer, ability lifetimes and
 cooldowns, spawns, the heat clock, the intermission, the run clock). `PAUSED · names` with RESUME (anyone); auto-resume
@@ -445,7 +445,7 @@ and marks the profile dirty.
   applied one, previewed live, BUY / APPLY / REMOVE WRAP on the right. A wrap is a Color3 on the gun's grip part
   (`HeldGunWrap`) in the hub and in-run.
 - **Classes tab.** `Classes.lua` lists, in carousel order, INITIATE (Frag Q, Adrenaline E, Claymore Z), ENGINEER (Turret
-  Q, Barricade E, Overclock Z), DOC (Stim Shot, Med Bag, Healing Turret), SHARPSHOOTER (Eagle Eye, Dead Eye, Flashbang) and
+  Q, Barricade E, Overclock Z), DOC (Stim Shot, Med Bag, Healing Turret), SHARPSHOOTER (Eagle Vision, Dead Eye, Flashbang) and
   TORCH (Molotov, Flame Turret, Oil Drum) with the GDD copy, in-match `$` price and upgradeable variables. The category
   pills are the classes (colored circle with the class glyph — ENGINEER's 🔧 — name, lock when unowned, ✔ when
   equipped, the mastery bar along the bottom); below them the selected class's three ability
@@ -687,10 +687,10 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    INITIATE: Q Frag (thrown to the cursor, blinks red for 1s, then a 9-stud blast for 120 that throws bodies out),
    E Adrenaline, Z Claymore. ENGINEER: Q Turret, E Barricade, Z Overclock (every turret / healing turret / flame turret
    on the floor glows amber and fires 1.5× for 8s, a med bag heals faster, every barricade gets a 150 shield that soaks
-   hits first and goes with the glow; the Z tile counts the 8s down). SHARPSHOOTER: Q Eagle Eye (`◉`: a red ring sweeps
+   hits first and goes with the glow; the Z tile counts the 8s down). SHARPSHOOTER: Q Eagle Vision (`◉`: a red ring sweeps
    out 60 studs and every enemy in it glows red through walls for 6s and takes +25% from bullets, turrets, fire and
    blasts), E Dead Eye, Z Flashbang. A profile that leveled the SHARPSHOOTER claymore has that level on INITIATE's Z;
-   Eagle Eye starts at LV 0. UPGRADE on the tab raises Frag DMG, Overclock RATE / SHIELD and Eagle Eye BONUS / RADIUS.
+   Eagle Vision starts at LV 0. UPGRADE on the tab raises Frag DMG, Overclock RATE / SHIELD and Eagle Vision BONUS / RADIUS.
 5. Mastery: every owned weapon tile and owned class pill in the customization scene carries a thin green bar with
    three diamond pips; hovering lists the tiers (`✔ I GUNMETAL WRAP · 100 kills`, `· II TRIAGE · Your heals revive
    downed allies`). In a run, debug `+100 mastery` (or 100 kills with one gun): the moment a tier is crossed a card
@@ -734,6 +734,20 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    arena, the revive bar and its label are thumb-readable under the crosshair, the dealer card fits the width with three
    tappable buttons, the shop panel's BUY works by touch, and RESUME on the pause overlay is a big target. Mastery cards
    and ally callouts fit at phone size.
+10. Round 15b (feedback on the brief 5 build; where it differs from the items above, this wins): the upgrade tile is
+    key 1. A crate reads `GUN CRATE`; one F plays every roll back to back on the old sliding reel above the crate, each
+    gun lands on the floor beside it (never on the lid; it cannot be grabbed mid-arc). Frag goes off on landing.
+    Elements apply on every shot: INCENDIARY burns, CRYO slows (ten hits in 2s freeze), CONCUSSIVE nudges back ~1.5
+    studs; a second take shows `130%`+ on the tile and burns harder and faster, slows and shoves more. Placeables never
+    block you (enemies still stop at them). Ability tiles: a used charge starts the cooldown at once and the sweep shows
+    (lighter while a charge is left); during Dead Eye / Overclock / Eagle Vision the cooldown drains under the gold
+    timer; a BACKDRAFT / OVERDRIVE trim pops `-0.1s` / `-0.2s` on the tile. Wave bar: VOTES sits under AUTO SKIP on the
+    left, PAUSE n/m on the right (P). Dealer: three tables in a half circle round the DEALER, cards are UI only and on
+    top, TELEPORT works every time, the card has TELEPORT and SKIP. Vault: the beacon is the normal size again (amber),
+    the chevrons stay. Classes tab: the detail column shows MASTERY with the waves to the next tier, a bar and three
+    tier cards (earned gold, next green); ENGINEER is a plain `E`; SHARPSHOOTER's Q is Eagle Vision (`EGV`). Weapons
+    tab: owned tiles read `M1911  LV 1` in the top bar over the mastery bar (STARTER at the bottom), the detail shows
+    the mode · rarity · level beside the name and a MASTERY bar under it, and the three mastery wraps carry a MASTERY tag.
 
 ## Layout
 
@@ -761,7 +775,7 @@ Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), H
 (with `HUD.setMode` for hub / meta / downed / spectate / cinematic / boss and `HubHUD` for the hub layout; `BossBar`
 under the wave bar; `Currency` with the Banked row), QueueUI (Create Match card, compact party card), MetaScene with
 `src/client/Meta/` (MetaUI with the mastery bar, WeaponsTab, ClassesTab, AvatarTab), UpgradeOverlay, CrateReelUI (crate
-tags and the reel), StatusFx (element looks, Eagle Eye marks), MasteryUI (the tier-up card), DealerUI (dealer card, stands,
+tags and the reel), StatusFx (element looks, Eagle Vision marks), MasteryUI (the tier-up card), DealerUI (dealer card, stands,
 shop panels), PauseUI (the overlay), GroundLoot, CrewCallUI (job cards, the vault pill, MARLOW's line cards, ally
 callouts), Markers (beacon, bag and vault billboards, the vault chevrons), Minigames (Frame + one module
 per game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Spectate,
@@ -986,7 +1000,7 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   gone); halved tradeoffs never on elements; `CashWaveMult`; the per-wave income log and Stats line; tracker badges.
   (3) Revive bars for the reviver and the downed player (the ring is gone), the marker fill, camera ease on stand-up;
   ally callouts with headshots. (4) INITIATE Frag / Adrenaline / Claymore, ENGINEER Turret / Barricade / Overclock,
-  SHARPSHOOTER Eagle Eye / Dead Eye / Flashbang; carousel order; class glyphs; profile v2. (5) Weapon and class mastery
+  SHARPSHOOTER Eagle Vision / Dead Eye / Flashbang; carousel order; class glyphs; profile v2. (5) Weapon and class mastery
   with all fifteen passives, mastery wraps, tile bars, the summary line, ability charges; per the designer's note XP
   writes live and a tier crossed mid-run applies at once with a rank-up card (`MasteryUI`). (6) The vault draw: VAULT JOB
   stamp, pulsing door, 2× diamond beacon that never compacts, floor chevrons, VAULT OPEN on the scoreboard. (7) The
@@ -995,11 +1009,25 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   overlay. Config gains the Crates, Upgrades, Classes, Mastery, Vault, Dealer, Pause and Callouts keys. Built and linted,
   not yet run in Studio (see the Brief 5 verify list).
 
+- **Round 15b (4 Nov, feedback on brief 5)** — Classes tab detail: class mastery (bar + three tier cards) replaces the KIT
+  rows, the pill bars are gone; plain glyphs (ENGINEER `E`, Eagle Vision `EGV`; Eagle Eye renamed Eagle Vision, id kept).
+  Frag has no fuse. The crate is back to the original sliding reel (`RollDurationSec` / `RollLandHoldSec` /
+  `RollHighTierHoldSec` / `RollEjectSec` / `CrateRollGapSec`; the `CrateReel*` step keys are gone), on the billboard,
+  with every roll chained from one F and a `GUN CRATE` tag; guns always rest on the floor (swap drops at floor height,
+  `Landing` blocks mid-arc pickup). Upgrade hotkey 1. Dealer: `DealerArcRadius` / `DealerTableAngles` /
+  `DealerPerTable` half circle, no stand parts, AlwaysOnTop cards, unlimited teleport, the pause button moved to the
+  wave bar (VOTES under AUTO SKIP, PAUSE pill on the right). Vault beacon back to normal (`VaultBeaconScale` gone).
+  Charges show their recharge; buff tiles show the running cooldown; `CooldownTrim` pops. Elements always apply
+  (`*Chance` and `ElementPowerByTier` gone; power = the stat total / 100; `IncendiaryTickRatePerPower`, `CryoSlowCap`,
+  `ConcussiveInterruptSec`; lower base numbers). Placeables sit in a `Structure` collision group (no player
+  collision). Weapons tab: LV in the tile top bar (`nameTag`, `noPill`), the info line beside the name, a MASTERY bar
+  in the detail, MASTERY tags on mastery wraps (`sourceTag`, where EVENT tags go later).
+
 ## Open design notes (not built)
 
-- **Brief 5 assumptions to confirm.** Elements roll once per trigger pull and apply to every enemy that pull hits
-  directly (pellets and pierce included, ricochet / splash not). CONCUSSIVE never interrupts TITAN (a 10% proc per shot
-  would lock it out of its abilities); it still takes half the knockback. Mastery XP is written to the profile as it is
+- **Brief 5 assumptions to confirm.** Elements (Round 15b) apply on every shot to every enemy it hits directly (pellets and
+  pierce included, ricochet / splash not). CONCUSSIVE never interrupts TITAN and interrupts anyone else at most every
+  `ConcussiveInterruptSec` (every shot would otherwise lock enemies out of attacking); TITAN takes half the knockback. Mastery XP is written to the profile as it is
   earned (so a tier can apply mid-run, the designer's ask) instead of at the summary; leaving mid-run keeps it. Mastery
   wraps are generic (one Gunmetal / Gold / Black-Red set, `MasteryWrapIds`) but owned per gun. TRIAGE revives a bled-out
   ally whose body lies inside the med bag / turret range. Fire fields and the flame turret mark enemies as burning

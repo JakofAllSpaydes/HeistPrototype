@@ -569,10 +569,12 @@ local function abilityView(state: State): { [string]: Types.Ability }
 	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
 	for _, a in class.abilities do
 		local charges = PlayerState.chargesLeft(state, a.id)
+		local max = PlayerState.maxCharges(state, a.id)
 		out[a.id] = {
 			cooldown = PlayerState.abilityCooldown(state, a.id),
-			-- The sweep only shows with no charge left; a recharge in the background is the count pill's job.
-			cooldownEndsAt = if charges > 0 then 0 else state.cooldowns[a.id] or 0,
+			-- The cooldown runs from the use: the sweep shows it whenever a charge is missing (lighter while one is
+			-- still in hand).
+			cooldownEndsAt = if charges < max then state.cooldowns[a.id] or 0 else 0,
 			activeUntil = if state.buffId == a.id then state.buffUntil else state.abilityActive[a.id],
 			charges = charges,
 			maxCharges = PlayerState.maxCharges(state, a.id),
@@ -669,7 +671,7 @@ end
 
 -- Collision groups: enemies never body-block players (or each other) unless Config says so.
 function PlayerState.setupCollisionGroups()
-	for _, name in { "Player", "Enemy", "Corpse" } do
+	for _, name in { "Player", "Enemy", "Corpse", "Structure" } do
 		pcall(function()
 			PhysicsService:RegisterCollisionGroup(name)
 		end)
@@ -680,6 +682,8 @@ function PlayerState.setupCollisionGroups()
 	PhysicsService:CollisionGroupSetCollidable("Corpse", "Player", false)
 	PhysicsService:CollisionGroupSetCollidable("Corpse", "Enemy", false)
 	PhysicsService:CollisionGroupSetCollidable("Corpse", "Corpse", false)
+	-- Placeables (turrets, barricades, oil drums): they block enemies, never players.
+	PhysicsService:CollisionGroupSetCollidable("Structure", "Player", false)
 end
 
 local function onCharacter(player: Player, char: Model)

@@ -1,9 +1,9 @@
 --!strict
--- The arms crate on the client (brief 5): a small `N ROLLS LEFT` tag over every crate, and the reel on a
--- billboard above the crate whenever anyone opens it. Everyone in the run sees the same reel (the server sends
--- the filler icons and the result in CrateRoll); timing comes from the shared CrateReel module so the icon
--- lands as the server ejects the gun. Ticks are 3D at the crate and pitch up; the land punches the card with the
--- rarity juice, rays from Epic up and the Legendary sting.
+-- The gun crate on the client (brief 5, Round 15b): a `GUN CRATE` tag with its countdown over every closed crate,
+-- and the reel when anyone opens it. The reel is the original weapon reel (a row of gun icons in rarity frames
+-- sliding under a gold marker, ease-out onto the landed gun, ticks pitching up, the result line with DMG and RATE,
+-- the rarity juice on land), drawn on a billboard over the crate so the whole run sees it. One F plays every roll
+-- the crate holds back to back (the server sends a CrateRoll per roll; timing in CrateReel).
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 local CrateReel = require(Shared:WaitForChild("CrateReel"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
@@ -24,8 +25,13 @@ local CrateReelUI = {}
 local TAG = "GHSCrate"
 local player = Players.LocalPlayer
 
-type CrateTag = { gui: BillboardGui, rolls: TextLabel, timer: TextLabel }
+type CrateTag = { gui: BillboardGui, label: TextLabel, timer: TextLabel }
 local tags: { [Model]: CrateTag } = {}
+
+-- Phones render UI.S at about half scale: world billboards are sized up there so they read across the arena.
+local function SS(n: number): number
+	return UI.S(n * (if ClientState.isMobile then 1.5 else 1))
+end
 
 local function bodyOf(model: Model): BasePart?
 	return model:FindFirstChild("Body") :: BasePart?
@@ -61,11 +67,11 @@ local function soundOn(part: BasePart, id: string, pitch: number, volume: number
 	end)
 end
 
+------------------------------------------------------------------ The GUN CRATE tag
 local function refreshTag(model: Model, tag: CrateTag)
-	local rolls = tonumber(model:GetAttribute("RollsLeft")) or 0
 	local busy = model:GetAttribute("Busy") == true
 	local landed = model:GetAttribute("Landed") == true
-	tag.rolls.Text = string.format("%d ROLL%s LEFT", rolls, if rolls == 1 then "" else "S")
+	local rolls = tonumber(model:GetAttribute("RollsLeft")) or 0
 	-- The reel takes the space over the crate while it plays.
 	tag.gui.Enabled = landed and not busy and rolls > 0
 end
@@ -78,11 +84,7 @@ local function addTag(model: Instance)
 	if not body then
 		return
 	end
-	-- Pixel sized so it reads at any distance, small enough to stay out of the way (half again on a phone).
-	local mult = if ClientState.isMobile then 1.5 else 1
-	local function S(n: number): number
-		return UI.S(n * mult)
-	end
+	local S = SS
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "CrateTag"
 	gui.Adornee = body
@@ -112,55 +114,27 @@ local function addTag(model: Instance)
 	})
 	UI.corner(pill, S(13))
 	UI.stroke(pill, Theme.Colors.gold, S(2))
-	local rolls = UI.text({
-		Text = "",
+	local label = UI.text({
+		Text = "GUN CRATE",
 		Font = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.gold,
 		Size = UDim2.fromScale(1, 1),
 		Parent = pill,
 	})
-	local tag: CrateTag = { gui = gui, rolls = rolls, timer = timer }
+	local tag: CrateTag = { gui = gui, label = label, timer = timer }
 	tags[model] = tag
 	refreshTag(model, tag)
-	model.AttributeChanged:Connect(function(attr)
+	model.AttributeChanged:Connect(function()
 		if tags[model] then
 			refreshTag(model, tag)
-			if attr == "RollsLeft" then
-				UI.punch(pill, 1.15, 0.25)
-			end
 		end
 	end)
 end
 
--- Ray burst inside a billboard (the screen-space Juice.rays cannot follow a world point).
-local function rays(parent: Instance, color: Color3, count: number, size: number)
-	local holder = UI.frame({
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(2, 2),
-		ZIndex = 0,
-		Parent = parent,
-	})
-	for i = 1, count do
-		local ray = UI.frame({
-			BackgroundColor3 = color,
-			BackgroundTransparency = 0.2,
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(UI.S(10), size),
-			Rotation = (i - 1) * (360 / count),
-			ZIndex = 0,
-			Parent = holder,
-		})
-		UI.tween(ray, { BackgroundTransparency = 1, Size = UDim2.fromOffset(UI.S(3), size * 1.6) }, 0.9)
-	end
-	UI.tween(holder, { Rotation = 40 }, 0.9)
-	task.delay(1, function()
-		holder:Destroy()
-	end)
-end
+------------------------------------------------------------------ The reel (the original weapon reel, on the crate)
+local CELLS = CrateReel.Cells
+local LAND = CrateReel.Land
 
 local function playReel(data: any)
 	local model = crateById(tostring(data.crateId))
@@ -168,107 +142,235 @@ local function playReel(data: any)
 	if not body then
 		return
 	end
-	local reel = data.reel
-	if typeof(reel) ~= "table" or #reel == 0 then
-		return
-	end
-	local S = UI.S
-	local mobile = ClientState.isMobile
-	-- Phones render UI.S at about half scale: the reel card is sized up there so it reads across the arena.
-	local cardPx = S(if mobile then 160 else 110)
+	local S = SS
+	local w = S(340)
+	local h = S(128)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "CrateReel"
 	gui.Adornee = body
 	gui.AlwaysOnTop = true
-	gui.Size = UDim2.fromOffset(cardPx * 2.4, cardPx * 2.2)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 6.5, 0)
+	gui.Size = UDim2.fromOffset(w + S(160), h + S(160)) -- room for the rays round the panel
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 7, 0)
 	gui.MaxDistance = 160
 	gui.LightInfluence = 0
 	gui.ClipsDescendants = false
 	gui.Parent = body
 
-	local card = UI.frame({
+	local panel = UI.frame({
+		Name = "ReelPanel",
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.42),
-		Size = UDim2.fromOffset(cardPx, cardPx),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(w, h),
+		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = gui,
 	})
-	UI.corner(card, S(12))
-	local stroke = UI.stroke(card, Theme.Colors.grey, S(3))
-	local icon = UI.gunIcon(card, Theme.Colors.grey, math.floor(cardPx * 0.8))
-	icon.AnchorPoint = Vector2.new(0.5, 0.5)
-	icon.Position = UDim2.fromScale(0.5, 0.5)
-	icon.ZIndex = 3
-	for _, c in icon:GetChildren() do
-		if c:IsA("GuiObject") then
-			c.ZIndex = 3
+	UI.corner(panel, S(14))
+	local stroke = UI.stroke(panel, Theme.Colors.grey, S(3))
+	local title = UI.text({
+		Text = "GUN CRATE",
+		Font = Theme.Fonts.display,
+		TextSize = S(14),
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.new(1, 0, 0, S(22)),
+		Position = UDim2.fromOffset(0, S(4)),
+		ZIndex = 3,
+		Parent = panel,
+	})
+	local stripW = w - S(20)
+	local stripH = S(66)
+	local strip = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		Position = UDim2.fromOffset(S(10), S(28)),
+		Size = UDim2.fromOffset(stripW, stripH),
+		ClipsDescendants = true,
+		ZIndex = 3,
+		Parent = panel,
+	})
+	UI.corner(strip, S(10))
+	local cellW = S(72)
+	local row = UI.frame({
+		Name = "Row",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(cellW * CELLS, stripH),
+		ZIndex = 3,
+		Parent = strip,
+	})
+	local marker = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.fromOffset(cellW, stripH),
+		ZIndex = 5,
+		Parent = strip,
+	})
+	UI.corner(marker, S(8))
+	local markerStroke = UI.stroke(marker, Theme.Colors.gold, S(2), 0.3)
+	for _, y in { 0, 1 } do
+		local tick = UI.frame({
+			BackgroundColor3 = Theme.Colors.gold,
+			AnchorPoint = Vector2.new(0.5, y),
+			Position = UDim2.new(0.5, 0, y, 0),
+			Size = UDim2.fromOffset(S(4), S(8)),
+			ZIndex = 6,
+			Parent = strip,
+		})
+		UI.corner(tick, S(2))
+	end
+	local result = UI.text({
+		Text = "ROLLING",
+		Font = Theme.Fonts.display,
+		TextSize = S(18),
+		TextColor3 = Theme.Colors.text,
+		Size = UDim2.new(1, 0, 0, S(26)),
+		Position = UDim2.fromOffset(0, S(98)),
+		ZIndex = 3,
+		Parent = panel,
+	})
+
+	-- The row: random rarities, the landed gun at LAND.
+	local rarity = tonumber(data.rarity) or 1
+	local fillers = data.fillers or {}
+	for i = 1, CELLS do
+		local isLast = i == LAND
+		local r = if isLast then rarity else (tonumber(fillers[i]) or math.random(1, 5))
+		local color = Rarity.color(r)
+		local cell = UI.frame({
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset((i - 1) * cellW, 0),
+			Size = UDim2.fromOffset(cellW, stripH),
+			ZIndex = 4,
+			Parent = row,
+		})
+		local frame = UI.frame({
+			BackgroundColor3 = Theme.Colors.panel2,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -S(8), 1, -S(10)),
+			ZIndex = 4,
+			Parent = cell,
+		})
+		UI.corner(frame, S(8))
+		UI.stroke(frame, color, S(2), if isLast then 0 else 0.4)
+		local icon = UI.gunIcon(frame, color, math.floor(stripH * 0.72))
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+		for _, c in icon:GetChildren() do
+			if c:IsA("GuiObject") then
+				c.ZIndex = 4
+				if not isLast and c:IsA("Frame") then
+					c.BackgroundTransparency = 0.3
+				end
+			end
 		end
 	end
-	local name = UI.text({
-		Text = "",
-		Font = Theme.Fonts.display,
-		TextSize = S(if mobile then 24 else 16),
-		TextColor3 = Theme.Colors.text,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0.42, cardPx / 2 + S(4)),
-		Size = UDim2.new(1, 0, 0, S(20)),
-		ZIndex = 3,
-		Parent = gui,
-	})
-	UI.stroke(name, Theme.Colors.black, 2, 0.2)
-	card.Size = UDim2.fromOffset(0, 0)
-	UI.tween(card, { Size = UDim2.fromOffset(cardPx, cardPx) }, 0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	panel.Size = UDim2.fromOffset(w, 0)
+	UI.tween(panel, { Size = UDim2.fromOffset(w, h) }, 0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
-	local steps = CrateReel.steps()
-	local n = math.min(#steps, #reel)
-	local mine = data.by == player.UserId
-	for i = 1, n do
-		if not gui.Parent then
+	-- Slide so the landed cell ends under the marker.
+	local startX = stripW / 2 - cellW / 2
+	local endX = stripW / 2 - (LAND - 0.5) * cellW
+	row.Position = UDim2.fromOffset(startX, 0)
+	local tween = UI.tween(
+		row,
+		{ Position = UDim2.fromOffset(endX, 0) },
+		Config.RollDurationSec,
+		Enum.EasingStyle.Quart,
+		Enum.EasingDirection.Out
+	)
+	local lastIdx = 0
+	local conn: RBXScriptConnection
+	conn = RunService.Heartbeat:Connect(function()
+		if not row.Parent then
+			conn:Disconnect()
 			return
 		end
-		local entry = reel[i]
-		local rarity = tonumber(entry.rarity) or 1
-		local color = Rarity.color(rarity)
-		local last = i == n
-		stroke.Color = color
-		stroke.Transparency = if last then 0 else 0.3
-		UI.recolorIcon(icon, color)
-		name.Text = string.upper(tostring(entry.name or ""))
-		name.TextColor3 = if last then color else Theme.Colors.textDim
-		if last then
-			local j = Juice.tier(rarity)
-			UI.punch(card, j.punch + 0.15, 0.4)
-			UI.punch(name, 1.25, 0.35)
-			stroke.Thickness = S(7)
-			UI.tween(stroke, { Thickness = S(3) }, 0.5)
-			soundOn(body, Theme.Sounds.reelLand, j.pitch, j.volume)
-			if j.rays then
-				rays(gui, color, j.rayCount, cardPx * (0.75 + j.tier * 0.12))
-			end
-			if mine then
-				-- Shake / flash / the Legendary sting for the one who opened it.
-				Juice.burst(rarity, color, nil)
-			elseif j.tier == 5 then
-				soundOn(body, Theme.Sounds.legendary, 1, 0.7)
-			end
-			task.wait(Config.CrateLandHoldSec)
-		else
-			UI.punch(card, 1.08, 0.12)
-			soundOn(body, Theme.Sounds.reelTick, 0.8 + (i / n) * 1.0, 0.5)
-			task.wait(steps[i])
+		local idx = math.floor((stripW / 2 - row.Position.X.Offset) / cellW + 0.5)
+		if idx > lastIdx then
+			lastIdx = idx
+			soundOn(body, Theme.Sounds.reelTick, 0.7 + (idx / LAND) * 1.1, 0.45)
+			UI.punch(marker, 1.06, 0.1)
 		end
+	end)
+	tween.Completed:Wait()
+	conn:Disconnect()
+	if not panel.Parent then
+		return
 	end
-	-- Eject: the card drops into the crate as the gun flies out.
-	if gui.Parent then
-		UI.tween(card, { Size = UDim2.fromOffset(0, 0), Position = UDim2.fromScale(0.5, 0.9) }, 0.25)
-		UI.tween(name, { TextTransparency = 1 }, 0.2)
-		soundOn(body, Theme.Sounds.swap, 0.8, 0.5)
-		task.delay(0.3, function()
-			gui:Destroy()
+
+	-- Land: the rarity color, the name with DMG and RATE, the juice.
+	local color = Rarity.color(rarity)
+	stroke.Color = color
+	markerStroke.Color = color
+	markerStroke.Transparency = 0
+	title.Text = string.upper(tostring(data.rarityName or Rarity.name(rarity)))
+	title.TextColor3 = color
+	local w0 = Weapons.ById[tostring(data.weaponId)]
+	local rate = if w0
+		then Weapons.effectiveRate(w0, ClientState.rateMult() * (tonumber(data.levelRateMult) or 1))
+		else 0
+	result.Text = string.format(
+		"%s  ·  DMG %s  ·  %s",
+		string.upper(tostring(data.displayName or "")),
+		UI.fmtDmg(tonumber(data.dmg) or 0, tonumber(data.pellets) or 1),
+		UI.fmtRate(rate)
+	)
+	result.TextColor3 = color
+	local j = Juice.tier(rarity)
+	UI.punch(panel, j.punch, 0.35)
+	UI.punch(result, 1.2 + j.tier * 0.08, 0.4)
+	soundOn(body, Theme.Sounds.reelLand, j.pitch, j.volume)
+	if j.tier >= 4 then
+		stroke.Thickness = S(6)
+		UI.tween(stroke, { Thickness = S(3) }, 0.5)
+	end
+	if j.rays then
+		-- Rays behind the panel, inside the billboard (the screen rays cannot follow a world point).
+		local holder = UI.frame({
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(2, 2),
+			ZIndex = 1,
+			Parent = gui,
+		})
+		for i = 1, j.rayCount do
+			local ray = UI.frame({
+				BackgroundColor3 = color,
+				BackgroundTransparency = 0.25,
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(S(14), S(j.raySize * 0.6)),
+				Rotation = (i - 1) * (360 / j.rayCount),
+				ZIndex = 1,
+				Parent = holder,
+			})
+			UI.tween(ray, { BackgroundTransparency = 1, Size = UDim2.fromOffset(S(4), S(j.raySize)) }, 0.6)
+		end
+		UI.tween(holder, { Rotation = 35 }, 0.6)
+		task.delay(0.65, function()
+			holder:Destroy()
 		end)
 	end
+	if data.by == player.UserId then
+		Juice.burst(rarity, color, nil) -- shake / flash / the Legendary sting for the one who opened it
+	elseif j.tier == 5 then
+		soundOn(body, Theme.Sounds.legendary, 1, 0.7)
+	end
+	task.wait(CrateReel.ejectSec(rarity) - Config.RollDurationSec)
+
+	-- Eject: the panel closes as the gun flies out of the crate.
+	soundOn(body, Theme.Sounds.swap, 0.8, 0.5)
+	local close = UI.tween(
+		panel,
+		{ Size = UDim2.fromOffset(w, 0) },
+		Config.RollEjectSec,
+		Enum.EasingStyle.Quad,
+		Enum.EasingDirection.In
+	)
+	close.Completed:Wait()
+	gui:Destroy()
 end
 
 function CrateReelUI.init()

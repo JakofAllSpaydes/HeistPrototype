@@ -11,9 +11,8 @@ export type Card = {
 	malusPct: number?,
 }
 
--- pct: the stat's running total (elements: the proc chance in percent). power: elements only, the effect
--- multiplier (1 on the first take, + ElementPowerByTier per later take).
-export type TrackerItem = { count: number, pct: number, highestTier: number, everMalus: boolean, power: number? }
+-- pct: the stat's running total (elements: the power in percent, 100 on the first take).
+export type TrackerItem = { count: number, pct: number, highestTier: number, everMalus: boolean }
 export type Tracker = { order: { string }, items: { [string]: TrackerItem }, total: number }
 
 -- mag: rounds left in this gun's mag as the owning client last reported it (nil = full). It follows the gun:
@@ -60,12 +59,9 @@ export type Computed = {
 	cashGain: number, -- CASH GAIN multiplier on kills, bags and job payouts
 	abilityCdr: number, -- 0..cap share taken off ability cooldowns
 	abilityPower: number, -- multiplier on ability damage, heal and placeable HP
-	-- Elements: proc chance per shot (0..100) and effect power (1 = base).
-	incendiaryChance: number,
+	-- Elements: power (0 = not held, 1 = the first take); every shot applies each held one.
 	incendiaryPower: number,
-	cryoChance: number,
 	cryoPower: number,
-	concussiveChance: number,
 	concussivePower: number,
 	spreadMult: number,
 	pierce: number,
@@ -122,7 +118,7 @@ export type Sync = {
 	selfRevives: number, -- used this run
 	reviveAllUsed: number, -- REVIVE EVERYBODY presses this run
 	-- Brief 5 (PlayerState.syncHooks): the dealer break (nil outside it) and the pause.
-	dealer: { endsAt: number, skips: number, needed: number, mySkip: boolean, teleportUsed: boolean, position: Vector3 }?,
+	dealer: { endsAt: number, skips: number, needed: number, mySkip: boolean, position: Vector3 }?,
 	pause: {
 		active: boolean,
 		names: string,

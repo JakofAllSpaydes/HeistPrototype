@@ -333,8 +333,7 @@ function Markers.init()
 					else Lines.hackMarkerHint,
 				data.endsAt or 0,
 				nil,
-				-- The vault job: twice the size, a rotating amber diamond, never a badge.
-				if vault then { scale = Config.VaultBeaconScale, noCompact = true, diamond = true } else nil
+				nil -- the vault job keeps the normal marker (amber); the floor chevrons are its extra guide
 			)
 		elseif name == "Resumed" then
 			local d = tonumber(data and data.duration) or 0

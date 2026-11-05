@@ -1,12 +1,12 @@
 --!strict
--- Element upgrades on enemies (brief 5). Combat rolls each held element once per shot (Elements.roll) and
--- applies the procs to every enemy that shot hits directly (Elements.apply).
---   INCENDIARY: a burn of IncendiaryDps x power for IncendiaryBurnSec, ticking every FieldTickSec like a fire
---     patch, kill cash to the shooter. A new proc refreshes it.
---   CRYO: walk speed down CryoSlowPct x power for CryoSlowSec; CryoStacksToFreeze procs inside that window freeze
---     the enemy for CryoFreezeSec x power (an ice-blue stun: no move, no attack).
+-- Element upgrades on enemies (brief 5, Round 15b). Every held element goes on every shot, applied to every enemy
+-- the shot hits directly; the upgrade's power (1 on the first take, + the card's share after) sets the strength.
+--   INCENDIARY: a burn of IncendiaryDps x power for IncendiaryBurnSec, ticking every FieldTickSec, faster by
+--     IncendiaryTickRatePerPower per extra power; kill cash to the shooter. Each hit refreshes it.
+--   CRYO: walk speed down CryoSlowPct x power (cap CryoSlowCap) for CryoSlowSec; CryoStacksToFreeze hits inside that
+--     window freeze the enemy for CryoFreezeSec x power (an ice-blue stun: no move, no attack).
 --   CONCUSSIVE: a ConcussiveStuds x power slide along the shot (Heavy and the boss ConcussiveHeavyMult of it) and a
---     ConcussiveStunSec interrupt (never on the boss); a white shock ring at the hit.
+--     ConcussiveStunSec interrupt at most every ConcussiveInterruptSec (never on the boss); a white ring at the hit.
 -- The look is the client's (StatusFx.lua) off the Burning / Chilled / Frozen attributes on the enemy model.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -27,10 +27,12 @@ type Status = {
 	burnUntil: number,
 	burnDps: number,
 	burnOwner: Player?,
+	burnRate: number, -- tick-rate multiplier from INCENDIARY power
 	nextBurn: number,
 	chillUntil: number,
 	chillProcs: { number },
 	frozenUntil: number,
+	lastInterrupt: number, -- CONCUSSIVE's interrupt cooldown
 }
 
 export type Procs = { incendiary: boolean, cryo: boolean, concussive: boolean, any: boolean }
@@ -52,10 +54,12 @@ local function statusOf(model: Model): Status
 			burnUntil = 0,
 			burnDps = 0,
 			burnOwner = nil,
+			burnRate = 1,
 			nextBurn = 0,
 			chillUntil = 0,
 			chillProcs = {},
 			frozenUntil = 0,
+			lastInterrupt = -math.huge,
 		}
 		statuses[model] = s
 	end
@@ -90,36 +94,45 @@ function Elements.markBurning(model: Model, owner: Player?, seconds: number)
 	model:SetAttribute("Burning", true)
 end
 
--- One roll per element per shot.
+-- Every held element goes on every shot (Round 15b: no chance roll; upgrades raise the power instead).
 function Elements.roll(st: Types.Computed): Procs
-	local inc = st.incendiaryChance > 0 and math.random() * 100 < st.incendiaryChance
-	local cryo = st.cryoChance > 0 and math.random() * 100 < st.cryoChance
-	local con = st.concussiveChance > 0 and math.random() * 100 < st.concussiveChance
+	local inc = st.incendiaryPower > 0
+	local cryo = st.cryoPower > 0
+	local con = st.concussivePower > 0
 	return { incendiary = inc, cryo = cryo, concussive = con, any = inc or cryo or con }
 end
 
--- A burn: refreshes the timer and keeps the stronger DPS.
-function Elements.burn(model: Model, owner: Player?, dps: number, seconds: number)
+-- Ticks per FieldTickSec for a burn: the owner's mastery rate x the INCENDIARY power's tick rate.
+local function burnInterval(s: Status): number
+	local rate = Elements.burnRateFor(s.burnOwner) * s.burnRate
+	return Config.FieldTickSec / math.max(0.1, rate)
+end
+
+-- A burn: refreshes the timer and keeps the stronger DPS / tick rate. `tickRate` 1 = every FieldTickSec.
+function Elements.burn(model: Model, owner: Player?, dps: number, seconds: number, tickRate: number?)
 	if not Enemy.data(model) then
 		return
 	end
 	local s = statusOf(model)
 	local now = os.clock()
 	if s.burnUntil <= now then
-		s.nextBurn = now + Config.FieldTickSec / math.max(0.1, Elements.burnRateFor(owner))
 		s.burnDps = dps
+		s.burnRate = tickRate or 1
+		s.burnOwner = owner
+		s.nextBurn = now + burnInterval(s)
 	else
 		s.burnDps = math.max(s.burnDps, dps)
+		s.burnRate = math.max(s.burnRate, tickRate or 1)
+		s.burnOwner = owner
 	end
 	s.burnUntil = now + seconds
-	s.burnOwner = owner
 	model:SetAttribute("Burning", true)
 end
 
 local function chill(model: Model, power: number)
 	local s = statusOf(model)
 	local now = os.clock()
-	local slowPct = math.clamp(Config.CryoSlowPct * power, 0, 0.85)
+	local slowPct = math.clamp(Config.CryoSlowPct * power, 0, Config.CryoSlowCap)
 	Enemy.slow(model, 1 - slowPct, Config.CryoSlowSec)
 	s.chillUntil = now + Config.CryoSlowSec
 	model:SetAttribute("Chilled", true)
@@ -164,7 +177,11 @@ local function knockback(model: Model, power: number, dir: Vector3?, at: Vector3
 	if hit then
 		dist = math.max(0, (hit.Position - start).Magnitude - 1.5)
 	end
-	if not d.row.boss then
+	-- The interrupt: at most once per ConcussiveInterruptSec per enemy (every shot lands now), never the boss.
+	local s = statusOf(model)
+	local now = os.clock()
+	if not d.row.boss and now - s.lastInterrupt >= Config.ConcussiveInterruptSec then
+		s.lastInterrupt = now
 		Enemy.stun(model, Config.ConcussiveStunSec)
 	end
 	if dist <= 0.2 then
@@ -194,7 +211,14 @@ function Elements.apply(owner: Player, st: Types.Computed, model: Model, procs: 
 		return
 	end
 	if procs.incendiary then
-		Elements.burn(model, owner, Config.IncendiaryDps * st.incendiaryPower, Config.IncendiaryBurnSec)
+		local p = st.incendiaryPower
+		Elements.burn(
+			model,
+			owner,
+			Config.IncendiaryDps * p,
+			Config.IncendiaryBurnSec,
+			1 + Config.IncendiaryTickRatePerPower * (p - 1)
+		)
 	end
 	if procs.cryo then
 		chill(model, st.cryoPower)
@@ -268,7 +292,7 @@ function Elements.init()
 					s.burnUntil = 0
 					model:SetAttribute("Burning", nil)
 				elseif s.burnDps > 0 and now >= s.nextBurn then
-					s.nextBurn = now + Config.FieldTickSec / math.max(0.1, Elements.burnRateFor(s.burnOwner))
+					s.nextBurn = now + burnInterval(s)
 					burnTick(s)
 				end
 			end

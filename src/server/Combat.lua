@@ -156,6 +156,11 @@ local function bulletHit(
 			if cd then
 				state.cooldowns.deadeye = cd - Config.DeadEyeHeadshotCdr
 				state.dirty = true
+				Remotes.Juice:FireClient(
+					shooter.player,
+					"CooldownTrim",
+					{ id = "deadeye", sec = Config.DeadEyeHeadshotCdr }
+				)
 			end
 		end
 	end

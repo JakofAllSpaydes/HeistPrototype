@@ -122,7 +122,7 @@ local function syncAttributes(crate: Crate)
 	local prompt = crate.prompt
 	if prompt then
 		prompt.Enabled = crate.active and not crate.busy and crate.rolls > 0
-		prompt.ObjectText = string.format("%d ROLL%s LEFT", crate.rolls, if crate.rolls == 1 then "" else "S")
+		prompt.ObjectText = "GUN CRATE"
 	end
 end
 
@@ -176,6 +176,12 @@ local function eject(crate: Crate, entry: Entry, rarity: number, roller: PlayerS
 		dps = Stats.weaponDps(weapon.id, rarity, roller.upgrades, entry.level),
 		lifetime = Config.GroundWeaponLifetime,
 	})
+	-- No pickup mid-arc: the prompt comes on once the gun is on the floor.
+	local prompt = gun:FindFirstChild("Prompt") :: ProximityPrompt?
+	if prompt then
+		prompt.Enabled = false
+	end
+	gun:SetAttribute("Landing", true) -- WeaponRoll.swap and the client tag both respect it
 	local a = math.atan2(spot.Z - crate.landPos.Z, spot.X - crate.landPos.X)
 	local settle = CFrame.new(spot.X, Config.FloorTop + 0.35, spot.Z)
 		* CFrame.Angles(0, a, 0)
@@ -199,25 +205,19 @@ local function eject(crate: Crate, entry: Entry, rarity: number, roller: PlayerS
 	down:Play()
 	down.Completed:Wait()
 	if gun.Parent then
+		gun.CFrame = settle
+		gun:SetAttribute("Landing", nil)
+		if prompt then
+			prompt.Enabled = true
+		end
 		WeaponRoll.alignBeam(gun)
 		WeaponRoll.dustRing(settle.Position, 8, Rarity.color(rarity))
 		World.fireRun("GunLanded", { position = settle.Position, rarity = rarity })
 	end
 end
 
--- F on a crate: one roll, the reel for everyone, then the gun ejects.
-function BigCrate.roll(player: Player, crate: Crate)
-	if not crate.active or crate.busy or crate.rolls <= 0 then
-		return
-	end
-	if not World.inRun() or not World.isInParty(player) then
-		return
-	end
-	local state = PlayerState.get(player)
-	if state.downed or state.bledOut then
-		return
-	end
-	crate.busy = true
+-- One roll of the chain: the reel for everyone, then (after its land) the gun ejects. Yields for the roll.
+local function rollOnce(player: Player, state: PlayerState.State, crate: Crate)
 	crate.rolls -= 1
 	crate.rolled += 1
 	syncAttributes(crate)
@@ -234,20 +234,23 @@ function BigCrate.roll(player: Player, crate: Crate)
 	else
 		rarity, note = WeaponRoll.rollRarity(state, wave, weapon.rarityWeights, floor)
 	end
-	-- Filler icons for the reel: other guns from the pool at random rarities, the landed gun last.
-	local pool = partyPool()
-	local reel = {}
-	for i = 1, math.max(1, Config.CrateReelSteps) - 1 do
-		local other = pool[math.random(#pool)].weapon
-		reel[i] = { name = other.displayName, rarity = math.random(1, 5) }
+	-- Filler rarities for the row of icons; the landed gun sits at CrateReel.Land.
+	local fillers = {}
+	for i = 1, CrateReel.Cells do
+		fillers[i] = if i == CrateReel.Land then rarity else math.random(1, 5)
 	end
-	table.insert(reel, { name = weapon.displayName, rarity = rarity })
 	World.fireRun("CrateRoll", {
 		crateId = crate.id,
 		by = player.UserId,
-		reel = reel,
+		fillers = fillers,
 		weaponId = weapon.id,
+		displayName = weapon.displayName,
 		rarity = rarity,
+		rarityName = Rarity.name(rarity),
+		dmg = math.round(Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state), entry.level)),
+		pellets = weapon.pellets,
+		levelRateMult = Weapons.levelRateMult(entry.level),
+		left = crate.rolls,
 		position = crate.landPos,
 	})
 	Log.event(
@@ -262,23 +265,43 @@ function BigCrate.roll(player: Player, crate: Crate)
 		crate.rolls
 	)
 
-	-- The lid pops up a little while the reel spins and settles back after the eject.
+	Pause.wait(CrateReel.ejectSec(rarity))
+	if crate.model.Parent then
+		task.spawn(eject, crate, entry, rarity, state)
+	end
+	Pause.wait(Config.RollEjectSec + Config.CrateRollGapSec)
+end
+
+-- F on a crate: every roll it holds plays back to back (pity and the bracket floor for whoever pressed it), then
+-- the crate closes.
+function BigCrate.open(player: Player, crate: Crate)
+	if not crate.active or crate.busy or crate.rolls <= 0 then
+		return
+	end
+	if not World.inRun() or not World.isInParty(player) then
+		return
+	end
+	local state = PlayerState.get(player)
+	if state.downed or state.bledOut then
+		return
+	end
+	crate.busy = true
+	syncAttributes(crate)
+	-- The lid pops up for the whole chain and settles back after the last eject.
 	TweenService:Create(crate.lid, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		CFrame = crate.lidClosed * CFrame.new(0, 0.6, 0) * CFrame.Angles(math.rad(-8), 0, 0),
 	}):Play()
-	Pause.delay(CrateReel.ejectSec(), function()
-		if not crate.model.Parent then
-			return
+	task.spawn(function()
+		while crate.rolls > 0 and crate.model.Parent do
+			rollOnce(player, state, crate)
 		end
-		TweenService:Create(crate.lid, TweenInfo.new(0.25), { CFrame = crate.lidClosed }):Play()
-		task.spawn(eject, crate, entry, rarity, state)
+		if crate.model.Parent then
+			TweenService:Create(crate.lid, TweenInfo.new(0.25), { CFrame = crate.lidClosed }):Play()
+		end
 		crate.busy = false
-		syncAttributes(crate)
-		if crate.rolls <= 0 or crate.expired then
-			task.delay(0.4, function()
-				BigCrate.finish(crate)
-			end)
-		end
+		task.delay(0.3, function()
+			BigCrate.finish(crate)
+		end)
 	end)
 end
 
@@ -388,7 +411,7 @@ function BigCrate.drop(at: Vector3?, opts: DropOpts?)
 		prompt.RequiresLineOfSight = false
 		prompt.Parent = body
 		prompt.Triggered:Connect(function(player)
-			BigCrate.roll(player, crate)
+			BigCrate.open(player, crate)
 		end)
 		crate.prompt = prompt
 		model:SetAttribute("Landed", true)

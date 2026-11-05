@@ -158,26 +158,34 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				end
 			end
 			local activeUntil = a.activeUntil or 0
+			local remaining = (a.cooldownEndsAt or 0) - now
+			local usable = (tonumber(a.charges) or 1) > 0
 			if activeUntil > now then
-				-- Stim running: gold pulse, show seconds left.
+				-- A buff / window running: gold pulse and its seconds, with the cooldown (running since the
+				-- use) already draining underneath.
 				stimPulse += dt * 8
 				t.stroke.Color = Theme.Colors.gold
 				t.stroke.Thickness = S(2) + S(2) * (0.5 + 0.5 * math.sin(stimPulse))
-				cd.sweep.Visible = false
+				cd.sweep.Visible = remaining > 0
+				if remaining > 0 then
+					cd.sweep.Size = UDim2.fromScale(1, math.clamp(remaining / math.max(a.cooldown or 1, 0.01), 0, 1))
+					cd.sweep.BackgroundTransparency = 0.7
+				end
 				cd.label.Visible = true
 				cd.label.TextColor3 = Theme.Colors.gold
 				cd.label.Text = string.format("%ds", math.ceil(activeUntil - now))
 				continue
 			end
-			local remaining = (a.cooldownEndsAt or 0) - now
 			if remaining > 0 then
 				local frac = math.clamp(remaining / math.max(a.cooldown or 1, 0.01), 0, 1)
 				cd.sweep.Visible = true
 				cd.sweep.Size = UDim2.fromScale(1, frac)
+				-- A charge still in hand: the recharge reads lighter and the tile stays live.
+				cd.sweep.BackgroundTransparency = if usable then 0.7 else 0.45
 				cd.label.Visible = true
 				cd.label.TextColor3 = Theme.Colors.text
 				cd.label.Text = string.format("%ds", math.ceil(remaining))
-				t.stroke.Color = Theme.Colors.grey
+				t.stroke.Color = if usable then Theme.Colors.gold else Theme.Colors.grey
 				t.stroke.Thickness = S(2)
 			else
 				if cd.sweep.Visible then
@@ -209,6 +217,28 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			if t then
 				t.shake()
 				UI.sound(Theme.Sounds.deny, 1, 0.35)
+			end
+		elseif name == "CooldownTrim" then
+			-- A mastery trimmed this cooldown (BACKDRAFT, DEAD EYE OVERDRIVE): a small "-0.2s" off the tile.
+			local t = tiles[data.id]
+			if t then
+				UI.punch(t.button, 1.08, 0.15)
+				local f = UI.text({
+					Text = string.format("-%ss", UI.fmtNum(tonumber(data.sec) or 0)),
+					Font = Theme.Fonts.display,
+					TextSize = S(14),
+					TextColor3 = Theme.Colors.cash,
+					AnchorPoint = Vector2.new(0.5, 1),
+					Position = UDim2.new(0.5, 0, 0, 0),
+					Size = UDim2.fromOffset(S(60), S(18)),
+					ZIndex = 8,
+					Parent = t.button,
+				})
+				UI.stroke(f, Theme.Colors.black, S(1.5), 0.3)
+				UI.tween(f, { Position = UDim2.new(0.5, 0, 0, -S(18)), TextTransparency = 1 }, 0.6, nil, nil, 0.2)
+				task.delay(0.85, function()
+					f:Destroy()
+				end)
 			end
 		elseif name == "StimStart" then
 			-- Any self buff (stim, stim shot, dead eye): the tile that fired it pops.

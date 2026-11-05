@@ -22,10 +22,10 @@ local function points(upgrades: { [string]: Types.TrackerItem }, id: string): nu
 	return if u then u.pct else 0
 end
 
--- An element's effect power (1 on the first take).
+-- An element's power: its running total / 100 (100% on the first take), 0 when not held.
 local function power(upgrades: { [string]: Types.TrackerItem }, id: string): number
 	local u = upgrades[id]
-	return if u and u.power then u.power else 1
+	return if u then math.max(0, u.pct / 100) else 0
 end
 
 -- Multiplier for a multiplicative stat, floored so a pile of maluses never hits zero or flips sign.
@@ -78,11 +78,8 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		cashGain = mult(upgrades, "CashGain"),
 		abilityCdr = math.clamp(points(upgrades, "AbilityCooldown"), -100, Config.AbilityCooldownCap) / 100,
 		abilityPower = mult(upgrades, "AbilityPower"),
-		incendiaryChance = math.max(0, points(upgrades, "Incendiary")),
 		incendiaryPower = power(upgrades, "Incendiary"),
-		cryoChance = math.max(0, points(upgrades, "Cryo")),
 		cryoPower = power(upgrades, "Cryo"),
-		concussiveChance = math.max(0, points(upgrades, "Concussive")),
 		concussivePower = power(upgrades, "Concussive"),
 		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3),
 		pierce = math.max(0, math.floor(points(upgrades, "Pierce")))

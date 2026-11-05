@@ -291,6 +291,12 @@ end
 ------------------------------------------------------------------ Structures
 local function register(s: Structure)
 	structures[s.hitPart] = s
+	-- Players walk through placeables; enemies are blocked by them.
+	for _, p in s.model:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.CollisionGroup = "Structure"
+		end
+	end
 	if s.attackable then
 		s.hitPart:SetAttribute("StructureHP", s.hp)
 		s.hitPart:SetAttribute("StructureMaxHP", s.maxHP)
@@ -1126,42 +1132,14 @@ local function turretTick(s: Structure, t: number)
 end
 
 ------------------------------------------------------------------ INITIATE: Frag (brief 5)
--- Thrown like the flashbang; lands, blinks for FragFuseSec, then FragDamage x ABILITY POWER to every enemy in
--- FragRadius, thrown out of the blast.
+-- Thrown like the flashbang; goes off the moment it lands: FragDamage x ABILITY POWER to every enemy in FragRadius,
+-- thrown out of the blast.
 local function throwFrag(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "frag")
 	local dmg = grown("frag", "FragDamage", Config.FragDamage, lv) * PlayerState.abilityPower(state)
 	local radius = Config.FragRadius
 	throw(char, Color3.fromRGB(60, 70, 50), false, function(pos: Vector3)
-		local g = part({
-			Name = "Frag",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(0.8, 0.8, 0.8),
-			CFrame = CFrame.new(pos.X, Config.FloorTop + 0.4, pos.Z),
-			CanCollide = false,
-			CanQuery = false,
-			Color = Color3.fromRGB(60, 70, 50),
-			Material = Enum.Material.Metal,
-			Parent = folder,
-		})
-		local light = Instance.new("PointLight")
-		light.Color = COLOR.red
-		light.Range = 6
-		light.Brightness = 3
-		light.Parent = g
-		World.fireRun("FragFuse", { position = pos, radius = radius, fuse = Config.FragFuseSec })
-		task.spawn(function()
-			local on = false
-			while g.Parent do
-				on = not on
-				g.Color = if on then COLOR.red else Color3.fromRGB(60, 70, 50)
-				g.Material = if on then Enum.Material.Neon else Enum.Material.Metal
-				light.Enabled = on
-				task.wait(0.12)
-			end
-		end)
-		task.delay(Config.FragFuseSec, function()
-			g:Destroy()
+		do
 			local victims = Enemy.within(pos, radius)
 			World.fireRun("Blast", { position = pos, radius = radius, color = COLOR.fire, shake = 0.35, pitch = 0.7 })
 			local kills = 0
@@ -1186,7 +1164,7 @@ local function throwFrag(player: Player, state: PlayerState.State, char: Model, 
 				#victims,
 				kills
 			)
-		end)
+		end
 	end, aim)
 end
 

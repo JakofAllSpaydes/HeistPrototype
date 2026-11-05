@@ -35,7 +35,6 @@ type Stock = { cards: { Types.Card }, sold: { boolean }, rerolls: number }
 local stall: Model? = nil
 local stock: { [Player]: Stock } = {}
 local skipVotes: { [number]: boolean } = {}
-local teleported: { [number]: boolean } = {}
 local endsAt = 0
 local skipped = false
 local active = false
@@ -55,24 +54,35 @@ local function tableTop(): number
 	return Config.FloorTop + 3
 end
 
--- Stand i (1..DealerStock) on the table, left to right.
-local function standPosition(i: number): Vector3
+-- The stall is a half circle of DealerTableAngles tables round the DEALER (who stands at the origin), opening
+-- toward the arena (-Z). Each table is a CFrame on the arc facing the DEALER; its RightVector runs along it.
+local function tableCFrame(t: number): CFrame
 	local o = origin()
-	local n = Config.DealerStock
-	local x = (i - (n + 1) / 2) * Config.DealerStandSpacing
-	return Vector3.new(o.X + x, tableTop() + 1.3, o.Z)
+	local a = math.rad(Config.DealerTableAngles[t] or 0)
+	local r = Config.DealerArcRadius
+	local p = Vector3.new(o.X + math.sin(a) * r, tableTop() - 0.2, o.Z - math.cos(a) * r)
+	return CFrame.lookAt(p, Vector3.new(o.X, p.Y, o.Z))
+end
+
+-- Stand i (1..DealerStock): DealerPerTable per table, left to right along each.
+local function standPosition(i: number): Vector3
+	local per = math.max(1, Config.DealerPerTable)
+	local t = math.floor((i - 1) / per) + 1
+	local k = (i - 1) % per + 1
+	local onTable = math.min(per, Config.DealerStock - (t - 1) * per)
+	local cf = tableCFrame(t)
+	local offset = (k - (onTable + 1) / 2) * Config.DealerStandSpacing
+	return cf.Position + cf.RightVector * offset + Vector3.new(0, 1.6, 0)
 end
 
 local PROPS = { "crate", "heal", "reroll" }
+-- The props stand on the floor just past the arc's ends.
 local function propPosition(id: string): Vector3
 	local o = origin()
-	local half = (Config.DealerStock + 1) / 2 * Config.DealerStandSpacing
-	if id == "crate" then
-		return Vector3.new(o.X - half - 2.5, Config.FloorTop + 1.2, o.Z)
-	elseif id == "heal" then
-		return Vector3.new(o.X + half + 2.5, Config.FloorTop + 1.6, o.Z - 1.4)
-	end
-	return Vector3.new(o.X + half + 2.5, Config.FloorTop + 1.6, o.Z + 1.4)
+	local deg = if id == "crate" then -100 elseif id == "heal" then 100 else 122
+	local a = math.rad(deg)
+	local r = Config.DealerArcRadius
+	return Vector3.new(o.X + math.sin(a) * r, Config.FloorTop + 1.2, o.Z - math.cos(a) * r)
 end
 
 local function part(props: { [string]: any }): Part
@@ -92,40 +102,33 @@ local function buildStall(): Model
 	local o = origin()
 	local model = Instance.new("Model")
 	model.Name = "DealerStall"
-	local width = (Config.DealerStock + 1) * Config.DealerStandSpacing
-	part({
-		Name = "Table",
-		Size = Vector3.new(width, 0.4, 3),
-		CFrame = CFrame.new(o.X, tableTop() - 0.2, o.Z),
-		Color = WOOD,
-		Material = Enum.Material.WoodPlanks,
-		Parent = model,
-	})
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			part({
-				Name = "Leg",
-				Size = Vector3.new(0.4, 2.6, 0.4),
-				CFrame = CFrame.new(o.X + sx * (width / 2 - 0.4), Config.FloorTop + 1.3, o.Z + sz * 1.2),
-				Color = DARK,
-				Material = Enum.Material.Metal,
-				Parent = model,
-			})
-		end
-	end
-	-- Stands: thin upright plates the client hangs each player's own card on.
-	for i = 1, Config.DealerStock do
-		local p = standPosition(i)
+	-- Three tables on the arc; the cards over them are each player's own UI (DealerUI), no stand parts.
+	local per = math.max(1, Config.DealerPerTable)
+	local width = per * Config.DealerStandSpacing + 0.8
+	for t = 1, #Config.DealerTableAngles do
+		local cf = tableCFrame(t)
 		part({
-			Name = "Stand" .. i,
-			Size = Vector3.new(0.15, 2.2, 1.5),
-			CFrame = CFrame.new(p) * CFrame.Angles(0, math.rad(90), 0),
-			Color = DARK,
-			Material = Enum.Material.SmoothPlastic,
+			Name = "Table",
+			Size = Vector3.new(width, 0.4, 2.4),
+			CFrame = cf,
+			Color = WOOD,
+			Material = Enum.Material.WoodPlanks,
 			Parent = model,
 		})
+		for _, sx in { -1, 1 } do
+			for _, sz in { -1, 1 } do
+				part({
+					Name = "Leg",
+					Size = Vector3.new(0.4, 2.6, 0.4),
+					CFrame = cf * CFrame.new(sx * (width / 2 - 0.4), -1.5, sz * 0.9),
+					Color = DARK,
+					Material = Enum.Material.Metal,
+					Parent = model,
+				})
+			end
+		end
 	end
-	-- Props: an ammo crate, a medkit and a dice cup on a side box.
+	-- Props: an ammo crate, a medkit and a dice cup on side boxes past the arc's ends.
 	local cp = propPosition("crate")
 	part({
 		Name = "AmmoCrate",
@@ -145,14 +148,16 @@ local function buildStall(): Model
 		Parent = model,
 	})
 	local side = propPosition("heal")
-	part({
-		Name = "SideBox",
-		Size = Vector3.new(2.4, 1.2, 4.4),
-		CFrame = CFrame.new(side.X, Config.FloorTop + 0.6, o.Z),
-		Color = WOOD,
-		Material = Enum.Material.WoodPlanks,
-		Parent = model,
-	})
+	for _, p in { side, propPosition("reroll") } do
+		part({
+			Name = "SideBox",
+			Size = Vector3.new(2, 1.2, 2),
+			CFrame = CFrame.new(p.X, Config.FloorTop + 0.6, p.Z),
+			Color = WOOD,
+			Material = Enum.Material.WoodPlanks,
+			Parent = model,
+		})
+	end
 	part({
 		Name = "Medkit",
 		Size = Vector3.new(1.4, 0.8, 1),
@@ -180,12 +185,12 @@ local function buildStall(): Model
 		Material = Enum.Material.Fabric,
 		Parent = model,
 	})
-	-- Dressing: crates behind, a lamp.
-	for _, x in { -width / 2 + 1.5, width / 2 - 1.5 } do
+	-- Dressing: crates behind the DEALER, a lamp.
+	for _, x in { -3, 3 } do
 		part({
 			Name = "Crate",
 			Size = Vector3.new(2, 2, 2),
-			CFrame = CFrame.new(o.X + x, Config.FloorTop + 1, o.Z + 3.6),
+			CFrame = CFrame.new(o.X + x, Config.FloorTop + 1, o.Z + 2.5),
 			Color = WOOD,
 			Material = Enum.Material.WoodPlanks,
 			Parent = model,
@@ -194,7 +199,7 @@ local function buildStall(): Model
 	part({
 		Name = "LampPost",
 		Size = Vector3.new(0.3, 6, 0.3),
-		CFrame = CFrame.new(o.X - width / 4, Config.FloorTop + 3, o.Z + 2.8),
+		CFrame = CFrame.new(o.X - 1.8, Config.FloorTop + 3, o.Z + 2),
 		Color = DARK,
 		Material = Enum.Material.Metal,
 		Parent = model,
@@ -203,7 +208,7 @@ local function buildStall(): Model
 		Name = "Lamp",
 		Shape = Enum.PartType.Ball,
 		Size = Vector3.new(0.9, 0.9, 0.9),
-		CFrame = CFrame.new(o.X - width / 4, Config.FloorTop + 6.2, o.Z + 2.8),
+		CFrame = CFrame.new(o.X - 1.8, Config.FloorTop + 6.2, o.Z + 2),
 		Color = AMBER,
 		Material = Enum.Material.Neon,
 		CanCollide = false,
@@ -214,8 +219,8 @@ local function buildStall(): Model
 	light.Range = 22
 	light.Brightness = 2
 	light.Parent = bulb
-	-- The DEALER: a Part rig behind the table that idles.
-	local npcPos = Vector3.new(o.X, Config.FloorTop, o.Z + 2.4)
+	-- The DEALER: a Part rig in the middle of the half circle that idles.
+	local npcPos = Vector3.new(o.X, Config.FloorTop, o.Z)
 	local body = part({
 		Name = "DealerBody",
 		Size = Vector3.new(2, 3, 1.2),
@@ -421,7 +426,7 @@ local function buy(player: Player, slot: any)
 		end
 		if slot == "crate" then
 			local o = origin()
-			BigCrate.drop(Vector3.new(propPosition("crate").X, o.Y, o.Z - 7))
+			BigCrate.drop(Vector3.new(o.X, o.Y, o.Z - Config.DealerArcRadius - 10)) -- in front of the half circle
 		elseif slot == "heal" then
 			for _, p in World.runAudience() do
 				local ps = PlayerState.get(p)
@@ -471,7 +476,8 @@ local function onAction(player: Player, action: any, arg: any)
 			skipped = true
 		end
 	elseif action == "teleport" then
-		if teleported[player.UserId] or Pause.active() then
+		-- As often as you like during the break.
+		if Pause.active() then
 			return
 		end
 		local state = PlayerState.get(player)
@@ -479,11 +485,13 @@ local function onAction(player: Player, action: any, arg: any)
 		if not char or state.downed or state.bledOut then
 			return
 		end
-		teleported[player.UserId] = true
 		local o = origin()
-		local spot = Vector3.new(o.X + (math.random() - 0.5) * 6, o.Y + 3, o.Z - Config.DealerTeleportDistance)
+		local spot = Vector3.new(
+			o.X + (math.random() - 0.5) * 6,
+			o.Y + 3,
+			o.Z - Config.DealerArcRadius - Config.DealerTeleportDistance
+		)
 		char:PivotTo(CFrame.lookAt(spot, Vector3.new(o.X, spot.Y, o.Z)))
-		World.dealerDirty = true
 		Remotes.Juice:FireClient(player, "DealerTeleported", { position = spot })
 		Log.event("Dealer", "%s teleported to the dealer", player.Name)
 	end
@@ -499,7 +507,6 @@ function Dealer.view(player: Player): any
 		skips = skipCount(),
 		needed = skipNeeded(),
 		mySkip = skipVotes[player.UserId] == true,
-		teleportUsed = teleported[player.UserId] == true,
 		position = origin(),
 	}
 end
@@ -514,7 +521,6 @@ function Dealer.run(wave: number)
 	skipped = false
 	Dealer.requested = false
 	table.clear(skipVotes)
-	table.clear(teleported)
 	table.clear(stock)
 	endsAt = Workspace:GetServerTimeNow() + Config.DealerSec
 	World.state = "Dealer"

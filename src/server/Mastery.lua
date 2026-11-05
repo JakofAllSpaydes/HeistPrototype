@@ -186,9 +186,10 @@ function Mastery.onKill(model: Model, attacker: Player?)
 			local os_ = PlayerState.get(owner)
 			if PlayerState.passive(os_, "TORCH", 3) then
 				local cd = os_.cooldowns.molotov
-				if cd then
+				if cd and cd > Workspace:GetServerTimeNow() then
 					os_.cooldowns.molotov = math.max(Workspace:GetServerTimeNow(), cd - Config.BackdraftCdr)
 					os_.dirty = true
+					Remotes.Juice:FireClient(owner, "CooldownTrim", { id = "molotov", sec = Config.BackdraftCdr })
 				end
 			end
 		end

@@ -43,6 +43,8 @@ export type TileOpts = {
 	glyph: string?, -- for icon = "class": the letter in the circle
 	size: number, -- tile width; height = size x 1.18
 	order: number,
+	nameTag: string?, -- gold text after the name in the top bar ("LV 2" on an owned weapon)
+	noPill: boolean?, -- no bottom pill (the bottom carries the mastery bar); `tag` then sits bottom-center
 }
 
 function MetaUI.fmtGold(n: number): string
@@ -226,13 +228,14 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 		if o.selected then 0 else 0.4
 	)
 	UI.text({
-		Text = o.name,
+		Text = if o.nameTag then string.format('%s  <font color="#E8B64C">%s</font>', o.name, o.nameTag) else o.name,
+		RichText = o.nameTag ~= nil,
 		Font = Theme.Fonts.body,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.white,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.fromOffset(0, S(4)),
-		Size = UDim2.new(1, 0, 0, S(16)),
+		Position = UDim2.fromOffset(S(4), S(4)),
+		Size = UDim2.new(1, -S(8), 0, S(16)),
 		Parent = b,
 	})
 	local ic = MetaUI.icon(o.icon, b, math.floor(w * 0.78), o.iconColor or Theme.Colors.white, o.glyph)
@@ -245,15 +248,23 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 			end
 		end
 	end
-	local pill, label = UI.pill(b, o.pill, Theme.Colors.bg, o.pillColor or Theme.Colors.cash, S(20), S(11))
-	pill.AnchorPoint = Vector2.new(0.5, 1)
-	pill.Position = UDim2.new(0.5, 0, 1, -S(6))
-	pill.BackgroundTransparency = 0.15
-	label.Font = Theme.Fonts.display
+	if not o.noPill then
+		local pill, label = UI.pill(b, o.pill, Theme.Colors.bg, o.pillColor or Theme.Colors.cash, S(20), S(11))
+		pill.AnchorPoint = Vector2.new(0.5, 1)
+		pill.Position = UDim2.new(0.5, 0, 1, -S(6))
+		pill.BackgroundTransparency = 0.15
+		label.Font = Theme.Fonts.display
+	end
 	if o.tag then
 		local t, tl = UI.pill(b, o.tag, o.tagColor or Theme.Colors.gold, Theme.Colors.bg, S(14), S(9))
-		t.AnchorPoint = Vector2.new(1, 0)
-		t.Position = UDim2.new(1, -S(4), 0, S(4))
+		if o.noPill then
+			-- The top bar carries the name and level: the tag sits where the pill was.
+			t.AnchorPoint = Vector2.new(0.5, 1)
+			t.Position = UDim2.new(0.5, 0, 1, -S(12))
+		else
+			t.AnchorPoint = Vector2.new(1, 0)
+			t.Position = UDim2.new(1, -S(4), 0, S(4))
+		end
 		t.ZIndex = 3
 		tl.ZIndex = 3
 		tl.Font = Theme.Fonts.display
