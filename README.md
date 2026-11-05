@@ -1052,6 +1052,11 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   Ammo's slow; any other enemy freezes at most once per `CryoFreezeCooldownSec` (3s). Impact Ammo already never
   interrupts the boss.
 
+- **Round 15h (4 Nov, feedback)** — the vault's Safe dial is more lenient: a wider hot range (`SafeHotRange` 6,
+  `SafeWarmRange` 18), a shorter hold (`SafeLockSec` 0.3) that survives a brief wobble (`SafeHotGraceSec` 0.2), backing up
+  near the number never reads WRONG WAY and elsewhere only after `SafeWrongWayDeg` 40, and the vault caps the dial at
+  tier 2 (`VaultSafeTierMax`, three numbers).
+
 ## Open design notes (not built)
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;

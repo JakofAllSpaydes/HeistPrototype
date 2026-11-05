@@ -201,9 +201,9 @@ function VaultJob.front(): Vector3
 	return if v then v.front else Vector3.zero
 end
 
--- Safe dial tier from the wave bracket (1..3).
+-- Safe dial tier from the wave bracket, capped at VaultSafeTierMax (so a late vault is never the 4-number dial).
 local function tierFor(wave: number): number
-	return math.clamp(Rarity.bracketIndex(wave), 1, 3)
+	return math.clamp(Rarity.bracketIndex(wave), 1, Config.VaultSafeTierMax)
 end
 
 -- The job was drawn: blue frame, a CRACK prompt on the door that opens the Safe dial. `onCracked` is

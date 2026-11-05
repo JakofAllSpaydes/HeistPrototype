@@ -161,6 +161,7 @@ function Safe.open(host: Frame.Host)
 	local direction = 1 -- +1 clockwise (rot increasing), -1 counter-clockwise; alternates per number
 	local target = 0
 	local hotSince = -1
+	local coldSince = -1 -- left the hot range at this clock (the grace before the hold resets)
 	local wrongWay = 0 -- degrees turned against the required direction since the last right-way turn
 	local lastDist = 100
 	local draining = false
@@ -175,6 +176,7 @@ function Safe.open(host: Frame.Host)
 		-- At least a fifth of a turn away so there is a sweep, never under the pointer already.
 		target = (math.floor(v) + math.random(20, 80)) % 100
 		hotSince = -1
+		coldSince = -1
 		wrongWay = 0
 		lastDist = circDist(value(), target)
 	end
@@ -214,7 +216,9 @@ function Safe.open(host: Frame.Host)
 		lastAngle = a
 		rot += delta
 		dial.Rotation = rot
-		if delta * direction < 0 then
+		-- Backing up near the number (correcting an overshoot) never counts as the wrong way.
+		local near = circDist(value(), target) <= warm
+		if delta * direction < 0 and not near then
 			wrongWay += math.abs(delta)
 		else
 			wrongWay = math.max(0, wrongWay - math.abs(delta) * 2)
@@ -229,7 +233,7 @@ function Safe.open(host: Frame.Host)
 		local v = value()
 		readout.Text = tostring(math.floor(v + 0.5) % 100)
 		local dist = circDist(v, target)
-		local againstDir = wrongWay > 15
+		local againstDir = wrongWay > Config.SafeWrongWayDeg
 		local closeness = if againstDir then 0 else math.clamp(1 - dist / warm, 0, 1)
 		local isHot = not againstDir and dist <= hot
 		local isWarm = not againstDir and dist <= warm
@@ -268,8 +272,9 @@ function Safe.open(host: Frame.Host)
 			dial.Position = UDim2.fromOffset(cx, cy)
 		end
 
-		-- Hold in the hot range to lock.
+		-- Hold in the hot range to lock; a wobble out of it shorter than SafeHotGraceSec keeps the hold going.
 		if isHot then
+			coldSince = -1
 			if hotSince < 0 then
 				hotSince = os.clock()
 			elseif os.clock() - hotSince >= Config.SafeLockSec then
@@ -296,8 +301,13 @@ function Safe.open(host: Frame.Host)
 				)
 				paintDirection()
 			end
-		else
-			hotSince = -1
+		elseif hotSince >= 0 then
+			if coldSince < 0 then
+				coldSince = os.clock()
+			elseif os.clock() - coldSince > Config.SafeHotGraceSec then
+				hotSince = -1
+				coldSince = -1
+			end
 		end
 	end))
 end
