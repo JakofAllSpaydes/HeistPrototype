@@ -18,6 +18,7 @@ local BigCrate = require(script.Parent.BigCrate)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Minigames = require(script.Parent.Minigames)
+local Heat = require(script.Parent.Heat)
 
 type Job = {
 	id: number,
@@ -351,9 +352,9 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 		if Config.SideJobRewardCrate then
 			BigCrate.drop(j.position)
 		end
-		World.addHeat(Config.HeatSideJobDone, "side job done")
+		Heat.onJobDone() -- lands as +HeatJob at this wave's end
 	elseif not silent then
-		World.addHeat(Config.HeatSideJobFail, "side job failed")
+		Heat.onJobFailed()
 	end
 	if silent then
 		-- Run ended or debug reset: the card, pill and marker just go away on every client.

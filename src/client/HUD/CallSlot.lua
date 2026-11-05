@@ -89,17 +89,10 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 		end)
 	end
 
-	-- System notices that belong in the center: heat changes and skip votes (wave and crate notices come
-	-- from their owners).
+	-- System notices that belong in the center: skip votes (wave and crate notices come from their owners;
+	-- heat changes float beside the stars in the wave bar).
 	function component.onJuice(name: string, data: any)
-		if name == "HeatChanged" then
-			local up = (data.delta or 0) > 0
-			component.toast(
-				if up then "HEAT UP" else "HEAT DOWN",
-				if up then Theme.Colors.gold else Theme.Colors.red,
-				1
-			)
-		elseif name == "SkipVote" then
+		if name == "SkipVote" then
 			local me = data.userId == Players.LocalPlayer.UserId
 			local who = if me then "YOU" else string.upper(tostring(data.name))
 			if data.auto then

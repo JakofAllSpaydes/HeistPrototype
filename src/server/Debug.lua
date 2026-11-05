@@ -23,6 +23,7 @@ local Minigames = require(script.Parent.Minigames)
 local Downed = require(script.Parent.Downed)
 local Profiles = require(script.Parent.Profiles)
 local Queue = require(script.Parent.Queue)
+local Heat = require(script.Parent.Heat)
 
 local Debug = {}
 
@@ -154,6 +155,16 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	MinigameStats = function(_player, _state, _args)
 		Minigames.printStats()
+		Heat.printStats()
+	end,
+	SetHeat = function(player, _state, args)
+		local n = tonumber(args)
+		if n then
+			Heat.set(n)
+			toast(player, string.format("HEAT %.1f", World.heat))
+		else
+			toast(player, "SET HEAT: enter a number")
+		end
 	end,
 	DownMe = function(player, _state, _args)
 		Downed.down(player)

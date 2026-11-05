@@ -33,6 +33,7 @@ local Minigames = require(script.Parent.Minigames)
 local Downed = require(script.Parent.Downed)
 local RunStart = require(script.Parent.RunStart)
 local RunEnd = require(script.Parent.RunEnd)
+local Heat = require(script.Parent.Heat)
 
 Profiles.init()
 PlayerState.init()
@@ -40,6 +41,12 @@ Downed.init()
 SkipVote.init()
 Abilities.init()
 Enemy.init()
+Enemy.onSpawn = function(d)
+	Heat.onSpawn(d.wave)
+end
+Enemy.onDeath = function(d)
+	Heat.onEnemyDead(d.wave)
+end
 Combat.init()
 UpgradeShop.init()
 WeaponRoll.init()
@@ -85,11 +92,13 @@ local function runWaves()
 		SkipVote.reset()
 		setState("Wave")
 		World.fireRun("WaveStart", { wave = wave })
+		Heat.waveStarted(wave, Spawner.budgetFor(wave))
 		Log.event(
 			"Wave",
-			"Wave %d start, budget %d, server time %.1f",
+			"Wave %d start, budget %d, par %.1fs, server time %.1f",
 			wave,
 			Spawner.budgetFor(wave),
+			Heat.parFor(wave, Spawner.budgetFor(wave)),
 			Workspace:GetServerTimeNow()
 		)
 		BigCrate.onWaveStart(wave)
@@ -107,7 +116,6 @@ local function runWaves()
 			Log.event("Wave", "Wave %d clear", wave)
 		end
 		if not World.skipRequested then
-			World.addHeat(Config.HeatWaveClear, "wave " .. wave .. " clear")
 			World.addWaveGold(wave)
 		end
 		if World.pendingWave then
@@ -165,8 +173,7 @@ task.spawn(function()
 
 		-- Run start: fresh run state for the party, then the drive-in sequence (IntroSec); WAVE 1 follows.
 		World.wave = 1
-		World.heat = Config.HeatStart
-		World.heatDirty = true
+		Heat.reset()
 		Hub.beginRun()
 		setState("Intro")
 		Log.event(
@@ -194,6 +201,7 @@ task.spawn(function()
 				timeScale = Config.RunOverTimeScale,
 				reviveWindowSec = window,
 			})
+			Heat.cancelAll() -- the wave in progress is not scored
 			Enemy.freezeAll(Config.RunOverSlowSec)
 			Log.event("Run", "Run %d over at wave %d (%.1fs to revive everybody)", World.runId, World.wave, window)
 			local t0 = os.clock()

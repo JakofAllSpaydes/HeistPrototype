@@ -422,12 +422,23 @@ local Config = {
 	OilDrumBurnRadius = 7,
 	OilDrumBurnSec = 6,
 
-	------------------------------------------------------------------ Heat (stars, 0..5)
-	HeatStart = 2.5,
-	HeatWaveClear = 0.5, -- per wave cleared
-	HeatSideJobDone = 1, -- per Side Job completed
-	HeatSideJobFail = -0.5,
-	HeatDowned = -0.5, -- per time health hits 0
+	------------------------------------------------------------------ Heat as pace (GDD_7; Heat.lua; stars 0..5 in half steps, no decay)
+	HeatStart = 0,
+	-- Par per wave: ParTimeBase + ParTimePerEnemy x waveBudget (boss waves add BossParBonusSec). Clear time runs
+	-- from the WAVE N banner to the death of the last enemy tagged with that wave, so AUTO SKIP overlap counts.
+	ParTimeBase = 15,
+	ParTimePerEnemy = 1.5, -- placeholder: set from the clear / par ratios the Stats button prints
+	FastClearPct = 0.6, -- clear <= this x par: HeatFastClear
+	SlowClearMult = 1.5, -- clear > this x par: HeatSlowClear (between par and this: nothing)
+	HeatFastClear = 1.0,
+	HeatParClear = 0.5, -- clear <= par
+	HeatSlowClear = -0.5,
+	HeatAutoSkip = 0.5, -- AUTO SKIP active during the wave
+	HeatJob = 0.5, -- per side job completed in the wave
+	HeatJobFail = -0.5, -- per side job that expired in the wave
+	HeatDowned = -0.5, -- per player downed in the wave...
+	HeatDownedMax = -1.0, -- ...capped here per wave
+	HeatBossKill = 1.0, -- on top, the moment the boss dies
 	-- Effects at S stars, continuous: cash x (1 + HeatCashPerStar x S), elite chance HeatElitePerStar x max(0, S - 1),
 	-- spawn interval x (1 - HeatSpawnPerStar x S), and at HeatShiftStars+ the composition bracket shifts HeatBracketShift rows.
 	HeatCashPerStar = 0.15,
@@ -439,6 +450,7 @@ local Config = {
 	------------------------------------------------------------------ Boss (TITAN, Boss.lua; step 5 of brief 4)
 	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)
 	BossWaveBudgetPct = 0.4, -- boss waves spawn this share of the normal budget alongside the boss
+	BossParBonusSec = 30, -- added to a boss wave's par (computed on the regular budget)
 
 	------------------------------------------------------------------ HUD
 	DebugEnabled = true,

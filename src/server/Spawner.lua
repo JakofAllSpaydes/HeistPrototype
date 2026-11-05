@@ -13,6 +13,7 @@ local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local PlayerState = require(script.Parent.PlayerState)
 local Log = require(script.Parent.Log)
+local Heat = require(script.Parent.Heat)
 
 local Spawner = {}
 
@@ -122,6 +123,9 @@ function Spawner.runWave(wave: number): boolean
 			else Config.SpawnInterval
 		task.wait(interval * World.spawnIntervalMult())
 	end
+	if remaining <= 0 then
+		Heat.waveSpawned(wave) -- the budget is spent: the wave clears with its last tagged death
+	end
 	local parts = {}
 	for _, row in Enemies.List do
 		if tally[row.id] then
@@ -139,13 +143,18 @@ function Spawner.runWave(wave: number): boolean
 
 	while Enemy.count() > 0 and not World.skipRequested and not World.runOver do
 		publishLeft(Enemy.count())
-		if World.autoSkipActive() and os.clock() - startedAt >= Config.AutoSkipWaveSec then
-			return true
+		if World.autoSkipActive() then
+			Heat.onAutoSkip(wave)
+			if os.clock() - startedAt >= Config.AutoSkipWaveSec then
+				return true
+			end
 		end
 		task.wait(0.2)
 	end
-	-- Game over leaves the enemies to the run-over beat (freeze and fade); a debug skip just clears them.
+	-- Game over leaves the enemies to the run-over beat (freeze and fade); a debug skip just clears them,
+	-- unscored.
 	if World.skipRequested and not World.runOver then
+		Heat.cancelAll()
 		Enemy.killAll()
 	end
 	publishLeft(0)

@@ -16,6 +16,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local WeaponRoll = require(script.Parent.WeaponRoll)
+local Heat = require(script.Parent.Heat)
 
 local Downed = {}
 
@@ -132,7 +133,7 @@ function Downed.down(player: Player)
 		canShoot = Config.DownedCanShoot,
 	})
 	World.fireRun("PlayerDowned", { userId = player.UserId, name = player.Name, bleedEndsAt = state.bleedEndsAt })
-	World.addHeat(Config.HeatDowned, player.Name .. " downed")
+	Heat.onDowned() -- counts against this wave's score (capped), lands at its end
 	Log.event("Downed", "%s is down (down #%d), bleeds out in %ds", player.Name, state.downs, Config.BleedOutSec)
 end
 

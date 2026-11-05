@@ -272,6 +272,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end))
 
 	local shownHeat = -1
+	local heatFloats = 0
 	local function setHeat(value: number, animate: boolean?)
 		for i, clip in clips do
 			local target = UDim2.fromScale(math.clamp(value - (i - 1), 0, 1), 1)
@@ -427,48 +428,57 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.punch(votes, 1.4, 0.4)
 			UI.sound(Theme.Sounds.toast, 1.6, 0.5)
 		elseif name == "HeatChanged" then
-			local up = (data.delta or 0) > 0
+			-- Heat as pace: the changed star pops and a small `+0.5 FAST CLEAR` floats off the row's edge with
+			-- the reason. Quiet on purpose; several components stack a beat apart at wave end.
+			local delta = tonumber(data.delta) or 0
+			local up = delta > 0
 			local color = if up then Theme.Colors.gold else Theme.Colors.red
-			-- The row stretches wide and settles, each star pops in sequence, the changed star flashes.
-			UI.punch(stars, if up then 1.9 else 0.5, 0.7)
 			local changed = math.clamp(math.ceil(if up then data.value else data.value + 0.5), 1, 5)
-			for i, clip in clips do
-				local cell = clip.Parent :: GuiObject
-				task.delay((i - 1) * 0.06, function()
-					if not cell.Parent then
-						return
-					end
-					UI.punch(cell, if i == changed then 2.4 else 1.5, 0.5)
-					local goldStar = clip:FindFirstChildOfClass("TextLabel")
-					if goldStar then
-						goldStar.TextColor3 = if up then Theme.Colors.white else Theme.Colors.red
-						UI.tween(goldStar, { TextColor3 = Theme.Colors.gold }, 0.5, nil, nil, 0.1)
-					end
-				end)
+			local cell = clips[changed] and clips[changed].Parent
+			if cell and cell:IsA("GuiObject") then
+				UI.punch(cell, if up then 1.8 else 0.6, 0.4)
+				local goldStar = clips[changed]:FindFirstChildOfClass("TextLabel")
+				if goldStar then
+					goldStar.TextColor3 = if up then Theme.Colors.white else Theme.Colors.red
+					UI.tween(goldStar, { TextColor3 = Theme.Colors.gold }, 0.5, nil, nil, 0.1)
+				end
 			end
-			task.delay(0.2, function()
-				setHeat(data.value, true)
-			end)
-			-- Big label under the stars, then a screen flash and shake.
-			local label = UI.text({
-				Text = if up then "HEAT UP" else "HEAT DOWN",
+			setHeat(data.value, true)
+			heatFloats += 1
+			local slot = heatFloats
+			local float = UI.text({
+				Text = string.format(
+					"%s%s %s",
+					if up then "+" else "−",
+					UI.fmtNum(math.abs(delta)),
+					tostring(data.reason or "")
+				),
 				Font = Theme.Fonts.display,
-				TextSize = S(26),
+				TextSize = S(13),
 				TextColor3 = color,
-				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, 0, 0, S(94)),
-				Size = UDim2.fromOffset(S(240), S(32)),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0.5, S(70), 0, S(63)),
+				Size = UDim2.fromOffset(S(180), S(16)),
 				Parent = root,
 			})
-			UI.stroke(label, Theme.Colors.black, S(2), 0.3)
-			UI.punch(label, 1.6, 0.5)
-			UI.tween(label, { Position = UDim2.new(0.5, 0, 0, S(112)), TextTransparency = 1 }, 0.6, nil, nil, 0.6)
-			task.delay(1.3, function()
-				label:Destroy()
+			UI.stroke(float, Theme.Colors.black, S(1.5), 0.3)
+			UI.punch(float, 1.3, 0.3)
+			UI.tween(
+				float,
+				{ Position = UDim2.new(0.5, S(70), 0, S(63) - S(22)), TextTransparency = 1 },
+				1.1,
+				nil,
+				nil,
+				0.5
+			)
+			task.delay(1.7, function()
+				float:Destroy()
+				if heatFloats == slot then
+					heatFloats = 0
+				end
 			end)
-			ClientState.Juice:Fire("RarityFlash", { color = color, alpha = 0.25 })
-			ClientState.Juice:Fire("Shake", { amp = if up then 0.2 else 0.35, dur = 0.25 })
-			UI.sound(if up then Theme.Sounds.legendary else Theme.Sounds.deny, if up then 1.3 else 0.7, 0.6)
+			UI.sound(Theme.Sounds.toast, if up then 1.5 else 0.8, 0.35)
 		end
 	end
 

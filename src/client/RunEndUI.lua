@@ -280,8 +280,15 @@ local function showSummary(d: any)
 		ZIndex = 11,
 		Parent = panel,
 	})
-	local wavePill, waveLabel =
-		UI.pill(panel, string.format("WAVE %d", d.wave or 1), Theme.Colors.gold, Theme.Colors.bg, S(30), S(16))
+	-- WAVE N with the final star count beside it.
+	local wavePill, waveLabel = UI.pill(
+		panel,
+		string.format("WAVE %d · ★ %s", d.wave or 1, UI.fmtNum(tonumber(d.heat) or 0)),
+		Theme.Colors.gold,
+		Theme.Colors.bg,
+		S(30),
+		S(16)
+	)
 	wavePill.AnchorPoint = Vector2.new(1, 0)
 	wavePill.Position = UDim2.new(1, -S(24), 0, S(36))
 	wavePill.ZIndex = 11

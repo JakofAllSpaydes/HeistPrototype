@@ -82,7 +82,8 @@ local Enemy = {}
 -- Abilities installs these so enemies can target and hit turrets / barricades without a require cycle.
 Enemy.extraTargets = nil :: (() -> { BasePart })?
 Enemy.onStructureHit = nil :: ((BasePart, number) -> ())?
--- Heat installs this: called with the enemy's wave and archetype when it dies, for the clear-time clock.
+-- Heat installs these: called when an enemy enters and when it dies, for the per-wave clear-time clock.
+Enemy.onSpawn = nil :: ((Data) -> ())?
 Enemy.onDeath = nil :: ((Data, Player?) -> ())?
 -- Boss.lua registers its brain here (`attack = "boss"`).
 Enemy.brains = BRAINS
@@ -467,6 +468,10 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		mem = {},
 	}
 	count += 1
+	local hook = Enemy.onSpawn
+	if hook then
+		hook(active[model])
+	end
 	return model
 end
 

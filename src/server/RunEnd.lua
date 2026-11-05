@@ -340,6 +340,7 @@ function RunEnd.play(): string
 		totalBanked = total,
 		gold = gold,
 		wave = World.wave,
+		heat = World.heat,
 		line = line,
 		beats = beats,
 		rainSec = Config.CashRainSec,
