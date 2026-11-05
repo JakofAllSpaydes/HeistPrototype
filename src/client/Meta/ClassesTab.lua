@@ -81,48 +81,8 @@ end
 local function masteryBlock(parent: Instance, order: number, classId: string, xp: number)
 	local S = UI.S
 	local tiers = Config.ClassMasteryTiers
-	local tier, into, need = MasteryCopy.progress(xp, tiers)
-	local head = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.new(1, 0, 0, S(40)),
-		LayoutOrder = order,
-		Parent = parent,
-	})
-	UI.corner(head, S(4))
-	UI.text({
-		Text = if tier > 0 then "MASTERY " .. MasteryCopy.Roman[tier] else "MASTERY",
-		Font = Theme.Fonts.display,
-		TextSize = S(15),
-		TextColor3 = if tier > 0 then Theme.Colors.gold else Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(10), S(4)),
-		Size = UDim2.new(0.5, 0, 0, S(18)),
-		Parent = head,
-	})
-	UI.text({
-		Text = if need > 0 then string.format("%d / %d WAVES", into, need) else "MAXED",
-		Font = Theme.Fonts.body,
-		TextSize = S(11),
-		TextColor3 = Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(10), 0, S(5)),
-		Size = UDim2.new(0.5, 0, 0, S(16)),
-		Parent = head,
-	})
-	local track = UI.frame({
-		BackgroundColor3 = Theme.Colors.bg,
-		Position = UDim2.new(0, S(10), 1, -S(12)),
-		Size = UDim2.new(1, -S(20), 0, S(6)),
-		Parent = head,
-	})
-	UI.corner(track, S(3))
-	local fill = UI.frame({
-		BackgroundColor3 = if need > 0 then MetaUI.Green else Theme.Colors.gold,
-		Size = UDim2.fromScale(if need > 0 then math.clamp(into / need, 0, 1) else 1, 1),
-		Parent = track,
-	})
-	UI.corner(fill, S(3))
+	local tier = MasteryCopy.progress(xp, tiers)
+	MetaUI.masteryPanel(parent, order, tiers, xp, "WAVES", nil) -- the next tier is the green-outlined card below
 	for t = 1, #tiers do
 		local earned = tier >= t
 		local isNext = t == tier + 1

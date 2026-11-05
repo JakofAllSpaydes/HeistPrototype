@@ -95,78 +95,10 @@ local function modeOf(w: Weapons.Weapon): string
 	return "Semi-auto"
 end
 
--- The gun's mastery in the detail column: `MASTERY I` with the tier diamonds, the kills to the next tier and what it
--- unlocks, and the bar.
+-- The gun's mastery in the detail column (the shared MetaUI.masteryPanel): MASTERY II with its diamonds, the next
+-- reward (a skin), the kills inside the bar.
 local function masteryRow(card: Frame, order: number, _w: Weapons.Weapon, xp: number)
-	local S = UI.S
-	local tiers = Config.WeaponMasteryTiers
-	local tier, into, need = MasteryCopy.progress(xp, tiers)
-	local row = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.new(1, 0, 0, S(40)),
-		LayoutOrder = order,
-		Parent = card,
-	})
-	UI.corner(row, S(4))
-	local title = UI.text({
-		Text = if tier > 0 then "MASTERY " .. MasteryCopy.Roman[tier] else "MASTERY",
-		Font = Theme.Fonts.display,
-		TextSize = S(14),
-		TextColor3 = if tier > 0 then Theme.Colors.gold else Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		AutomaticSize = Enum.AutomaticSize.X,
-		Position = UDim2.fromOffset(S(10), S(4)),
-		Size = UDim2.new(0, 0, 0, S(18)),
-		Parent = row,
-	})
-	-- Tier diamonds right after the title.
-	local pips = UI.frame({
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(10), S(4)),
-		Size = UDim2.fromOffset(S(40), S(18)),
-		Parent = row,
-	})
-	title:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		pips.Position = UDim2.fromOffset(S(16) + title.AbsoluteSize.X, S(4))
-	end)
-	pips.Position = UDim2.fromOffset(S(16) + S(14) * (if tier > 0 then 9 else 7), S(4))
-	for t = 1, #tiers do
-		local d = UI.frame({
-			BackgroundColor3 = if tier >= t then Theme.Colors.gold else Theme.Colors.panel2,
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, (t - 1) * S(12), 0.5, 0),
-			Size = UDim2.fromOffset(S(7), S(7)),
-			Rotation = 45,
-			Parent = pips,
-		})
-		UI.stroke(d, Theme.Colors.black, 1, 0.4)
-	end
-	local nextReward = if need > 0 then MasteryCopy.weaponReward(tier + 1) else ""
-	UI.text({
-		Text = if need > 0 then string.format("%d / %d KILLS · %s", into, need, nextReward) else "MAXED",
-		Font = Theme.Fonts.body,
-		TextSize = S(10),
-		TextColor3 = Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(10), 0, S(6)),
-		Size = UDim2.new(0.6, 0, 0, S(14)),
-		Parent = row,
-	})
-	local track = UI.frame({
-		BackgroundColor3 = Theme.Colors.bg,
-		Position = UDim2.new(0, S(10), 1, -S(11)),
-		Size = UDim2.new(1, -S(20), 0, S(6)),
-		Parent = row,
-	})
-	UI.corner(track, S(3))
-	local fill = UI.frame({
-		BackgroundColor3 = if need > 0 then MetaUI.Green else Theme.Colors.gold,
-		Size = UDim2.fromScale(if need > 0 then math.clamp(into / need, 0, 1) else 1, 1),
-		Parent = track,
-	})
-	UI.corner(fill, S(3))
+	MetaUI.masteryPanel(card, order, Config.WeaponMasteryTiers, xp, "KILLS", "UNLOCK SKIN")
 end
 
 ------------------------------------------------------------------ Detail card

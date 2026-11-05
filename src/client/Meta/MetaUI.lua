@@ -205,6 +205,110 @@ function MetaUI.masteryBar(parent: GuiObject, kind: string, id: string, xp: numb
 	end)
 end
 
+-- The mastery panel in a detail column (weapons and classes share it). One line: `MASTERY II` with its tier
+-- diamonds on the left, the next reward on the right (`NEXT · UNLOCK SKIN`); under it a full-width bar with the
+-- progress written inside it (`15 / 800 KILLS`, or MAXED).
+function MetaUI.masteryPanel(
+	parent: Instance,
+	order: number,
+	tiers: { number },
+	xp: number,
+	unit: string,
+	nextLabel: string?
+): Frame
+	local S = UI.S
+	local tier, into, need = MasteryCopy.progress(xp, tiers)
+	local pad = S(10)
+	local row = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel,
+		Size = UDim2.new(1, 0, 0, S(54)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UI.corner(row, S(6))
+	-- Top line.
+	local line = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(pad, S(6)),
+		Size = UDim2.new(1, -pad * 2, 0, S(20)),
+		Parent = row,
+	})
+	local left = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(0.55, 0, 1, 0),
+		Parent = line,
+	})
+	UI.list(left, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
+	UI.text({
+		Text = if tier > 0 then "MASTERY " .. MasteryCopy.Roman[tier] else "MASTERY",
+		Font = Theme.Fonts.display,
+		TextSize = S(15),
+		TextColor3 = if tier > 0 then Theme.Colors.gold else Theme.Colors.textDim,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Size = UDim2.new(0, 0, 1, 0),
+		LayoutOrder = 1,
+		Parent = left,
+	})
+	local pips = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(S(12) * #tiers, S(12)),
+		LayoutOrder = 2,
+		Parent = left,
+	})
+	for t = 1, #tiers do
+		local d = UI.frame({
+			BackgroundColor3 = if tier >= t then Theme.Colors.gold else Theme.Colors.panel2,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0, S(12) * (t - 0.5), 0.5, 0),
+			Size = UDim2.fromOffset(S(7), S(7)),
+			Rotation = 45,
+			Parent = pips,
+		})
+		UI.stroke(d, Theme.Colors.black, 1, 0.3)
+	end
+	if need > 0 and nextLabel then
+		UI.text({
+			Text = "NEXT · " .. nextLabel,
+			Font = Theme.Fonts.body,
+			TextSize = S(10),
+			TextColor3 = Theme.Colors.textDim,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.fromScale(1, 0),
+			Size = UDim2.new(0.45, 0, 1, 0),
+			Parent = line,
+		})
+	end
+	-- The bar with the count inside it.
+	local barH = S(16)
+	local track = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, pad, 1, -S(8)),
+		Size = UDim2.new(1, -pad * 2, 0, barH),
+		Parent = row,
+	})
+	UI.corner(track, barH / 2)
+	local fill = UI.frame({
+		BackgroundColor3 = if need > 0 then MetaUI.Green else Theme.Colors.gold,
+		Size = UDim2.fromScale(if need > 0 then math.clamp(into / need, 0, 1) else 1, 1),
+		Parent = track,
+	})
+	UI.corner(fill, barH / 2)
+	local count = UI.text({
+		Text = if need > 0 then string.format("%s / %s %s", UI.fmtInt(into), UI.fmtInt(need), unit) else "MAXED",
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 2,
+		Parent = track,
+	})
+	UI.stroke(count, Theme.Colors.black, S(1.5), 0.2)
+	return row
+end
+
 -- A grid tile: colored block, name on top, icon in the middle, pill at the bottom.
 function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 	local S = UI.S
