@@ -1,8 +1,9 @@
 --!strict
--- Element upgrades on enemies (brief 5, Round 15b). Every held element goes on every shot, applied to every enemy
--- the shot hits directly; the upgrade's power (1 on the first take, + the card's share after) sets the strength.
---   INCENDIARY: a burn of IncendiaryDps x power for IncendiaryBurnSec, ticking every FieldTickSec, faster by
---     IncendiaryTickRatePerPower per extra power; kill cash to the shooter. Each hit refreshes it.
+-- Element upgrades on enemies (brief 5, Round 15e). Every held element goes on every bullet that lands (each pellet
+-- counts); the upgrade's power (1 on the first take, + the card's share after) sets the strength.
+--   INCENDIARY: each hit adds a stack (up to IncendiaryMaxStacks) and refreshes the burn: IncendiaryDps x power per
+--     stack for IncendiaryBurnSec, ticking every FieldTickSec, faster by IncendiaryTickRatePerPower per extra power;
+--     kill cash to the shooter.
 --   CRYO: walk speed down CryoSlowPct x power (cap CryoSlowCap) for CryoSlowSec; CryoStacksToFreeze hits inside that
 --     window freeze the enemy for CryoFreezeSec x power (an ice-blue stun: no move, no attack).
 --   CONCUSSIVE: a ConcussiveStuds x power slide along the shot (Heavy and the boss ConcussiveHeavyMult of it) and a
@@ -28,6 +29,7 @@ type Status = {
 	burnDps: number,
 	burnOwner: Player?,
 	burnRate: number, -- tick-rate multiplier from INCENDIARY power
+	burnStacks: number, -- hits stacked on the running burn (IncendiaryMaxStacks)
 	nextBurn: number,
 	chillUntil: number,
 	chillProcs: { number },
@@ -55,6 +57,7 @@ local function statusOf(model: Model): Status
 			burnDps = 0,
 			burnOwner = nil,
 			burnRate = 1,
+			burnStacks = 0,
 			nextBurn = 0,
 			chillUntil = 0,
 			chillProcs = {},
@@ -115,16 +118,19 @@ function Elements.burn(model: Model, owner: Player?, dps: number, seconds: numbe
 	end
 	local s = statusOf(model)
 	local now = os.clock()
+	-- Each hit adds a stack (up to IncendiaryMaxStacks); the burn deals `dps` per stack, so a shotgun blast that
+	-- lands every pellet stacks it at once and a fast gun builds it quickly.
 	if s.burnUntil <= now then
-		s.burnDps = dps
+		s.burnStacks = 0
+		s.burnDps = 0
 		s.burnRate = tickRate or 1
-		s.burnOwner = owner
 		s.nextBurn = now + burnInterval(s)
 	else
-		s.burnDps = math.max(s.burnDps, dps)
 		s.burnRate = math.max(s.burnRate, tickRate or 1)
-		s.burnOwner = owner
 	end
+	s.burnOwner = owner
+	s.burnStacks = math.min(Config.IncendiaryMaxStacks, s.burnStacks + 1)
+	s.burnDps = math.max(s.burnDps, dps * s.burnStacks)
 	s.burnUntil = now + seconds
 	model:SetAttribute("Burning", true)
 end

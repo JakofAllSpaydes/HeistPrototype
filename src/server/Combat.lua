@@ -37,8 +37,7 @@ type Shooter = {
 	stats: Types.Computed,
 	char: Model,
 	weapon: Weapons.Weapon,
-	procs: Elements.Procs, -- this shot's element rolls (one per element per trigger pull)
-	procced: { [Model]: boolean }, -- enemies this shot already applied its elements to (pellets, pierce)
+	procs: Elements.Procs, -- the elements this shooter holds (each goes on every bullet that hits)
 }
 
 -- Distance falloff multiplier for the shooter's archetype (Config.FalloffByArchetype).
@@ -141,9 +140,9 @@ local function bulletHit(
 		* (if headshot then st.headshotMult else 1)
 		* (if crit then Config.CritDmgMult else 1)
 	local dir = if travel.Magnitude > 0.1 then travel.Unit else nil
-	-- Elements go on before the damage so a burn or freeze lands even when the hit is not the kill.
-	if shooter.procs.any and not shooter.procced[model] then
-		shooter.procced[model] = true
+	-- Elements go on every bullet that lands (each shotgun pellet counts), before the damage so a burn or freeze
+	-- lands even when the hit is not the kill.
+	if shooter.procs.any then
 		Elements.apply(shooter.player, st, model, shooter.procs, dir, position)
 	end
 	dealDamage(shooter, model, dmg, position, { headshot = headshot, crit = crit, dir = dir }, true)
@@ -290,7 +289,6 @@ function Combat.init()
 				char = char,
 				weapon = weapon,
 				procs = Elements.roll(st),
-				procced = {},
 			}
 			local dir = direction.Unit
 			local baseFilter: { Instance } = { char, groundLoot, effects }

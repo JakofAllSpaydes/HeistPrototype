@@ -13,7 +13,7 @@ local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local StatusFx = {}
 
 local FIRE = Color3.fromRGB(255, 120, 30)
-local ICE = Color3.fromRGB(120, 200, 255)
+local ICE = Color3.fromRGB(70, 165, 255) -- a clear, saturated blue so a slowed enemy reads at a glance
 
 local watched: { [Model]: boolean } = {}
 
@@ -53,11 +53,14 @@ local function emitter(root: BasePart, name: string, color: Color3, rise: boolea
 	end
 	local e = Instance.new("ParticleEmitter")
 	e.Name = name
-	e.Color = ColorSequence.new(color)
-	e.LightEmission = if rise then 1 else 0.4
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	-- Embers rise and glow; frost is bigger, brighter flakes (white into the ice blue) that drift down.
+	e.Color = if rise then ColorSequence.new(color) else ColorSequence.new(Color3.new(1, 1, 1), color)
+	e.LightEmission = if rise then 1 else 0.8
+	e.Size = if rise
+		then NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
+		else NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0.1) })
 	e.Lifetime = NumberRange.new(0.4, 0.8)
-	e.Rate = if rise then 14 else 6
+	e.Rate = if rise then 14 else 16
 	e.Speed = NumberRange.new(1, 3)
 	e.SpreadAngle = Vector2.new(35, 35)
 	e.Acceleration = if rise then Vector3.new(0, 6, 0) else Vector3.new(0, -4, 0)
@@ -99,9 +102,9 @@ local function refresh(model: Model)
 	local tint: Color3? = nil
 	local amount = 0
 	if frozen then
-		tint, amount = ICE, 0.65
+		tint, amount = ICE, 0.75
 	elseif chilled then
-		tint, amount = ICE, 0.35
+		tint, amount = ICE, 0.55
 	elseif burning then
 		tint, amount = FIRE, 0.4
 	end

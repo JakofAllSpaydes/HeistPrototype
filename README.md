@@ -1038,10 +1038,15 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   fades with distance (`CrateOpenShake`, `CrateFxRange`); every gun (`CrateEject`) kicks the lid and bursts in its rarity
   color with a ring and a whoosh, Epic and up bigger with a column of light and twice the shake (`CrateEjectShake`).
 
+- **Round 15e (4 Nov, feedback)** — elements go on every bullet that lands, not once per trigger pull, so a full
+  shotgun blast applies them pellet by pellet: Fire Ammo stacks (`IncendiaryMaxStacks` 5, `IncendiaryDps` 3 per stack),
+  Ice Ammo builds toward the freeze per pellet, Impact Ammo shoves per pellet (`ConcussiveStuds` 1.0). Slowed enemies
+  read clearer: a deeper blue tint (55%, frozen 75%) and bigger, brighter frost flakes.
+
 ## Open design notes (not built)
 
-- **Brief 5 assumptions to confirm.** Elements (Round 15b) apply on every shot to every enemy it hits directly (pellets and
-  pierce included, ricochet / splash not). CONCUSSIVE never interrupts TITAN and interrupts anyone else at most every
+- **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;
+  ricochet / splash not). CONCUSSIVE never interrupts TITAN and interrupts anyone else at most every
   `ConcussiveInterruptSec` (every shot would otherwise lock enemies out of attacking); TITAN takes half the knockback. Mastery XP is written to the profile as it is
   earned (so a tier can apply mid-run, the designer's ask) instead of at the summary; leaving mid-run keeps it. Mastery
   wraps are generic (one Gunmetal / Gold / Black-Red set, `MasteryWrapIds`) but owned per gun. TRIAGE revives a bled-out
