@@ -414,7 +414,7 @@ local function startVolley(d: any, api: any, t: number)
 		return (a - d.root.Position).Magnitude < (b - d.root.Position).Magnitude
 	end)
 	m.ability = "volley"
-	m.stageUntil = t + Config.GrenadierTelegraphSec + 0.4
+	m.stageUntil = t + Config.TitanVolleyTelegraphSec + 0.4
 	local dmg = Enemies.dmgAt(Enemies.ById.Grenadier, World.wave)
 	local from = api.muzzle(d)
 	for i = 1, Config.TitanVolleyCount do
@@ -422,7 +422,7 @@ local function startVolley(d: any, api: any, t: number)
 		local jitter = if i > #targets
 			then Vector3.new((math.random() - 0.5) * 6, 0, (math.random() - 0.5) * 6)
 			else Vector3.zero
-		Grenadier.lob(api, from, target + jitter, dmg, Titan.id)
+		Grenadier.lob(api, from, target + jitter, dmg, Titan.id, Config.TitanVolleyTelegraphSec)
 	end
 	api.hold(d)
 	api.face(d, targets[1])

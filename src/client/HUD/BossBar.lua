@@ -183,17 +183,12 @@ function BossBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		name.Text = tostring(boss.name or "BOSS")
 		hpText.Text = string.format("%s / %s", UI.fmtNum(hp), UI.fmtNum(maxHP))
 		fill.Size = UDim2.fromScale(share, 1)
+		-- Pips at 100 / 66 / 33: a pip stays lit until its phase is reached.
 		local phase = tonumber(boss.phase) or 1
 		for i, pip in pips do
-			local lit = share > pipShares[i] - 0.001 or i == 1 and phase == 1
-			pip.BackgroundColor3 = if i <= phase and i > 1
-				then Theme.Colors.panel2
-				elseif lit then Theme.Colors.gold
-				else Theme.Colors.panel2
+			pip.BackgroundColor3 = if i == 1 or phase < i then Theme.Colors.gold else Theme.Colors.panel2
 		end
-		if phase ~= lastPhase then
-			lastPhase = phase
-		end
+		lastPhase = phase
 	end
 
 	local function show(boss: any)
