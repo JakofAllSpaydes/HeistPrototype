@@ -66,6 +66,29 @@ function Elements.isBurning(model: Model): boolean
 	return s ~= nil and s.burnUntil > os.clock()
 end
 
+function Elements.burnOwnerOf(model: Model): Player?
+	local s = statuses[model]
+	return if s and s.burnUntil > os.clock() then s.burnOwner else nil
+end
+
+-- Standing in a fire field (molotov, drum fire) or a flame stream: burning for the look and for BACKDRAFT, with no
+-- extra damage of its own (the field does the damage).
+function Elements.markBurning(model: Model, owner: Player?, seconds: number)
+	if not Enemy.data(model) then
+		return
+	end
+	local s = statusOf(model)
+	local now = os.clock()
+	if s.burnUntil <= now then
+		s.burnDps = 0
+	end
+	s.burnUntil = math.max(s.burnUntil, now + seconds)
+	if s.burnDps <= 0 or not s.burnOwner then
+		s.burnOwner = owner
+	end
+	model:SetAttribute("Burning", true)
+end
+
 -- One roll per element per shot.
 function Elements.roll(st: Types.Computed): Procs
 	local inc = st.incendiaryChance > 0 and math.random() * 100 < st.incendiaryChance
@@ -228,7 +251,7 @@ function Elements.init()
 				if now >= s.burnUntil then
 					s.burnUntil = 0
 					model:SetAttribute("Burning", nil)
-				elseif now >= s.nextBurn then
+				elseif s.burnDps > 0 and now >= s.nextBurn then
 					s.nextBurn = now + Config.FieldTickSec / math.max(0.1, Elements.burnRateFor(s.burnOwner))
 					burnTick(s)
 				end

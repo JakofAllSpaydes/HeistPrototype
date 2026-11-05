@@ -36,6 +36,8 @@ export type Profile = {
 	level: number, -- account level (Progression.lua)
 	xp: number, -- XP into the current level
 	lastHeistDay: number, -- UTC day number of the last completed run (FIRST HEIST OF THE DAY)
+	-- Brief 5: weapon and class mastery XP (Mastery.lua); tiers from Config.WeaponMasteryTiers / ClassMasteryTiers.
+	mastery: { weapons: { [string]: { xp: number } }, classes: { [string]: { xp: number } } },
 	stats: {
 		kills: number,
 		matchesPlayed: number,
@@ -44,6 +46,8 @@ export type Profile = {
 		goldBanked: number,
 		xp: number,
 		timeSurvived: number,
+		weaponMasteryXp: number, -- lifetime mastery XP earned, all guns
+		classMasteryXp: number, -- lifetime mastery XP earned, all classes
 	},
 	pendingPayout: number, -- Gold granted this session that has not reached the store yet
 	version: number,
@@ -122,6 +126,7 @@ function Profiles.fresh(): Profile
 		level = 1,
 		xp = 0,
 		lastHeistDay = 0,
+		mastery = { weapons = {}, classes = {} },
 		stats = {
 			kills = 0,
 			matchesPlayed = 0,
@@ -130,6 +135,8 @@ function Profiles.fresh(): Profile
 			goldBanked = 0,
 			xp = 0,
 			timeSurvived = 0,
+			weaponMasteryXp = 0,
+			classMasteryXp = 0,
 		},
 		pendingPayout = 0,
 		version = VERSION,
@@ -250,6 +257,19 @@ local function migrate(raw: any): Profile
 	end
 	if typeof(raw.lastHeistDay) == "number" then
 		p.lastHeistDay = math.floor(raw.lastHeistDay)
+	end
+	if typeof(raw.mastery) == "table" then
+		for _, kind in { "weapons", "classes" } do
+			local src = raw.mastery[kind]
+			if typeof(src) == "table" then
+				for id, entry in src do
+					local valid = if kind == "weapons" then Weapons.ById[id] ~= nil else Classes.ById[id] ~= nil
+					if valid and typeof(entry) == "table" and typeof(entry.xp) == "number" then
+						(p.mastery :: any)[kind][id] = { xp = math.max(0, math.floor(entry.xp)) }
+					end
+				end
+			end
+		end
 	end
 	if typeof(raw.stats) == "table" then
 		for k in p.stats do

@@ -11,6 +11,8 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local Wraps = require(Shared:WaitForChild("Wraps"))
 local Prices = require(Shared:WaitForChild("Prices"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Config = require(Shared:WaitForChild("Config"))
+local MasteryCopy = require(Shared:WaitForChild("MasteryCopy"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -43,6 +45,23 @@ end
 
 local function owned(profile: any, id: string): boolean
 	return profile ~= nil and profile.weapons ~= nil and profile.weapons[id] ~= nil
+end
+
+local function masteryXp(profile: any, id: string): number
+	local m = profile and profile.mastery and profile.mastery.weapons and profile.mastery.weapons[id]
+	return if m then (tonumber(m.xp) or 0) else 0
+end
+
+-- Shop wraps are owned once for every gun; a mastery wrap is owned on the gun whose mastery tier reached it.
+local function wrapOwnedOn(profile: any, wrapId: string, weaponId: string): boolean
+	if not profile then
+		return false
+	end
+	local mt = MasteryCopy.wrapTier(wrapId)
+	if mt then
+		return MasteryCopy.weaponTier(masteryXp(profile, weaponId)) >= mt
+	end
+	return profile.wraps.owned[wrapId] == true
 end
 
 local function wrapColorOf(profile: any, id: string): Color3?
@@ -420,12 +439,13 @@ local function renderCustomize(scene: any)
 		scene.refresh()
 	end)
 	for i, wrap in Wraps.List do
-		local isOwned = profile ~= nil and profile.wraps.owned[wrap.id] == true
+		local isOwned = wrapOwnedOn(profile, wrap.id, w.id)
+		local mt = MasteryCopy.wrapTier(wrap.id)
 		local b = swatch(
 			i,
 			wrap.name,
 			Color3.fromHex(wrap.color),
-			if isOwned then nil else MetaUI.fmtGold(Prices.wrap),
+			if isOwned then nil elseif mt then "MASTERY " .. MasteryCopy.Roman[mt] else MetaUI.fmtGold(Prices.wrap),
 			wrapPreview == wrap.id,
 			applied == wrap.id
 		)
@@ -457,8 +477,25 @@ local function renderCustomize(scene: any)
 		end)
 	elseif wrapPreview and wrapPreview ~= "none" and Wraps.ById[wrapPreview] then
 		local pw = Wraps.ById[wrapPreview]
-		local isOwned = profile ~= nil and profile.wraps.owned[pw.id] == true
-		if isOwned and applied ~= pw.id then
+		local isOwned = wrapOwnedOn(profile, pw.id, w.id)
+		local mt = MasteryCopy.wrapTier(pw.id)
+		if not isOwned and mt then
+			-- A mastery wrap: earned with kills on this gun, never sold.
+			UI.text({
+				Text = string.format(
+					"%s MASTERY %s · %d KILLS",
+					string.upper(w.displayName),
+					MasteryCopy.Roman[mt],
+					Config.WeaponMasteryTiers[mt] or 0
+				),
+				Font = Theme.Fonts.display,
+				TextSize = S(12),
+				TextColor3 = Theme.Colors.gold,
+				TextWrapped = true,
+				Size = UDim2.new(1, 0, 1, 0),
+				Parent = action,
+			})
+		elseif isOwned and applied ~= pw.id then
 			MetaUI.button(action, 1, "APPLY", "green", function()
 				local r = scene.request("applyWrap", { weaponId = w.id, wrapId = pw.id })
 				if r.ok then
@@ -585,6 +622,9 @@ function WeaponsTab.render(scene: any)
 				size = tileW,
 				order = i,
 			})
+			if w and isOwned then
+				MetaUI.masteryBar(b, "weapon", w.id, masteryXp(profile, w.id))
+			end
 			b.Activated:Connect(function()
 				selected = id
 				UI.sound(Theme.Sounds.toast, 1.25, 0.3)

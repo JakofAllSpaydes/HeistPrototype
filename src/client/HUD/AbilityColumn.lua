@@ -19,7 +19,7 @@ local Tile = require(script.Parent.Tile)
 
 local AbilityColumn = {}
 
-type CooldownUI = { sweep: Frame, label: TextLabel }
+type CooldownUI = { sweep: Frame, label: TextLabel, chargePill: Frame, chargeLabel: TextLabel }
 
 local HOTKEYS = { Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.Z }
 
@@ -113,7 +113,14 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				Parent = t.button,
 			})
 			UI.stroke(label, Theme.Colors.black, S(1.5), 0.3)
-			cooldowns[a.id] = { sweep = sweep, label = label }
+			-- Charges left (DOUBLE DOWN): a small gold count in the corner, only on multi-charge abilities.
+			local chargePill, chargeLabel = UI.pill(t.button, "", Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
+			chargePill.AnchorPoint = Vector2.new(1, 0)
+			chargePill.Position = UDim2.new(1, -S(3), 0, S(3))
+			chargePill.ZIndex = 6
+			chargeLabel.ZIndex = 6
+			chargePill.Visible = false
+			cooldowns[a.id] = { sweep = sweep, label = label, chargePill = chargePill, chargeLabel = chargeLabel }
 			t.onPress = function()
 				use(a.id)
 			end
@@ -140,6 +147,15 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			local cd = cooldowns[id]
 			if not a or not cd then
 				continue
+			end
+			local maxCharges = tonumber(a.maxCharges) or 1
+			cd.chargePill.Visible = maxCharges > 1
+			if maxCharges > 1 then
+				local text = string.format("x%d", tonumber(a.charges) or 0)
+				if cd.chargeLabel.Text ~= text then
+					cd.chargeLabel.Text = text
+					UI.punch(cd.chargePill, 1.25, 0.2)
+				end
 			end
 			local activeUntil = a.activeUntil or 0
 			if activeUntil > now then

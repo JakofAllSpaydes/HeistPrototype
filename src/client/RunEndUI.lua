@@ -325,9 +325,13 @@ local function showSummary(d: any)
 	-- The level card floats above the panel (its own piece, not nested): hidden until the Gold count-up is
 	-- done, then it drops in and the bar fills with `+N XP` counting on the right.
 	local award = myRow and myRow.xp
+	local mastery = myRow and myRow.mastery
+	local masteryLines = if mastery and typeof(mastery.lines) == "table" then mastery.lines else {}
 	if award then
 		local card = LevelCard.build(g, W, false)
-		local cardY = -H / 2 - S(14)
+		-- The MASTERY line sits between the card and the panel when the run earned any.
+		local masteryGap = if #masteryLines > 0 then S(24) else 0
+		local cardY = -H / 2 - S(14) - masteryGap
 		card.frame.AnchorPoint = Vector2.new(0.5, 1)
 		card.frame.Position = UDim2.new(0.5, 0, 0.5, cardY - S(40))
 		card.frame.Visible = false
@@ -355,7 +359,31 @@ local function showSummary(d: any)
 			popped = {},
 			shown = false,
 			levelUps = award.levelUps or {},
+			masteryLabel = nil :: TextLabel?,
+			masteryTierUps = if mastery and typeof(mastery.tierUps) == "table" then mastery.tierUps else {},
+			masteryPopped = false,
 		}
+		if #masteryLines > 0 then
+			local parts = {}
+			for _, l in masteryLines do
+				table.insert(parts, string.format("%s +%d", tostring(l.name), tonumber(l.gained) or 0))
+			end
+			local label = UI.text({
+				Text = "MASTERY   " .. table.concat(parts, "  ·  "),
+				Font = Theme.Fonts.display,
+				TextSize = S(14),
+				TextColor3 = Theme.Colors.text,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.new(0.5, 0, 0.5, -H / 2 - S(6)),
+				Size = UDim2.fromOffset(W, S(18)),
+				Visible = false,
+				ZIndex = 12,
+				Parent = g,
+			})
+			UI.stroke(label, Theme.Colors.black, S(1.5), 0.3)
+			xpAnim.masteryLabel = label
+		end
 	end
 
 	-- Table.
@@ -630,8 +658,49 @@ local function step(_dt: number)
 						Enum.EasingDirection.Out
 					)
 					UI.sound(Theme.Sounds.toast, 1.2, 0.4)
+					local ml = anim.masteryLabel
+					if ml then
+						ml.Visible = true
+						UI.punch(ml, 1.2, 0.3)
+					end
 				end
 				local u = math.clamp((e - xpStart) / math.max(tonumber(d.xpFillSec) or 1.2, 0.05), 0, 1)
+				-- After the fill: the run's mastery tier-ups pop one by one above the card.
+				if u >= 1 and not anim.masteryPopped and #anim.masteryTierUps > 0 then
+					anim.masteryPopped = true
+					for n, up in anim.masteryTierUps do
+						task.delay(0.3 + (n - 1) * 0.9, function()
+							if not card.frame.Parent then
+								return
+							end
+							local pop = UI.text({
+								Text = tostring(up.text or ""),
+								Font = Theme.Fonts.display,
+								TextSize = UI.S(16),
+								TextColor3 = Theme.Colors.cash,
+								AnchorPoint = Vector2.new(0.5, 1),
+								Position = UDim2.new(0.5, 0, 0, -UI.S(6)),
+								Size = UDim2.new(1, 0, 0, UI.S(22)),
+								ZIndex = 15,
+								Parent = card.frame,
+							})
+							UI.stroke(pop, Theme.Colors.black, UI.S(1.5), 0.3)
+							UI.punch(pop, 1.6, 0.4)
+							UI.sound(Theme.Sounds.legendary, 1.3, 0.5)
+							UI.tween(
+								pop,
+								{ Position = UDim2.new(0.5, 0, 0, -UI.S(34)), TextTransparency = 1 },
+								1.0,
+								nil,
+								nil,
+								1.2
+							)
+							task.delay(2.4, function()
+								pop:Destroy()
+							end)
+						end)
+					end
+				end
 				local consumed = u * anim.gained
 				local acc = 0
 				for i, seg in anim.segments do

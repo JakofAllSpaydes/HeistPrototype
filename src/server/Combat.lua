@@ -14,6 +14,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local Elements = require(script.Parent.Elements)
+local Mastery = require(script.Parent.Mastery)
 local World = require(script.Parent.World)
 
 local Combat = {}
@@ -72,6 +73,9 @@ local function dealDamage(
 	allowSplash: boolean
 )
 	dmg = math.max(1, math.round(dmg))
+	local ed = Enemy.data(model)
+	local elite = ed ~= nil and ed.elite
+	local boss = ed ~= nil and ed.row.boss == true
 	local killed, killCash = Enemy.damage(model, dmg, shooter.player, {
 		dir = info.dir,
 		headshot = info.headshot == true,
@@ -87,6 +91,7 @@ local function dealDamage(
 		-- The archetype's cash (x wave, x elite, x heat) x CASH GAIN.
 		cash = math.round(killCash * shooter.stats.cashGain)
 		Economy.addCash(shooter.state, cash)
+		Mastery.onGunKill(shooter.player, shooter.state.held.weaponId, elite, boss)
 	end
 	heal(shooter, dmg * shooter.stats.lifesteal / 100)
 	Remotes.Juice:FireClient(shooter.player, "Hit", {
@@ -141,6 +146,18 @@ local function bulletHit(
 		Elements.apply(shooter.player, st, model, shooter.procs, dir, position)
 	end
 	dealDamage(shooter, model, dmg, position, { headshot = headshot, crit = crit, dir = dir }, true)
+	-- DEAD EYE OVERDRIVE (SHARPSHOOTER III): a headshot during Dead Eye puts a round back and trims its cooldown.
+	local state = shooter.state
+	if headshot and state.buffId == "deadeye" and PlayerState.passive(state, "SHARPSHOOTER", 3) then
+		if PlayerState.buffActive(state) then
+			Remotes.Juice:FireClient(shooter.player, "MagAdd", { n = 1 })
+			local cd = state.cooldowns.deadeye
+			if cd then
+				state.cooldowns.deadeye = cd - Config.DeadEyeHeadshotCdr
+				state.dirty = true
+			end
+		end
+	end
 
 	if st.ricochet > 0 and math.random() * 100 < st.ricochet then
 		local target = Enemy.nearest(position, Config.RicochetRange, model)

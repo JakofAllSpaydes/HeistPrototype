@@ -13,6 +13,7 @@ local Masks = require(Shared.Masks)
 local Emotes = require(Shared.Emotes)
 local Wraps = require(Shared.Wraps)
 local Prices = require(Shared.Prices)
+local MasteryCopy = require(Shared.MasteryCopy)
 local PlayerState = require(script.Parent.PlayerState)
 local Profiles = require(script.Parent.Profiles)
 local World = require(script.Parent.World)
@@ -118,6 +119,9 @@ handlers.buyWrap = function(player, state, p, args)
 	if p.wraps.owned[wrap.id] then
 		return fail("already owned")
 	end
+	if MasteryCopy.wrapTier(wrap.id) then
+		return fail("mastery wrap", "Earned through weapon mastery")
+	end
 	if not charge(player, Prices.wrap) then
 		return fail("gold", NOT_ENOUGH)
 	end
@@ -145,7 +149,14 @@ handlers.applyWrap = function(player, state, p, args)
 		return fail("not owned")
 	end
 	local wrapId = if args and typeof(args.wrapId) == "string" then args.wrapId else nil
-	if wrapId and not (Wraps.ById[wrapId] and p.wraps.owned[wrapId]) then
+	-- A mastery wrap is owned on the gun whose mastery tier unlocked it; shop wraps are owned once for every gun.
+	local masteryTier = if wrapId then MasteryCopy.wrapTier(wrapId) else nil
+	if masteryTier then
+		local m = p.mastery.weapons[w.id]
+		if MasteryCopy.weaponTier(if m then m.xp else 0) < masteryTier then
+			return fail("wrap not owned", "Needs " .. w.displayName .. " mastery " .. MasteryCopy.Roman[masteryTier])
+		end
+	elseif wrapId and not (Wraps.ById[wrapId] and p.wraps.owned[wrapId]) then
 		return fail("wrap not owned")
 	end
 	entry.wrap = wrapId

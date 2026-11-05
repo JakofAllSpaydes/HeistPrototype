@@ -48,6 +48,13 @@ export type State = {
 	buffId: string?, -- the running self buff (stim | stimshot | deadeye), nil = none
 	buffUntil: number, -- server time the self buff ends, 0 = inactive
 	abilityActive: { [string]: number }, -- non-buff abilities with a running window (overclock, eagleeye): server time it ends
+	-- Mastery (brief 5): the class and its tier at run start (the passives), and the per-run passive counters.
+	masteryClass: string?,
+	masteryTier: number,
+	stimExtended: number, -- ADRENALINE JUNKIE seconds added to the running Adrenaline
+	charges: { [string]: number }, -- ability charges left (nil = full); DOUBLE DOWN gives Frag / Claymore a second
+	fieldHospitalUntil: number, -- inside a FIELD HOSPITAL med bag until this server time (+damage)
+	triageProgress: number, -- TRIAGE: 0..1 while downed inside a DOC's med bag / healing turret range
 	-- Downed / revive
 	downed: boolean,
 	bledOut: boolean, -- spectator: no character until revived or the run ends
@@ -105,6 +112,12 @@ local function freshState(player: Player, joinIndex: number): State
 		buffId = nil,
 		buffUntil = 0,
 		abilityActive = {},
+		masteryClass = nil,
+		masteryTier = 0,
+		stimExtended = 0,
+		charges = {},
+		fieldHospitalUntil = 0,
+		triageProgress = 0,
 		downed = false,
 		bledOut = false,
 		bleedEndsAt = 0,
@@ -264,13 +277,40 @@ function PlayerState.buffFor(state: State, id: string): Stats.Buffs
 	return b
 end
 
+-- A class mastery passive: on while `classId` is the class the run started with at `tier` or better.
+function PlayerState.passive(state: State, classId: string, tier: number): boolean
+	return state.masteryClass == classId and state.masteryTier >= tier
+end
+
 function PlayerState.computed(state: State): Types.Computed
 	local buffs: Stats.Buffs? = nil
 	local id = state.buffId
 	if id and PlayerState.buffActive(state) then
 		buffs = PlayerState.buffFor(state, id)
 	end
-	return Stats.compute(state.upgrades, state.held, buffs)
+	-- CREW OVERCLOCK (ENGINEER III): every crew member's gun runs faster while the Overclock lasts.
+	if World.crewOverclockUntil > Workspace:GetServerTimeNow() and World.isInParty(state.player) then
+		local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
+		b.fireRateMult *= 1 + Config.CrewOverclockFireRatePct
+		b.reloadSpeedMult *= 1 + Config.CrewOverclockReloadPct
+		buffs = b
+	end
+	local st = Stats.compute(state.upgrades, state.held, buffs)
+	-- SHARPSHOOTER I / II.
+	if PlayerState.passive(state, "SHARPSHOOTER", 1) then
+		st.headshotMult += Config.SharpHeadshotAdd
+	end
+	if PlayerState.passive(state, "SHARPSHOOTER", 2) then
+		local w = Weapons.ById[state.held.weaponId]
+		if w and (w.archetype == "Sniper" or w.archetype == "Pistol") then
+			st.reloadTime /= 1 + Config.MarksmanKitReloadPct
+		end
+	end
+	-- FIELD HOSPITAL (a DOC III's med bag): allies inside deal more damage.
+	if state.fieldHospitalUntil > Workspace:GetServerTimeNow() then
+		st.damage *= 1 + Config.FieldHospitalDmgPct
+	end
+	return st
 end
 
 function PlayerState.damagePct(state: State): number
@@ -510,14 +550,31 @@ function PlayerState.abilityPower(state: State): number
 	return PlayerState.computed(state).abilityPower
 end
 
+-- Charges (DOUBLE DOWN, INITIATE II: Frag and Claymore hold MasteryExtraCharges more).
+function PlayerState.maxCharges(state: State, abilityId: string): number
+	if (abilityId == "frag" or abilityId == "claymore") and PlayerState.passive(state, "INITIATE", 2) then
+		return 1 + Config.MasteryExtraCharges
+	end
+	return 1
+end
+
+function PlayerState.chargesLeft(state: State, abilityId: string): number
+	local c = state.charges[abilityId]
+	return if c == nil then PlayerState.maxCharges(state, abilityId) else c
+end
+
 local function abilityView(state: State): { [string]: Types.Ability }
 	local out: { [string]: Types.Ability } = {}
 	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
 	for _, a in class.abilities do
+		local charges = PlayerState.chargesLeft(state, a.id)
 		out[a.id] = {
 			cooldown = PlayerState.abilityCooldown(state, a.id),
-			cooldownEndsAt = state.cooldowns[a.id] or 0,
+			-- The sweep only shows with no charge left; a recharge in the background is the count pill's job.
+			cooldownEndsAt = if charges > 0 then 0 else state.cooldowns[a.id] or 0,
 			activeUntil = if state.buffId == a.id then state.buffUntil else state.abilityActive[a.id],
+			charges = charges,
+			maxCharges = PlayerState.maxCharges(state, a.id),
 		}
 	end
 	return out

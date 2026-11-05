@@ -20,8 +20,12 @@ local AbilityGrowth = require(Shared.AbilityGrowth)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
+local Elements = require(script.Parent.Elements)
+local Downed = require(script.Parent.Downed)
 local Log = require(script.Parent.Log)
 local World = require(script.Parent.World)
+
+local triageTick: (number) -> () -- below, after the fields and structures it reads
 
 local COLOR = {
 	gold = Color3.fromHex("E8B64C"),
@@ -52,6 +56,10 @@ type Structure = {
 	armedAt: number, -- claymore: cannot go off before this
 	shield: number, -- barricade: Overclock's shield, absorbs damage first (0 = none)
 	shieldPart: BasePart?, -- its look
+	rate: number, -- the owner's own fire-rate multiplier (ENGINEER I: REINFORCED)
+	range: number, -- healing turret reach (DOC I: WIDE NET)
+	repair: boolean, -- ENGINEER II: FIELD REPAIR
+	triage: boolean, -- healing turret of a DOC II: downed allies in range stand up on their own
 }
 
 -- A circle on the floor that acts on whoever stands in it every FieldTickSec.
@@ -67,6 +75,9 @@ type Field = {
 	slowMult: number, -- enemy walk speed x this while inside (fire)
 	shown: { [Player]: number }, -- med bag: heal shown to this player so far (floats once a second)
 	shownAt: { [Player]: number },
+	tickMult: number, -- the owner's tick-rate multiplier (TORCH I: fire fields tick faster)
+	triage: boolean, -- med bag of a DOC II
+	hospital: boolean, -- med bag of a DOC III: allies inside deal more damage
 }
 
 local Abilities = {}
@@ -263,6 +274,10 @@ end
 local function endOverclock()
 	overclock.untilT = 0
 	overclock.mult = 1
+	if World.crewOverclockUntil > 0 then
+		World.crewOverclockUntil = 0
+		PlayerState.markAllDirty()
+	end
 	for _, s in structures do
 		setGlow(s, false)
 		if s.shield > 0 then
@@ -379,10 +394,24 @@ local function newStructure(kind: string, owner: Player, model: Model, hit: Base
 		armedAt = 0,
 		shield = 0,
 		shieldPart = nil,
+		rate = 1,
+		range = 0,
+		repair = false,
+		triage = false,
 	}
 end
 
+-- Every placeable goes through here: the owner's ENGINEER passives, then the registry and the juice.
 local function placed(s: Structure, color: Color3, radius: number?)
+	local os_ = PlayerState.get(s.owner)
+	if PlayerState.passive(os_, "ENGINEER", 1) then
+		s.rate = 1 + Config.EngineerPlaceablePct
+		if s.attackable then
+			s.hp = math.round(s.hp * (1 + Config.EngineerPlaceablePct))
+			s.maxHP = s.hp
+		end
+	end
+	s.repair = s.attackable and PlayerState.passive(os_, "ENGINEER", 2)
 	register(s)
 	World.fireRun("StructurePlaced", { kind = s.kind, position = s.hitPart.Position, color = color, radius = radius })
 end
@@ -510,8 +539,15 @@ end
 
 -- INITIATE's Adrenaline (ability id "stim", kept so saved ability levels carry over): fire rate, reload and move.
 -- No heal (that is DOC's stim shot).
-local function adrenaline(player: Player, state: PlayerState.State, _char: Model)
-	startBuff(player, state, "stim", Config.AdrenalineDuration, 0)
+local function adrenaline(player: Player, state: PlayerState.State, char: Model)
+	-- PATCHED UP (INITIATE I): it heals too.
+	local heal = 0
+	if PlayerState.passive(state, "INITIATE", 1) then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		heal = if hum then hum.MaxHealth * Config.StimMasteryHealPct else 0
+	end
+	state.stimExtended = 0
+	startBuff(player, state, "stim", Config.AdrenalineDuration, heal)
 end
 
 ------------------------------------------------------------------ Fields (med bag, molotov, drum fire)
@@ -602,6 +638,7 @@ placeField = function(
 	end
 	model.PrimaryPart = disc
 	model.Parent = folder
+	local os_ = PlayerState.get(owner)
 	fields[model] = {
 		kind = kind,
 		owner = owner,
@@ -614,6 +651,9 @@ placeField = function(
 		slowMult = slowMult,
 		shown = {},
 		shownAt = {},
+		tickMult = if isFire and PlayerState.passive(os_, "TORCH", 1) then Config.TorchBurnRateMult else 1,
+		triage = not isFire and PlayerState.passive(os_, "DOC", 2),
+		hospital = not isFire and PlayerState.passive(os_, "DOC", 3),
 	}
 	Log.event(
 		"Ability",
@@ -653,8 +693,10 @@ local function flatDistance(a: Vector3, b: Vector3): number
 end
 
 local function fieldTick(f: Field, t: number)
-	-- Overclock: the med bag (a placeable) heals faster; fire fields keep their pace.
-	local interval = if f.kind == "medbag" then Config.FieldTickSec / rateMult() else Config.FieldTickSec
+	-- Overclock: the med bag (a placeable) heals faster; fire fields tick at their owner's rate (TORCH I).
+	local interval = if f.kind == "medbag"
+		then Config.FieldTickSec / rateMult()
+		else Config.FieldTickSec / math.max(0.1, f.tickMult)
 	if t - f.lastTick < interval then
 		return
 	end
@@ -670,6 +712,9 @@ local function fieldTick(f: Field, t: number)
 			end
 			if flatDistance(root.Position, f.position) > f.radius then
 				continue
+			end
+			if f.hospital then
+				state.fieldHospitalUntil = t + interval + 0.3 -- FIELD HOSPITAL: +damage while inside
 			end
 			local healed = healPlayer(player, amount)
 			if healed <= 0 then
@@ -696,6 +741,7 @@ local function fieldTick(f: Field, t: number)
 				continue
 			end
 			Enemy.slow(model, f.slowMult, Config.FieldTickSec + 0.25)
+			Elements.markBurning(model, f.owner, interval + 0.4) -- the burning look, and BACKDRAFT's credit
 			hitEnemy(f.owner, model, amount, ep, true)
 		end
 	end
@@ -761,19 +807,18 @@ end
 local function placeMedBag(player: Player, state: PlayerState.State, char: Model)
 	local lv = level(state, "medbag")
 	local pos = placementCFrame(char, Config.StructurePlaceDistance).Position
-	placeField(
-		"medbag",
-		player,
-		pos,
-		Config.MedBagRadius,
-		Config.MedBagLifetime,
-		grown("medbag", "HealPerSec", Config.MedBagHealPerSec, lv) * PlayerState.abilityPower(state),
-		1
-	)
-	World.fireRun(
-		"StructurePlaced",
-		{ kind = "medbag", position = pos, color = COLOR.green, radius = Config.MedBagRadius }
-	)
+	-- WIDE NET (DOC I) and FIELD HOSPITAL (DOC III) widen it; FIELD HOSPITAL heals harder.
+	local radius = Config.MedBagRadius
+	local heal = grown("medbag", "HealPerSec", Config.MedBagHealPerSec, lv) * PlayerState.abilityPower(state)
+	if PlayerState.passive(state, "DOC", 1) then
+		radius *= 1 + Config.DocReachPct
+	end
+	if PlayerState.passive(state, "DOC", 3) then
+		radius *= Config.FieldHospitalRadiusMult
+		heal *= Config.FieldHospitalHealMult
+	end
+	placeField("medbag", player, pos, radius, Config.MedBagLifetime, heal, 1)
+	World.fireRun("StructurePlaced", { kind = "medbag", position = pos, color = COLOR.green, radius = radius })
 end
 
 local function placeHealTurret(player: Player, state: PlayerState.State, char: Model)
@@ -786,6 +831,8 @@ local function placeHealTurret(player: Player, state: PlayerState.State, char: M
 	s.hp = math.round(grown("healturret", "Hp", Config.HealTurretHP, lv) * pw)
 	s.maxHP = s.hp
 	s.heal = grown("healturret", "BeamHeal", Config.HealTurretBeamHeal, lv) * pw
+	s.range = Config.HealTurretRange * (if PlayerState.passive(state, "DOC", 1) then 1 + Config.DocReachPct else 1)
+	s.triage = PlayerState.passive(state, "DOC", 2)
 	s.head = head
 	s.fill = hpBar(base, COLOR.green)
 	placed(s, COLOR.green)
@@ -817,14 +864,14 @@ local function lowestTeammate(from: Vector3, range: number): Player?
 end
 
 local function healTurretTick(s: Structure, t: number)
-	if t - s.lastTick < Config.HealTurretTickSec / rateMult() then
+	if t - s.lastTick < Config.HealTurretTickSec / (rateMult() * s.rate) then
 		return
 	end
 	local head = s.head
 	if not head then
 		return
 	end
-	local target = lowestTeammate(head.Position, Config.HealTurretRange)
+	local target = lowestTeammate(head.Position, if s.range > 0 then s.range else Config.HealTurretRange)
 	if not target then
 		return
 	end
@@ -976,7 +1023,7 @@ local function placeFlameTurret(player: Player, state: PlayerState.State, char: 
 end
 
 local function flameTurretTick(s: Structure, t: number)
-	if t - s.lastTick < Config.FlameTurretTickSec / rateMult() then
+	if t - s.lastTick < Config.FlameTurretTickSec / (rateMult() * s.rate) then
 		return
 	end
 	local head = s.head
@@ -1004,6 +1051,7 @@ local function flameTurretTick(s: Structure, t: number)
 		life = Config.FlameTurretTickSec,
 		sound = if sound then "flame" else nil,
 	})
+	Elements.markBurning(target, s.owner, Config.FlameTurretTickSec + 0.4)
 	hitEnemy(s.owner, target, s.dmg * Config.FlameTurretTickSec, tp, true)
 end
 
@@ -1050,7 +1098,7 @@ end
 
 ------------------------------------------------------------------ Turret (INITIATE) tick
 local function turretTick(s: Structure, t: number)
-	if t - s.lastTick < 1 / (Config.TurretFireRate * rateMult()) then
+	if t - s.lastTick < 1 / (Config.TurretFireRate * rateMult() * s.rate) then
 		return
 	end
 	local head = s.head
@@ -1158,7 +1206,13 @@ local function startOverclock(player: Player, state: PlayerState.State, _char: M
 	end
 	state.abilityActive.overclock = overclock.untilT
 	state.dirty = true
-	World.fireRun("Overclock", { owner = player.UserId, untilT = overclock.untilT, count = n })
+	-- CREW OVERCLOCK (ENGINEER III): every crew member's gun runs faster for the same window.
+	local crew = PlayerState.passive(state, "ENGINEER", 3)
+	if crew then
+		World.crewOverclockUntil = math.max(World.crewOverclockUntil, overclock.untilT)
+		PlayerState.markAllDirty()
+	end
+	World.fireRun("Overclock", { owner = player.UserId, untilT = overclock.untilT, count = n, crew = crew })
 	Log.event(
 		"Ability",
 		"%s overclocked %d placeables (LV %d: x%.2f rate, %d shield, %ds)",
@@ -1178,6 +1232,9 @@ local function eagleEye(player: Player, state: PlayerState.State, char: Model)
 	local lv = level(state, "eagleeye")
 	local radius = grown("eagleeye", "EagleEyeRadius", Config.EagleEyeRadius, lv)
 	local bonus = grown("eagleeye", "EagleEyeBonusPct", Config.EagleEyeBonusPct * 100, lv) / 100
+	if PlayerState.passive(state, "SHARPSHOOTER", 2) then
+		bonus += Config.MarksmanKitEagleEyePct -- MARKSMAN'S KIT
+	end
 	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then
 		return
@@ -1227,8 +1284,82 @@ local TICK: { [string]: (Structure, number) -> () } = {
 	claymore = claymoreTick,
 }
 
+-- Charges: every ability holds one; DOUBLE DOWN (INITIATE II) gives Frag and Claymore MasteryExtraCharges more.
+-- A use spends a charge and starts the recharge if it is not running; charges come back one cooldown at a time.
+Abilities.maxCharges = PlayerState.maxCharges
+Abilities.chargesLeft = PlayerState.chargesLeft
+
 local function onCooldown(state: PlayerState.State, id: string): boolean
-	return (state.cooldowns[id] or 0) > now()
+	return Abilities.chargesLeft(state, id) <= 0
+end
+
+-- TRIAGE (DOC II): a downed ally inside the DOC's med bag or healing turret range stands up on their own over
+-- AutoReviveSec, no hold (the bleed pauses while it fills); a bled-out ally whose body lies inside comes back too.
+local function insideTriage(position: Vector3): boolean
+	for _, f in fields do
+		if f.triage and flatDistance(position, f.position) <= f.radius then
+			return true
+		end
+	end
+	for _, s in structures do
+		if s.triage and (s.hitPart.Position - position).Magnitude <= s.range then
+			return true
+		end
+	end
+	return false
+end
+
+triageTick = function(dt: number)
+	if not World.inRun() then
+		return
+	end
+	for _, player in World.runAudience() do
+		local state = PlayerState.get(player)
+		if not state.downed and not state.bledOut then
+			if state.triageProgress > 0 then
+				state.triageProgress = 0
+			end
+			continue
+		end
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local pos = if state.downed and root then root.Position else state.lastPosition
+		if insideTriage(pos) then
+			state.triageProgress = math.min(1, state.triageProgress + dt / math.max(Config.AutoReviveSec, 0.1))
+			if state.downed then
+				state.bleedEndsAt += dt
+			end
+			Downed.triageProgress(player, state.triageProgress)
+			if state.triageProgress >= 1 then
+				state.triageProgress = 0
+				Downed.reviveOne(player, "TRIAGE")
+			end
+		elseif state.triageProgress > 0 then
+			state.triageProgress = 0
+			Downed.triageProgress(player, 0)
+		end
+	end
+end
+
+-- Recharge: a finished cooldown hands one charge back and starts the next while any are missing.
+local function rechargeTick(t: number)
+	for _, state in PlayerState.all() do
+		for id, c in state.charges do
+			local max = Abilities.maxCharges(state, id)
+			local ends = state.cooldowns[id] or 0
+			if c < max and t >= ends then
+				c += 1
+				state.charges[id] = c
+				if c < max then
+					state.cooldowns[id] = t + PlayerState.abilityCooldown(state, id)
+				end
+				state.dirty = true
+			end
+			if c >= max then
+				state.charges[id] = nil
+			end
+		end
+	end
 end
 
 -- `aim` is the client's cursor floor point; thrown abilities land there (clamped), placeables ignore it.
@@ -1253,7 +1384,10 @@ function Abilities.use(player: Player, id: any, aim: any)
 		return
 	end
 	handler(player, state, char, aimPoint)
-	state.cooldowns[id] = now() + PlayerState.abilityCooldown(state, id)
+	state.charges[id] = Abilities.chargesLeft(state, id) - 1
+	if (state.cooldowns[id] or 0) <= now() then
+		state.cooldowns[id] = now() + PlayerState.abilityCooldown(state, id)
+	end
 	state.dirty = true
 end
 
@@ -1270,11 +1404,12 @@ function Abilities.init()
 	Enemy.onStructureHit = Abilities.damageStructure
 	Remotes.UseAbility.OnServerEvent:Connect(Abilities.use)
 
-	RunService.Heartbeat:Connect(function()
+	RunService.Heartbeat:Connect(function(dt)
 		local t = now()
 		if overclock.untilT > 0 and t >= overclock.untilT then
 			endOverclock()
 		end
+		rechargeTick(t)
 		for _, s in table.clone(structures) do
 			if t >= s.expiresAt then
 				destroyStructure(s, "expired")
@@ -1283,8 +1418,22 @@ function Abilities.init()
 				if tick then
 					tick(s, t)
 				end
+				-- FIELD REPAIR (ENGINEER II): idle placeables mend themselves.
+				if
+					s.repair
+					and s.hp < s.maxHP
+					and not Enemy.nearest(s.hitPart.Position, Config.FieldRepairRange, nil)
+				then
+					s.hp = math.min(s.maxHP, s.hp + s.maxHP * Config.FieldRepairPct * dt)
+					s.hitPart:SetAttribute("StructureHP", s.hp)
+					local fill = s.fill
+					if fill then
+						fill.Size = UDim2.fromScale(math.clamp(s.hp / s.maxHP, 0, 1), 1)
+					end
+				end
 			end
 		end
+		triageTick(dt)
 		for _, f in table.clone(fields) do
 			if t >= f.expiresAt then
 				removeField(f, "burned out")

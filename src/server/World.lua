@@ -45,6 +45,7 @@ local World = {
 	wavesCleared = 0, -- waves cleared this run (XP)
 	bossKills = 0, -- bosses killed this run (XP, credited to every member)
 	roster = nil :: any, -- the scoreboard view (Roster.lua rebuilds it every RosterSyncSec; StateSync carries it)
+	crewOverclockUntil = 0, -- server time: an ENGINEER III's Overclock boosts every crew member's gun until then
 }
 
 function World.survivedSec(): number

@@ -75,7 +75,14 @@ export type Computed = {
 	lifesteal: number,
 }
 
-export type Ability = { cooldown: number, cooldownEndsAt: number, activeUntil: number? }
+-- charges / maxCharges: DOUBLE DOWN gives Frag and Claymore a second charge; the sweep shows only at 0 charges.
+export type Ability = {
+	cooldown: number,
+	cooldownEndsAt: number,
+	activeUntil: number?,
+	charges: number,
+	maxCharges: number,
+}
 
 export type Sync = {
 	abilities: { [string]: Ability }, -- keyed by the equipped class's ability ids

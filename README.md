@@ -618,6 +618,21 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    out 60 studs and every enemy in it glows red through walls for 6s and takes +25% from bullets, turrets, fire and
    blasts), E Dead Eye, Z Flashbang. A profile that leveled the SHARPSHOOTER claymore has that level on INITIATE's Z;
    Eagle Eye starts at LV 0. UPGRADE on the tab raises Frag DMG, Overclock RATE / SHIELD and Eagle Eye BONUS / RADIUS.
+5. Mastery: every owned weapon tile and owned class pill in the customization scene carries a thin green bar with
+   three diamond pips; hovering lists the tiers (`✔ I GUNMETAL WRAP · 100 kills`, `· II TRIAGE · Your heals revive
+   downed allies`). In a run, debug `+100 mastery` (or 100 kills with one gun): the moment a tier is crossed a card
+   drops in under the wave bar with a spinning diamond emblem, rays and the sting: `WEAPON MASTERY · AK-47 ·
+   MASTERY I · GUNMETAL WRAP UNLOCKED` (gun) or `CLASS MASTERY · ENGINEER · MASTERY I · REINFORCED` (class); the
+   class passive is on from that second (placeables put down after it have +20% HP, etc.). Several tier-ups queue.
+   Summary: `MASTERY   AK-47 +31 · ENGINEER +12` between the level card and the panel, and after the XP fill each
+   tier crossed this run pops above the card. CUSTOMIZE → WRAP shows Gunmetal / Gold / Black-Red with `MASTERY I`
+   / `II` / `III` labels; they apply only on the gun that earned them and can never be bought. Passives to spot-check
+   (set a high tier with the debug button before a run): INITIATE Adrenaline heals 25%, Frag and Claymore show `x2`
+   and hold two charges, kills during Adrenaline stretch its timer; ENGINEER placeables mend when nothing is near,
+   Overclock speeds every crew gun; DOC med bag is wider, a downed teammate standing in it gets up on their own
+   (`MED BAG IS REVIVING YOU`), allies inside hit harder; SHARPSHOOTER headshots hit harder, snipers / pistols reload
+   faster, headshots during Dead Eye refill the mag; TORCH fire ticks twice as fast, runs start with INCENDIARY 15%,
+   burning kills shave the Molotov cooldown.
 
 ## Layout
 

@@ -226,6 +226,41 @@ function Downed.bleedOut(player: Player)
 	Downed.checkRunOver()
 end
 
+-- TRIAGE (a DOC II's med bag / healing turret): the hands-free revive's progress, shown like a hold.
+function Downed.triageProgress(player: Player, progress: number)
+	local state = PlayerState.get(player)
+	if not state.downed then
+		return
+	end
+	World.fireRun("ReviveProgress", {
+		userId = player.UserId,
+		name = player.Name,
+		reviverId = nil,
+		reviver = if progress > 0 then "MED BAG" else nil,
+		progress = progress,
+		bleedEndsAt = state.bleedEndsAt,
+	})
+end
+
+-- One player back on their feet (TRIAGE): downed stands up, bled-out comes back where they fell.
+function Downed.reviveOne(player: Player, by: string)
+	local state = PlayerState.get(player)
+	if state.downed then
+		Downed.standUp(player, Config.ReviveHPPct, by)
+	elseif state.bledOut then
+		state.bledOut = false
+		state.pendingSpawnCFrame = CFrame.new(state.lastPosition + Vector3.new(0, 1, 0))
+		player:LoadCharacter()
+		task.spawn(function()
+			local char = player.Character or player.CharacterAdded:Wait()
+			char:WaitForChild("Humanoid", 5)
+			char:WaitForChild("HumanoidRootPart", 5)
+			task.wait()
+			Downed.standUp(player, Config.ReviveHPPct, by)
+		end)
+	end
+end
+
 -- Everyone downed or bled out stands up at ReviveHPPct where they fell. Free, counted per buyer.
 function Downed.reviveEverybody(buyer: Player?)
 	local who = if buyer then buyer.Name else "DEBUG"

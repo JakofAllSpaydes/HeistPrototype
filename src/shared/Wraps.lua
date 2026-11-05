@@ -12,6 +12,10 @@ Wraps.List = {
 	{ id = "royal", name = "Royal", color = "4D5FE8" },
 	{ id = "gold", name = "Gold Leaf", color = "E8B64C" },
 	{ id = "void", name = "Void", color = "1A1A20" },
+	-- Mastery wraps (brief 5, Config.MasteryWrapIds): never sold; a weapon's mastery tier unlocks them on that gun.
+	{ id = "gunmetal", name = "Gunmetal", color = "5B6169" },
+	{ id = "masterygold", name = "Gold", color = "D9A520" },
+	{ id = "blackred", name = "Black-Red", color = "3A1014" },
 } :: { Wrap }
 
 Wraps.ById = {} :: { [string]: Wrap }

@@ -5,6 +5,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Prices = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Prices"))
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local MasteryCopy = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MasteryCopy"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -110,6 +112,95 @@ function MetaUI.icon(kind: string, parent: Instance, size: number, color: Color3
 	end
 	f.Parent = parent
 	return f
+end
+
+-- Mastery (brief 5): a thin bar with tier pips along the bottom of a weapon tile or class pill, and a tooltip on
+-- hover / tap listing the tier rewards with the earned ones ticked. `kind` "weapon" | "class".
+function MetaUI.masteryBar(parent: GuiObject, kind: string, id: string, xp: number, inset: number?)
+	local S = UI.S
+	local tiers = if kind == "weapon" then Config.WeaponMasteryTiers else Config.ClassMasteryTiers
+	local tier, into, need = MasteryCopy.progress(xp, tiers)
+	local pad = inset or S(6)
+	local track = UI.frame({
+		Name = "Mastery",
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.2,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -S(2)),
+		Size = UDim2.new(1, -pad * 2, 0, S(4)),
+		ZIndex = 6,
+		Parent = parent,
+	})
+	UI.corner(track, S(2))
+	local frac = if need > 0 then math.clamp(into / need, 0, 1) else 1
+	local fill = UI.frame({
+		BackgroundColor3 = if tier >= #tiers then Theme.Colors.gold else Theme.Colors.cash,
+		Size = UDim2.fromScale(frac, 1),
+		ZIndex = 6,
+		Parent = track,
+	})
+	UI.corner(fill, S(2))
+	-- Tier pips above the bar's right end: lit gold once earned.
+	for t = 1, #tiers do
+		local pip = UI.frame({
+			BackgroundColor3 = if tier >= t then Theme.Colors.gold else Theme.Colors.panel2,
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -(#tiers - t) * S(7), 0, -S(2)),
+			Size = UDim2.fromOffset(S(5), S(5)),
+			Rotation = 45,
+			ZIndex = 6,
+			Parent = track,
+		})
+		UI.stroke(pip, Theme.Colors.black, 1, 0.4)
+	end
+	local lines = MasteryCopy.tooltip(kind, id, tier)
+	local tip = UI.frame({
+		Name = "MasteryTip",
+		BackgroundColor3 = Theme.Colors.panel2,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, S(4)),
+		Size = UDim2.fromOffset(S(280), S(16) * (#lines + 1) + S(8)),
+		Visible = false,
+		ZIndex = 30,
+		Parent = parent,
+	})
+	UI.corner(tip, S(6))
+	UI.stroke(tip, Theme.Colors.grey, S(1))
+	UI.pad(tip, S(8), S(4), S(8), S(4))
+	UI.list(tip, Enum.FillDirection.Vertical, 0)
+	UI.text({
+		Text = string.format(
+			"MASTERY %s · %s",
+			if tier > 0 then MasteryCopy.Roman[tier] else "0",
+			if need > 0 then string.format("%d / %d", into, need) else "MAX"
+		),
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.gold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Size = UDim2.new(1, 0, 0, S(16)),
+		ZIndex = 31,
+		Parent = tip,
+	})
+	for i, line in lines do
+		UI.text({
+			Text = line,
+			TextSize = S(10),
+			TextColor3 = if i <= tier then Theme.Colors.cash else Theme.Colors.textDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Size = UDim2.new(1, 0, 0, S(16)),
+			LayoutOrder = i,
+			ZIndex = 31,
+			Parent = tip,
+		})
+	end
+	parent.MouseEnter:Connect(function()
+		tip.Visible = true
+	end)
+	parent.MouseLeave:Connect(function()
+		tip.Visible = false
+	end)
 end
 
 -- A grid tile: colored block, name on top, icon in the middle, pill at the bottom.

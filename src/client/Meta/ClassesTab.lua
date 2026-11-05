@@ -269,11 +269,15 @@ function ClassesTab.render(scene: any)
 	UI.list(pills, Enum.FillDirection.Horizontal, S(6))
 	for i, c in Classes.List do
 		local own = profile ~= nil and profile.classes.owned[c.id] == true
-		classPill(pills, i, c, own, selected == c.id, equipped == c.id, function()
+		local pill = classPill(pills, i, c, own, selected == c.id, equipped == c.id, function()
 			selected = c.id
 			UI.sound(Theme.Sounds.toast, 1.25, 0.3)
 			scene.refresh()
 		end)
+		if own then
+			local m = profile.mastery and profile.mastery.classes and profile.mastery.classes[c.id]
+			MetaUI.masteryBar(pill, "class", c.id, if m then (tonumber(m.xp) or 0) else 0, S(4))
+		end
 	end
 	futurePill(pills, #Classes.List + 1, function()
 		scene.toast("MORE CLASSES COMING", "click")

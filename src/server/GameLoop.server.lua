@@ -40,6 +40,7 @@ local Boss = require(script.Parent.Boss)
 local Roster = require(script.Parent.Roster)
 local Economy = require(script.Parent.Economy)
 local Elements = require(script.Parent.Elements)
+local Mastery = require(script.Parent.Mastery)
 
 Profiles.init()
 PlayerState.init()
@@ -50,9 +51,11 @@ Enemy.init()
 Enemy.onSpawn = function(d)
 	Heat.onSpawn(d.wave)
 end
-Enemy.onDeath = function(d)
+Enemy.onDeath = function(d, attacker)
 	Heat.onEnemyDead(d.wave)
+	Mastery.onKill(d.model, attacker)
 end
+Mastery.init()
 Elements.init()
 Combat.init()
 UpgradeShop.init()
@@ -136,6 +139,7 @@ local function runWaves()
 
 		BigCrate.onWaveEnd()
 		Economy.logWave(wave, World.partyPlayers())
+		Mastery.onWaveEnd(wave, World.partyPlayers())
 		if advanced then
 			Log.event("Wave", "Wave %d rolled into the next by AUTO SKIP, %d still alive", wave, Enemy.count())
 		else
@@ -209,6 +213,7 @@ task.spawn(function()
 		Heat.reset()
 		Hub.beginRun()
 		Economy.resetRun(World.partyPlayers())
+		Mastery.beginRun(World.partyPlayers())
 		setState("Intro")
 		Log.event(
 			"Run",

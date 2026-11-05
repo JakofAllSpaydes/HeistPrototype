@@ -19,6 +19,7 @@ local Hub = require(script.Parent.Hub)
 local Squad = require(script.Parent.Squad)
 local Profiles = require(script.Parent.Profiles)
 local Progression = require(script.Parent.Progression)
+local Mastery = require(script.Parent.Mastery)
 
 local RunEnd = {}
 
@@ -47,6 +48,7 @@ export type Row = {
 	newBestBanked: boolean, -- the banked total beat this player's best
 	level: number, -- account level after the run
 	xp: Progression.Award?, -- the XP breakdown for the summary bar (nil for dummies)
+	mastery: Mastery.Award?, -- the MASTERY line and tier-ups under it (nil for dummies)
 	score: number,
 	lineIndex: number,
 	model: Model?, -- dummies only
@@ -315,6 +317,7 @@ function RunEnd.play(): string
 			newBestBanked = newBestBanked,
 			level = Progression.level(p),
 			xp = award,
+			mastery = Mastery.award(p),
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}

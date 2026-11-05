@@ -28,6 +28,7 @@ local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
 local Boss = require(script.Parent.Boss)
 local Progression = require(script.Parent.Progression)
+local Mastery = require(script.Parent.Mastery)
 
 local Debug = {}
 
@@ -98,6 +99,10 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	ForceTradeoff = function(player, state, _args)
 		state.forceTradeoff = true
 		toast(player, "NEXT PICK-3 HAS A TRADEOFF")
+	end,
+	AddMastery = function(player, _state, _args)
+		Mastery.debugAdd(player, 100)
+		toast(player, "+100 MASTERY · GUN AND CLASS")
 	end,
 	ForceElement = function(player, state, _args)
 		state.forceElement = true

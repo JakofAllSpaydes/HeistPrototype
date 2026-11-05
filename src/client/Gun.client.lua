@@ -306,12 +306,21 @@ ClientState.BlockChanged:Connect(function()
 	end
 end)
 
-ClientState.Juice:Connect(function(name: string)
+ClientState.Juice:Connect(function(name: string, data: any)
 	if name == "LocalReload" then
 		if not cancelReload() then
 			reload()
 		end
 	elseif name == "TouchFireReleased" then
 		semiLatch = false
+	elseif name == "MagAdd" then
+		-- SHARPSHOOTER's DEAD EYE OVERDRIVE mastery: a headshot during Dead Eye puts a round back in the mag.
+		local h = held
+		if h then
+			local n = if typeof(data) == "table" then tonumber(data.n) or 1 else 1
+			mag = math.min(h.magSize, mag + n)
+			Remotes.AmmoReport:FireServer(mag)
+			publishAmmo()
+		end
 	end
 end)

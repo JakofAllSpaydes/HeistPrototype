@@ -297,6 +297,11 @@ local function build()
 	btn(r12b, "Reset daily", 0.3, function()
 		send("ResetDaily")
 	end, Theme.Colors.malus)
+	-- Brief 5: +100 mastery on the held gun and the equipped class (tier-ups pop and apply at once).
+	local r12c = row(panel, 16.6, rh)
+	btn(r12c, "+100 mastery", 1 / 3, function()
+		send("AddMastery")
+	end, Theme.Colors.gold)
 
 	local r8b = row(panel, 10, rh)
 	btn(r8b, "Down me", 1 / 3, function()

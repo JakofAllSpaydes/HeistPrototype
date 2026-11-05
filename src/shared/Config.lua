@@ -542,6 +542,44 @@ local Config = {
 	XpFillSec = 1.2, -- the summary XP bar fills over this long after the Gold count-up
 	RosterSyncSec = 1, -- the scoreboard roster resends this often
 
+	------------------------------------------------------------------ Mastery (brief 5; server Mastery.lua, copy in MasteryCopy.lua)
+	-- Accrues in the run, lands in the profile at the summary. Weapon XP per kill with that gun; class XP per wave
+	-- played as that class. Class passives are always on while the class is equipped, at the tier the run started at.
+	MasteryXpPerKill = 1,
+	MasteryXpPerEliteKill = 3,
+	MasteryXpPerBossKill = 50,
+	WeaponMasteryTiers = { 100, 400, 1200 }, -- kills (placeholders)
+	MasteryXpPerWave = 1,
+	MasteryXpPerBossWave = 3,
+	ClassMasteryTiers = { 20, 60, 150 }, -- waves
+	MasteryWrapIds = { "gunmetal", "masterygold", "blackred" }, -- weapon tier 1 / 2 / 3 unlock these wraps on that gun
+	MasteryPopSec = 3.2, -- the mid-run tier-up card holds this long (cards queue; the reward is live at once)
+	-- INITIATE
+	StimMasteryHealPct = 0.25, -- I: Adrenaline heals this share of max HP on use
+	MasteryExtraCharges = 1, -- II: Frag and Claymore hold this many extra charges
+	StimExtendSec = 0.5, -- III: every kill during Adrenaline extends it this much...
+	StimExtendCap = 6, -- ...up to this much extra per use
+	-- ENGINEER
+	EngineerPlaceablePct = 0.2, -- I: placeables +HP and +fire rate
+	FieldRepairPct = 0.03, -- II: placeables regen this share of max HP a second...
+	FieldRepairRange = 10, -- ...while no enemy is this close
+	CrewOverclockFireRatePct = 0.25, -- III: Overclock also gives every crew member's gun this fire rate...
+	CrewOverclockReloadPct = 0.25, -- ...and reload speed while it runs
+	-- DOC
+	DocReachPct = 0.3, -- I: Med Bag radius and Healing Turret range
+	AutoReviveSec = 6, -- II: a downed (or bled-out) ally inside a Med Bag / Healing Turret range stands up over this long
+	FieldHospitalHealMult = 2, -- III: Med Bag heal...
+	FieldHospitalRadiusMult = 1.5, -- ...and radius...
+	FieldHospitalDmgPct = 0.2, -- ...and allies inside deal this much more damage
+	-- SHARPSHOOTER
+	SharpHeadshotAdd = 0.3, -- I: added to the headshot multiplier
+	MarksmanKitReloadPct = 0.25, -- II: snipers and pistols reload this much faster...
+	MarksmanKitEagleEyePct = 0.15, -- ...and Eagle Eye's bonus damage goes up by this
+	DeadEyeHeadshotCdr = 0.2, -- III: every headshot during Dead Eye puts a round back and trims this off its cooldown
+	-- TORCH
+	TorchBurnRateMult = 2, -- I: your burns (fire fields, INCENDIARY) tick this much faster
+	BackdraftCdr = 0.1, -- III: every burning enemy that dies trims this off your Molotov cooldown
+
 	------------------------------------------------------------------ Boss (TITAN, Boss.lua; step 5 of brief 4)
 	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)
 	BossWaveBudgetPct = 0.4, -- boss waves spawn this share of the normal budget alongside the boss
