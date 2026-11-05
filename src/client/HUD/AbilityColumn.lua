@@ -2,6 +2,7 @@
 -- Right column: header ABILITIES, three tiles for the equipped class's abilities (Q / E / Z) with live
 -- cooldown sweeps. The tiles rebuild when the class in the sync changes. A running self buff shows its
 -- seconds left on its tile with a gold pulse.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -61,7 +62,10 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			return
 		end
 		UI.punch(t.button, 0.9, 0.2)
-		Remotes.UseAbility:FireServer(id)
+		-- The cursor's floor point rides along: thrown abilities land there (up to ThrowMaxRange).
+		local char = Players.LocalPlayer.Character
+		local aim = if char then ClientState.cursorAimPoint(char) else nil
+		Remotes.UseAbility:FireServer(id, aim)
 	end
 
 	local function rebuild(newClassId: string)

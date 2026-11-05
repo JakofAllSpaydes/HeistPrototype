@@ -45,7 +45,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | R | Reload. Tube-fed guns (`shellReload` in Weapons, currently the SPAS-12) load one shell per `reloadTime`; firing or R again stops at the current count. |
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 / 2 | Buy weapon roll / buy upgrade pick (also clickable tiles, left column). |
-| Q / E / Z | The equipped class's three abilities, all twelve live (INITIATE barricade / turret / adrenaline, DOC stim shot / med bag / healing turret, SHARPSHOOTER claymore / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown`. |
+| Q / E / Z | The equipped class's three abilities, all twelve live (INITIATE barricade / turret / adrenaline, DOC stim shot / med bag / healing turret, SHARPSHOOTER claymore / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown`. Thrown ones (molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange`; placeables stand `StructurePlaceDistance` ahead. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
 | F (hold `BagCollectSec`) | `COLLECT` a cash bag (match cash to everyone) or `BANK` a gold bag (ticks the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
 | F at the vault door | `CRACK` the vault while CRACK THE VAULT is the open side job: opens the Safe dial at the wave bracket's tier. |
@@ -559,12 +559,13 @@ Local Server through one boss; anything that fails is a Config or one-file fix:
    12s. Kill: slow-mo, `TITAN DOWN`, `+$600` on everyone, six bags round the body, a crate on the body with one
    Legendary, `+1 BOSS` beside the stars; the wave end logs the boss wave with a par that includes `BossParBonusSec`.
 8. Summary: `TOTAL BANKED ◆ N` counts up first, then `GOLD EARNED +N` (the payout plus jobs), `WAVE N · 12:34 · ★ 2.5`
-   with the time survived, then the XP row slides in: `LV 1` → the bar fills with `350 / 400 XP` counting; cross a
-   level (use `+500 XP` before a run, or a long run) and it flashes gold, reads `LV 2`, pops `LEVEL 2 · +100 GOLD`, and
-   keeps filling; `FIRST HEIST OF THE DAY ×2` under the bar on the first run of the day (then `Reset daily` to see it
-   again). Rows read `LV 2 NAME`. Back in the hub the tag reads `LV 2 · TOP WAVE 12 ★`, the Gold row includes the
-   banked total and the level reward, and the party card lists `LV 2 NAME`. Rejoin: level, XP and the daily flag hold
-   (API access on).
+   with the time survived, then the level card drops in above the panel (emblem, `LV 1 ROOKIE`, `+N XP` counting
+   in green on the right, the bar reading `350 / 400 XP`); cross a level (use `+500 XP` before a run, or a long run)
+   and it flashes, reads `LV 2`, pops `LEVEL 2 · +100 GOLD` above the card and keeps filling; `FIRST HEIST OF THE
+   DAY ×2` under the gain on the first run of the day (then `Reset daily` to see it again). Rows read `LV 2 NAME`.
+   Back in the hub the same card sits above the Gold pill bottom-left with the new level and bar, the tag reads
+   `LV 2 · TOP WAVE 12 ★`, the Gold row includes the banked total and the level reward, and the party card lists
+   `LV 2 NAME`. Rejoin: level, XP and the daily flag hold (API access on). The card never shows in a run.
 9. Scoreboard: hold Tab in a run: `WAVE 5 · TIME 3:12 · ★★ · ◆ BANKED 54 · $ CASH 2,340`, your row highlighted with
    level, class circle, green dot, kills, cash, bags, jobs, downs, revives, MVP score, updating every second; release
    closes it; shooting keeps working while it is up. Mobile: tap the wave bar (the `≡` chip), tap outside to close.
@@ -790,6 +791,20 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   `ToggleScoreboard`. Config gains the Enemies, Elites, Heat-as-pace, Bags, Vault, Progression and Boss groups
   (`EnemyHP` / `EnemyDmg` / `EnemyWalkSpeed` / `RetargetSec` / `CashPerKill` / `HeatWaveClear` / `HeatSideJob*` are
   gone). Built and linted, not yet run in Studio (see the Brief 4 verify list).
+
+- **Round 14b (4 Nov, feedback on brief 4)** — the level is its own card (`HUD/LevelCard.lua`, reference board:
+  emblem, `LV 19` and a rank name from `LevelRewards.Ranks`, `+47 XP` in green, a bar reading `993 / 3,110 XP`):
+  it floats above the summary panel instead of sitting inside it, and the hub HUD shows it above the Gold pill
+  (not in gameplay). Enemy speed and damage cut a third across the roster and TITAN (`Config.Enemies` rows,
+  `TitanSpeed` / `TitanMeleeDmg` / `TitanChargeDmg` / `TitanSweepDps`; the brief's numbers are in the comments).
+  The Grenadier's circle grows over 2.0s (`GrenadierTelegraphSec`). The boss telegraphs are the damage areas: the
+  sweep a filled fan of the arc, the charge a rectangle `TitanChargeHitRadius` either side out to the overrun.
+  Bags collect in 0.5s. The vault job is forced at every `VaultJobEveryWaves` (5) wave for testing and a sealed vault
+  resets for the next draw (`VaultJobOnce` false). Point-blank shots: an enemy standing in you is inside the ray's
+  start, so a bullet first hits the nearest enemy within `PointBlankRange` and `PointBlankAngle` of the aim. A
+  Boomer killed by damage leaves a bigger circle growing where it fell (`BoomerDeathRadiusMult` 1.3 ×, over
+  `BoomerDeathFuseSec` 0.6) before the burst. Thrown abilities (molotov, flashbang) land at the cursor's floor point
+  up to `ThrowMaxRange` from the player (`UseAbility` carries the aim point); placeables still stand in front.
 
 ## Open design notes (not built)
 

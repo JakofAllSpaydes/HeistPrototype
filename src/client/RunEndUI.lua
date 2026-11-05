@@ -19,6 +19,8 @@ local Juice = require(script.Parent:WaitForChild("Juice"))
 local Spectate = require(script.Parent:WaitForChild("Spectate"))
 local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
 local MinigameFrame = require(script.Parent:WaitForChild("Minigames"):WaitForChild("Frame"))
+local LevelCard = require(script.Parent:WaitForChild("HUD"):WaitForChild("LevelCard"))
+local LevelRewards = require(Shared:WaitForChild("LevelRewards"))
 
 local RunEndUI = {}
 
@@ -42,9 +44,8 @@ local function fmtClock(seconds: number): string
 	return string.format("%d:%02d", s // 60, s % 60)
 end
 
--- The level curve, mirrored from Progression so the bar can draw it: XpCurveBase x n ^ XpCurvePow.
 local function xpToLevel(level: number): number
-	return math.max(1, math.floor(Config.XpCurveBase * math.max(1, level) ^ Config.XpCurvePow))
+	return LevelRewards.xpToLevel(level)
 end
 
 -- Camera framing: characters stand about 5 studs tall with the root 3 up, so chest is ~3 and the head ~5.
@@ -236,7 +237,7 @@ local function showSummary(d: any)
 	local vp = camera.ViewportSize
 	local W = math.min(math.floor(vp.X * 0.9), S(700))
 	local rowH = S(30)
-	local headerH = S(184) -- headline block plus the XP row
+	local headerH = S(140) -- the headline block (the level card floats above the panel)
 	local H = headerH + S(24) + rowH * n + S(72) + S(28)
 	H = math.min(H, math.floor(vp.Y * 0.94))
 	local panel = UI.frame({
@@ -345,79 +346,16 @@ local function showSummary(d: any)
 	waveLabel.ZIndex = 12
 	waveLabel.Font = Theme.Fonts.display
 
-	-- The XP row under the header: LV n left, LV n+1 right, the bar between, the number inside it, a FIRST
-	-- HEIST OF THE DAY line when it applies. Hidden until the Gold count-up is done, then it slides in and fills.
+	-- The level card floats above the panel (its own piece, not nested): hidden until the Gold count-up is
+	-- done, then it drops in and the bar fills with `+N XP` counting on the right.
 	local award = myRow and myRow.xp
 	if award then
-		local rowY = S(142)
-		local xpRow = UI.frame({
-			Name = "XpRow",
-			BackgroundColor3 = Theme.Colors.panel,
-			BackgroundTransparency = 0.3,
-			Position = UDim2.fromOffset(S(24), rowY + S(30)),
-			Size = UDim2.fromOffset(W - S(48), S(36)),
-			Visible = false,
-			ZIndex = 11,
-			Parent = panel,
-		})
-		UI.corner(xpRow, S(8))
-		local lvLeft = UI.text({
-			Text = string.format("LV %d", award.fromLevel),
-			Font = Theme.Fonts.display,
-			TextSize = S(16),
-			TextColor3 = Theme.Colors.gold,
-			Position = UDim2.fromOffset(S(10), 0),
-			Size = UDim2.fromOffset(S(56), S(36)),
-			ZIndex = 12,
-			Parent = xpRow,
-		})
-		local lvRight = UI.text({
-			Text = string.format("LV %d", award.fromLevel + 1),
-			Font = Theme.Fonts.display,
-			TextSize = S(16),
-			TextColor3 = Theme.Colors.textDim,
-			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -S(10), 0, 0),
-			Size = UDim2.fromOffset(S(56), S(36)),
-			ZIndex = 12,
-			Parent = xpRow,
-		})
-		local track = UI.frame({
-			BackgroundColor3 = Theme.Colors.bg,
-			Position = UDim2.fromOffset(S(72), S(12)),
-			Size = UDim2.new(1, -S(144), 0, S(12)),
-			ZIndex = 12,
-			Parent = xpRow,
-		})
-		UI.corner(track, S(6))
-		local xpFill = UI.frame({
-			BackgroundColor3 = Theme.Colors.gold,
-			Size = UDim2.fromScale(0, 1),
-			ZIndex = 13,
-			Parent = track,
-		})
-		UI.corner(xpFill, S(6))
-		local xpText = UI.text({
-			Text = "",
-			Font = Theme.Fonts.display,
-			TextSize = S(10),
-			TextColor3 = Theme.Colors.text,
-			Size = UDim2.fromScale(1, 1),
-			ZIndex = 14,
-			Parent = track,
-		})
-		UI.stroke(xpText, Theme.Colors.black, S(1), 0.4)
-		local firstLine = UI.text({
-			Text = if award.first then string.format("FIRST HEIST OF THE DAY ×%s", UI.fmtNum(award.mult or 2)) else "",
-			Font = Theme.Fonts.display,
-			TextSize = S(10),
-			TextColor3 = Theme.Colors.cash,
-			Position = UDim2.fromOffset(S(72), S(24)),
-			Size = UDim2.new(1, -S(144), 0, S(12)),
-			ZIndex = 12,
-			Parent = xpRow,
-		})
-		local _ = firstLine
+		local card = LevelCard.build(g, W, false)
+		local cardY = -H / 2 - S(14)
+		card.frame.AnchorPoint = Vector2.new(0.5, 1)
+		card.frame.Position = UDim2.new(0.5, 0, 0.5, cardY - S(40))
+		card.frame.Visible = false
+		card.set(award.fromLevel, award.fromXp, xpToLevel(award.fromLevel), "", nil)
 		-- Segments of the fill: each level crossed, then the last partial one.
 		local segments = {}
 		local level, x = award.fromLevel, award.fromXp
@@ -433,14 +371,11 @@ local function showSummary(d: any)
 			end
 		end
 		xpAnim = {
-			row = xpRow,
-			rowY = rowY,
-			lvLeft = lvLeft,
-			lvRight = lvRight,
-			fill = xpFill,
-			text = xpText,
+			card = card,
+			cardY = cardY,
 			segments = segments,
 			gained = math.max(1, tonumber(award.gained) or 1),
+			sub = if award.first then string.format("FIRST HEIST OF THE DAY ×%s", UI.fmtNum(award.mult or 2)) else nil,
 			popped = {},
 			shown = false,
 			levelUps = award.levelUps or {},
@@ -706,19 +641,21 @@ local function step(_dt: number)
 			goldLabel.Text = string.format("+%d", math.floor(mine * k2))
 			goldLabel.TextSize = if k2 > 0 and k2 < 1 then UI.S(26 + 4 * math.sin(e * 30)) else UI.S(26)
 		end
-		-- The XP bar: slides in after the Gold count-up, fills over XpFillSec at a constant XP speed; a level
-		-- crossed flashes gold, bumps both labels, pops the reward line and keeps filling.
+		-- The level card: drops in after the Gold count-up, the bar fills over XpFillSec at a constant XP
+		-- speed with `+N XP` counting; a level crossed flashes, bumps the card, pops the reward line and keeps
+		-- filling.
 		local anim = xpAnim
 		if anim then
 			local xpStart = countUp * 2 + 0.15
 			if e >= xpStart then
+				local card = anim.card
 				if not anim.shown then
 					anim.shown = true
-					anim.row.Visible = true
+					card.frame.Visible = true
 					UI.tween(
-						anim.row,
-						{ Position = UDim2.fromOffset(UI.S(24), anim.rowY) },
-						0.3,
+						card.frame,
+						{ Position = UDim2.new(0.5, 0, 0.5, anim.cardY) },
+						0.35,
 						Enum.EasingStyle.Back,
 						Enum.EasingDirection.Out
 					)
@@ -731,22 +668,21 @@ local function step(_dt: number)
 					local len = seg.to - seg.from
 					if consumed <= acc + len or i == #anim.segments then
 						local into = math.clamp(consumed - acc, 0, len)
-						local xp = seg.from + into
-						anim.fill.Size = UDim2.fromScale(math.clamp(xp / math.max(seg.need, 1), 0, 1), 1)
-						anim.text.Text = string.format("%d / %d XP", math.floor(xp), seg.need)
-						anim.lvLeft.Text = string.format("LV %d", seg.level)
-						anim.lvRight.Text = string.format("LV %d", seg.level + 1)
+						card.set(
+							seg.level,
+							math.floor(seg.from + into),
+							seg.need,
+							string.format("+%d XP", math.floor(consumed)),
+							anim.sub
+						)
 						break
 					end
 					acc += len
 					if seg.levelUp and not anim.popped[i] then
-						-- Crossed a level: the flash, the bump and the reward line.
+						-- Crossed a level: the flash, the bump and the reward line above the card.
 						anim.popped[i] = true
-						anim.fill.BackgroundColor3 = Theme.Colors.white
-						UI.tween(anim.fill, { BackgroundColor3 = Theme.Colors.gold }, 0.4)
-						UI.punch(anim.lvLeft, 1.5, 0.4)
-						UI.punch(anim.lvRight, 1.5, 0.4)
-						UI.punch(anim.row, 1.06, 0.3)
+						card.flash()
+						card.punch()
 						UI.sound(Theme.Sounds.legendary, 1.2, 0.6)
 						ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.gold, alpha = 0.25 })
 						local up = anim.levelUps[i] -- the k-th level crossed is the k-th level-up
@@ -754,25 +690,25 @@ local function step(_dt: number)
 						local pop = UI.text({
 							Text = string.format("LEVEL %d · %s", seg.level + 1, line),
 							Font = Theme.Fonts.display,
-							TextSize = UI.S(13),
+							TextSize = UI.S(16),
 							TextColor3 = Theme.Colors.gold,
 							AnchorPoint = Vector2.new(0.5, 1),
-							Position = UDim2.new(0.5, 0, 0, -UI.S(2)),
-							Size = UDim2.new(1, 0, 0, UI.S(18)),
+							Position = UDim2.new(0.5, 0, 0, -UI.S(6)),
+							Size = UDim2.new(1, 0, 0, UI.S(22)),
 							ZIndex = 15,
-							Parent = anim.row,
+							Parent = card.frame,
 						})
 						UI.stroke(pop, Theme.Colors.black, UI.S(1.5), 0.3)
 						UI.punch(pop, 1.6, 0.4)
 						UI.tween(
 							pop,
-							{ Position = UDim2.new(0.5, 0, 0, -UI.S(26)), TextTransparency = 1 },
+							{ Position = UDim2.new(0.5, 0, 0, -UI.S(34)), TextTransparency = 1 },
 							1.2,
 							nil,
 							nil,
-							1.2
+							1.4
 						)
-						task.delay(2.5, function()
+						task.delay(2.8, function()
 							pop:Destroy()
 						end)
 					end

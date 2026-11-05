@@ -600,10 +600,19 @@ local function fieldTick(f: Field, t: number)
 end
 
 ------------------------------------------------------------------ Thrown
--- A small part arcs from the hand to the floor ThrowDistance ahead over ThrowFlightSec, then `onLand` runs there.
-local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vector3) -> ())
+-- A small part arcs from the hand to the floor at the cursor's point (`aim`, clamped to ThrowMaxRange from the
+-- player; ThrowDistance ahead when none came) over ThrowFlightSec, then `onLand` runs there.
+local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vector3) -> (), aim: Vector3?)
 	local hand = (char:FindFirstChild("RightHand") or char:FindFirstChild("HumanoidRootPart")) :: BasePart?
 	local target = placementCFrame(char, Config.ThrowDistance).Position
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if aim and root then
+		local offset = Vector3.new(aim.X - root.Position.X, 0, aim.Z - root.Position.Z)
+		if offset.Magnitude > Config.ThrowMaxRange then
+			offset = offset.Unit * Config.ThrowMaxRange
+		end
+		target = root.Position + offset
+	end
 	local from = if hand then hand.Position else target + Vector3.new(0, 3, 0)
 	local to = Vector3.new(target.X, Config.FloorTop + 0.4, target.Z)
 	local p = part({
@@ -814,7 +823,7 @@ local function deadEye(player: Player, state: PlayerState.State, _char: Model)
 	startBuff(player, state, "deadeye", Config.DeadEyeDuration, 0)
 end
 
-local function throwFlashbang(player: Player, state: PlayerState.State, char: Model)
+local function throwFlashbang(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "flashbang")
 	local radius = grown("flashbang", "FlashRadius", Config.FlashRadius, lv)
 	local stunSec = grown("flashbang", "StunDuration", Config.StunDuration, lv)
@@ -825,11 +834,11 @@ local function throwFlashbang(player: Player, state: PlayerState.State, char: Mo
 		end
 		World.fireRun("Blast", { position = pos, radius = radius, color = COLOR.white, shake = 0.2, pitch = 1.8 })
 		Log.event("Ability", "%s's flashbang: %d stunned for %.1fs (r%d)", player.Name, #victims, stunSec, radius)
-	end)
+	end, aim)
 end
 
 ------------------------------------------------------------------ TORCH
-local function throwMolotov(player: Player, state: PlayerState.State, char: Model)
+local function throwMolotov(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "molotov")
 	local burn = grown("molotov", "BurnPerSec", Config.MolotovBurnPerSec, lv)
 	local slowPct = math.min(90, grown("molotov", "MoveSlowPct", Config.MolotovMoveSlowPct, lv))
@@ -839,7 +848,7 @@ local function throwMolotov(player: Player, state: PlayerState.State, char: Mode
 			"Blast",
 			{ position = pos, radius = Config.MolotovRadius, color = COLOR.fire, shake = 0.1, pitch = 1.2 }
 		)
-	end)
+	end, aim)
 end
 
 local function placeFlameTurret(player: Player, state: PlayerState.State, char: Model)
@@ -963,7 +972,7 @@ local function turretTick(s: Structure, t: number)
 end
 
 ------------------------------------------------------------------ Use
-local USE: { [string]: (Player, PlayerState.State, Model) -> () } = {
+local USE: { [string]: (Player, PlayerState.State, Model, Vector3?) -> () } = {
 	turret = placeTurret,
 	barricade = placeBarricade,
 	stim = adrenaline,
@@ -989,10 +998,12 @@ local function onCooldown(state: PlayerState.State, id: string): boolean
 	return (state.cooldowns[id] or 0) > now()
 end
 
-function Abilities.use(player: Player, id: any)
+-- `aim` is the client's cursor floor point; thrown abilities land there (clamped), placeables ignore it.
+function Abilities.use(player: Player, id: any, aim: any)
 	if typeof(id) ~= "string" then
 		return
 	end
+	local aimPoint: Vector3? = if typeof(aim) == "Vector3" and aim == aim then aim else nil
 	local state = PlayerState.get(player)
 	local char = player.Character
 	if not char or state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
@@ -1008,7 +1019,7 @@ function Abilities.use(player: Player, id: any)
 		Remotes.Juice:FireClient(player, "AbilityDenied", { id = id })
 		return
 	end
-	handler(player, state, char)
+	handler(player, state, char, aimPoint)
 	state.cooldowns[id] = now() + (Config.AbilityCooldown[id] or 10)
 	state.dirty = true
 end

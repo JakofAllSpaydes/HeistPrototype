@@ -247,12 +247,15 @@ local function updateInsideSet(j: Job, set: { [Player]: boolean })
 	j.insideSet = set
 end
 
-function CrewCall.trigger()
+-- `forceKind` skips the roll (the forced vault draw, debug).
+function CrewCall.trigger(forceKind: string?)
 	if job then
 		CrewCall.finish(false, true)
 	end
 	nextId += 1
-	local kind = rollKind()
+	local kind = if forceKind and (forceKind ~= "vault" or VaultJob.available(World.wave))
+		then forceKind
+		else rollKind()
 	local copy = copyFor(kind)
 	local pillar = Room.randomPillar()
 	-- Beacon sits beside the pillar, pushed toward the room center so it is reachable.
@@ -406,8 +409,16 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	Log.event("Call", "Side Job #%d %s", j.id, if success then "complete, paid $" .. Config.SideJobReward else "failed")
 end
 
+-- Testing: the vault job is forced at every VaultJobEveryWaves wave (when the vault can be drawn).
+local function vaultDue(wave: number): boolean
+	local every = Config.VaultJobEveryWaves
+	return every > 0 and wave % every == 0 and VaultJob.available(wave)
+end
+
 function CrewCall.onWaveStart(wave: number)
-	if wave >= Config.SideJobFirstWave and (wave - Config.SideJobFirstWave) % Config.SideJobEveryWaves == 0 then
+	if vaultDue(wave) then
+		CrewCall.trigger("vault")
+	elseif wave >= Config.SideJobFirstWave and (wave - Config.SideJobFirstWave) % Config.SideJobEveryWaves == 0 then
 		CrewCall.trigger()
 	end
 end

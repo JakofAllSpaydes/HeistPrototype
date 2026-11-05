@@ -8,6 +8,32 @@ export type Reward = { kind: string, amount: number?, id: string?, label: string
 
 local LevelRewards = {}
 
+-- Rank names on the level card: the highest `from` at or below the level.
+LevelRewards.Ranks = {
+	{ from = 1, name = "ROOKIE" },
+	{ from = 5, name = "RUNNER" },
+	{ from = 10, name = "CREW" },
+	{ from = 15, name = "SERGEANT" },
+	{ from = 20, name = "LIEUTENANT" },
+	{ from = 30, name = "CAPTAIN" },
+	{ from = 40, name = "KINGPIN" },
+}
+
+function LevelRewards.rank(level: number): string
+	local name = LevelRewards.Ranks[1].name
+	for _, r in LevelRewards.Ranks do
+		if level >= r.from then
+			name = r.name
+		end
+	end
+	return name
+end
+
+-- The curve: XpToLevel(n) = XpCurveBase x n ^ XpCurvePow (server and the level cards share it).
+function LevelRewards.xpToLevel(level: number): number
+	return math.max(1, math.floor(Config.XpCurveBase * math.max(1, level) ^ Config.XpCurvePow))
+end
+
 -- Milestones: level -> extra rewards.
 LevelRewards.Milestones = {
 	[5] = { { kind = "mask", id = "blue", label = "BLUE VISOR" } },

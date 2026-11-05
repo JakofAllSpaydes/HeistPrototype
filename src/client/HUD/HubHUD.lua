@@ -10,10 +10,13 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
+local LevelRewards = require(Shared:WaitForChild("LevelRewards"))
+
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
+local LevelCard = require(script.Parent.LevelCard)
 
 local HubHUD = {}
 
@@ -211,8 +214,11 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		component.showPlaceholder("Shop")
 	end)
 
-	-- Gold pill with + and INVITE FRIENDS, bottom-left.
+	-- Gold pill with + and INVITE FRIENDS, bottom-left; the level card sits above them.
 	local goldW = if mobile then S(170) else S(230)
+	local levelCard = LevelCard.build(root, if mobile then S(230) else S(320), mobile)
+	levelCard.frame.AnchorPoint = Vector2.new(0, 1)
+	levelCard.frame.Position = UDim2.new(0, S(20), 1, -S(62) - S(38) - S(12))
 	local gold = UI.frame({
 		Name = "Gold",
 		BackgroundColor3 = Theme.Colors.panel,
@@ -400,6 +406,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.onDock = nil :: ((string) -> ())?
 
 	local shown = -1
+	local shownLevel, shownXp = -1, -1
 	function component.update(sync: any)
 		local profile = sync.profile
 		local gold = if profile and typeof(profile.gold) == "number" then profile.gold else 0
@@ -409,6 +416,18 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			end
 			shown = gold
 			goldLabel.Text = UI.fmtNum(gold)
+		end
+		-- The level card reads the profile; a change (a run, a debug +XP) pops it.
+		local level = if profile and typeof(profile.level) == "number" then profile.level else 1
+		local xp = if profile and typeof(profile.xp) == "number" then profile.xp else 0
+		if level ~= shownLevel or xp ~= shownXp then
+			local leveled = shownLevel >= 0 and level > shownLevel
+			shownLevel, shownXp = level, xp
+			levelCard.set(level, xp, LevelRewards.xpToLevel(level), nil, nil)
+			if leveled then
+				levelCard.flash()
+				levelCard.punch()
+			end
 		end
 	end
 

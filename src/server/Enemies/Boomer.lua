@@ -67,11 +67,22 @@ function Boomer.tick(d: any, api: any, now: number)
 	api.chase(d, target, now)
 end
 
--- Killed by a player's damage: a smaller burst where it fell. A clear (kill all, run reset) never bursts.
+-- Killed by a player's damage: a bigger circle grows where it fell for BoomerDeathFuseSec (the Grenadier
+-- look, faster), then the burst. A clear (kill all, run reset) never bursts.
 function Boomer.onDeath(d: any, api: any, attacker: Player?)
-	if attacker and not d.mem.exploded then
-		explode(d, api, Config.BoomerDeathRadiusMult)
+	if not attacker or d.mem.exploded then
+		return
 	end
+	d.mem.exploded = true
+	local radius = Config.BoomerRadius * Config.BoomerDeathRadiusMult
+	local pos = Vector3.new(d.root.Position.X, Config.FloorTop, d.root.Position.Z)
+	local fuse = math.max(0.05, Config.BoomerDeathFuseSec)
+	api.telegraph(pos, radius, fuse, ORANGE)
+	api.fire("BoomerFuse", { model = d.model, sec = fuse, position = pos })
+	task.delay(fuse, function()
+		api.blast(pos, radius, Config.BoomerDamage, Config.BoomerDamage * Config.BoomerPlaceableMult, "boomer")
+		api.fire("Blast", { position = pos, radius = radius, color = ORANGE, shake = 0.4, pitch = 0.65, boomer = true })
+	end)
 end
 
 return Boomer

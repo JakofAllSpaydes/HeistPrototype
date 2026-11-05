@@ -564,17 +564,22 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			end
 		elseif name == "EnemyLaser" and typeof(data.position) == "Vector3" then
 			soundAtPoint(data.position, Theme.Sounds.laser, 0.45, 0.45, 120)
-		elseif name == "BoomerFuse" and typeof(data.model) == "Instance" then
-			-- Rising beeps at the Boomer for the length of the fuse.
-			local root = data.model:FindFirstChild("HumanoidRootPart")
+		elseif name == "BoomerFuse" then
+			-- Rising beeps at the Boomer for the length of the fuse (at the body, or where it fell).
+			local model = if typeof(data.model) == "Instance" then data.model else nil
+			local root = model and model:FindFirstChild("HumanoidRootPart")
+			local at: Vector3? = if typeof(data.position) == "Vector3" then data.position else nil
 			local sec = tonumber(data.sec) or 1.2
-			local beeps = 6
+			local beeps = math.max(3, math.floor(sec * 5))
 			task.spawn(function()
 				for i = 1, beeps do
-					if not root or not root.Parent then
+					if root and root.Parent then
+						soundAt(root, Theme.Sounds.beep, 0.9 + i * 0.25, 0.45, 90)
+					elseif at then
+						soundAtPoint(at, Theme.Sounds.beep, 0.9 + i * 0.3, 0.45, 90)
+					else
 						return
 					end
-					soundAt(root, Theme.Sounds.beep, 0.9 + i * 0.25, 0.45, 90)
 					task.wait(sec / beeps)
 				end
 			end)

@@ -29,7 +29,7 @@ export type Award = {
 }
 
 function Progression.xpToLevel(level: number): number
-	return math.max(1, math.floor(Config.XpCurveBase * math.max(1, level) ^ Config.XpCurvePow))
+	return LevelRewards.xpToLevel(level)
 end
 
 function Progression.today(): number

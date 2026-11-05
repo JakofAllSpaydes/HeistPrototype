@@ -554,6 +554,26 @@ function Enemy.nearest(position: Vector3, range: number, exclude: Model?): Model
 	return best
 end
 
+-- Nearest live enemy within `range` of a point whose direction from it is within `angleDeg` of `dir`
+-- (point-blank shots: an enemy standing in the shooter is inside the ray's start).
+function Enemy.nearestInCone(origin: Vector3, dir: Vector3, range: number, angleDeg: number): Model?
+	local best: Model? = nil
+	local bestDist = range
+	local cosLimit = math.cos(math.rad(angleDeg))
+	for model, d in active do
+		if d.dead then
+			continue
+		end
+		local rel = d.root.Position - origin
+		local dist = rel.Magnitude
+		if dist < bestDist and (dist < 0.5 or rel.Unit:Dot(dir) >= cosLimit) then
+			bestDist = dist
+			best = model
+		end
+	end
+	return best
+end
+
 -- Every live enemy within radius of a point, skipping `exclude`.
 function Enemy.within(position: Vector3, radius: number, exclude: Model?): { Model }
 	local out = {}

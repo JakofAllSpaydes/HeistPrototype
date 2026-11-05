@@ -143,7 +143,11 @@ end
 
 -- Can CRACK THE VAULT be drawn this wave?
 function VaultJob.available(wave: number): boolean
-	if not Room.vault or VaultJob.phase ~= "closed" then
+	if not Room.vault then
+		return false
+	end
+	-- Closed, or sealed from an earlier draw when the vault may come back (VaultJobOnce false).
+	if VaultJob.phase ~= "closed" and not (VaultJob.phase == "sealed" and not Config.VaultJobOnce) then
 		return false
 	end
 	if wave < Config.VaultJobMinWave then
@@ -171,6 +175,13 @@ function VaultJob.startJob(onCracked: (Player) -> ())
 	local v = Room.vault
 	if not v then
 		return
+	end
+	if VaultJob.phase == "sealed" then
+		-- Drawn again after a seal (VaultJobOnce false): back to a closed, unlit vault.
+		runToken += 1
+		setFog(false)
+		setLights(false)
+		v.door.CFrame = v.doorClosed
 	end
 	VaultJob.phase = "job"
 	paintBeacons(BLUE)

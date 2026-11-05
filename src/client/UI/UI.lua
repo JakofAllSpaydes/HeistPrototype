@@ -282,6 +282,11 @@ function UI.fmtCash(n: number): string
 	return (if n < 0 then "-$" else "$") .. out
 end
 
+-- Comma-grouped integer: 3110 -> "3,110".
+function UI.fmtInt(n: number): string
+	return string.sub(UI.fmtCash(math.floor(math.abs(n))), 2)
+end
+
 function UI.fmtNum(n: number): string
 	return if n == math.floor(n) then string.format("%d", n) else string.format("%.1f", n)
 end

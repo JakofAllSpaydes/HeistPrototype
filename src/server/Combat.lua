@@ -116,13 +116,13 @@ end
 local function bulletHit(
 	shooter: Shooter,
 	model: Model,
-	part: BasePart,
+	part: BasePart?,
 	position: Vector3,
 	origin: Vector3,
 	scale: number
 )
 	local st = shooter.stats
-	local headshot = part.Name == "Head"
+	local headshot = part ~= nil and part.Name == "Head"
 	local crit = math.random() * 100 < st.critChance
 	local travel = position - origin
 	local dmg = st.damage
@@ -164,7 +164,21 @@ local function fireBullet(
 	local full = math.floor(pierce)
 	local frac = pierce - full
 	local extra = if frac > 0.001 then 1 else 0
-	for i = 0, full + extra do
+	-- Point blank: an enemy standing in the shooter sits inside the ray's start, so it takes the first hit here
+	-- and uses up the first pierce step.
+	local first = 0
+	local close = Enemy.nearestInCone(origin, dir, Config.PointBlankRange, Config.PointBlankAngle)
+	if close then
+		local root = close:FindFirstChild("HumanoidRootPart")
+		local pos = Enemy.rootPosition(close) or origin
+		bulletHit(shooter, close, (if root and root:IsA("BasePart") then root else nil) :: any, pos, origin, 1)
+		table.insert(filter, close)
+		first = 1
+		if first > full + extra then
+			return pos
+		end
+	end
+	for i = first, full + extra do
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Exclude
 		params.FilterDescendantsInstances = filter

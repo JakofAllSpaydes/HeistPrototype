@@ -178,17 +178,22 @@ local function startSweep(d: any, api: any, t: number, root: BasePart)
 	m.stageUntil = t + (if m.phase >= 2 then Config.TitanSweepSpinSecP2 else Config.TitanSweepSpinSec)
 	m.base = flat(root.Position - d.root.Position)
 	local center = Vector3.new(d.root.Position.X, floorY() + 0.12, d.root.Position.Z)
+	-- The telegraph is the damage area: a filled fan of slices across the arc, each as wide at the rim as the
+	-- chord of its slice (they overlap near the center, which reads as the brighter hub).
 	local cone = {}
 	local half = math.rad(Config.TitanSweepArc / 2)
-	for k = 0, 4 do
-		local a = -half + (2 * half) * k / 4
+	local slices = math.max(6, math.floor(Config.TitanSweepArc / 10))
+	local step = (2 * half) / slices
+	local range = Config.TitanSweepRange
+	for k = 1, slices do
+		local a = -half + step * (k - 0.5)
 		local dir = rotateY(m.base, a)
 		local ray = neon(
 			"SweepCone",
-			Vector3.new(0.5, 0.1, Config.TitanSweepRange),
-			CFrame.lookAt(center, center + dir) * CFrame.new(0, 0, -Config.TitanSweepRange / 2),
+			Vector3.new(2 * range * math.tan(step / 2) + 0.3, 0.1, range),
+			CFrame.lookAt(center, center + dir) * CFrame.new(0, 0, -range / 2),
 			RED,
-			0.72
+			0.7
 		)
 		table.insert(cone, ray)
 	end
@@ -290,7 +295,16 @@ local function startCharge(d: any, api: any, t: number, player: Player, root: Ba
 	m.stageUntil = t + Config.TitanChargeTelegraphSec
 	m.chargePlayer = player
 	m.chargeRoot = root
-	m.line = { neon("ChargeLine", Vector3.new(1.2, 0.1, 1), CFrame.new(d.root.Position), RED, 0.3) }
+	-- The telegraph is the hit band: TitanChargeHitRadius either side, out to the overrun.
+	m.line = {
+		neon(
+			"ChargeLine",
+			Vector3.new(Config.TitanChargeHitRadius * 2, 0.1, 1),
+			CFrame.new(d.root.Position),
+			RED,
+			0.55
+		),
+	}
 	api.hold(d)
 	api.fire("BossCharge", { phase = "telegraph", position = d.root.Position, sec = Config.TitanChargeTelegraphSec })
 end
@@ -302,8 +316,10 @@ local function drawLine(d: any, to: Vector3)
 	end
 	local a = Vector3.new(d.root.Position.X, floorY() + 0.12, d.root.Position.Z)
 	local b = Vector3.new(to.X, floorY() + 0.12, to.Z)
+	local dir = flat(b - a)
+	b += dir * Config.TitanChargeOverrun -- the run carries on past the player: so does the rectangle
 	local len = math.max(1, (b - a).Magnitude)
-	line.Size = Vector3.new(1.2, 0.1, len)
+	line.Size = Vector3.new(Config.TitanChargeHitRadius * 2, 0.1, len)
 	line.CFrame = CFrame.lookAt(a, b) * CFrame.new(0, 0, -len / 2)
 end
 
@@ -355,7 +371,7 @@ local function chargeTick(d: any, api: any, t: number)
 			local proot = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if proot and PlayerState.isStanding(PlayerState.get(player)) then
 				local rel = proot.Position - pos
-				if Vector3.new(rel.X, 0, rel.Z).Magnitude <= 5.5 then
+				if Vector3.new(rel.X, 0, rel.Z).Magnitude <= Config.TitanChargeHitRadius then
 					m.hitDone = true
 					api.damagePlayer(player, Config.TitanChargeDmg, "charge")
 					Remotes.Juice:FireClient(
