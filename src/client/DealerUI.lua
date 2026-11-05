@@ -20,6 +20,7 @@ local Upgrades = require(Shared:WaitForChild("Upgrades"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local HUD = require(script.Parent:WaitForChild("HUD"))
 
 local DealerUI = {}
 
@@ -41,8 +42,7 @@ type Item = {
 local items: { Item } = {}
 local readRadius = 6
 local panel: { gui: BillboardGui, att: Attachment, frame: Frame, price: TextLabel, key: any }? = nil
-local card: { root: Frame, title: TextLabel, teleport: TextButton, skip: TextButton }? = nil
-local screen: ScreenGui? = nil
+local card: { root: Frame, inner: Frame, title: TextLabel, teleport: TextButton, skip: TextButton }? = nil
 local active = false
 
 -- Phones render UI.S at about half scale: the card, tags and panels are sized up there for thumbs.
@@ -338,60 +338,63 @@ local function onResult(data: any)
 	end
 end
 
------------------------------------------------------------------- The HUD card
+------------------------------------------------------------------ The HUD card (top-right stack, like a crew call)
+-- The DEALER's call card comes in first (the CrewLine the server sends on DealerStart, CrewCallUI), then this
+-- compact card slides into the same top-right stack: `DEALER · 1:30` with TELEPORT [T] and SKIP n/m [V].
+local SLIDE = 420
+local cardToken = 0
+
 local function buildCard()
 	if card then
 		card.root:Destroy()
 		card = nil
 	end
-	local S = MS
-	local s = screen
-	if not s or not s.Parent then
-		s = UI.new("ScreenGui", {
-			Name = "DealerUI",
-			IgnoreGuiInset = true,
-			ResetOnSpawn = false,
-			DisplayOrder = 6,
-			Parent = playerGui,
-		}) :: ScreenGui
-		screen = s
+	local home = HUD.get("topRight")
+	if not home then
+		return
 	end
+	local S = UI.S
 	local mobile = ClientState.isMobile
-	local vp = (Workspace.CurrentCamera :: Camera).ViewportSize
-	local W = math.min(S(440), math.floor(vp.X * 0.94)) -- never wider than the phone
-	local root = UI.frame({
-		Name = "DealerCard",
-		BackgroundColor3 = Theme.Colors.panel,
-		BackgroundTransparency = 0.08,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, S(if mobile then 80 else 120)), -- clear of the wave bar's pill stacks
-		Size = UDim2.fromOffset(W, S(if mobile then 86 else 90)),
-		Parent = s,
+	local H = S(if mobile then 92 else 84)
+	local box = UI.frame({
+		Name = "DealerBox",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(home.width, H),
+		ClipsDescendants = true,
 	})
-	UI.corner(root, S(12))
-	UI.stroke(root, Theme.Colors.amber, S(2))
+	local inner = UI.frame({
+		Name = "Inner",
+		BackgroundColor3 = Theme.Colors.panel,
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromOffset(S(SLIDE), 0),
+		Parent = box,
+	})
+	UI.corner(inner, S(12))
+	UI.stroke(inner, Theme.Colors.amber, S(2))
+	home.add(box, 3)
 	local title = UI.text({
 		Text = "DEALER · 1:30",
 		Font = Theme.Fonts.display,
-		TextSize = S(22),
+		TextSize = S(18),
 		TextColor3 = Theme.Colors.amber,
-		Position = UDim2.fromOffset(0, S(6)),
-		Size = UDim2.new(1, 0, 0, S(26)),
-		Parent = root,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(12), S(6)),
+		Size = UDim2.new(1, -S(24), 0, S(24)),
+		Parent = inner,
 	})
 	local row = UI.frame({
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -S(8)),
-		Size = UDim2.new(1, -S(16), 0, S(if mobile then 42 else 40)),
-		Parent = root,
+		Size = UDim2.new(1, -S(16), 0, S(if mobile then 46 else 38)),
+		Parent = inner,
 	})
 	UI.list(row, Enum.FillDirection.Horizontal, S(6), Enum.HorizontalAlignment.Center)
 	local function button(text: string, color: Color3, order: number, fn: () -> ()): TextButton
 		local b = UI.button({
 			Text = text,
 			Font = Theme.Fonts.display,
-			TextSize = S(if mobile then 12 else 13),
+			TextSize = S(if mobile then 13 else 12),
 			TextColor3 = Theme.Colors.bg,
 			TextWrapped = true,
 			BackgroundColor3 = color,
@@ -407,21 +410,15 @@ local function buildCard()
 		return b
 	end
 	local hot = not mobile
-	local teleport = button(if hot then "TELEPORT TO DEALER [T]" else "TELEPORT", Theme.Colors.blue, 1, function()
+	local teleport = button(if hot then "TELEPORT [T]" else "TELEPORT", Theme.Colors.blue, 1, function()
 		Remotes.DealerAction:FireServer("teleport")
 	end)
 	local skip = button(if hot then "SKIP [V]" else "SKIP", Theme.Colors.cash, 2, function()
 		Remotes.DealerAction:FireServer("skip")
 	end)
-	root.Position = UDim2.new(0.5, 0, 0, -S(120))
-	UI.tween(
-		root,
-		{ Position = UDim2.new(0.5, 0, 0, S(if mobile then 80 else 120)) },
-		0.4,
-		Enum.EasingStyle.Back,
-		Enum.EasingDirection.Out
-	)
-	card = { root = root, title = title, teleport = teleport, skip = skip }
+	UI.tween(inner, { Position = UDim2.fromOffset(0, 0) }, 0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	UI.sound(Theme.Sounds.call, 1, 0.5)
+	card = { root = box, inner = inner, title = title, teleport = teleport, skip = skip }
 end
 
 local function paintCard()
@@ -445,27 +442,50 @@ local function paintCard()
 	end
 end
 
+-- The break starts: the DEALER's call card holds first (CrewCallUI), then the card slides into the stack.
 local function start()
+	if active then
+		return
+	end
 	active = true
-	buildCard()
-	UI.sound(Theme.Sounds.call, 0.8, 0.6)
+	cardToken += 1
+	local token = cardToken
+	task.delay(Config.CallHoldSec + 0.45, function()
+		if active and token == cardToken and not card then
+			buildCard()
+		end
+	end)
 end
 
 local function stop()
 	active = false
+	cardToken += 1
 	clearItems()
 	closePanel()
-	if card then
-		local root = card.root
-		card = nil
-		local out = UI.tween(root, { Position = UDim2.new(0.5, 0, 0, -UI.S(120)) }, 0.3)
+	local c = card
+	card = nil
+	if c then
+		local out = UI.tween(
+			c.inner,
+			{ Position = UDim2.fromOffset(UI.S(SLIDE), 0) },
+			0.3,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.In
+		)
 		out.Completed:Once(function()
-			root:Destroy()
+			c.root:Destroy()
 		end)
 	end
 end
 
 function DealerUI.init()
+	-- A HUD rebuild clears the top-right stack: put the card back while the break runs.
+	HUD.Rebuilt:Connect(function()
+		if active then
+			card = nil
+			buildCard()
+		end
+	end)
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "DealerStart" then
 			start()

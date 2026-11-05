@@ -590,7 +590,7 @@ local Config = {
 	------------------------------------------------------------------ Dealer (brief 5; Dealer.lua, DealerUI.lua)
 	-- After every boss wave is cleared: a DealerSec break (no spawns, heat frozen) with a stall of per-player stands.
 	DealerSec = 90,
-	DealerLine = "Dealer's set up by the van. Ninety seconds, then we're back on.", -- MARLOW's call (match DealerSec)
+	DealerLine = "Set up in the middle of the floor. You've got ninety seconds, then I'm gone.", -- the DEALER's call (match DealerSec)
 	DealerStallPosition = Vector3.new(0, 0, 18), -- arena center for the prototype (clear of the center spawn)
 	DealerStock = 8, -- upgrade cards per player
 	DealerArcRadius = 9, -- the tables stand on a half circle this far round the DEALER...

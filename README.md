@@ -1043,6 +1043,11 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   Ice Ammo builds toward the freeze per pellet, Impact Ammo shoves per pellet (`ConcussiveStuds` 1.0). Slowed enemies
   read clearer: a deeper blue tint (55%, frozen 75%) and bigger, brighter frost flakes.
 
+- **Round 15f (4 Nov, feedback)** — the dealer card lives in the top-right stack like a crew call: the DEALER phones
+  in first (`DealerLine` on the call card, `SHOP OPEN`), and when that card has held (`CallHoldSec`) a compact card
+  slides in under it with `DEALER · 1:30`, TELEPORT [T] and SKIP n/m [V]; it slides out when the break ends. Nothing
+  sits top-center any more.
+
 ## Open design notes (not built)
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;

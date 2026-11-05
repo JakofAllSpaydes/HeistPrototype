@@ -544,10 +544,11 @@ function Dealer.run(wave: number)
 		sendStock(p)
 	end
 	World.fireRun("DealerStart", { endsAt = endsAt, position = origin(), sec = Config.DealerSec })
+	-- The DEALER phones in (the crew-call card), then the client's dealer card takes its place in the stack.
 	World.fireRun("CrewLine", {
 		kind = "door",
-		crewLead = "MARLOW",
-		typeLabel = "DEALER",
+		crewLead = "DEALER",
+		typeLabel = "SHOP OPEN",
 		text = { Config.DealerLine },
 		hold = Config.CallHoldSec,
 	})
