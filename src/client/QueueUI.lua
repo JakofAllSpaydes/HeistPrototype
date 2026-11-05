@@ -496,7 +496,7 @@ local function paintParty(v: any)
 	end
 	local names = {}
 	for _, m in members do
-		local n = string.upper(tostring(m.name))
+		local n = string.format("LV %d %s", tonumber(m.level) or 1, string.upper(tostring(m.name)))
 		if m.userId == v.owner then
 			n ..= " ★"
 		end

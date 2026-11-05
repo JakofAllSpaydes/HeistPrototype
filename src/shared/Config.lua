@@ -475,6 +475,21 @@ local Config = {
 	VaultGasWarnSec = 10, -- alarm, strobe and MARLOW's warning this long before the gas
 	VaultGasDps = 8, -- to any player inside once the gas is in (stops the moment they step out)
 
+	------------------------------------------------------------------ Progression (account level; Progression.lua, LevelRewards.lua)
+	-- XP per run, per player: XpPerWave x waves cleared + XpPerKill x kills + XpPerJob x jobs + XpPerBoss x boss kills
+	-- + XpSurvivedPerMin x minutes survived, x XpFirstHeistMult on the first completed run of a UTC day.
+	XpPerWave = 50,
+	XpPerKill = 2,
+	XpPerJob = 60,
+	XpPerBoss = 300,
+	XpSurvivedPerMin = 20,
+	XpFirstHeistMult = 2.0,
+	XpCurveBase = 400, -- XpToLevel(n) = XpCurveBase x n ^ XpCurvePow, no cap; overflow carries into the next level
+	XpCurvePow = 1.4,
+	LevelGold = 100, -- Gold on every level-up (plus the milestone rewards in LevelRewards.lua)
+	XpFillSec = 1.2, -- the summary XP bar fills over this long after the Gold count-up
+	RosterSyncSec = 1, -- the scoreboard roster resends this often
+
 	------------------------------------------------------------------ Boss (TITAN, Boss.lua; step 5 of brief 4)
 	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)
 	BossWaveBudgetPct = 0.4, -- boss waves spawn this share of the normal budget alongside the boss

@@ -32,7 +32,19 @@ export type Profile = {
 	wraps: { owned: { [string]: boolean } },
 	topWave: { [string]: number }, -- "TheBank:Normal" -> wave
 	topBanked: { [string]: number }, -- "TheBank:Normal" -> best TOTAL BANKED in one run
-	stats: { kills: number, matchesPlayed: number, goldEarned: number, bagsCollected: number, goldBanked: number },
+	topTime: { [string]: number }, -- "TheBank:Normal" -> longest time survived (seconds)
+	level: number, -- account level (Progression.lua)
+	xp: number, -- XP into the current level
+	lastHeistDay: number, -- UTC day number of the last completed run (FIRST HEIST OF THE DAY)
+	stats: {
+		kills: number,
+		matchesPlayed: number,
+		goldEarned: number,
+		bagsCollected: number,
+		goldBanked: number,
+		xp: number,
+		timeSurvived: number,
+	},
 	pendingPayout: number, -- Gold granted this session that has not reached the store yet
 	version: number,
 }
@@ -103,7 +115,19 @@ function Profiles.fresh(): Profile
 		wraps = { owned = {} },
 		topWave = { ["TheBank:Normal"] = 0 },
 		topBanked = { ["TheBank:Normal"] = 0 },
-		stats = { kills = 0, matchesPlayed = 0, goldEarned = 0, bagsCollected = 0, goldBanked = 0 },
+		topTime = { ["TheBank:Normal"] = 0 },
+		level = 1,
+		xp = 0,
+		lastHeistDay = 0,
+		stats = {
+			kills = 0,
+			matchesPlayed = 0,
+			goldEarned = 0,
+			bagsCollected = 0,
+			goldBanked = 0,
+			xp = 0,
+			timeSurvived = 0,
+		},
 		pendingPayout = 0,
 		version = VERSION,
 	}
@@ -207,6 +231,22 @@ local function migrate(raw: any): Profile
 				p.topBanked[k] = math.floor(v)
 			end
 		end
+	end
+	if typeof(raw.topTime) == "table" then
+		for k, v in raw.topTime do
+			if typeof(k) == "string" and typeof(v) == "number" then
+				p.topTime[k] = math.floor(v)
+			end
+		end
+	end
+	if typeof(raw.level) == "number" then
+		p.level = math.max(1, math.floor(raw.level))
+	end
+	if typeof(raw.xp) == "number" then
+		p.xp = math.max(0, math.floor(raw.xp))
+	end
+	if typeof(raw.lastHeistDay) == "number" then
+		p.lastHeistDay = math.floor(raw.lastHeistDay)
 	end
 	if typeof(raw.stats) == "table" then
 		for k in p.stats do
@@ -315,8 +355,10 @@ local function load(player: Player): Profile
 	local p = migrate(raw)
 	Log.event(
 		"Profile",
-		"%s loaded: %d gold, %d weapons, class %s, mask %s, top wave %d%s",
+		"%s loaded: LV %d (%d XP), %d gold, %d weapons, class %s, mask %s, top wave %d%s",
 		player.Name,
+		p.level,
+		p.xp,
 		p.gold,
 		(function()
 			local n = 0

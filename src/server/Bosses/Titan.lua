@@ -542,6 +542,7 @@ function Titan.onDeath(d: any, api: any, attacker: Player?)
 	end
 	local pos = d.root.Position
 	Heat.onBossKilled()
+	World.bossKills += 1
 	for _, p in World.runAudience() do
 		Economy.addCash(PlayerState.get(p), Config.TitanCashBurst)
 	end

@@ -239,6 +239,31 @@ local function build()
 	btn(r12, "Reset profile", 1 / 3, function()
 		send("ResetProfile")
 	end, Theme.Colors.malus)
+	-- Account level (brief 4): +500 XP, set level, reset the daily flag.
+	local r12b = row(panel, 16.5, rh)
+	btn(r12b, "+500 XP", 0.3, function()
+		send("AddXp", 500)
+	end, Theme.Colors.gold)
+	local levelBox = UI.new("TextBox", {
+		PlaceholderText = "Level…",
+		Text = "",
+		TextSize = S(11),
+		Font = Theme.Fonts.body,
+		TextColor3 = Theme.Colors.text,
+		PlaceholderColor3 = Theme.Colors.grey,
+		BackgroundColor3 = Theme.Colors.bg,
+		Size = UDim2.new(0.25, -S(4), 1, 0),
+		ClearTextOnFocus = false,
+		Parent = r12b,
+	}) :: TextBox
+	UI.corner(levelBox, S(6))
+	UI.stroke(levelBox, Theme.Colors.grey, S(1), 0.5)
+	btn(r12b, "Set", 0.15, function()
+		send("SetLevel", tonumber(levelBox.Text))
+	end)
+	btn(r12b, "Reset daily", 0.3, function()
+		send("ResetDaily")
+	end, Theme.Colors.malus)
 
 	local r8b = row(panel, 10, rh)
 	btn(r8b, "Down me", 1 / 3, function()

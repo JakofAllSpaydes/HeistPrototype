@@ -18,6 +18,7 @@ local RunStart = require(script.Parent.RunStart)
 local Hub = require(script.Parent.Hub)
 local Squad = require(script.Parent.Squad)
 local Profiles = require(script.Parent.Profiles)
+local Progression = require(script.Parent.Progression)
 
 local RunEnd = {}
 
@@ -43,6 +44,8 @@ export type Row = {
 	banked: number, -- TOTAL BANKED: the team's gold bag total, paid in full to everyone
 	newBest: boolean, -- the run's wave beat this player's top wave
 	newBestBanked: boolean, -- the banked total beat this player's best
+	level: number, -- account level after the run
+	xp: Progression.Award?, -- the XP breakdown for the summary bar (nil for dummies)
 	score: number,
 	lineIndex: number,
 	model: Model?, -- dummies only
@@ -206,6 +209,8 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 		banked = World.banked,
 		newBest = false,
 		newBestBanked = false,
+		level = math.random(2, 9),
+		xp = nil,
 		score = RunEnd.mvpScore(kills, cash, revives),
 		lineIndex = i,
 		model = d.model,
@@ -238,6 +243,11 @@ local function payout(p: Player, s: PlayerState.State, base: number, banked: num
 		profile.stats.matchesPlayed += 1
 		profile.stats.bagsCollected += s.bags
 		profile.stats.goldBanked += banked
+		local survived = math.floor(World.survivedSec())
+		profile.stats.timeSurvived += survived
+		if survived > (profile.topTime[key] or 0) then
+			profile.topTime[key] = survived
+		end
 		Profiles.grantPayout(p, earned + banked, "run payout")
 	end
 	Log.event(
@@ -272,6 +282,14 @@ function RunEnd.play(): string
 	for i, p in players do
 		local s = PlayerState.get(p)
 		local earned, newBest, newBestBanked = payout(p, s, base, banked)
+		-- XP lands on the same write; the summary bar replays the breakdown.
+		local award = Progression.award(p, {
+			wavesCleared = World.wavesCleared,
+			kills = s.kills,
+			jobs = s.jobsDone + s.minigamesDone,
+			bossKills = World.bossKills,
+			survivedSec = World.survivedSec(),
+		})
 		rows[i] = {
 			userId = p.UserId,
 			name = p.Name,
@@ -292,6 +310,8 @@ function RunEnd.play(): string
 			banked = banked,
 			newBest = newBest,
 			newBestBanked = newBestBanked,
+			level = Progression.level(p),
+			xp = award,
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}
@@ -363,6 +383,8 @@ function RunEnd.play(): string
 		gold = gold,
 		wave = World.wave,
 		heat = World.heat,
+		survivedSec = math.floor(World.survivedSec()),
+		xpFillSec = Config.XpFillSec,
 		line = line,
 		beats = beats,
 		rainSec = Config.CashRainSec,

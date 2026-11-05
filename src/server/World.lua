@@ -3,6 +3,7 @@
 -- (the player set of the current or forming run) lives here too: run-scoped events go to its members.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -36,8 +37,22 @@ local World = {
 	banked = 0, -- the team's Banked total from gold bags (TOTAL BANKED, paid in full to every member at the summary)
 	-- The live boss for the HUD bar (Boss.lua writes it, StateSync carries it): { id, name, hp, maxHP, phase } or nil.
 	bossView = nil :: { id: string, name: string, hp: number, maxHP: number, phase: number }?,
-	timeSurvived = 0, -- seconds from the WAVE 1 banner, paused during the boss cutscene (Scoreboard, summary)
+	-- The run clock: from the WAVE 1 banner, paused during the boss cutscene and the run-over window, frozen
+	-- once the run ends (TIME SURVIVED on the scoreboard and the summary, XpSurvivedPerMin).
+	runClockStart = 0, -- server time, 0 = not started
+	runClockPaused = 0, -- seconds taken out (cutscenes, the run-over window)
+	runClockEnd = 0, -- server time the clock froze, 0 = running
+	wavesCleared = 0, -- waves cleared this run (XP)
+	bossKills = 0, -- bosses killed this run (XP, credited to every member)
 }
+
+function World.survivedSec(): number
+	if World.runClockStart <= 0 then
+		return 0
+	end
+	local now = if World.runClockEnd > 0 then World.runClockEnd else Workspace:GetServerTimeNow()
+	return math.max(0, now - World.runClockStart - World.runClockPaused)
+end
 
 -- True while a run is on: waves can spawn, downs count, cash is Match Cash.
 function World.inRun(): boolean
@@ -162,6 +177,7 @@ end
 -- Payout accumulators.
 function World.addWaveGold(wave: number)
 	World.runGold += Config.GoldPerWaveBase + Config.GoldPerWaveAdd * math.max(0, wave - 1)
+	World.wavesCleared += 1
 end
 
 function World.addObjective()

@@ -35,6 +35,17 @@ local summaryShownAt = -1
 local hiddenForMvp: { Instance } = {} -- the rest of the crew and their tags, hidden locally for the MVP beat
 local goldLabel: TextLabel? = nil
 local bankedLabel: TextLabel? = nil
+local xpAnim: any = nil -- the XP row and its fill segments (see showSummary)
+
+local function fmtClock(seconds: number): string
+	local s = math.max(0, math.floor(seconds))
+	return string.format("%d:%02d", s // 60, s % 60)
+end
+
+-- The level curve, mirrored from Progression so the bar can draw it: XpCurveBase x n ^ XpCurvePow.
+local function xpToLevel(level: number): number
+	return math.max(1, math.floor(Config.XpCurveBase * math.max(1, level) ^ Config.XpCurvePow))
+end
 
 -- Camera framing: characters stand about 5 studs tall with the root 3 up, so chest is ~3 and the head ~5.
 local EYE_LINE = 2.6
@@ -115,6 +126,7 @@ local function teardown()
 	stampFrame = nil
 	goldLabel = nil
 	bankedLabel = nil
+	xpAnim = nil
 	lobbyButton = nil
 	summaryShownAt = -1
 	chosen = false
@@ -224,7 +236,7 @@ local function showSummary(d: any)
 	local vp = camera.ViewportSize
 	local W = math.min(math.floor(vp.X * 0.9), S(700))
 	local rowH = S(30)
-	local headerH = S(140)
+	local headerH = S(184) -- headline block plus the XP row
 	local H = headerH + S(24) + rowH * n + S(72) + S(28)
 	H = math.min(H, math.floor(vp.Y * 0.94))
 	local panel = UI.frame({
@@ -316,7 +328,12 @@ local function showSummary(d: any)
 	-- WAVE N with the final star count beside it.
 	local wavePill, waveLabel = UI.pill(
 		panel,
-		string.format("WAVE %d · ★ %s", d.wave or 1, UI.fmtNum(tonumber(d.heat) or 0)),
+		string.format(
+			"WAVE %d · %s · ★ %s",
+			d.wave or 1,
+			fmtClock(tonumber(d.survivedSec) or 0),
+			UI.fmtNum(tonumber(d.heat) or 0)
+		),
 		Theme.Colors.gold,
 		Theme.Colors.bg,
 		S(30),
@@ -327,6 +344,108 @@ local function showSummary(d: any)
 	wavePill.ZIndex = 11
 	waveLabel.ZIndex = 12
 	waveLabel.Font = Theme.Fonts.display
+
+	-- The XP row under the header: LV n left, LV n+1 right, the bar between, the number inside it, a FIRST
+	-- HEIST OF THE DAY line when it applies. Hidden until the Gold count-up is done, then it slides in and fills.
+	local award = myRow and myRow.xp
+	if award then
+		local rowY = S(142)
+		local xpRow = UI.frame({
+			Name = "XpRow",
+			BackgroundColor3 = Theme.Colors.panel,
+			BackgroundTransparency = 0.3,
+			Position = UDim2.fromOffset(S(24), rowY + S(30)),
+			Size = UDim2.fromOffset(W - S(48), S(36)),
+			Visible = false,
+			ZIndex = 11,
+			Parent = panel,
+		})
+		UI.corner(xpRow, S(8))
+		local lvLeft = UI.text({
+			Text = string.format("LV %d", award.fromLevel),
+			Font = Theme.Fonts.display,
+			TextSize = S(16),
+			TextColor3 = Theme.Colors.gold,
+			Position = UDim2.fromOffset(S(10), 0),
+			Size = UDim2.fromOffset(S(56), S(36)),
+			ZIndex = 12,
+			Parent = xpRow,
+		})
+		local lvRight = UI.text({
+			Text = string.format("LV %d", award.fromLevel + 1),
+			Font = Theme.Fonts.display,
+			TextSize = S(16),
+			TextColor3 = Theme.Colors.textDim,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -S(10), 0, 0),
+			Size = UDim2.fromOffset(S(56), S(36)),
+			ZIndex = 12,
+			Parent = xpRow,
+		})
+		local track = UI.frame({
+			BackgroundColor3 = Theme.Colors.bg,
+			Position = UDim2.fromOffset(S(72), S(12)),
+			Size = UDim2.new(1, -S(144), 0, S(12)),
+			ZIndex = 12,
+			Parent = xpRow,
+		})
+		UI.corner(track, S(6))
+		local xpFill = UI.frame({
+			BackgroundColor3 = Theme.Colors.gold,
+			Size = UDim2.fromScale(0, 1),
+			ZIndex = 13,
+			Parent = track,
+		})
+		UI.corner(xpFill, S(6))
+		local xpText = UI.text({
+			Text = "",
+			Font = Theme.Fonts.display,
+			TextSize = S(10),
+			TextColor3 = Theme.Colors.text,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 14,
+			Parent = track,
+		})
+		UI.stroke(xpText, Theme.Colors.black, S(1), 0.4)
+		local firstLine = UI.text({
+			Text = if award.first then string.format("FIRST HEIST OF THE DAY ×%s", UI.fmtNum(award.mult or 2)) else "",
+			Font = Theme.Fonts.display,
+			TextSize = S(10),
+			TextColor3 = Theme.Colors.cash,
+			Position = UDim2.fromOffset(S(72), S(24)),
+			Size = UDim2.new(1, -S(144), 0, S(12)),
+			ZIndex = 12,
+			Parent = xpRow,
+		})
+		local _ = firstLine
+		-- Segments of the fill: each level crossed, then the last partial one.
+		local segments = {}
+		local level, x = award.fromLevel, award.fromXp
+		for _ = 1, 200 do
+			local need = xpToLevel(level)
+			if level < award.toLevel then
+				table.insert(segments, { level = level, from = x, to = need, need = need, levelUp = true })
+				level += 1
+				x = 0
+			else
+				table.insert(segments, { level = level, from = x, to = award.toXp, need = need, levelUp = false })
+				break
+			end
+		end
+		xpAnim = {
+			row = xpRow,
+			rowY = rowY,
+			lvLeft = lvLeft,
+			lvRight = lvRight,
+			fill = xpFill,
+			text = xpText,
+			segments = segments,
+			gained = math.max(1, tonumber(award.gained) or 1),
+			popped = {},
+			shown = false,
+			levelUps = award.levelUps or {},
+		}
+	end
 
 	-- Table.
 	local cols = {
@@ -387,8 +506,16 @@ local function showSummary(d: any)
 		local isMvp = d.mvp and d.mvp.userId == row.userId
 		local color = Color3.fromHex(tostring(row.maskColor or "F2E6C8"))
 		local xx = 0
-		local nameCell =
-			cell(rowFrame, string.upper(tostring(row.name)), cols[1], xx + S(8), color, S(14), Theme.Fonts.display)
+		-- Level before the name on every row.
+		local nameCell = cell(
+			rowFrame,
+			string.format("LV %d  %s", tonumber(row.level) or 1, string.upper(tostring(row.name))),
+			cols[1],
+			xx + S(8),
+			color,
+			S(14),
+			Theme.Fonts.display
+		)
 		if row.newBest then
 			nameCell.Text = nameCell.Text .. "  ★ NEW BEST"
 		end
@@ -578,6 +705,79 @@ local function step(_dt: number)
 			end
 			goldLabel.Text = string.format("+%d", math.floor(mine * k2))
 			goldLabel.TextSize = if k2 > 0 and k2 < 1 then UI.S(26 + 4 * math.sin(e * 30)) else UI.S(26)
+		end
+		-- The XP bar: slides in after the Gold count-up, fills over XpFillSec at a constant XP speed; a level
+		-- crossed flashes gold, bumps both labels, pops the reward line and keeps filling.
+		local anim = xpAnim
+		if anim then
+			local xpStart = countUp * 2 + 0.15
+			if e >= xpStart then
+				if not anim.shown then
+					anim.shown = true
+					anim.row.Visible = true
+					UI.tween(
+						anim.row,
+						{ Position = UDim2.fromOffset(UI.S(24), anim.rowY) },
+						0.3,
+						Enum.EasingStyle.Back,
+						Enum.EasingDirection.Out
+					)
+					UI.sound(Theme.Sounds.toast, 1.2, 0.4)
+				end
+				local u = math.clamp((e - xpStart) / math.max(tonumber(d.xpFillSec) or 1.2, 0.05), 0, 1)
+				local consumed = u * anim.gained
+				local acc = 0
+				for i, seg in anim.segments do
+					local len = seg.to - seg.from
+					if consumed <= acc + len or i == #anim.segments then
+						local into = math.clamp(consumed - acc, 0, len)
+						local xp = seg.from + into
+						anim.fill.Size = UDim2.fromScale(math.clamp(xp / math.max(seg.need, 1), 0, 1), 1)
+						anim.text.Text = string.format("%d / %d XP", math.floor(xp), seg.need)
+						anim.lvLeft.Text = string.format("LV %d", seg.level)
+						anim.lvRight.Text = string.format("LV %d", seg.level + 1)
+						break
+					end
+					acc += len
+					if seg.levelUp and not anim.popped[i] then
+						-- Crossed a level: the flash, the bump and the reward line.
+						anim.popped[i] = true
+						anim.fill.BackgroundColor3 = Theme.Colors.white
+						UI.tween(anim.fill, { BackgroundColor3 = Theme.Colors.gold }, 0.4)
+						UI.punch(anim.lvLeft, 1.5, 0.4)
+						UI.punch(anim.lvRight, 1.5, 0.4)
+						UI.punch(anim.row, 1.06, 0.3)
+						UI.sound(Theme.Sounds.legendary, 1.2, 0.6)
+						ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.gold, alpha = 0.25 })
+						local up = anim.levelUps[i] -- the k-th level crossed is the k-th level-up
+						local line = if up then tostring(up.line or "") else ""
+						local pop = UI.text({
+							Text = string.format("LEVEL %d · %s", seg.level + 1, line),
+							Font = Theme.Fonts.display,
+							TextSize = UI.S(13),
+							TextColor3 = Theme.Colors.gold,
+							AnchorPoint = Vector2.new(0.5, 1),
+							Position = UDim2.new(0.5, 0, 0, -UI.S(2)),
+							Size = UDim2.new(1, 0, 0, UI.S(18)),
+							ZIndex = 15,
+							Parent = anim.row,
+						})
+						UI.stroke(pop, Theme.Colors.black, UI.S(1.5), 0.3)
+						UI.punch(pop, 1.6, 0.4)
+						UI.tween(
+							pop,
+							{ Position = UDim2.new(0.5, 0, 0, -UI.S(26)), TextTransparency = 1 },
+							1.2,
+							nil,
+							nil,
+							1.2
+						)
+						task.delay(2.5, function()
+							pop:Destroy()
+						end)
+					end
+				end
+			end
 		end
 		if lobbyButton and not chosen then
 			local left = math.max(0, math.ceil((d.autoLobbySec or 30) - e))

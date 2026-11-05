@@ -98,6 +98,7 @@ function Hub.refreshTag(player: Player)
 	end
 	local profile = state.profile
 	local top = if profile then (profile.topWave[World.partyKey()] or profile.topWave["TheBank:Normal"] or 0) else 0
+	local level = if profile then profile.level else 1
 	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "HubTag"
@@ -135,7 +136,7 @@ function Hub.refreshTag(player: Player)
 	label.Font = Enum.Font.LuckiestGuy
 	label.TextScaled = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Text = string.format("★ TOP WAVE %d", top)
+	label.Text = string.format("LV %d · TOP WAVE %d ★", level, top)
 	label.TextColor3 = GOLD
 	label.TextStrokeTransparency = 0.4
 	label.Parent = gui

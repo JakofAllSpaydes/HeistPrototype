@@ -27,6 +27,7 @@ local Heat = require(script.Parent.Heat)
 local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
 local Boss = require(script.Parent.Boss)
+local Progression = require(script.Parent.Progression)
 
 local Debug = {}
 
@@ -203,6 +204,25 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		else
 			toast(player, "VAULT IS " .. string.upper(VaultJob.phase))
 		end
+	end,
+	AddXp = function(player, state, args)
+		Progression.addXp(player, tonumber(args) or 500)
+		Hub.refreshTag(player)
+		state.dirty = true
+	end,
+	SetLevel = function(player, state, args)
+		local n = tonumber(args)
+		if n then
+			Progression.setLevel(player, n)
+			Hub.refreshTag(player)
+			state.dirty = true
+		else
+			toast(player, "SET LEVEL: enter a number")
+		end
+	end,
+	ResetDaily = function(player, _state, _args)
+		Progression.resetDaily(player)
+		toast(player, "DAILY FLAG RESET")
 	end,
 	SetHeat = function(player, _state, args)
 		local n = tonumber(args)

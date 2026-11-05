@@ -92,14 +92,19 @@ local function runWaves()
 		end
 		local wave = World.wave
 		World.skipRequested = false
-		-- Boss wave: the cutscene plays first (the game pauses; the boss steps in during it).
+		-- Boss wave: the cutscene plays first (the game pauses; the boss steps in during it; the run clock waits).
 		if World.isBossWave(wave) and not Boss.isActive() then
+			local t0 = Workspace:GetServerTimeNow()
 			Boss.cutscene(wave)
+			World.runClockPaused += Workspace:GetServerTimeNow() - t0
 			if World.runOver then
 				return
 			end
 		end
 		World.waveStartedAt = Workspace:GetServerTimeNow()
+		if World.runClockStart <= 0 then
+			World.runClockStart = World.waveStartedAt -- TIME SURVIVED runs from the WAVE 1 banner
+		end
 		SkipVote.reset()
 		setState("Wave")
 		World.fireRun("WaveStart", { wave = wave, boss = World.isBossWave(wave) })
@@ -184,6 +189,11 @@ task.spawn(function()
 		World.runGold = 0
 		World.objectivesDone = 0
 		World.banked = 0
+		World.wavesCleared = 0
+		World.bossKills = 0
+		World.runClockStart = 0
+		World.runClockPaused = 0
+		World.runClockEnd = 0
 
 		-- Run start: fresh run state for the party, then the drive-in sequence (IntroSec); WAVE 1 follows.
 		World.wave = 1
@@ -216,6 +226,7 @@ task.spawn(function()
 				reviveWindowSec = window,
 			})
 			Heat.cancelAll() -- the wave in progress is not scored
+			World.runClockEnd = Workspace:GetServerTimeNow() -- the clock freezes under the stamp
 			Enemy.freezeAll(Config.RunOverSlowSec)
 			Log.event("Run", "Run %d over at wave %d (%.1fs to revive everybody)", World.runId, World.wave, window)
 			local t0 = os.clock()
@@ -225,6 +236,9 @@ task.spawn(function()
 			if World.runOver then
 				break
 			end
+			-- Second chance: the clock resumes, the window taken out.
+			World.runClockPaused += Workspace:GetServerTimeNow() - World.runClockEnd
+			World.runClockEnd = 0
 			Enemy.killAll()
 			World.fireRun("RunResumed", { wave = World.wave })
 			Log.event("Run", "second chance: wave %d restarts", World.wave)
