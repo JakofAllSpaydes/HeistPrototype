@@ -64,10 +64,13 @@ local function clearItems()
 	items = {}
 end
 
+-- The panel's BillboardGui lives in PlayerGui (so its BUY button takes taps), not under its attachment: both go,
+-- or an orphaned panel stays on screen at the world origin.
 local function closePanel()
 	local p = panel
 	panel = nil
 	if p then
+		p.gui:Destroy()
 		p.att:Destroy()
 	end
 end
