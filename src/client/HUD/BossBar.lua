@@ -22,12 +22,14 @@ local BAR_H = 34
 
 function BossBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S
+	-- Phone width: the bar never runs past the screen.
+	local vp = (Workspace.CurrentCamera :: Camera).ViewportSize
 	local root = UI.frame({
 		Name = "BossBar",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, S(BAR_Y)),
-		Size = UDim2.fromOffset(S(460), S(BAR_H)),
+		Size = UDim2.fromOffset(math.min(S(460), math.floor(vp.X * 0.8)), S(BAR_H)),
 		Visible = false,
 		Parent = gui,
 	})

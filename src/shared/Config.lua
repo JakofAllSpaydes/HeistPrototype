@@ -150,6 +150,8 @@ local Config = {
 	GrenadierTelegraphSec = 1.2,
 	GrenadierFireSec = 3, -- the fire patch the shell leaves (the molotov field look)
 	GrenadierFireDps = 6, -- to players standing in the patch
+	TelegraphTransparency = 0.3, -- the red floor circles (Grenadier, volley): lower = more solid, reads better on a phone
+	TelegraphRimTransparency = 0.6,
 	HeavyPlaceableMult = 3, -- x damage when a Heavy stomps a placeable in its path
 	HeavyKnockback = 12, -- studs a Heavy's melee hit throws the player back
 	HeavyPlateHpPcts = { 0.66, 0.33 }, -- the two armor plates fly off at these HP shares
@@ -462,6 +464,9 @@ local Config = {
 	BagNearMult = 0.25, -- ...and within BagNearDistance
 	BagNearDistance = 25,
 	GoldBagMinDistance = 50, -- gold bags never spawn closer than this to any player (when a spot allows it)
+	LootRushCash = 4, -- the debug Loot Rush burst round the player: cash bags...
+	LootRushGold = 2, -- ...and gold bags...
+	LootRushRadius = 10, -- ...this far out
 
 	------------------------------------------------------------------ Vault (the arena's vault closet; VaultJob.lua; regenerate the map after changing sizes)
 	VaultSize = 24, -- the closet is this square, on the north wall

@@ -187,6 +187,17 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	SpawnBag = function(player, _state, args)
 		Bags.debugSpawn(player, tostring(args))
 	end,
+	-- Loot Rush: a bag burst round the player (bypasses the cap), to test a pile of pickups at once.
+	LootRush = function(player, _state, _args)
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not root or not World.inRun() then
+			toast(player, "NO RUN")
+			return
+		end
+		Bags.burstAround(root.Position, Config.LootRushCash, Config.LootRushGold, Config.LootRushRadius)
+		toast(player, "LOOT RUSH")
+	end,
 	OpenVault = function(player, _state, _args)
 		if VaultJob.phase == "closed" or VaultJob.phase == "job" then
 			if VaultJob.phase == "job" then

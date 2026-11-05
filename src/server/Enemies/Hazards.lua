@@ -96,6 +96,7 @@ end
 
 -- A red disc that grows from nothing to `radius` over `seconds`, then goes (the burst follows it).
 function Hazards.telegraph(position: Vector3, radius: number, seconds: number, color: Color3?)
+	-- Solid enough to read on a phone: the growing disc and a bright rim at the final radius.
 	local disc = part({
 		Name = "Telegraph",
 		Shape = Enum.PartType.Cylinder,
@@ -103,7 +104,7 @@ function Hazards.telegraph(position: Vector3, radius: number, seconds: number, c
 		CFrame = CFrame.new(position.X, Config.FloorTop + 0.12, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		Color = color or RED,
 		Material = Enum.Material.Neon,
-		Transparency = 0.35,
+		Transparency = Config.TelegraphTransparency,
 		Parent = effects(),
 	})
 	local rim = part({
@@ -113,7 +114,7 @@ function Hazards.telegraph(position: Vector3, radius: number, seconds: number, c
 		CFrame = CFrame.new(position.X, Config.FloorTop + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		Color = color or RED,
 		Material = Enum.Material.Neon,
-		Transparency = 0.8,
+		Transparency = Config.TelegraphRimTransparency,
 		Parent = effects(),
 	})
 	TweenService:Create(disc, TweenInfo.new(math.max(0.05, seconds), Enum.EasingStyle.Linear), {

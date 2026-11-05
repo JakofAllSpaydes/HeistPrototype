@@ -204,6 +204,36 @@ local function build()
 	btn(rE3, "Open vault", 0.25, function()
 		send("OpenVault")
 	end, Theme.Colors.amber)
+	-- Heat as pace, the vault's gas and a Loot Rush burst.
+	local rE4 = row(panel, 21, rh)
+	local heatBox = UI.new("TextBox", {
+		PlaceholderText = "Heat…",
+		Text = "",
+		TextSize = S(11),
+		Font = Theme.Fonts.body,
+		TextColor3 = Theme.Colors.text,
+		PlaceholderColor3 = Theme.Colors.grey,
+		BackgroundColor3 = Theme.Colors.bg,
+		Size = UDim2.new(0.25, -S(4), 1, 0),
+		ClearTextOnFocus = false,
+		Parent = rE4,
+	}) :: TextBox
+	UI.corner(heatBox, S(6))
+	UI.stroke(heatBox, Theme.Colors.grey, S(1), 0.5)
+	btn(rE4, "Set heat", 0.25, function()
+		send("SetHeat", tonumber(heatBox.Text))
+	end, Theme.Colors.gold)
+	heatBox.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			send("SetHeat", tonumber(heatBox.Text))
+		end
+	end)
+	btn(rE4, "Gas vault", 0.25, function()
+		send("GasVault")
+	end, Theme.Colors.red)
+	btn(rE4, "Loot rush", 0.25, function()
+		send("LootRush")
+	end, Theme.Colors.cash)
 
 	local r7 = row(panel, 8, rh)
 	btn(r7, "Trigger call", 0.5, function()
