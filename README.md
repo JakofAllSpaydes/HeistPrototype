@@ -13,15 +13,17 @@ reel, gives upgrades elements and utility stats with wave-scaled income, adds re
 reworks INITIATE and adds ENGINEER, adds weapon and class mastery with mid-run tier-ups, makes the vault job
 impossible to miss, and adds a dealer break after every boss wave and a vote to pause.
 
-State as of **4 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
+State as of **5 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
 phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes), the Round 13 multiplayer pass
 (revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
 ragdolls and hit sparks), the brief 4 build (Round 14: roster, boss, heat as pace, bags, vault, level, scoreboard) and
-the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause).
+the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause) with its feedback
+rounds 15b–15m.
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list" and the "Brief 5 verify list" are the walk-throughs for a
-fresh Studio session; briefs 4 and 5 have not been run in Studio yet.
+fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
+where those changes came from); the full verify lists have not been walked end to end.
 
 ## Run it
 
@@ -248,14 +250,15 @@ NEW WEAPON tile, hotkey 1 and the weapon price are gone.
 
 **Upgrades.** Pick 1 of 3 cards (and the dealer's stands) from three categories drawn by `CategoryWeights` (gun 60 /
 element 25 / utility 15) before the stat: 13 gun stats (Damage, FireRate, MagSize, ReloadSpeed, CritChance, HeadshotMult,
-MoveSpeed, Accuracy, Pierce, Ricochet, Splash, Multishot, Lifesteal); three elements that go on every shot, on
-every enemy the shot hits (`Elements.lua`; look in `StatusFx.lua`): INCENDIARY (burn `IncendiaryDps` for
-`IncendiaryBurnSec`, orange tint and embers), CRYO (slow `CryoSlowPct` for `CryoSlowSec`, `CryoStacksToFreeze` procs
-in that window freeze for `CryoFreezeSec`, blue tint, frost shards, ice), CONCUSSIVE (a `ConcussiveStuds` slide along
-the shot and a `ConcussiveStunSec` interrupt, Heavy / boss `ConcussiveHeavyMult` and the boss is never interrupted,
-a white ring); every hit applies the held elements; the first take is 100% power, later takes add the card's percent (burn DPS and
-tick rate `IncendiaryTickRatePerPower`, slow / freeze, knockback; CONCUSSIVE interrupts at most every
-`ConcussiveInterruptSec`); and utility: ABILITY COOLDOWN (capped `AbilityCooldownCap`), ABILITY POWER (ability damage,
+MoveSpeed, Accuracy, Pierce, Ricochet, Splash, Multishot, Lifesteal); three ammo types that go on every bullet that lands, each
+shotgun pellet included (`Elements.lua`, ids Incendiary / Cryo / Concussive; look in `StatusFx.lua`): Fire Ammo (a burn
+that stacks per hit up to `IncendiaryMaxStacks`, `IncendiaryDps` per stack for `IncendiaryBurnSec`, orange tint and
+embers), Ice Ammo (slow `CryoSlowPct` for `CryoSlowSec`, cap `CryoSlowCap`; `CryoStacksToFreeze` hits in that window
+freeze for `CryoFreezeSec`, at most once per `CryoFreezeCooldownSec`; deep blue tint, frost flakes, ice; the boss takes
+`CryoBossSlowMult` and never freezes), Impact Ammo (a `ConcussiveStuds` shove per bullet and a `ConcussiveStunSec`
+interrupt at most every `ConcussiveInterruptSec`, Heavy / boss `ConcussiveHeavyMult`, the boss never interrupted, a
+white ring); the first take is 100% power (cards read `NEW · BURN ON EVERY SHOT`), later takes add the card's percent
+(`+30% BURN`: burn DPS and tick rate `IncendiaryTickRatePerPower`, slow / freeze, knockback); and utility: ABILITY COOLDOWN (capped `AbilityCooldownCap`), ABILITY POWER (ability damage,
 heal, placeable HP) and CASH GAIN (kills, bags, job payouts; it replaced Greed). Each card spins an icon reel at the top,
 lands on the stat, then the text reveals. Higher rarity = bigger punch/shake/flash/rays. Tradeoff cards (`TradeoffChance`,
 halved in brief 5) carry a malus line; never on an element card, and the malus never lands on an element or CASH GAIN.
@@ -268,7 +271,9 @@ Income: kill cash = archetype cash × (1 + `CashWaveMult` × (wave − 1)) × el
 ability level through `AbilityGrowth`). Placeables stand `StructurePlaceDistance` ahead; attackable ones (turret,
 barricade, healing turret, flame turret, oil drum) have HP bars and enemies walk to and hit them; a med bag and a
 claymore are not targeted. Ground fields (med bag, molotov, the fire a broken drum leaves) act every `FieldTickSec`
-on whoever stands in the circle. Thrown abilities (flashbang, molotov) arc `ThrowDistance` over `ThrowFlightSec`.
+on whoever stands in the circle. Thrown abilities (frag, flashbang, molotov) land at the cursor up to `ThrowMaxRange` (100), arcing higher with
+distance (`ThrowArcPerStud`) over `ThrowFlightSec`, longer past `ThrowFlightRefStuds`. Placeables sit in the
+`Structure` collision group: enemies stop at them, players walk through.
 Self buffs (stim, stim shot, dead eye) share one slot per player; the tile that fired shows the seconds left.
 - INITIATE: frag (thrown to the cursor, goes off the moment it lands: `FragDamage` to everything in `FragRadius`),
   adrenaline (6s move, fire-rate and reload-speed buff with FOV push; no heal. Ability id `stim`, `Adrenaline*` in
@@ -290,7 +295,9 @@ Self buffs (stim, stim shot, dead eye) share one slot per player; the tile that 
   (200 HP drum that blocks like a barricade; when enemies break it, not when it expires, it burns for `OilDrumBurnSec`).
 Kills by turrets, fields and claymores pay the owner's kill cash. Abilities are free in a run (the Classes tab `$`
 is a label). Cooldown sweeps on the ability tiles. Airstrike was removed. Abilities hold charges (one each; INITIATE
-mastery II gives Frag and Claymore a second, `x2` on the tile), recharged one cooldown at a time.
+mastery II gives Frag and Claymore a second, `x2` on the tile), recharged one cooldown at a time from the first
+use; a spare charge recharging shows a gold bar on the tile instead of the dark sweep, and every clock change floats on
+the tile (`+0.5s`, `-0.2s`, `-8% CD`).
 
 **Mastery (brief 5, `Mastery.lua`, copy and tier math in `MasteryCopy.lua`).** `profile.mastery.weapons[id].xp` and
 `.classes[id].xp` (+ lifetime `stats.weaponMasteryXp` / `classMasteryXp`). XP lands the moment it is earned: per gun
@@ -305,21 +312,24 @@ up to `StimExtendCap`), ENGINEER (placeables +`EngineerPlaceablePct` HP and fire
 `AutoReviveSec`; the med bag heals `FieldHospitalHealMult` × over `FieldHospitalRadiusMult` × and allies inside deal
 +`FieldHospitalDmgPct`), SHARPSHOOTER (headshots +`SharpHeadshotAdd`; snipers and pistols reload `MarksmanKitReloadPct`
 faster and Eagle Vision +`MarksmanKitEagleEyePct`; headshots during Dead Eye put a round back and trim
-`DeadEyeHeadshotCdr`), TORCH (burns tick `TorchBurnRateMult` × faster; runs start with INCENDIARY; burning kills trim
+`DeadEyeHeadshotCdr`), TORCH (burns tick `TorchBurnRateMult` × faster; runs start with Fire Ammo; burning kills trim
 `BackdraftCdr` off the Molotov). A tier crossed mid-run applies at once and drops the MasteryUp card under the wave bar
-(emblem, rays, sting, `AK-47 · MASTERY II`, the reward; `MasteryUI.lua`, `MasteryPopSec`). Weapon tiles and class pills
-in the customization scene carry a bar with three pips and a tooltip; the summary shows the MASTERY line and the
+(emblem, rays, sting, `AK-47 · MASTERY II`, the reward; `MasteryUI.lua`, `MasteryPopSec`). Weapon tiles carry a bar with
+three pips; the Weapons and Classes detail columns show the shared mastery panel (`MetaUI.masteryPanel`) and the Classes
+tab three tier cards; the summary shows the MASTERY line and the
 run's tier-ups.
 
 **Dealer break (brief 5, `Dealer.lua`, `DealerUI.lua`).** After every boss wave is cleared: state `Dealer` for
-`DealerSec` (no spawns, heat frozen, the clock only stops for a pause), MARLOW's `DealerLine`, a Part stall with an
-idling DEALER at `DealerStallPosition`, the top-center card (`DEALER · 1:30`, TELEPORT TO DEALER any number of times, unanimous SKIP). Per-player stock: `DealerStock` stands from the pick-3 generator priced `ShopPriceByTier` × the
-upgrade escalation (each buy counts as an upgrade bought), drawn by each client on the same table; ARMS DROP
+`DealerSec` (no spawns, heat frozen, the clock only stops for a pause), the DEALER phones in (`DealerLine` on the call card), then
+a compact card in the top-right stack (`DEALER · 1:30`, TELEPORT any number of times, unanimous SKIP); a stall of three
+tables in a half circle (`DealerArcRadius`, `DealerTableAngles`, `DealerPerTable`) round an idling DEALER at
+`DealerStallPosition`. Per-player stock: `DealerStock` stands from the pick-3 generator priced `ShopPriceByTier` × the
+upgrade escalation (each buy counts as an upgrade bought), drawn by each client as always-on-top UI on the same tables; ARMS DROP
 (`ShopCratePrice`, a crate at the stall), HEAL ALL (`ShopHealPrice`), REROLL (`ShopRerollPrice`, doubling). The nearest
 stand or prop within `ShopReadRadius` opens a panel with the effect lines current → new; F (or BUY) buys.
 
 **Pause (brief 5, `Pause.lua`, `PauseUI.lua`).** VOTE TO PAUSE (P, the PAUSE pill on the wave bar, the scoreboard) in a wave, the
-intermission or the dealer break; unanimous, solo at once, one per `PauseCooldownWaves`. Frozen: enemies, damage,
+intermission or the dealer break; unanimous, solo at once. Frozen: enemies, damage,
 movement and fire, and every timer (bleed, floor guns, crates, side jobs, the vault, the dealer, ability lifetimes and
 cooldowns, spawns, the heat clock, the intermission, the run clock). `PAUSED · names` with the time left and two votes:
 VOTE TO EXTEND (+`PauseExtendSec`, as often as everyone agrees) and VOTE TO RESUME (everyone; solo at once); it resumes
@@ -654,101 +664,62 @@ Local Server through one boss; anything that fails is a Config or one-file fix:
 
 ### Brief 5 verify list
 
-Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. Solo through one boss first, then a
-2-player Local Server with a pause and a dealer visit:
+Written and built (`stylua`, `luau-lsp`, `rojo build`) through Round 15m, not yet run in Studio. Solo through one boss
+first, then a 2-player Local Server with a pause and a dealer visit:
 
-1. Crates: the left column is NEW UPGRADE only and 1 does nothing. The intro crate lands closed with `2 ROLLS LEFT`
-   (solo; party size + `CrateRollsExtra`) and a seconds countdown over it. F → the tag hides and a card above the crate
-   cycles six gun icons with rarity frames (0.6s each, the last two slower), ticks rising in pitch from the crate; it
-   lands with a punch (rays from Epic, the sting on a Legendary), holds, drops into the crate and the gun arcs out to a
-   free spot about 6 studs away with its beam and floor tag. A second player sees the same reel and can take the gun.
-   The prompt is gone while a roll plays; the tag reads `1 ROLL LEFT`; the crate closes after its last roll or 45s
-   (`CrateLifetimeSec`), and guns on the floor keep their own 30s timers. Boss crate: its first roll is a Legendary.
-   Force rarity from the debug panel applies to your next crate roll.
-2. Upgrades: pick-3 cards now include INCENDIARY / CRYO / CONCUSSIVE (orange `Element` on the debug panel forces
-   one), ABILITY COOLDOWN, ABILITY POWER and CASH GAIN (no Greed). Take INCENDIARY: the tracker tile reads `15%`;
-   roughly one shot in seven sets a target orange with embers and it burns for 3s (small numbers, kill cash to you).
-   CRYO: tinted blue and slower with a shard crackle; three procs inside 2s freeze it ice-blue for 1s (no walking, no
-   swings). CONCUSSIVE: a white ring and the enemy slides back about 8 studs (a Heavy or TITAN half that; TITAN keeps
-   attacking). Take one again: the chance on the tile goes up. ABILITY COOLDOWN shows `-8%` on its tile and the ability
-   sweeps get shorter; ABILITY POWER raises turret / barricade HP and heals; CASH GAIN raises kill, bag and job cash.
-   Tradeoff cards are rarer and never on an element card; a malus never lands on an element or CASH GAIN. Kill cash
-   grows 10% a wave (`CashWaveMult`); every wave end prints `[GHS Income] wave N cash earned X upgrades bought Y
-   (name)` and debug `Stats` adds the run's upgrades per player per wave.
-3. Revive (2 players; `Down me` on one): the reviver holding F sees a bar under the crosshair, `REVIVING NAME 2.4s`,
-   filling over 3s with a tick every 0.5s; letting go turns it red and it snaps back; finishing flashes green with
-   `REVIVED`. The downed player's red bleed bar gains a green fill matching it and reads `NAME IS REVIVING YOU`; the
-   marker over their head shows the same fill to everyone; on the stand-up their bar pulses green, the camera eases
-   up from the floor and `REVIVED BY NAME` toasts as before. Callouts: getting downed sends your teammates (never you) a
-   red card in the top-right with your Roblox headshot, your name and `I'M DOWN, HELP!` (or another line, never the
-   same twice in a row) for 2.5s; revived → `Thanks, I owe you.` / `Back in it.`; bled out → `I'm out. Finish the job.`;
-   REVIVE EVERYBODY → a gold `NAME brought everyone back.` to everyone. A callout waits while MARLOW's card is up and
-   during the boss cutscene.
-4. Classes: the Classes tab reads INITIATE → ENGINEER (orange, a 🔧) → DOC → SHARPSHOOTER → TORCH, each ◆ 100.
-   INITIATE: Q Frag (thrown to the cursor, blinks red for 1s, then a 9-stud blast for 120 that throws bodies out),
-   E Adrenaline, Z Claymore. ENGINEER: Q Turret, E Barricade, Z Overclock (every turret / healing turret / flame turret
-   on the floor glows amber and fires 1.5× for 8s, a med bag heals faster, every barricade gets a 150 shield that soaks
-   hits first and goes with the glow; the Z tile counts the 8s down). SHARPSHOOTER: Q Eagle Vision (`◉`: a red ring sweeps
-   out 60 studs and every enemy in it glows red through walls for 6s and takes +25% from bullets, turrets, fire and
-   blasts), E Dead Eye, Z Flashbang. A profile that leveled the SHARPSHOOTER claymore has that level on INITIATE's Z;
-   Eagle Vision starts at LV 0. UPGRADE on the tab raises Frag DMG, Overclock RATE / SHIELD and Eagle Vision BONUS / RADIUS.
-5. Mastery: every owned weapon tile and owned class pill in the customization scene carries a thin green bar with
-   three diamond pips; hovering lists the tiers (`✔ I GUNMETAL WRAP · 100 kills`, `· II TRIAGE · Your heals revive
-   downed allies`). In a run, debug `+100 mastery` (or 100 kills with one gun): the moment a tier is crossed a card
-   drops in under the wave bar with a spinning diamond emblem, rays and the sting: `WEAPON MASTERY · AK-47 ·
-   MASTERY I · GUNMETAL WRAP UNLOCKED` (gun) or `CLASS MASTERY · ENGINEER · MASTERY I · REINFORCED` (class); the
-   class passive is on from that second (placeables put down after it have +20% HP, etc.). Several tier-ups queue.
-   Summary: `MASTERY   AK-47 +31 · ENGINEER +12` between the level card and the panel, and after the XP fill each
-   tier crossed this run pops above the card. CUSTOMIZE → WRAP shows Gunmetal / Gold / Black-Red with `MASTERY I`
-   / `II` / `III` labels; they apply only on the gun that earned them and can never be bought. Passives to spot-check
-   (set a high tier with the debug button before a run): INITIATE Adrenaline heals 25%, Frag and Claymore show `x2`
-   and hold two charges, kills during Adrenaline stretch its timer; ENGINEER placeables mend when nothing is near,
-   Overclock speeds every crew gun; DOC med bag is wider, a downed teammate standing in it gets up on their own
-   (`MED BAG IS REVIVING YOU`), allies inside hit harder; SHARPSHOOTER headshots hit harder, snipers / pistols reload
-   faster, headshots during Dead Eye refill the mag; TORCH fire ticks twice as fast, runs start with INCENDIARY 15%,
-   burning kills shave the Molotov cooldown.
-6. Vault (wave 5 forces it): with MARLOW's call and the pill, a big amber `VAULT JOB` stamps the center for 1.5s;
-   the vault door pulses amber with a glow until the dial is cracked; the job beacon is twice the normal size, amber,
-   with a spinning diamond on top, and keeps its full name / timer / distance box at any range (no badge); a strip of
-   amber chevrons runs along the floor from where the crew stood to the door, lighting in a wave toward it, for 10s.
-   Hold Tab: the header ends in amber `· VAULT OPEN` until the vault seals (or the job fails).
-7. Dealer (clear wave 10's TITAN, or debug `Open dealer` in an intermission): the wave bar reads DEALER, MARLOW's
-   `Dealer's set up by the van…` card, a stall rises out of the floor south of the center (table, crates, a lamp, the
-   DEALER rig idling behind it) and the top-center card reads `DEALER · 1:30` with TELEPORT TO DEALER [T] (once; it
-   then reads TELEPORT USED), SKIP 0/1 [V] and VOTE TO PAUSE [P]. Eight upright cards stand on the table (stat initials
-   in the tier color, a green price); the ammo crate, medkit and dice cup carry ARMS DROP $800, HEAL ALL $300 and
-   REROLL $150 tags. Walk up: the nearest one opens a panel (`HONED · UNCOMMON · DAMAGE`, `DAMAGE +15% → +37%`,
-   price, F BUY). F: the upgrade lands at once (toast, tracker), the card disappears and the other prices rise; short
-   of cash the panel shakes and the price goes red. ARMS DROP drops a crate beside the stall; HEAL ALL fills every
-   member; REROLL deals eight new cards and the next reroll costs $300. Nothing spawns; at 0:00 or once everyone has
-   voted SKIP the stall sinks away and the normal intermission and next wave follow. A second player sees their own
-   eight cards on the same table.
-8. Pause: P (or the dealer card, or the scoreboard's VOTE PAUSE): solo pauses at once; with two players the first vote
-   toasts `NAME VOTED TO PAUSE · 1/2` and the second pauses. Everything stops: enemies stand, nobody takes damage, you
-   cannot move or fire, the bleed bar, floor gun and crate countdowns, the job pill, the vault pill, the dealer timer,
-   cooldown sweeps and turret lifetimes all hold. `PAUSED` and the names over a dim with RESUME (anyone); left alone,
-   `RESUMING IN 10` counts down from 2:50 and it resumes at 3:00. After it the wave's par and TIME on the scoreboard
-   do not include the pause. A second pause is refused for 5 waves (the dealer button reads `PAUSE IN N WAVES`).
-   Debug `Pause / resume` skips the vote.
-9. Debug row (brief 5): `Element` (orange, next pick-3 holds an element), `+100 mastery`, `Open dealer`, `Pause /
-   resume`. Mobile (device emulator, landscape): the crate reel card and its `N ROLLS LEFT` tag read from across the
-   arena, the revive bar and its label are thumb-readable under the crosshair, the dealer card fits the width with three
-   tappable buttons, the shop panel's BUY works by touch, and RESUME on the pause overlay is a big target. Mastery cards
-   and ally callouts fit at phone size.
-10. Round 15b (feedback on the brief 5 build; where it differs from the items above, this wins): the upgrade tile is
-    key 1. A crate reads `GUN CRATE`; one F plays every roll back to back on the old sliding reel above the crate, each
-    gun lands on the floor beside it (never on the lid; it cannot be grabbed mid-arc). Frag goes off on landing.
-    Elements apply on every shot: INCENDIARY burns, CRYO slows (ten hits in 2s freeze), CONCUSSIVE nudges back ~1.5
-    studs; a second take shows `130%`+ on the tile and burns harder and faster, slows and shoves more. Placeables never
-    block you (enemies still stop at them). Ability tiles: a used charge starts the cooldown at once and the sweep shows
-    (lighter while a charge is left); during Dead Eye / Overclock / Eagle Vision the cooldown drains under the gold
-    timer; a BACKDRAFT / OVERDRIVE trim pops `-0.1s` / `-0.2s` on the tile. Wave bar: VOTES sits under AUTO SKIP on the
-    left, PAUSE n/m on the right (P). Dealer: three tables in a half circle round the DEALER, cards are UI only and on
-    top, TELEPORT works every time, the card has TELEPORT and SKIP. Vault: the beacon is the normal size again (amber),
-    the chevrons stay. Classes tab: the detail column shows MASTERY with the waves to the next tier, a bar and three
-    tier cards (earned gold, next green); ENGINEER is a plain `E`; SHARPSHOOTER's Q is Eagle Vision (`EGV`). Weapons
-    tab: owned tiles read `M1911  LV 1` in the top bar over the mastery bar (STARTER at the bottom), the detail shows
-    the mode · rarity · level beside the name and a MASTERY bar under it, and the three mastery wraps carry a MASTERY tag.
+1. Gun crates: the left column is NEW UPGRADE only (key 1). The intro crate lands closed with a `GUN CRATE` tag and a
+   countdown. One F: a gold burst out of the lid, a floor ring, a thump and a shake; then every roll plays back to
+   back on the original sliding reel (80% size) above the crate, ~2s each, seen by everyone, ticks rising in pitch,
+   the result line with DMG and RATE, rays from Epic, the sting on a Legendary. Each gun kicks the lid, bursts in its
+   rarity color (Epic+: a light column) and arcs to a free floor spot ~6 studs out; it cannot be grabbed mid-arc and
+   nothing ever rests on the lid (a swap always drops at floor height). The crate closes after its last roll or 45s;
+   the boss crate's first roll is a Legendary; Force rarity applies to the opener's next roll.
+2. Upgrades: cards now include Fire / Ice / Impact Ammo (orange `Element` on the debug panel forces one), ABILITY
+   COOLDOWN, ABILITY POWER and CASH GAIN. A new ammo card reads `NEW` over `BURN ON EVERY SHOT`; later ones `+30%`
+   over `BURN` / `SLOW` / `IMPACT`; the tracker tile shows the power (`100%`, `130%`). Every bullet that lands applies
+   it, each shotgun pellet too: Fire stacks a burn up to 5 (orange, embers), Ice slows (deep blue, big frost flakes)
+   and ten hits in 2s freeze for 0.8s at most once per 3s, Impact shoves ~1 stud per bullet with a white ring and
+   interrupts at most every 1.5s. TITAN takes half the slow and knockback, never freezes and is never interrupted.
+   Tradeoffs are rarer and never on ammo; kill cash grows 10% a wave; each wave end prints `[GHS Income] wave N cash
+   earned X upgrades bought Y (name)`; debug `Stats` adds upgrades per player per wave.
+3. Revive (2 players; `Down me` on one): the reviver sees `REVIVING NAME 2.4s` under the crosshair with a tick every
+   0.5s, a red snap-back on release, a green `REVIVED`; the downed player's bleed bar gains a green fill with `NAME IS
+   REVIVING YOU`, the head marker the same fill; the stand-up pulses green and the camera eases up. Callouts: downed /
+   revived / bled-out players send teammates a red card with their headshot (Revive Everybody: gold, to everyone),
+   waiting behind MARLOW and the boss cutscene.
+4. Classes tab: INITIATE → ENGINEER (`E`) → DOC → SHARPSHOOTER → TORCH. The detail column shows MASTERY with the waves
+   inside the bar and three tier cards (earned gold, next green). INITIATE: Q Frag (thrown to the cursor up to 100
+   studs, a higher arc the further it goes, bursts on landing for 120 in 9 studs), E Adrenaline, Z Claymore. ENGINEER:
+   Q Turret, E Barricade, Z Overclock (placeables glow amber and work 1.5× for 8s, barricades get a 150 shield).
+   SHARPSHOOTER: Q Eagle Vision (`EGV`: enemies within 60 studs glow red through walls for 6s and take +25%), E Dead Eye,
+   Z Flashbang. Players walk through every placeable; enemies stop at them.
+5. Ability tiles: a used charge starts its cooldown at once; with a spare charge still in hand the tile stays gold and a
+   thin gold bar along its bottom fills toward the next charge (`+1` when it lands); at zero charges the dark sweep
+   shows; during a buff the cooldown drains under the gold timer. Floats: `+0.5s` on Adrenaline per kill (Adrenaline
+   Junkie), `-0.1s` / `-0.2s` for Backdraft / Overdrive, `-8% CD` on all three tiles when ABILITY COOLDOWN is taken.
+6. Mastery: debug `+100 mastery` (or kills with one gun) in a run: the moment a tier is crossed a rank-up card drops
+   under the wave bar (`WEAPON MASTERY · AK-47 · MASTERY I · GUNMETAL WRAP UNLOCKED`), the passive on from that second.
+   Weapons tab: owned tiles read `NAME  LV n` over the mastery bar (STARTER at the bottom); the detail shows mode ·
+   rarity · level beside the name, the MASTERY panel (`NEXT · UNLOCK SKIN`, kills inside the bar), and EQUIP +
+   CUSTOMIZE on one row; the mastery wraps carry a MASTERY tag and apply only on the gun that earned them. Summary:
+   the MASTERY line and each tier crossed this run. Spot-check the passives listed under Mastery above.
+7. Vault (wave 5 forces it): MARLOW's call, a big amber `VAULT JOB` stamp, the door pulsing amber, the normal-size
+   amber beacon and a chevron strip along the floor from the crew to the door for 10s; the Safe dial asks for 3 / 4 / 5
+   numbers by bracket but forgives overshoot corrections and short wobbles; Tab shows `· VAULT OPEN`. When it seals,
+   anything placed inside is destroyed.
+8. Dealer (clear wave 10's TITAN, or debug `Open dealer` in an intermission): the wave bar reads DEALER; the DEALER
+   phones in on the top-right call card (`SHOP OPEN`), then a compact card takes its place there with `DEALER · 1:30`,
+   TELEPORT [T] (any number of times) and SKIP n/m [V]. Three tables stand in a half circle round the DEALER with your
+   own eight cards on top as UI (stat initials, tier color, price) and ARMS DROP / HEAL ALL / REROLL tags past the ends.
+   Walk up: the nearest opens one panel (`BURN +100% → +130%` for ammo), F or BUY buys, short of cash it shakes red; no
+   leftover panels anywhere. Break ends on the timer or a unanimous SKIP.
+9. Pause: P or the PAUSE n/m pill on the wave bar (skip VOTES now sit under AUTO SKIP) or the scoreboard. Solo pauses at
+   once, a party when everyone votes; no limit on how often. Everything freezes (enemies, damage, movement, fire, every
+   timer). The overlay shows `RESUMES IN 4:59` and VOTE TO EXTEND (+5 min, stacks) / VOTE TO RESUME with counts, both
+   unanimous; it resumes by itself at the end after a 10s red countdown; par and TIME leave the pause out. Debug
+   `Pause / resume` skips the vote.
+10. Mobile (device emulator, landscape): the crate reel and tag, the revive bar, the top-right dealer card, the shop
+    panel's BUY, the pause buttons and the mastery cards all read and tap at phone size.
 
 ## Layout
 
