@@ -6,14 +6,18 @@ infinite waves, cash, the weapon reel, ground loot, the big crate, the upgrade o
 as test props, the downed / revive loop, a run start sequence and a run end sequence with an MVP moment
 and a summary. Brief 3 turns the yard into the hub: a DataStore profile with Gold, a queue zone with Create Match
 and a party-scoped run, a real Gold payout, the customization scene (Weapons / Classes / Avatar) and a downed sidearm.
+Brief 4 grows the one enemy into a seven-archetype roster with elites, adds TITAN every ten waves behind a cutscene,
+replaces the event heat meter with the GDD's pace meter, adds cash and gold bags with a team Banked total and the
+vault job, an account level with XP per run, and an in-run scoreboard.
 
 State as of **4 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
-and phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes: Adrenaline, Dead Eye pierce,
-rarity-colored collections, scroll memory), then the Round 13 multiplayer pass (revive pauses the bleed, teammates'
-tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun, ragdolls and hit sparks). Everything
-on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify list" and
-the "Round 13 verify list" are the walk-throughs for a fresh Studio session.
+phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes), the Round 13 multiplayer pass
+(revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
+ragdolls and hit sparks), and the brief 4 build (Round 14: roster, boss, heat as pace, bags, vault, level, scoreboard).
+Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
+list", the "Round 13 verify list" and the "Brief 4 verify list" are the walk-throughs for a fresh Studio session; brief 4
+has not been run in Studio yet.
 
 ## Run it
 
@@ -43,6 +47,9 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | 1 / 2 | Buy weapon roll / buy upgrade pick (also clickable tiles, left column). |
 | Q / E / Z | The equipped class's three abilities, all twelve live (INITIATE barricade / turret / adrenaline, DOC stim shot / med bag / healing turret, SHARPSHOOTER claymore / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown`. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
+| F (hold `BagCollectSec`) | `COLLECT` a cash bag (match cash to everyone) or `BANK` a gold bag (ticks the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
+| F at the vault door | `CRACK` the vault while CRACK THE VAULT is the open side job: opens the Safe dial at the wave bracket's tier. |
+| Tab (hold) | The scoreboard: WAVE · TIME · stars · BANKED · CASH and one row per member in MVP order; the game keeps running behind it. Mobile: tap the wave bar (the `≡` chip beside N LEFT), tap again or anywhere outside to close. |
 | Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
 | PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
 | F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
@@ -53,7 +60,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
 | Ctrl | In a run: toggle the cursor lock so you can click HUD tiles. While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
-| Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, minigame stats, +1,000 Gold, unlock all, reset profile. Mobile: the `DBG` chip top-left. |
+| Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
 Hub HUD on mobile landscape: dock tiles 76×68, PLAY 44px, SHOP and INVITE as icon tiles, queue card at 80%; the
@@ -62,30 +69,140 @@ Every minigame is tap or drag only (no double-tap, long-press or keyboard); the 
 
 ## What is in the build
 
-**Core loop.** Wave → intermission → wave, enemies spawn from 8 markers, cash per kill, heat stars (0–5, half-star
-steps) go up on wave clear and side-job success, down on side-job fail and on being downed. Enemies never collide
-with players or each other; stuck enemies detour, then teleport back to the spawn ring. Center banners mark WAVE N,
+**Core loop.** Wave → intermission → wave, enemies spawn from 8 markers weighted toward the crew, cash per kill by
+archetype, heat stars (0–5, half-star steps) scored per wave as a pace meter (below). Enemies never collide with
+players or each other; stuck enemies detour, then teleport back to the spawn ring. Center banners mark WAVE N,
 WAVE N CLEAR and the 3-2-1 countdown; "N LEFT" sits under the heat stars. The intermission can be skipped by vote
 (V / VOTES pill; every player in the party must vote, `SkipVoteFraction` = 1), and AUTO SKIP rolls waves into each
 other `AutoSkipWaveSec` after each one has fully spawned once everyone has it on. Kill chains show a combo counter
 from x2 with words at tier counts (`ComboTiers`).
 
-**Hit and kill feedback.** Every bullet that lands on an enemy shoves it along the shot and stops its feet for a beat
-(`EnemyHitKnockback`, `EnemyHitFlinchSec`, at most once per `EnemyFlinchCooldownSec` so a fast gun cannot pin it), with
-a small spark burst at the impact (`HitSparks`) next to the damage number and hit flash. A player kill knocks the body
-over instead of shrinking it: the Humanoid goes, the parts become a loose body in the `Corpse` collision group (rests on
-the room only, never under a player's feet, bullets pass through it), thrown along the killing shot with a hop and a
-tumble (`RagdollImpulse` / `RagdollLift` / `RagdollSpin`); a headshot kill pops the head off (`RagdollHeadPop`). How
-far it flies depends on what killed it: the gun sets the base (`RagdollForceByArchetype`: shotgun 2.8x, sniper 2.4x,
-LMG 1.5x, rifle 1.3x, pistol 1x, SMG 0.8x), damage past the remaining HP adds up to `RagdollOverkillMax` more (a
-point-blank shotgun dump or a sniper headshot on a fresh enemy launches it, a pistol finishing a sliver flops it), and
-`RagdollVariance` jitters every throw. Explosions (claymore, a Splash upgrade kill) throw bodies outward from the blast
-center with their own numbers (`RagdollBlastImpulse` / `RagdollBlastLift` / `RagdollBlastSpin`, falling to
+**Enemy roster (brief 4).** `Config.Enemies` is one row per archetype (hp, speed, dmg, range, cooldown, scale, color,
+cash, attack); `Enemies.lua` reads it and does the scaling: `FinalHp = BaseHp × (1 + HpWaveMult)^(wave − 1) × (1 +
+HpPerPlayerMult × (players − 1)) × DiffHpMult`, `FinalDamage = BaseDamage × (1 + DamageWaveMult)^(wave − 1) ×
+DiffDamageMult`; player count never changes spawn counts. `Enemy.lua` is the base (rig from `Enemies/Rig.lua`,
+targeting, movement with the stuck detour, damage / flinch / kill / ragdoll, stun and slow) and hands each enemy a
+brain from `src/server/Enemies/` every heartbeat through one `api` of helpers: Henchman and Runner (`Melee`: walk at
+the nearest player or the placeable in the way, hit on reach; the Runner sprints at 22 with a shrill wail), Shooter
+(`Shooter`: advances to range with line of sight, holds, fires every cooldown at `ShooterHitChance`; a miss cracks a
+tracer past you, muzzle flash on every shot, losing line of sight walks again), Marksman (`Marksman`: paints a red laser
+on the nearest visible player for `MarksmanAimSec`, the line locks, the shot goes down it and only hits a player still
+inside `MarksmanHitRadius` of it; a stun cancels the aim), Boomer (`Boomer`: runs at the nearest placeable within
+`BoomerPlaceableSearch`, else the nearest player; in range it stops, beeps rising and its belly swells for `BoomerFuseSec`,
+then `BoomerDamage` to players and `BoomerPlaceableMult` × to placeables in `BoomerRadius`; killed by damage it still
+bursts at `BoomerDeathRadiusMult`), Grenadier (`Grenadier`: holds at range, lobs a shell: a red circle grows on the floor
+from nothing to `GrenadierRadius` over `GrenadierTelegraphSec` while the shell arcs in, then the burst and a
+`GrenadierFireSec` fire patch at `GrenadierFireDps`), Heavy (`Heavy`: slow, walks at the nearest player, stomps
+placeables in its path for `HeavyPlaceableMult` ×, a hit throws you `HeavyKnockback` studs (your client applies it),
+its two plates fly off at `HeavyPlateHpPcts` with a crunch). Shared rules: blocked by a placeable → hit it until it
+breaks; retarget every `RetargetInterval`. Enemy hazards (`Enemies/Hazards.lua`): blasts that hurt players and
+placeables, fire patches that burn players (`FieldTickSec`), the red telegraph discs (`TelegraphTransparency`).
+Composition: `Config.Composition` rows apply from `WaveMin` until the next row, weights rolled per enemy at spawn (the
+brackets are compressed so everything shows by wave 12; at `HeatShiftStars`+ the active row shifts `HeatBracketShift`
+down). Spawning: each spawn picks a marker by proximity to the crew (within `NearRange` × `NearWeightMult`, up to
+`FarRange` × 1, beyond × `FarWeightMult`), caps at `MaxActiveEnemies` (100) with the rest of the budget queued and
+backfilled at once; every wave logs its composition. Silhouettes: scale and body color per row, a lean body, a belly, a
+backpack, a wide body with plates, a gun with a muzzle; the head stays the red neon hitbox. No enemy uses job blue,
+door amber or the bag colors.
+
+**Elites.** Rolled at spawn at `HeatElitePerStar × max(0, stars − 1)` for any archetype but the Heavy and the boss:
+`EliteHpMult` HP, `EliteCashMult` cash, `EliteScale`, a body-colored PointLight + Highlight and an `ELITE` tag.
+
+**Hit and kill feedback.** Every bullet that lands on an enemy pops a white flinch flash on every client (the server
+stamps `FlinchAt`, at most once per `FlinchAnimRate`; it never moves the enemy or stops its feet — `EnemyHitKnockback`
+is the Round 13 shove, 0 by default), with a small spark burst at the impact (`HitSparks`) next to the damage number and
+hit flash. A player kill knocks the body over instead of shrinking it: the Humanoid goes, the parts become a loose body
+in the `Corpse` collision group (rests on the room only, never under a player's feet, bullets pass through it), thrown
+along the killing shot with a hop and a tumble (`RagdollImpulse` / `RagdollLift` / `RagdollSpin`); a headshot kill pops
+the head off (`RagdollHeadPop`). How far it flies depends on what killed it: the gun sets the base
+(`RagdollForceByArchetype`: shotgun 2.8x, sniper 2.4x, LMG 1.5x, rifle 1.3x, pistol 1x, SMG 0.8x), damage past the
+remaining HP adds up to `RagdollOverkillMax` more, and `RagdollVariance` jitters every throw. Explosions (claymore, a
+Splash upgrade kill) throw bodies outward from the blast center with their own numbers (`RagdollBlast*`, falling to
 `RagdollBlastEdge` at the radius). Fire fields, the flame turret and turret rounds only slump the body
-(`RagdollTickForce`) and never flinch it. Bodies
-lie `RagdollSec`, fade over `RagdollFadeSec` and go; at most `RagdollMaxActive` (12) are on the floor at once, past that
-a kill shrinks out as before (`RagdollEnabled = false` turns the whole thing off). Kills by the run clear, a fall or
-the cap shrink out. A bigger red burst (`KillSparks`) marks the kill for the shooter.
+(`RagdollTickForce`) and never flinch it. Bodies lie `RagdollLifetime` (2s), fade over `RagdollFadeSec` and go; at most
+`ActiveRagdolls` (8) are on the floor at once, past that a kill shrinks out as before (`RagdollEnabled = false` turns
+the whole thing off). Kills by the run clear, a fall or the cap shrink out. A bigger red burst (`KillSparks`) marks the
+kill for the shooter. Kill cash is the archetype's `cash` row × elite × the heat cash multiplier × greed.
+
+**Heat as pace (brief 4, `Heat.lua`).** The event meter is gone. Heat is a team meter, 0–5 in half stars, from
+`HeatStart` (0), no decay, scored once per wave when the last enemy tagged with that wave dies (so AUTO SKIP overlap
+counts against par on purpose): par = `ParTimeBase + ParTimePerEnemy × budget` (boss waves add `BossParBonusSec` on the
+regular budget); clear ≤ `FastClearPct` × par → `HeatFastClear` (+1), ≤ par → `HeatParClear` (+0.5), > `SlowClearMult`
+× par → `HeatSlowClear` (−0.5); AUTO SKIP active during the wave `HeatAutoSkip`; each side job done in the wave
+`HeatJob`, each that expired `HeatJobFail`; downs `HeatDowned` each, capped at `HeatDownedMax`; a boss kill
+`HeatBossKill` at once. Each component lands as its own small `+0.5 FAST CLEAR` / `−0.5 DOWNED` float beside the stars
+(the changed star pops; the big HEAT UP label, flash and toast are gone). Effects at S stars: cash × (1 +
+`HeatCashPerStar` × S), elite chance `HeatElitePerStar` × max(0, S − 1), spawn interval × (1 − `HeatSpawnPerStar` × S),
+the bracket shift at `HeatShiftStars`. Every wave end prints `wave N clear 42.1s par 58.0s heat +0.5 → 2.5 (fast)`;
+the debug Stats button prints the run's clear / par ratios so `ParTimePerEnemy` can be set from real runs. The summary
+shows the final stars next to the wave. A debug skip or the run ending leaves the open wave unscored.
+
+**Bags (brief 4, `Bags.lua`, spots in `BagSpots.lua`).** Two kinds, same interaction: a green duffel with a `$` pays
+`CashBagBase × (1 + CashBagPerWave × wave)` match cash to every member; a gold case adds `GoldBagValue × (1 +
+GoldBagPerWave × wave)` to the team's Banked total (`◆ N BANKED` row under the cash row, ticks on collect). Hold F
+`BagCollectSec` to collect (`GRABBING` over your head), the bag pops in a money burst and a `<NAME> GRABBED $300` /
+`<NAME> BANKED ◆ 40` toast. `CashBagsPerWave` and `GoldBagsPerWave` spawn at every wave start on free arena spots
+weighted away from the crew (`BagFarMult` beyond `BagFarDistance`, `BagNearMult` within `BagNearDistance`; gold bags
+keep `GoldBagMinDistance` when any spot allows it), up to `MaxActiveBags`; bursts (the boss body, the vault, the debug
+Loot Rush) bypass the cap; `BAGS DROPPED · 2 CASH · 1 GOLD` toasts the drop. Bags persist until collected or the run
+ends; their beacons read through walls as markers with a `$` / `◆` badge far away. At the summary TOTAL BANKED is the
+headline above GOLD EARNED and both land in `profile.gold`; `stats.bagsCollected`, `stats.goldBanked` accumulate and
+`topBanked["TheBank:Normal"]` gets a `★ NEW BEST BANKED` callout.
+
+**The vault job (brief 4, `VaultJob.lua`).** A 24×24 vault closet behind a heavy sliding door on the arena's north wall
+(`VaultSize`, `VaultDoorWidth`; the door frame is its amber beacon, a `VAULT` sign above, lights and a gas emitter in
+the ceiling, `VaultBagSpots` spots inside). CRACK THE VAULT is a side job kind (`vault` in `SideJobKindWeights`, from
+`VaultJobMinWave`, once per run when `VaultJobOnce`): MARLOW calls it, the frame turns job blue, the usual job timer
+runs and F at the door opens the Safe dial at the wave bracket's tier (fails retry until the timer; expiry fails the job
+as usual and the vault can be redrawn). Done: `WE'RE IN`, the door slides up, the lights snap on, `VaultBurstCash` cash
+and `VaultBurstGold` gold bags drop onto the spots, `VAULT OPEN`, the side job pays as usual (no crate for this kind),
+and the pill reads `VAULT · 0:60` from `VaultOpenSec`. `VaultGasWarnSec` before the end: alarm, red strobe inside,
+MARLOW's `Gas! Get out!` card, the pill goes red. At zero: gas (fog, a green screen tint for anyone inside,
+`VaultGasDps` until they step out, no stacking), the bags left inside fizzle, and the door closes only once nobody is in
+the room; sealed, the frame goes grey and it never reopens this run. Enemies walk in like anywhere else. The shell
+(call → interact → reward → timed room → consequence) is what door objectives reuse on the real map. Debug: `Open
+vault`, `Gas vault`.
+
+**Boss waves and TITAN (brief 4, `Boss.lua`, `Bosses/Titan.lua`).** Every `BossWaveInterval` (10) waves. The
+intermission ends in a `BossCutsceneSec` cutscene (`BossCutsceneBeats`): the game pauses (no brains, players
+invulnerable and input-locked, AUTO SKIP ignored), MARLOW's `Heavy response inbound. Big one.` in the crew-call slot
+and a low shot of the entrance wall (the marker farthest from the crew); the wall blows (debris, flash, shake) and TITAN
+steps through at `TitanScale` with a stomp per step; the barrels spin and the camera pushes in on the gun while
+`TITAN · HEAVY RESPONSE` slams in bottom-third; the camera snaps back and the boss bar slides in under the wave bar;
+the wave starts with `BossWaveBudgetPct` of the normal budget. TITAN: `TitanHp` × the wave HP scaling × the player
+count multiplier, `TitanSpeed`, a contact hit for `TitanMeleeDmg` with `TitanKnockback`, placeables in its path break,
+no flinch, four plates, a through-wall marker (red Highlight and a name / distance tag) and the bar (name, HP number,
+phase pips at 100 / 66 / 33). Abilities one at a time, picked by cooldown and range: Sweep (barrels spin
+`TitanSweepSpinSec`, `TitanSweepSpinSecP2` from phase 2, with a rising whine and a faint cone on the floor, then a beam
+swings `TitanSweepArc` over `TitanSweepSec` doing `TitanSweepDps` to players in it with line of sight and to
+placeables), Charge (a red line on the floor to a locked player for `TitanChargeTelegraphSec`, then a run down it at
+`TitanChargeSpeedMult` that breaks placeables, hits the first player for `TitanChargeDmg` with `TitanChargeKnockback`,
+and stops at a wall with a `TitanStaggerSec` stagger taking `TitanStaggerDmgMult`), Volley (`TitanVolleyCount` red
+circles grow on the nearest player positions over `TitanVolleyTelegraphSec`, then Grenadier blasts with fire). Phase 2
+at 66%: plates 1–2 fall, faster spin. Phase 3 at 33%: plates 3–4 fall and `TitanCallInCount` Henchmen from the nearest
+marker every `TitanCallInSec`. Kill: heat `HeatBossKill`, `TitanCashBurst` to everyone, `BossBagBurst` bags round the
+body, a boss crate with a guaranteed Legendary of a random owned gun plus `BossCrateCount − 1` normal deals, half a
+second of slow-mo, a `TITAN DOWN` stamp, the bar flashes and drops. Kills by abilities count for the owner. A second boss
+id drops into `Boss.registry` and `Config.BossId` without touching the shell.
+
+**Account level (brief 4, `Progression.lua`, `LevelRewards.lua`).** `profile.level`, `profile.xp`, `profile.lastHeistDay`.
+XP per run, per player, on the summary write: `XpPerWave × waves cleared + XpPerKill × kills + XpPerJob × jobs +
+XpPerBoss × boss kills + XpSurvivedPerMin × minutes survived`, × `XpFirstHeistMult` on the first completed run of a
+UTC day. Curve `XpToLevel(n) = XpCurveBase × n ^ XpCurvePow`, no cap, overflow carries so one run can level several
+times. Every level pays `LevelGold`; milestones 5 / 10 / 25 / 50 grant a mask (`LevelRewards.Milestones`); `pass_token`
+and `emote` exist as kinds with no handler. Summary: after the Gold count-up the XP row slides in under the header
+(`LV 7` left, `LV 8` right, the bar fills over `XpFillSec` with the number counting, a level crossed flashes gold, bumps
+both labels and pops `LEVEL 8 · +100 GOLD · BLUE VISOR`; `FIRST HEIST OF THE DAY ×2` under the bar when it applies).
+Level shows on the hub tag (`LV 7 · TOP WAVE 14 ★`), the party card, the summary rows and the scoreboard; lifetime XP in
+`stats.xp`. Debug: `+500 XP`, `Set level`, `Reset daily`.
+
+**Scoreboard and time survived (brief 4, `Roster.lua`, `Scoreboard.lua`).** The server rebuilds the roster every
+`RosterSyncSec` into `StateSync.roster`. Hold Tab (mobile: tap the wave bar; the `≡` chip beside N LEFT is the hint, tap
+again or outside to close): a translucent panel, the game runs behind it; header `WAVE N · TIME 12:34 · stars ·
+◆ BANKED 240 · $ CASH 3,120`; one row per member in MVP order: level and class circle, state dot (standing / downed /
+spectating), kills, cash, bags, jobs, downs, revives, MVP score, your own row highlighted. Time survived runs from the
+WAVE 1 banner, pauses for the boss cutscene and the run-over window, shows on the scoreboard and the summary next to
+WAVE N (`WAVE 14 · 18:52 · ★ 2.5`), and lands in `stats.timeSurvived` and `topTime["TheBank:Normal"]`.
 
 **Teammates' shots.** The server hands every other player in the run the end points of each bullet (`RemoteShot`):
 their client draws the same tracer from that gun's muzzle and plays the shot sound at the gun, 3D and quieter with
@@ -139,16 +256,16 @@ Kills by turrets, fields and claymores pay the owner's kill cash. Abilities are 
 is a label). Cooldown sweeps on the ability tiles. Airstrike was removed.
 
 **Crew call / side job.** A call from MARLOW on wave 1 and every `SideJobEveryWaves` (2) waves, kind rolled from
-`SideJobKindWeights` (eight kinds, equal odds): "VAULT PING" (hack the terminal, hold E), "HOLD THE FLOOR" (stand in
-the circle for `SideJobCaptureSec`; progress pauses when nobody is inside, a green disc fills on the floor), or one of
+`SideJobKindWeights` (nine kinds, equal odds): "VAULT PING" (hack the terminal, hold F), "HOLD THE FLOOR" (stand in
+the circle for `SideJobCaptureSec`; progress pauses when nobody is inside, a green disc fills on the floor), one of
 the six minigames (the beacon carries an OPEN prompt; a validated done finishes the job, fails can retry until the
-timer). The dialogue card slides in from the right into the top-right stack with typewriter text, collapses in place to
-a timer pill (with a progress bar for capture), and the result card expands from that pill. A world marker over the
-beacon shows name, hint, timer and distance; past `MarkerCompactDistance` it shrinks to a badge. Cards hold
-`CallHoldSec` (4.5s) before collapsing. If the job is still open at `SideJobReminderPct` (50%) of the window, MARLOW's
-card comes back with a reminder line (`Lines.reminder`) and collapses again. Done within 75s: $600,
-`SideJobGold` gold per player, heat up and a crate drop. Fail: heat down. A run ending with a job open clears it on
-every client.
+timer), or CRACK THE VAULT (above; drawn only when the vault can be). The dialogue card slides in from the right into
+the top-right stack with typewriter text, collapses in place to a timer pill (with a progress bar for capture), and the
+result card expands from that pill. A world marker over the beacon shows name, hint, timer and distance; past
+`MarkerCompactDistance` it shrinks to a badge. Cards hold `CallHoldSec` (4.5s) before collapsing. If the job is still
+open at `SideJobReminderPct` (50%) of the window, MARLOW's card comes back with a reminder line (`Lines.reminder`) and
+collapses again. Done within 75s: $600, `SideJobGold` gold per player, a crate drop and `HeatJob` at the wave's end.
+Fail: `HeatJobFail` at the wave's end. A run ending with a job open clears it on every client.
 
 **HUD.** Built in code from `src/client/UI/Theme.lua`, scaled manually from a 760px basis. Wave bar with heat stars,
 N LEFT, AUTO SKIP and VOTES pills (top-center), transient center toasts for wave/heat/crate/vote events, top-right
@@ -202,7 +319,8 @@ per player; `UpdateAsync` with 3 tries and 1 / 2 / 4s backoff; written on every 
 `pendingPayout` and retries in the hub; an advisory session lock key per player. Without API access the module falls
 back to an in-memory profile and warns once. Shape: `gold`, `weapons[id] = { level, wrap }` (presence = owned),
 `starterWeaponId`, `classes { owned, equipped }`, `abilities[id] = level`, `masks { owned, equipped }`, `wraps.owned`,
-`topWave["TheBank:Normal"]`, `stats { kills, matchesPlayed, goldEarned }`, `pendingPayout`, `version`. A fresh profile
+`topWave["TheBank:Normal"]`, `topBanked`, `topTime`, `level`, `xp`, `lastHeistDay`, `stats { kills, matchesPlayed,
+goldEarned, bagsCollected, goldBanked, xp, timeSurvived }`, `pendingPayout`, `version`. A fresh profile
 has `StartingGold` (10,000), one gun of each archetype at level 0 (`Weapons.DefaultOwned`: M1911, UZI, AK-47,
 SPAS-12, AWP, M249; older stores are topped up on load), the M1911 as starter, INITIATE and the plain mask. `Prices.lua` is the only
 price file (`weaponUnlock`, `weaponUpgrade`, `class`, `ability`, `mask`, `wrap`, all 100). The whole profile rides in
@@ -335,8 +453,9 @@ bill rain (`CashRainPerBanked` × Total Banked, capped at `CashRainMax`, over `C
 3/4 orbit (`MvpOrbitSec`) on the MVP (kills × `MvpKillWeight` + cash collected × `MvpCashWeight` + revives ×
 `MvpReviveWeight`; ties to the earlier joiner; solo still gets the beat) with the rest of the crew hidden, the MVP's
 equipped MVP emote (`MvpAnimationId` for dummies), a gold MVP stamp, name, the winning stat line, rays, shake and a bigger haptic. The summary
-panel slides up over a dim: GOLD EARNED count-up (the GDD payout plus your side job gold, paid into the profile, with
-`★ NEW PERSONAL BEST` when the wave beat your top wave), WAVE N, one row per player (name, kills, jobs, cash
+panel slides up over a dim: TOTAL BANKED count-up (the team's gold bags, paid in full to everyone), GOLD EARNED under it
+(the GDD payout plus your side job gold), both into the profile, `★ NEW PERSONAL BEST WAVE` / `★ NEW BEST BANKED`
+callouts, `WAVE N · TIME · ★ stars`, then the XP row (above), one row per player (level and name, kills, jobs, cash
 collected, downs, revives, MVP tag, NEW BEST), PLAY AGAIN and TO LOBBY with a `SummaryAutoLobbySec` countdown. TO
 LOBBY returns the party to the hub spawn; PLAY AGAIN re-forms the party on the queue pad and starts the countdown.
 
@@ -395,27 +514,93 @@ Solo pass first, then a 2-player Local Server; anything that fails is a Config o
 8. Mobile (device emulator, landscape): hub dock tiles 64px, PLAY 44px, SHOP / INVITE icons, the queue card at
    80%, the scene panel at 62% with 64px tiles and a 64px dock; every tap works with touch only.
 
+### Brief 4 verify list
+
+The brief 4 code was written and built (`stylua`, `luau-lsp`, `rojo build`) but not yet run in Studio. Regenerate
+nothing: the map with the vault is committed (`src/map/Room.model.json`). Solo to wave 12 first, then a 2-player
+Local Server through one boss; anything that fails is a Config or one-file fix:
+
+1. Wave 1–3: Henchmen (grey) and from wave 2 Runners (pale, lean, fast, a wail as they close); from wave 3 Grenadiers
+   (olive, a backpack): a shell arcs at you and a red circle grows under it, then a burst and a 3s fire patch that
+   hurts you standing in it. Every wave end prints `[GHS Wave] Wave N composition (bracket B): …` and `[GHS Heat] wave
+   N clear 42.1s par 58.0s heat +0.5 → 0.5 (fast)`. The stars start empty and `+1 FAST CLEAR` / `+0.5 PAR` floats beside
+   them; getting downed adds a `−0.5 DOWNED` float at that wave's end; a side job `+0.5 JOB`. No HEAT UP toast.
+2. Wave 4+: Shooters (dark blue, a gun) stop at range and fire orange tracers with a flash, roughly half land (the rest
+   crack past your ear); Boomers (orange, a belly) run at your turret or barricade, stop, beep rising and swell, then
+   burst (orange ring; a turret in it takes 4×); killing one mid-run still bursts smaller. Wave 5+: a Heavy (black,
+   wide, slow) shrugs off flinch, stomps a barricade in its path, knocks you back on a hit, loses a chest plate at 66%
+   and the shoulder plate at 33% (each with a crunch and chips). Wave 6+: Marksmen (dark red, a long gun) paint a red
+   laser on you for 1.5s; step out of the line and the shot misses, stay and it hits for 15.
+3. Hits: a white pop on the enemy, no shove, no feet stop; kills ragdoll as before but 8 at most and fade after 2s.
+   Cash per kill differs by archetype (15 Henchman … 60 Heavy) and grows with the stars. `Set heat` 4 from the debug
+   panel: the next wave's composition line shows the bracket one row down, spawns come faster, and ELITE-tagged glowing
+   enemies (×2.5 HP, ×3 cash, bigger) appear.
+4. Bags: at each wave start `BAGS DROPPED · 2 CASH · 1 GOLD` and green / gold columns with `CASH BAG` / `GOLD BAG`
+   markers (a `$` / `◆` badge far away), never next to you. Hold F on a cash bag: it pops, everyone's cash row jumps,
+   `<NAME> GRABBED $187`; a gold bag: `◆ 27 BANKED` ticks bottom-left, `<NAME> BANKED ◆ 27`. Bags left alone stay
+   through the next waves; with 6 up no more drop at wave start (`Cash bag` from the debug panel still does).
+5. Vault: from wave 3 the side job can be CRACK THE VAULT: MARLOW's line, the vault door frame on the north wall turns
+   blue, the marker points at it; F at the door opens the Safe dial (tier from the wave bracket); fail → F again; done →
+   `WE'RE IN`, the door slides up, lights on, 10 bags on the floor inside, `VAULT OPEN`, the top-right pill reads
+   `VAULT · 0:59`. With 10s left: alarm, red strobe, MARLOW's `GAS` card, the pill red. At 0: green fog, standing
+   inside tints the screen green and hurts 8/s, stepping out stops it at once, the bags inside fizzle; the door closes
+   only after you leave and the frame goes grey. The job never draws again that run. `Open vault` / `Gas vault` on the
+   debug panel skip the dial / the timer.
+6. Wave 10: after the countdown the HUD drops, MARLOW's `Heavy response inbound. Big one.` card, a low shot of the far
+   wall; the wall blows and TITAN (huge, dark, a minigun) walks in with stomps; the camera pushes in on the gun with the
+   `TITAN · HEAVY RESPONSE` card; the camera snaps back, the red bar with three pips slides in under the wave bar, a
+   red outline on TITAN reads through pillars with `TITAN · 70m`, the wave starts with a few regular enemies. You cannot
+   move or shoot during the 4s and nothing hurts you.
+7. TITAN: walks at you, a hit for 35 throws you back; your barricade in its path just breaks. Sweep: barrels whine with
+   a red cone on the floor, then a wide beam swings across; standing in it drains 40/s. Charge: a red line to you, then a
+   run at 3×; standing on the line costs 50 and a throw; a pillar or wall stops it with a crunch and it stands still 1.5s
+   taking 1.5×. Volley: four red circles on the crew, then four bursts with fire. At 66% the chest and back plates fly
+   off and the second pip goes dark; at 33% the shoulder pads go and four Henchmen arrive at the nearest marker every
+   12s. Kill: slow-mo, `TITAN DOWN`, `+$600` on everyone, six bags round the body, a crate on the body with one
+   Legendary, `+1 BOSS` beside the stars; the wave end logs the boss wave with a par that includes `BossParBonusSec`.
+8. Summary: `TOTAL BANKED ◆ N` counts up first, then `GOLD EARNED +N` (the payout plus jobs), `WAVE N · 12:34 · ★ 2.5`
+   with the time survived, then the XP row slides in: `LV 1` → the bar fills with `350 / 400 XP` counting; cross a
+   level (use `+500 XP` before a run, or a long run) and it flashes gold, reads `LV 2`, pops `LEVEL 2 · +100 GOLD`, and
+   keeps filling; `FIRST HEIST OF THE DAY ×2` under the bar on the first run of the day (then `Reset daily` to see it
+   again). Rows read `LV 2 NAME`. Back in the hub the tag reads `LV 2 · TOP WAVE 12 ★`, the Gold row includes the
+   banked total and the level reward, and the party card lists `LV 2 NAME`. Rejoin: level, XP and the daily flag hold
+   (API access on).
+9. Scoreboard: hold Tab in a run: `WAVE 5 · TIME 3:12 · ★★ · ◆ BANKED 54 · $ CASH 2,340`, your row highlighted with
+   level, class circle, green dot, kills, cash, bags, jobs, downs, revives, MVP score, updating every second; release
+   closes it; shooting keeps working while it is up. Mobile: tap the wave bar (the `≡` chip), tap outside to close.
+   Two players: rows in MVP order, a downed teammate's dot goes red, a bled-out one grey.
+10. Mobile (device emulator, landscape): the boss bar and the scoreboard fit the width, the red telegraph circles read
+    at phone size, `DBG` chip → the spawn rows work with touch.
+11. Debug `Stats` prints the minigame averages and then `[GHS Heat] clear / par this run:` with one line per wave and
+    the mean ratio.
+
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
 `src/client` → StarterPlayerScripts.Client, `src/assets` → ReplicatedStorage.Assets, `src/map` → Workspace.Room.
 
-Server modules: World (run state, the party, `fireRun`, payout accumulators), Room, Stats, Profiles (DataStore),
-PlayerState (per-player run state + profile-derived held / mask / wrap / class), Enemy, Spawner, Combat, Economy,
-UpgradeShop, WeaponRoll, BigCrate, CrewCall, Abilities, SkipVote, Hub (yard dressing, stations, tier pad, resets, TOP
-WAVE tag), Queue (zones, Create Match, party, countdown, PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions),
-Minigames (sessions, log, stats), Downed (down / revive / bleed-out / game over / sidearm), RunStart, RunEnd (payout,
-summary), Squad (dummy crew for the sequences), Debug, Log; `GameLoop.server.lua` is the entry. All cash, Gold, HP,
-spawns, rolls, loot, minigame results and revives are server-authoritative; every remote is created in
-`src/shared/Remotes.lua`. Shared data: Config, Prices, Weapons (with `saleType` and the level math), Classes,
-AbilityGrowth, Masks, Wraps, Rarity, Upgrades, Types, Remotes, Signal, CrewCall/Lines.
+Server modules: World (run state, the party, `fireRun`, payout accumulators, heat effects, the run clock, the boss
+view and the roster), Room (map refs including `Room.vault`), Stats, Profiles (DataStore), PlayerState (per-player run
+state + profile-derived held / mask / wrap / class), Enemy (base) with `Enemies/` (Rig, Hazards, Ranged, Melee, Shooter,
+Marksman, Boomer, Grenadier, Heavy), Spawner (brackets, proximity markers, cap, elites), Heat (pace meter), Bags,
+VaultJob, Boss with `Bosses/Titan`, Progression (XP, level, rewards), Roster (scoreboard rows), Combat, Economy,
+UpgradeShop, WeaponRoll, BigCrate (`drop(at, { legendary, count })`), CrewCall (the vault kind), Abilities, SkipVote,
+Hub (yard dressing, stations, tier pad, resets, the LV · TOP WAVE tag), Queue (zones, Create Match, party, countdown,
+PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions), Minigames (sessions, log, stats, a tier override), Downed
+(down / revive / bleed-out / game over / sidearm), RunStart, RunEnd (payout, XP award, summary), Squad (dummy crew for
+the sequences), Debug, Log; `GameLoop.server.lua` is the entry. All cash, Gold, HP, spawns, rolls, loot, minigame
+results, bags, XP and revives are server-authoritative; every remote is created in `src/shared/Remotes.lua`. Shared
+data: Config, Prices, Weapons (with `saleType` and the level math), Enemies (roster rows, scaling, brackets), BagSpots,
+LevelRewards, Classes, AbilityGrowth, Masks, Wraps, Rarity, Upgrades, Types, Remotes, Signal, CrewCall/Lines.
 
 Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), HUD components under `src/client/HUD`
-(with `HUD.setMode` for hub / meta / downed / spectate / cinematic and `HubHUD` for the hub layout), QueueUI (Create
-Match card, compact party card), MetaScene with `src/client/Meta/` (MetaUI, WeaponsTab, ClassesTab, AvatarTab),
-UpgradeOverlay, WeaponReel, GroundLoot, CrewCallUI, Markers (beacon billboards), Minigames (Frame + one module per
-game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Spectate,
-RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
+(with `HUD.setMode` for hub / meta / downed / spectate / cinematic / boss and `HubHUD` for the hub layout; `BossBar`
+under the wave bar; `Currency` with the Banked row), QueueUI (Create Match card, compact party card), MetaScene with
+`src/client/Meta/` (MetaUI, WeaponsTab, ClassesTab, AvatarTab), UpgradeOverlay, WeaponReel, GroundLoot, CrewCallUI (job
+cards, the vault pill, MARLOW's line cards), Markers (beacon, bag and vault billboards), Minigames (Frame + one module
+per game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Spectate,
+RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary with the XP row), BossCutscene, Scoreboard,
+DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
 
 ## Changelog (playtest rounds)
 
@@ -585,8 +770,37 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, 
   way; a sniper headshot on a fresh enemy sends body and head flying; a claymore scatters the group outward, the
   closest the furthest; an enemy that dies in a molotov field just slumps.
 
+- **Round 14 (4 Nov, brief 4)** — the enemy roster (`Config.Enemies` + `Enemies.lua`; `Enemy.lua` as a base with
+  per-archetype brains in `src/server/Enemies/`: Melee, Shooter, Marksman, Boomer, Grenadier, Heavy; `Rig.lua` builds
+  the silhouettes, `Hazards.lua` the blasts, fire patches and telegraphs), the GDD scaling formulas, compressed
+  composition brackets, proximity-weighted markers, the 100 cap with a queue, elites, a flinch pop that never moves an
+  enemy (the Round 13 shove is `EnemyHitKnockback` 0), `ActiveRagdolls` 8 / `RagdollLifetime` 2, kill cash per
+  archetype. Heat as pace (`Heat.lua`: par per wave, clear time to the last tagged death, fast / par / slow, AUTO SKIP,
+  jobs, capped downs, boss kill; small floats with reasons beside the stars; the event meter and HEAT UP toasts are
+  gone; `HeatStart` 0; the Stats print). Bags (`Bags.lua`, `BagSpots.lua`; Banked row; TOTAL BANKED headline, payout
+  and `topBanked`). The vault closet on the north wall (map regenerated; `Room.vault`) and CRACK THE VAULT
+  (`VaultJob.lua`). Boss waves (`Boss.lua` shell, cutscene, `Bosses/Titan.lua`, `HUD/BossBar`, `BossCutscene`).
+  Account level (`Progression.lua`, `LevelRewards.lua`; XP bar on the summary; LV on the hub tag, the party card, rows).
+  Scoreboard (`Roster.lua`, `Scoreboard.lua`; Tab / wave-bar tap; the core player list is off) and time survived
+  (`World.survivedSec`, `topTime`, `stats.timeSurvived`). `BigCrate.drop` takes `{ legendary, count }`;
+  `Minigames.open` takes a `tier`; `Markers.add` takes a badge glyph; new juice events `EnemyShot`, `EnemyLaser`,
+  `BoomerFuse`, `EnemyLob`, `PlateOff`, `Knockback`, `BagSpawned` / `BagCollected` / `BagFizzled` / `BagsDropped`,
+  `VaultOpen` / `VaultGas` / `VaultSealed` / `VaultGasTint`, `BossCutscene` / `BossWallBlow` / `BossSweepSpin` /
+  `BossSweep` / `BossCharge` / `BossStagger` / `BossVolley` / `BossCallIn` / `BossPhase` / `BossDown`, `CrewLine`,
+  `ToggleScoreboard`. Config gains the Enemies, Elites, Heat-as-pace, Bags, Vault, Progression and Boss groups
+  (`EnemyHP` / `EnemyDmg` / `EnemyWalkSpeed` / `RetargetSec` / `CashPerKill` / `HeatWaveClear` / `HeatSideJob*` are
+  gone). Built and linted, not yet run in Studio (see the Brief 4 verify list).
+
 ## Open design notes (not built)
 
+- **Brief 4 assumptions to confirm.** Jobs and downs score at the end of the wave they happen in (one float each),
+  not the moment they happen; a job that expires costs `HeatJobFail` the same way. The boss's `TitanHp` scales by the
+  wave HP formula and the player count like any enemy (≈11,000 solo at wave 10). The Grenadier's fire patch burns
+  players at `GrenadierFireDps` (the brief gives no number). Milestone masks are the existing visors (blue / gold /
+  purple / chrome). The boss wave's regular enemies come from the normal brackets at `BossWaveBudgetPct`. "Loot Rush"
+  on the debug panel is a bag burst round the player (the brief names it without defining it). The through-wall boss
+  marker is a client Highlight plus a head tag rather than a Markers billboard. Enemy telegraphs are server Parts, so
+  phone legibility is a transparency knob (`TelegraphTransparency`) rather than a per-device size.
 - **Brief 3 assumptions to confirm.** The crate pool is the union of the party's owned guns, each at its highest
   owner level (a shared drop cannot be per-profile). INITIATE's hotkey order follows the GDD class table (Q barricade,
   E turret, Z stim), which swaps Q / E from Round 9. INITIATE's stim does not heal (Round 12b); DOC's stim shot carries the heal
