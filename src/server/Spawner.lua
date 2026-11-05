@@ -17,8 +17,13 @@ local Heat = require(script.Parent.Heat)
 
 local Spawner = {}
 
+-- The regular budget (heat's par is computed on it); boss waves spawn BossWaveBudgetPct of it alongside the boss.
+function Spawner.regularBudget(wave: number): number
+	return Config.WaveBudgetBase + Config.WaveBudgetPerWave * (wave - 1)
+end
+
 function Spawner.budgetFor(wave: number): number
-	local budget = Config.WaveBudgetBase + Config.WaveBudgetPerWave * (wave - 1)
+	local budget = Spawner.regularBudget(wave)
 	if World.isBossWave(wave) then
 		budget = math.max(1, math.floor(budget * Config.BossWaveBudgetPct))
 	end

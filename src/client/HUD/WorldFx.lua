@@ -626,6 +626,70 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			blastRing(data.position, 8, Theme.Colors.grey)
 		elseif name == "HubEnter" then
 			gasTint.BackgroundTransparency = 1
+		elseif name == "BossWallBlow" and typeof(data.position) == "Vector3" then
+			blastRing(data.position, 16, Color3.fromRGB(160, 150, 130))
+			sparks(data.position + Vector3.new(0, 4, 0), Color3.fromRGB(200, 190, 170), 30, 30)
+		elseif name == "BossSweepSpin" and typeof(data.position) == "Vector3" then
+			-- The rising whine: a run of ticks climbing in pitch over the spin-up.
+			local sec = tonumber(data.sec) or 1.5
+			task.spawn(function()
+				local n = 8
+				for i = 1, n do
+					soundAtPoint(data.position, Theme.Sounds.laser, 0.6 + i * 0.18, 0.4, 160)
+					task.wait(sec / n)
+				end
+			end)
+		elseif name == "BossSweep" and typeof(data.position) == "Vector3" then
+			local sec = tonumber(data.sec) or 3
+			task.spawn(function()
+				local t0 = os.clock()
+				while os.clock() - t0 < sec do
+					soundAtPoint(data.position, Theme.Sounds.shot, 0.7, 0.3, 160)
+					task.wait(0.09)
+				end
+			end)
+			ClientState.Juice:Fire("Shake", { amp = 0.2, dur = 0.3 })
+		elseif name == "BossCharge" and typeof(data.position) == "Vector3" then
+			if data.phase == "telegraph" then
+				soundAtPoint(data.position, Theme.Sounds.hurt, 0.4, 0.9, 200)
+			else
+				soundAtPoint(data.position, Theme.Sounds.wave, 0.6, 0.8, 200)
+				ClientState.Juice:Fire("Shake", { amp = 0.25, dur = 0.3 })
+			end
+		elseif name == "BossStagger" and typeof(data.position) == "Vector3" then
+			blastRing(data.position, 10, Theme.Colors.grey)
+			sparks(data.position + Vector3.new(0, 3, 0), Color3.fromRGB(200, 190, 170), 24, 26)
+			soundAtPoint(data.position, Theme.Sounds.crunch, 0.4, 1, 220)
+			ClientState.Juice:Fire("Shake", { amp = 0.7, dur = 0.45 })
+		elseif name == "BossVolley" and typeof(data.position) == "Vector3" then
+			soundAtPoint(data.position, Theme.Sounds.lob, 0.8, 0.6, 200)
+		elseif name == "BossCallIn" and typeof(data.position) == "Vector3" then
+			blastRing(data.position, 8, Theme.Colors.red)
+			UI.sound(Theme.Sounds.call, 0.7, 0.5)
+		elseif name == "BossDown" and typeof(data.position) == "Vector3" then
+			-- Half a second of slow-mo read: the lens pulls in and the color drains, then recovers.
+			local existing = Lighting:FindFirstChild("GHSSlowMo")
+			local cc = if existing and existing:IsA("ColorCorrectionEffect")
+				then existing
+				else Instance.new("ColorCorrectionEffect")
+			cc.Name = "GHSSlowMo"
+			cc.Parent = Lighting
+			UI.tween(cc, { Saturation = -0.7, TintColor = Color3.fromRGB(255, 220, 210) }, 0.15)
+			task.delay(tonumber(data.slowSec) or 0.5, function()
+				UI.tween(cc, { Saturation = 0, TintColor = Theme.Colors.white }, 0.5)
+			end)
+			sparks(data.position + Vector3.new(0, 3, 0), Theme.Colors.red, 60, 40)
+			blastRing(data.position, 18, Theme.Colors.red)
+			if data.cash and tonumber(data.cash) > 0 then
+				floatText(
+					data.position + Vector3.new(0, 4, 0),
+					"+" .. UI.fmtCash(tonumber(data.cash) or 0),
+					Theme.Colors.cash,
+					34,
+					6,
+					1.4
+				)
+			end
 		elseif name == "Knockback" and typeof(data.dir) == "Vector3" then
 			-- A Heavy's hit: this client owns its character's physics, so the throw is applied here.
 			local char = Players.LocalPlayer.Character

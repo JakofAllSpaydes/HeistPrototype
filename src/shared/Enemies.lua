@@ -20,6 +20,9 @@ export type Row = {
 	round: boolean?, -- a belly (Boomer)
 	backpack: boolean?, -- a pack on the back (Grenadier)
 	wide: boolean?, -- a wider body with armor plates (Heavy)
+	plates: number?, -- armor plates on a wide body (2 default: chest, shoulders; 4 adds a back plate and shoulder pads)
+	boss: boolean?, -- a boss (minigun, Boss attribute, never flinches)
+	noFlinch: boolean?,
 }
 
 local Enemies = {}

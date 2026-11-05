@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Lines = require(Shared:WaitForChild("CrewCall"):WaitForChild("Lines"))
 
 local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
@@ -409,6 +410,17 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		elseif name == "RunResumed" then
 			banner("SECOND CHANCE", Theme.Colors.cash, 64, 1.2, Theme.Sounds.legendary, 1.1)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.3 })
+		elseif name == "BossDown" then
+			banner(
+				string.format(Lines.boss.downStamp, string.upper(tostring(data.name or "BOSS"))),
+				Theme.Colors.red,
+				84,
+				1.8,
+				Theme.Sounds.legendary,
+				0.9
+			)
+			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.red, alpha = 0.4 })
+			ClientState.Juice:Fire("Shake", { amp = 0.6, dur = 0.5 })
 		elseif name == "SkipVote" then
 			voteCount = data.votes or voteCount
 			voteNeeded = data.needed or voteNeeded

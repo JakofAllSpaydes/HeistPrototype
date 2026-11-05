@@ -13,10 +13,11 @@ local Grenadier = {}
 
 local FIRE = Color3.fromRGB(255, 140, 40)
 
--- Lob a shell from `from` to the floor at `target`; the burst lands when the telegraph finishes.
-function Grenadier.lob(api: any, from: Vector3, target: Vector3, dmg: number, archetype: string)
+-- Lob a shell from `from` to the floor at `target`; the burst lands when the telegraph finishes
+-- (GrenadierTelegraphSec, or `telegraphSec` for the boss volley).
+function Grenadier.lob(api: any, from: Vector3, target: Vector3, dmg: number, archetype: string, telegraphSec: number?)
 	local to = Vector3.new(target.X, Config.FloorTop + 0.4, target.Z)
-	local flight = math.max(0.05, Config.GrenadierTelegraphSec)
+	local flight = math.max(0.05, telegraphSec or Config.GrenadierTelegraphSec)
 	api.telegraph(to, Config.GrenadierRadius, flight)
 	api.fire("EnemyLob", { from = from, to = to, sec = flight, archetype = archetype })
 	local shell = Instance.new("Part")

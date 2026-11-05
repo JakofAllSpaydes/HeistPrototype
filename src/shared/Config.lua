@@ -479,6 +479,45 @@ local Config = {
 	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)
 	BossWaveBudgetPct = 0.4, -- boss waves spawn this share of the normal budget alongside the boss
 	BossParBonusSec = 30, -- added to a boss wave's par (computed on the regular budget)
+	BossId = "Titan", -- which boss the boss waves bring (Bosses/<id>.lua; the shell takes any id)
+	BossCutsceneSec = 4.0, -- the intermission's boss cutscene: game paused, players invulnerable and input-locked
+	BossCutsceneBeats = { call = 0, blow = 0.8, gun = 2.2, back = 3.4 }, -- seconds: MARLOW's call and the low wall shot, the wall blows and the boss steps through, barrels spin and the name card, camera snaps back and the bar slides in
+	BossAbilityGapSec = 1.5, -- the boss walks and swings this long between abilities
+	BossBagBurst = 6, -- bags around the body on a kill (half cash, half gold)
+	BossBagBurstRadius = 9,
+	BossCrateCount = 2, -- the boss crate: one guaranteed Legendary of a random owned gun plus the rest as normal deals
+	-- TITAN
+	TitanHp = 4000, -- x the wave HP scaling x the player count multiplier
+	TitanSpeed = 7,
+	TitanMeleeDmg = 35,
+	TitanKnockback = 12, -- contact knockback, like the Heavy
+	TitanScale = 1.8,
+	TitanPhasePcts = { 0.66, 0.33 }, -- phase 2 (plates 1-2 fall, faster sweep spin) and phase 3 (plates 3-4 fall, call-ins)
+	TitanSweepSpinSec = 1.5, -- barrels spin with a glow, a rising whine and a faint cone on the floor...
+	TitanSweepSpinSecP2 = 1.0, -- ...this long from phase 2
+	TitanSweepSec = 3, -- the cone sweeps left to right over this long
+	TitanSweepArc = 120, -- degrees
+	TitanSweepRange = 40,
+	TitanSweepWidth = 12, -- degrees either side of the beam that still counts as in it
+	TitanSweepDps = 40, -- to players in the beam with LoS; placeables take it too
+	TitanSweepCooldown = 9,
+	TitanChargeTelegraphSec = 1.0, -- red line on the floor from TITAN to the locked player
+	TitanChargeSpeedMult = 3,
+	TitanChargeDmg = 50, -- the first player hit on the line
+	TitanChargeKnockback = 18,
+	TitanChargeOverrun = 12, -- studs past the locked player's position the run carries on to
+	TitanChargeMaxSec = 3.5,
+	TitanChargeCooldown = 12,
+	TitanChargeMinRange = 12, -- a charge needs a player at least this far...
+	TitanChargeMaxRange = 70, -- ...and at most this far
+	TitanStaggerSec = 1.5, -- after hitting a wall: stands still...
+	TitanStaggerDmgMult = 1.5, -- ...and takes this much more
+	TitanVolleyTelegraphSec = 1.2, -- four red circles grow on the crew, then four Grenadier blasts with fire
+	TitanVolleyCount = 4,
+	TitanVolleyCooldown = 14,
+	TitanCallInSec = 12, -- phase 3: Henchmen from the nearest marker this often...
+	TitanCallInCount = 4, -- ...this many
+	TitanCashBurst = 600, -- match cash to everyone on the kill
 
 	------------------------------------------------------------------ HUD
 	DebugEnabled = true,

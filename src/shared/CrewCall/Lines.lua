@@ -113,6 +113,14 @@ local Lines = {
 		},
 		sealedLabel = "SEALED",
 	},
+	-- The boss cutscene call and the kill stamp.
+	boss = {
+		crewLead = "MARLOW",
+		typeLabel = "HEAVY RESPONSE",
+		kind = "door",
+		text = { "Heavy response inbound. Big one." },
+		downStamp = "%s DOWN",
+	},
 	-- Bag pickups.
 	bagsDropped = "BAGS DROPPED · %s",
 	bagGrabbed = "%s GRABBED %s",

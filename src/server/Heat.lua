@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Enemy = require(script.Parent.Enemy)
 
 type Record = {
 	wave: number,
@@ -47,14 +48,16 @@ function Heat.parFor(wave: number, budget: number): number
 	return par
 end
 
--- The WAVE N banner: the clock starts. A second chance restarts the same wave from scratch.
+-- The WAVE N banner: the clock starts. A second chance restarts the same wave from scratch. `budget` is
+-- the regular budget (par is computed on it even on boss waves); anything already tagged with the wave
+-- (the boss, which steps in during the cutscene) counts as spawned.
 function Heat.waveStarted(wave: number, budget: number)
 	records[wave] = {
 		wave = wave,
 		startedAt = os.clock(),
 		par = Heat.parFor(wave, budget),
 		budget = budget,
-		spawned = 0,
+		spawned = Enemy.countForWave(wave),
 		dead = 0,
 		spawnedAll = false,
 		downs = 0,

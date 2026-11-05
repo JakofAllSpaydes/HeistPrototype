@@ -36,6 +36,7 @@ local RunEnd = require(script.Parent.RunEnd)
 local Heat = require(script.Parent.Heat)
 local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
+local Boss = require(script.Parent.Boss)
 
 Profiles.init()
 PlayerState.init()
@@ -91,18 +92,26 @@ local function runWaves()
 		end
 		local wave = World.wave
 		World.skipRequested = false
+		-- Boss wave: the cutscene plays first (the game pauses; the boss steps in during it).
+		if World.isBossWave(wave) and not Boss.isActive() then
+			Boss.cutscene(wave)
+			if World.runOver then
+				return
+			end
+		end
 		World.waveStartedAt = Workspace:GetServerTimeNow()
 		SkipVote.reset()
 		setState("Wave")
-		World.fireRun("WaveStart", { wave = wave })
-		Heat.waveStarted(wave, Spawner.budgetFor(wave))
+		World.fireRun("WaveStart", { wave = wave, boss = World.isBossWave(wave) })
+		Heat.waveStarted(wave, Spawner.regularBudget(wave))
 		Log.event(
 			"Wave",
-			"Wave %d start, budget %d, par %.1fs, server time %.1f",
+			"Wave %d start, budget %d, par %.1fs, server time %.1f%s",
 			wave,
 			Spawner.budgetFor(wave),
-			Heat.parFor(wave, Spawner.budgetFor(wave)),
-			Workspace:GetServerTimeNow()
+			Heat.parFor(wave, Spawner.regularBudget(wave)),
+			Workspace:GetServerTimeNow(),
+			if World.isBossWave(wave) then " (boss wave)" else ""
 		)
 		BigCrate.onWaveStart(wave)
 		CrewCall.onWaveStart(wave)

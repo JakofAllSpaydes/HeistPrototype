@@ -26,6 +26,7 @@ local Queue = require(script.Parent.Queue)
 local Heat = require(script.Parent.Heat)
 local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
+local Boss = require(script.Parent.Boss)
 
 local Debug = {}
 
@@ -158,6 +159,29 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	MinigameStats = function(_player, _state, _args)
 		Minigames.printStats()
 		Heat.printStats()
+	end,
+	-- The boss without the cutscene, at the marker nearest the player.
+	SpawnBoss = function(player, _state, _args)
+		if not World.inRun() then
+			toast(player, "NO RUN")
+			return
+		end
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local best = Room.randomSpawnPoint()
+		if root then
+			local bestDist = math.huge
+			for _, p in Room.spawnPoints do
+				local d = (p - root.Position).Magnitude
+				if d < bestDist then
+					bestDist = d
+					best = p
+				end
+			end
+		end
+		Boss.spawn(Config.BossId, World.wave, best)
+		World.enemiesLeft = math.max(World.enemiesLeft, Enemy.count())
+		PlayerState.markAllDirty()
 	end,
 	SpawnBag = function(player, _state, args)
 		Bags.debugSpawn(player, tostring(args))

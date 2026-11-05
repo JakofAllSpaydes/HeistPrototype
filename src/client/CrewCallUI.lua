@@ -444,6 +444,35 @@ local function onCallEnd(data: any)
 	end)
 end
 
+-- A line with no job behind it (MARLOW's boss call): the card slides in, holds, slides out.
+local function onCrewLine(data: any)
+	destroyActive()
+	callToken += 1
+	local token = callToken
+	local box, inner = buildBox(CARD_H)
+	buildCard(inner, {
+		kind = tostring(data.kind or "door"),
+		crewLead = tostring(data.crewLead or Lines.job.crewLead),
+		label = tostring(data.typeLabel or ""),
+		text = data.text or {},
+		rewardLine = "",
+		showTimer = false,
+	})
+	active = { data = { id = "line" }, box = box, inner = inner, timerLabel = nil, stroke = nil, token = token }
+	slideIn(inner)
+	UI.sound(Theme.Sounds.call, 0.9, 0.6)
+	task.delay(tonumber(data.hold) or Config.CallHoldSec, function()
+		if not active or active.token ~= token or not box.Parent then
+			return
+		end
+		local out = slideOut(inner)
+		out.Completed:Wait()
+		if active and active.token == token then
+			destroyActive()
+		end
+	end)
+end
+
 -- A pill with no card first (the open vault's VAULT · 0:60 timer).
 local function showPill(data: any)
 	destroyActive()
@@ -517,6 +546,8 @@ function CrewCallUI.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "CallStart" then
 			onCallStart(data)
+		elseif name == "CrewLine" then
+			onCrewLine(data)
 		elseif name == "VaultOpen" then
 			-- The result card for the job is still up: the pill takes over after it has had its hold.
 			task.delay(Config.CallHoldSec + 0.35, function()

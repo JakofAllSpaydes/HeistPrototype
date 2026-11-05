@@ -23,6 +23,7 @@ local WorldFx = require(script.WorldFx)
 local Toast = require(script.Toast)
 local MobileControls = require(script.MobileControls)
 local HubHUD = require(script.HubHUD)
+local BossBar = require(script.BossBar)
 
 export type Component = { update: ((any) -> ())?, onJuice: ((string, any) -> ())?, [string]: any }
 
@@ -51,7 +52,8 @@ local MANAGED = {
 	"ReloadButton",
 	"HubHUD",
 }
-local SELF_MANAGED = { Toast = true, Combo = true }
+-- The boss bar shows itself (only while a boss is live); modes may hide it but never force it on.
+local SELF_MANAGED = { Toast = true, Combo = true, BossBar = true }
 -- Downed: buys and abilities go; with the sidearm (Config.DownedCanShoot) the crosshair, ammo and fire
 -- controls stay so you can keep shooting from the floor.
 local DOWNED_HIDE: { [string]: boolean } = if Config.DownedCanShoot
@@ -89,6 +91,8 @@ local MODES: { [string]: { hide: { [string]: boolean }?, only: { [string]: boole
 		},
 	},
 	cinematic = { only = { WaveBar = true } },
+	-- The boss cutscene: MARLOW's call in the top-right stack, nothing else.
+	boss = { only = { TopRight = true, Toast = true } },
 	none = { only = {} },
 }
 
@@ -126,6 +130,10 @@ function HUD.setMode(mode: string)
 			child.Visible = false
 		elseif managed then
 			child.Visible = true
+		elseif name == "BossBar" then
+			-- Back from a sequence or a mode that hid it: the live boss bar comes back with the match HUD.
+			local sync = ClientState.sync
+			child.Visible = sync ~= nil and sync.boss ~= nil
 		end
 	end
 end
@@ -178,6 +186,7 @@ function HUD.build()
 		toast = Toast.build(gui, track),
 		mobile = MobileControls.build(gui, track),
 		hub = HubHUD.build(gui, track),
+		bossBar = BossBar.build(gui, track),
 	}
 	if ClientState.sync then
 		HUD.update(ClientState.sync)

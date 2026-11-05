@@ -133,7 +133,8 @@ function Rig.build(row: Enemies.Row, elite: boolean): Built
 		)
 	end
 	if row.wide then
-		-- Two armor plates: chest first, shoulders second (Config.HeavyPlateHpPcts).
+		-- Armor plates: chest first, shoulders second (Config.HeavyPlateHpPcts). A boss carries four: chest and
+		-- back fall as one set, the two shoulder pads as the other.
 		local chest = extra(
 			root,
 			"Plate1",
@@ -142,17 +143,62 @@ function Rig.build(row: Enemies.Row, elite: boolean): Built
 			STEEL,
 			Enum.Material.Metal
 		)
-		local shoulders = extra(
-			root,
-			"Plate2",
-			Vector3.new(rootSize.X + 1.2, 0.6, rootSize.Z + 0.6) * scale,
-			CFrame.new(0, (rootSize.Y / 2 - 0.2) * scale, 0),
-			STEEL,
-			Enum.Material.Metal
-		)
-		plates = { chest, shoulders }
+		if (row.plates or 2) >= 4 then
+			local back = extra(
+				root,
+				"Plate2",
+				Vector3.new(rootSize.X + 0.4, 2.4, 0.35) * scale,
+				CFrame.new(0, 0.5 * scale, (rootSize.Z / 2 + 0.2) * scale),
+				STEEL,
+				Enum.Material.Metal
+			)
+			local padL = extra(
+				root,
+				"Plate3",
+				Vector3.new(1.2, 0.7, rootSize.Z + 0.6) * scale,
+				CFrame.new(-(rootSize.X / 2 + 0.4) * scale, (rootSize.Y / 2 - 0.3) * scale, 0),
+				STEEL,
+				Enum.Material.Metal
+			)
+			local padR = extra(
+				root,
+				"Plate4",
+				Vector3.new(1.2, 0.7, rootSize.Z + 0.6) * scale,
+				CFrame.new((rootSize.X / 2 + 0.4) * scale, (rootSize.Y / 2 - 0.3) * scale, 0),
+				STEEL,
+				Enum.Material.Metal
+			)
+			plates = { chest, back, padL, padR }
+		else
+			local shoulders = extra(
+				root,
+				"Plate2",
+				Vector3.new(rootSize.X + 1.2, 0.6, rootSize.Z + 0.6) * scale,
+				CFrame.new(0, (rootSize.Y / 2 - 0.2) * scale, 0),
+				STEEL,
+				Enum.Material.Metal
+			)
+			plates = { chest, shoulders }
+		end
 	end
-	if row.attack == "shooter" then
+	if row.boss then
+		-- The minigun: a thick barrel cluster on the right with a glow ring behind the muzzle.
+		gun(root, scale, 4.6, 0.9)
+		local g = root.Parent and root.Parent:FindFirstChild("Gun")
+		if g and g:IsA("BasePart") then
+			local ring = extra(
+				root,
+				"BarrelRing",
+				Vector3.new(0.3, 1.3, 1.3) * scale,
+				CFrame.new(BASE_ROOT.X * 0.55 * scale, 0.3 * scale, (-4.6 * 0.25 + 1.0) * scale)
+					* CFrame.Angles(0, math.rad(90), 0),
+				Color3.fromRGB(255, 120, 60),
+				Enum.Material.Neon
+			)
+			ring.Shape = Enum.PartType.Cylinder
+			ring.Transparency = 0.5
+		end
+	elseif row.attack == "shooter" then
 		gun(root, scale, 2.4, 0.35)
 	elseif row.attack == "marksman" then
 		gun(root, scale, 4.2, 0.3)
@@ -179,6 +225,8 @@ function Rig.build(row: Enemies.Row, elite: boolean): Built
 
 	model:SetAttribute("Archetype", row.id)
 	model:SetAttribute("Elite", elite)
+	model:SetAttribute("Boss", row.boss == true)
+	model:SetAttribute("DisplayName", row.name)
 	return { model = model, root = root, head = head, humanoid = hum, plates = plates }
 end
 

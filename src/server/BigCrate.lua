@@ -88,11 +88,15 @@ local function dustRing(position: Vector3)
 	end)
 end
 
+export type DropOpts = { legendary: boolean?, count: number? }
+
 -- Drop a crate. `at` overrides the landing spot (default: a random point BigCrateDistanceFromCenter out).
-function BigCrate.drop(at: Vector3?)
+-- opts.legendary makes the first gun a guaranteed Legendary (the boss crate); opts.count overrides the deal size.
+function BigCrate.drop(at: Vector3?, opts: DropOpts?)
 	nextId += 1
 	local id = "crate" .. nextId
-	local n = weaponCount()
+	local n = if opts and opts.count then math.max(1, opts.count) else weaponCount()
+	local guaranteed = opts ~= nil and opts.legendary == true
 	local landPos: Vector3
 	if at then
 		landPos = Vector3.new(at.X, Config.FloorTop, at.Z)
@@ -176,7 +180,9 @@ function BigCrate.drop(at: Vector3?)
 		for slot = 1, n do
 			local entry = deck[((slot - 1) % #deck) + 1]
 			local weapon = entry.weapon
-			local rarity = Rarity.roll(wave, floor, weapon.rarityWeights)
+			local rarity = if guaranteed and slot == 1
+				then Rarity.Legendary
+				else Rarity.roll(wave, floor, weapon.rarityWeights)
 			local a = (slot - 1) / n * math.pi * 2 + (math.random() - 0.5) * 0.4
 			local dist = Config.BigCrateFanMin + math.random() * (Config.BigCrateFanMax - Config.BigCrateFanMin)
 			local target = landPos + Vector3.new(math.cos(a) * dist, 0.35, math.sin(a) * dist)
@@ -228,11 +234,12 @@ function BigCrate.drop(at: Vector3?)
 		end
 		Log.event(
 			"Crate",
-			"%s landed at (%d, %d), floor %s",
+			"%s landed at (%d, %d), floor %s%s",
 			id,
 			math.round(landPos.X),
 			math.round(landPos.Z),
-			Rarity.name(floor)
+			Rarity.name(floor),
+			if guaranteed then ", one guaranteed Legendary" else ""
 		)
 	end)
 end

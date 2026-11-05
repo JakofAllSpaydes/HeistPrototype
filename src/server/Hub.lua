@@ -212,6 +212,8 @@ function Hub.clearArena()
 	Squad.clear()
 	Bags.clearAll()
 	VaultJob.resetRun()
+	World.bossView = nil
+	Enemy.paused = false
 	World.spawnsPaused = false
 	World.enemiesLeft = 0
 end

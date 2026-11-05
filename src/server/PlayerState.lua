@@ -534,6 +534,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		gold = state.gold,
 		banked = World.banked,
 		bags = state.bags,
+		boss = World.bossView,
 		maxHP = st.maxHP,
 		held = {
 			weaponId = w.id,

@@ -34,6 +34,9 @@ local World = {
 	runGold = 0, -- sum over cleared waves of GoldPerWaveBase + GoldPerWaveAdd x (wave - 1)
 	objectivesDone = 0, -- side jobs completed this run
 	banked = 0, -- the team's Banked total from gold bags (TOTAL BANKED, paid in full to every member at the summary)
+	-- The live boss for the HUD bar (Boss.lua writes it, StateSync carries it): { id, name, hp, maxHP, phase } or nil.
+	bossView = nil :: { id: string, name: string, hp: number, maxHP: number, phase: number }?,
+	timeSurvived = 0, -- seconds from the WAVE 1 banner, paused during the boss cutscene (Scoreboard, summary)
 }
 
 -- True while a run is on: waves can spawn, downs count, cash is Match Cash.

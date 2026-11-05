@@ -305,10 +305,11 @@ local function chase(d: Data, target: BasePart, now: number)
 	d.holding = false
 	local root = d.root
 	if Players:GetPlayerFromCharacter(target.Parent) then
-		-- Blocked by a placeable: attack it until it breaks, then carry on.
+		-- Blocked by a placeable: attack it until it breaks, then carry on (a Heavy stomps, a boss breaks it).
 		local blocker = nearestStructure(root.Position, d.row.range + 1)
 		if blocker and blocker ~= target then
-			swing(d, blocker, now, 1, if d.row.attack == "heavy" then Config.HeavyPlaceableMult else 1)
+			local mult = if d.row.boss then 100000 elseif d.row.attack == "heavy" then Config.HeavyPlaceableMult else 1
+			swing(d, blocker, now, 1, mult)
 		end
 	end
 	if now - d.lastSteer >= Config.RetargetInterval then
@@ -411,6 +412,13 @@ local api = {
 	fire = World.fireRun,
 	selfDestruct = selfDestruct,
 	dropPlate = dropPlate,
+	losFilter = losFilter,
+	structures = function(): { BasePart }
+		local extra = Enemy.extraTargets
+		return if extra then extra() else {}
+	end,
+	-- spawnAt (the boss's call-ins) is installed after Enemy.spawn below.
+	spawnAt = nil :: ((string, Vector3) -> Model)?,
 }
 
 ------------------------------------------------------------------ Spawn
@@ -468,11 +476,20 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		mem = {},
 	}
 	count += 1
+	local d = active[model]
+	if d.brain.init then
+		d.brain.init(d, api)
+	end
 	local hook = Enemy.onSpawn
 	if hook then
-		hook(active[model])
+		hook(d)
 	end
 	return model
+end
+
+-- The boss calls in adds beside itself (Henchmen tagged with the current wave).
+api.spawnAt = function(archetype: string, position: Vector3): Model
+	return Enemy.spawn(archetype, World.wave, position)
 end
 
 ------------------------------------------------------------------ Status effects
@@ -727,6 +744,10 @@ function Enemy.damage(model: Model, amount: number, attacker: Player?, hit: Hit?
 	if not d or d.dead then
 		return false, 0
 	end
+	-- A brain can scale incoming damage (the staggered boss takes more).
+	if d.brain.damageMult then
+		amount *= d.brain.damageMult(d)
+	end
 	local before = d.hp
 	d.hp -= amount
 	model:SetAttribute("HP", d.hp)
@@ -737,7 +758,7 @@ function Enemy.damage(model: Model, amount: number, attacker: Player?, hit: Hit?
 	if d.brain.onDamaged then
 		d.brain.onDamaged(d, api)
 	end
-	if hit and not hit.tick then
+	if hit and not hit.tick and not d.row.noFlinch then
 		flinch(d, hit) -- bullets and blasts only; turret rounds and field ticks never flinch an enemy
 	end
 	return false, 0
@@ -808,7 +829,12 @@ function Enemy.init()
 				continue
 			end
 			if Enemy.paused then
-				hold(d)
+				-- The cutscene: everything stands still except the boss walking through the wall.
+				if d.mem.cutsceneTarget then
+					d.brain.tick(d, api, now)
+				else
+					hold(d)
+				end
 				continue
 			end
 			-- Stun and slow drive the walk speed; a stunned enemy neither steers nor attacks.
