@@ -92,7 +92,7 @@ export type Built = { model: Model, root: BasePart, head: BasePart, humanoid: Hu
 
 function Rig.build(row: Enemies.Row, elite: boolean): Built
 	local scale = row.scale * (if elite then Config.EliteScale else 1)
-	local color = Enemies.color(row.id)
+	local color = Color3.fromHex(row.color) -- the row's own hex (a boss row is not in Enemies.ById)
 	local model = template:Clone()
 	local root = model:WaitForChild("HumanoidRootPart") :: BasePart
 	local head = model:WaitForChild("Head") :: BasePart

@@ -98,7 +98,9 @@ local function runWaves()
 		if World.isBossWave(wave) and not Boss.isActive() then
 			local t0 = Workspace:GetServerTimeNow()
 			Boss.cutscene(wave)
-			World.runClockPaused += Workspace:GetServerTimeNow() - t0
+			if World.runClockStart > 0 then
+				World.runClockPaused += Workspace:GetServerTimeNow() - t0
+			end
 			if World.runOver then
 				return
 			end

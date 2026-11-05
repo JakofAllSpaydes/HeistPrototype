@@ -22,6 +22,7 @@ local Abilities = require(script.Parent.Abilities)
 local Squad = require(script.Parent.Squad)
 local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
+local Boss = require(script.Parent.Boss)
 
 local Hub = {}
 
@@ -213,7 +214,7 @@ function Hub.clearArena()
 	Squad.clear()
 	Bags.clearAll()
 	VaultJob.resetRun()
-	World.bossView = nil
+	Boss.clear()
 	Enemy.paused = false
 	World.spawnsPaused = false
 	World.enemiesLeft = 0

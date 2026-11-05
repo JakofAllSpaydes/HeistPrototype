@@ -204,7 +204,9 @@ local function rayPlayers(from: Vector3, dir: Vector3, range: number, radius: nu
 	local result = Workspace:Raycast(from, dir * range, losParams)
 	local wallDist = if result then (result.Position - from).Magnitude else range
 	if result then
-		local player = Players:GetPlayerFromCharacter(result.Instance:FindFirstAncestorOfClass("Model"))
+		-- Walls and pillars sit straight under the Room folder: no Model ancestor, no player.
+		local hitModel = result.Instance:FindFirstAncestorOfClass("Model")
+		local player = if hitModel then Players:GetPlayerFromCharacter(hitModel) else nil
 		if player and standingRoot(player) then
 			return player, result.Position
 		end
