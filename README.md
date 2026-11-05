@@ -633,6 +633,11 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    (`MED BAG IS REVIVING YOU`), allies inside hit harder; SHARPSHOOTER headshots hit harder, snipers / pistols reload
    faster, headshots during Dead Eye refill the mag; TORCH fire ticks twice as fast, runs start with INCENDIARY 15%,
    burning kills shave the Molotov cooldown.
+6. Vault (wave 5 forces it): with MARLOW's call and the pill, a big amber `VAULT JOB` stamps the center for 1.5s;
+   the vault door pulses amber with a glow until the dial is cracked; the job beacon is twice the normal size, amber,
+   with a spinning diamond on top, and keeps its full name / timer / distance box at any range (no badge); a strip of
+   amber chevrons runs along the floor from where the crew stood to the door, lighting in a wave toward it, for 10s.
+   Hold Tab: the header ends in amber `· VAULT OPEN` until the vault seals (or the job fails).
 
 ## Layout
 

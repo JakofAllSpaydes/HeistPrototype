@@ -526,6 +526,11 @@ local Config = {
 	VaultOpenSec = 60, -- the loot window from the door opening
 	VaultGasWarnSec = 10, -- alarm, strobe and MARLOW's warning this long before the gas
 	VaultGasDps = 8, -- to any player inside once the gas is in (stops the moment they step out)
+	-- Brief 5: the CRACK THE VAULT draw is impossible to miss.
+	VaultStampSec = 1.5, -- the center VAULT JOB stamp
+	VaultDoorPulseSec = 1.2, -- the door pulses amber (with a light) once per this, until cracked
+	VaultBeaconScale = 2.0, -- the vault job's beacon is this x the normal one, with a rotating diamond, never a badge
+	VaultArrowSec = 10, -- the chevron strip from the crew to the door stays this long
 
 	------------------------------------------------------------------ Progression (account level; Progression.lua, LevelRewards.lua)
 	-- XP per run, per player: XpPerWave x waves cleared + XpPerKill x kills + XpPerJob x jobs + XpPerBoss x boss kills

@@ -30,7 +30,13 @@ type Marker = {
 	endsAt: number,
 	position: Vector3,
 	wasInside: boolean?,
+	noCompact: boolean, -- the vault job's beacon never shrinks to a badge
+	diamond: Frame?, -- a rotating diamond over the box (the vault job)
 }
+
+-- Optional look for a marker: `scale` multiplies every size, `noCompact` keeps the full box at any distance,
+-- `diamond` puts a rotating diamond in the marker color over it.
+export type Opts = { scale: number?, noCompact: boolean?, diamond: boolean? }
 
 local Markers = {}
 
@@ -74,10 +80,15 @@ function Markers.add(
 	titleText: string,
 	subText: string,
 	endsAt: number,
-	glyph: string?
+	glyph: string?,
+	opts: Opts?
 )
 	Markers.remove(id)
-	local S = UI.S
+	local scale = (opts and opts.scale) or 1
+	local function S(n: number): number
+		return UI.S(n * scale)
+	end
+	local diamondH = if opts and opts.diamond then S(34) else 0
 	local att = Instance.new("Attachment")
 	att.Name = "Marker_" .. id
 	att.WorldPosition = position + Vector3.new(0, 7.5, 0)
@@ -85,14 +96,31 @@ function Markers.add(
 	local gui = Instance.new("BillboardGui")
 	gui.Adornee = att
 	gui.AlwaysOnTop = true
-	gui.Size = UDim2.fromOffset(S(176), S(76))
+	gui.Size = UDim2.fromOffset(S(176), S(76) + diamondH)
 	gui.MaxDistance = 500
 	gui.LightInfluence = 0
+	gui.ClipsDescendants = false
 	gui.Parent = att
+	local diamond: Frame? = nil
+	if opts and opts.diamond then
+		local dm = UI.frame({
+			Name = "Diamond",
+			BackgroundColor3 = color,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0, diamondH / 2),
+			Size = UDim2.fromOffset(diamondH * 0.62, diamondH * 0.62),
+			Rotation = 45,
+			Parent = gui,
+		})
+		UI.corner(dm, S(3))
+		UI.stroke(dm, Theme.Colors.white, S(2), 0.2)
+		diamond = dm
+	end
 	local frame = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.15,
-		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromOffset(0, diamondH),
+		Size = UDim2.new(1, 0, 1, -diamondH),
 		Parent = gui,
 	})
 	UI.corner(frame, S(10))
@@ -207,7 +235,61 @@ function Markers.add(
 		color = color,
 		endsAt = endsAt,
 		position = position,
+		noCompact = opts ~= nil and opts.noCompact == true,
+		diamond = diamond,
 	}
+end
+
+-- CRACK THE VAULT: a chevron strip on the floor from the crew to the door for VaultArrowSec, lit in a running
+-- wave toward the door (the FTUE arrows will use the same look).
+local function floorArrows(from: Vector3, to: Vector3, seconds: number)
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	local length = flat.Magnitude
+	if length < 6 then
+		return
+	end
+	local dir = flat.Unit
+	local folder = Instance.new("Folder")
+	folder.Name = "VaultArrows"
+	folder.Parent = Workspace:FindFirstChild("Effects") or Workspace
+	local chevrons: { BasePart } = {}
+	local step = 4
+	local yaw = math.atan2(-dir.X, -dir.Z)
+	for d = 4, length - 3, step do
+		local p = from + dir * d
+		local base = CFrame.new(p.X, Config.FloorTop + 0.06, p.Z) * CFrame.Angles(0, yaw, 0)
+		-- A chevron: two thin bars meeting at the front.
+		for _, side in { -1, 1 } do
+			local bar = Instance.new("Part")
+			bar.Anchored = true
+			bar.CanCollide = false
+			bar.CanQuery = false
+			bar.CanTouch = false
+			bar.Size = Vector3.new(0.5, 0.08, 2.2)
+			bar.CFrame = base * CFrame.new(side * 0.7, 0, 0.35) * CFrame.Angles(0, side * math.rad(40), 0)
+			bar.Color = Theme.Colors.amber
+			bar.Material = Enum.Material.Neon
+			bar.Transparency = 0.6
+			bar.Parent = folder
+			table.insert(chevrons, bar)
+		end
+	end
+	task.spawn(function()
+		local t0 = os.clock()
+		local count = #chevrons // 2
+		while os.clock() - t0 < seconds and folder.Parent do
+			local t = os.clock() - t0
+			local head = (t * 6) % math.max(count, 1)
+			for i, bar in chevrons do
+				local k = (i + 1) // 2
+				local near = math.abs(k - head) < 1.5
+				local fade = math.clamp((seconds - t) / 1.5, 0, 1)
+				bar.Transparency = 1 - (if near then 0.9 else 0.35) * fade
+			end
+			task.wait(1 / 30)
+		end
+		folder:Destroy()
+	end)
 end
 
 -- `punch` defaults to true; pass false for text that ticks every frame (capture percent) so the box holds still.
@@ -239,17 +321,23 @@ function Markers.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "CallStart" and typeof(data.position) == "Vector3" then
 			local capture = data.jobKind == "capture"
+			local vault = data.jobKind == "vault"
 			Markers.add(
 				"job",
 				data.position,
-				Theme.Colors.blue,
+				if vault then Theme.Colors.amber else Theme.Colors.blue,
 				tostring(data.name),
 				if typeof(data.markerHint) == "string"
 					then data.markerHint
 					elseif capture then Lines.capture.markerHint
 					else Lines.hackMarkerHint,
-				data.endsAt or 0
+				data.endsAt or 0,
+				nil,
+				-- The vault job: twice the size, a rotating amber diamond, never a badge.
+				if vault then { scale = Config.VaultBeaconScale, noCompact = true, diamond = true } else nil
 			)
+		elseif name == "VaultArrows" and typeof(data.from) == "Vector3" and typeof(data.to) == "Vector3" then
+			floorArrows(data.from, data.to, tonumber(data.sec) or Config.VaultArrowSec)
 			if capture then
 				Markers.setProgress("job", 0, true)
 			end
@@ -320,6 +408,13 @@ function Markers.init()
 	RunService.Heartbeat:Connect(function(dt)
 		acc += dt
 		pulse += dt * 6
+		-- The vault diamond turns every frame; the rest refreshes ten times a second.
+		for _, m in markers do
+			local dm = m.diamond
+			if dm then
+				dm.Rotation = (dm.Rotation + dt * 120) % 360
+			end
+		end
 		if acc < 0.1 then
 			return
 		end
@@ -349,7 +444,7 @@ function Markers.init()
 				m.dist.TextColor3 = if d < 12 then Theme.Colors.cash else Theme.Colors.grey
 				-- Far away: the full panel gives way to the badge (5 stud hysteresis so it never flickers).
 				local limit = Config.MarkerCompactDistance + (if m.isCompact then -5 else 0)
-				local wantCompact = d > limit
+				local wantCompact = d > limit and not m.noCompact
 				if wantCompact ~= m.isCompact then
 					m.isCompact = wantCompact
 					m.frame.Visible = not wantCompact

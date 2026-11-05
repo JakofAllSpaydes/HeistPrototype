@@ -46,6 +46,7 @@ local World = {
 	bossKills = 0, -- bosses killed this run (XP, credited to every member)
 	roster = nil :: any, -- the scoreboard view (Roster.lua rebuilds it every RosterSyncSec; StateSync carries it)
 	crewOverclockUntil = 0, -- server time: an ENGINEER III's Overclock boosts every crew member's gun until then
+	vaultLive = false, -- CRACK THE VAULT is drawn, open or warning: the scoreboard header reads VAULT OPEN
 }
 
 function World.survivedSec(): number

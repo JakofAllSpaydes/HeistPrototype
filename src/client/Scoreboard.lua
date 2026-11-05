@@ -144,7 +144,8 @@ local function paint()
 		stars(tonumber(sync.heat) or 0),
 		UI.fmtNum(if roster then tonumber(roster.banked) or 0 else tonumber(sync.banked) or 0),
 		string.sub(UI.fmtCash(if roster then tonumber(roster.cash) or 0 else 0), 2)
-	)
+	) .. (if roster and roster.vault then "  ·  VAULT OPEN" else "")
+	hdr.TextColor3 = if roster and roster.vault then Theme.Colors.amber else Theme.Colors.text
 	for _, c in rf:GetChildren() do
 		if c:IsA("GuiObject") then
 			c:Destroy()

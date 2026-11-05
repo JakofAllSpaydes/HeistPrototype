@@ -141,6 +141,42 @@ local function removePrompt()
 	end
 end
 
+-- While the job is drawn and not yet cracked the door pulses amber with a light (VaultDoorPulseSec a cycle).
+local function pulseDoor()
+	local v = Room.vault
+	if not v then
+		return
+	end
+	local door = v.door
+	local baseColor = door.Color
+	local light = door:FindFirstChild("PulseLight") :: PointLight?
+	if not light then
+		local l = Instance.new("PointLight")
+		l.Name = "PulseLight"
+		l.Color = AMBER
+		l.Range = 18
+		l.Brightness = 0
+		l.Parent = door
+		light = l
+	end
+	local token = runToken
+	task.spawn(function()
+		local t0 = os.clock()
+		while VaultJob.phase == "job" and token == runToken and door.Parent do
+			local k = 0.5 + 0.5 * math.sin((os.clock() - t0) / math.max(Config.VaultDoorPulseSec, 0.1) * math.pi * 2)
+			door.Color = baseColor:Lerp(AMBER, 0.25 + 0.6 * k)
+			if light then
+				light.Brightness = 1 + 3 * k
+			end
+			task.wait(1 / 30)
+		end
+		door.Color = baseColor
+		if light then
+			light.Brightness = 0
+		end
+	end)
+end
+
 -- Can CRACK THE VAULT be drawn this wave?
 function VaultJob.available(wave: number): boolean
 	if not Room.vault then
@@ -184,8 +220,24 @@ function VaultJob.startJob(onCracked: (Player) -> ())
 		v.door.CFrame = v.doorClosed
 	end
 	VaultJob.phase = "job"
+	World.vaultLive = true
+	PlayerState.markAllDirty()
 	paintBeacons(BLUE)
 	removePrompt()
+	pulseDoor()
+	-- Floor arrows from the crew to the door (the client lays the chevrons).
+	local sum, n = Vector3.zero, 0
+	for _, p in World.runAudience() do
+		local char = p.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			sum += root.Position
+			n += 1
+		end
+	end
+	if n > 0 then
+		World.fireRun("VaultArrows", { from = sum / n, to = v.front, sec = Config.VaultArrowSec })
+	end
 	local p = Instance.new("ProximityPrompt")
 	p.ActionText = Lines.vault.promptAction
 	p.ObjectText = Lines.vault.promptObject
@@ -223,12 +275,16 @@ function VaultJob.jobEnded(success: boolean)
 		VaultJob.open()
 	else
 		VaultJob.phase = "closed"
+		World.vaultLive = false
+		PlayerState.markAllDirty()
 		paintBeacons(AMBER)
 	end
 end
 
 local function seal()
 	VaultJob.phase = "sealed"
+	World.vaultLive = false
+	PlayerState.markAllDirty()
 	setFog(false)
 	setLights(false)
 	slideDoor(false)
@@ -293,6 +349,7 @@ function VaultJob.open()
 	end
 	removePrompt()
 	VaultJob.phase = "open"
+	World.vaultLive = true
 	VaultJob.doneThisRun = true
 	runToken += 1
 	local token = runToken
@@ -337,6 +394,7 @@ function VaultJob.resetRun()
 	runToken += 1
 	removePrompt()
 	VaultJob.phase = "closed"
+	World.vaultLive = false
 	VaultJob.doneThisRun = false
 	setFog(false)
 	setLights(false)

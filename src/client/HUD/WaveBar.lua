@@ -442,6 +442,10 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.red, alpha = 0.35 })
 			ClientState.Juice:Fire("Shake", { amp = 0.5, dur = 0.4 })
+		elseif name == "CallStart" and data.jobKind == "vault" then
+			-- CRACK THE VAULT is impossible to miss: the stamp in the wave-banner style with the job sting.
+			banner("VAULT JOB", Theme.Colors.amber, 76, Config.VaultStampSec, Theme.Sounds.call, 0.85)
+			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.amber, alpha = 0.2 })
 		elseif name == "RunResumed" then
 			banner("SECOND CHANCE", Theme.Colors.cash, 64, 1.2, Theme.Sounds.legendary, 1.1)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.3 })

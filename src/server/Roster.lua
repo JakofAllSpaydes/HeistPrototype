@@ -27,7 +27,7 @@ export type Row = {
 	score: number,
 }
 
-export type View = { rows: { Row }, cash: number, banked: number, survivedSec: number }
+export type View = { rows: { Row }, cash: number, banked: number, survivedSec: number, vault: boolean }
 
 function Roster.build(): View?
 	if not World.inRunCycle() or #World.party == 0 then
@@ -61,7 +61,13 @@ function Roster.build(): View?
 		end
 		return a.userId < b.userId
 	end)
-	return { rows = rows, cash = cash, banked = World.banked, survivedSec = math.floor(World.survivedSec()) }
+	return {
+		rows = rows,
+		cash = cash,
+		banked = World.banked,
+		survivedSec = math.floor(World.survivedSec()),
+		vault = World.vaultLive,
+	}
 end
 
 function Roster.init()
