@@ -9,10 +9,6 @@ function Economy.upgradePrice(state: PlayerState.State): number
 	return Stats.upgradePrice(state.upgradesBought)
 end
 
-function Economy.weaponPrice(state: PlayerState.State): number
-	return Stats.weaponPrice(state.weaponsBought)
-end
-
 function Economy.addCash(state: PlayerState.State, amount: number)
 	state.cash += amount
 	if amount > 0 then

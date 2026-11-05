@@ -24,7 +24,7 @@ end)
 
 HUD.init()
 require(script.Parent:WaitForChild("UpgradeOverlay")).init()
-require(script.Parent:WaitForChild("WeaponReel")).init()
+require(script.Parent:WaitForChild("CrateReelUI")).init()
 require(script.Parent:WaitForChild("GroundLoot")).init()
 require(script.Parent:WaitForChild("CrewCallUI")).init()
 require(script.Parent:WaitForChild("Markers")).init()

@@ -49,12 +49,10 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	tag.dmgLabel.TextColor3 = dmgColor
 	tag.rateLabel.Text = "RATE " .. UI.fmtRate(rate) .. rateArrow
 	tag.rateLabel.TextColor3 = rateColor
-	local crateId = gun:GetAttribute("CrateId")
 	local prompt = tag.prompt
 	if prompt then
-		local taken = crateId ~= nil and sync ~= nil and table.find(sync.cratesTaken, crateId) ~= nil
 		-- A downed teammate in reach owns F: gun prompts step aside until they are up.
-		prompt.Enabled = not taken and not ClientState.reviveNearby
+		prompt.Enabled = not ClientState.reviveNearby
 	end
 end
 

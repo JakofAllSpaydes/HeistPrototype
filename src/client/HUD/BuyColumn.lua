@@ -1,5 +1,5 @@
 --!strict
--- Left column: header BUY, tiles New Weapon (1), New Upgrade (2).
+-- Left column: header BUY and the NEW UPGRADE tile (2). Weapons come only from crates (brief 5).
 local UserInputService = game:GetService("UserInputService")
 
 local Client = script.Parent.Parent
@@ -34,15 +34,9 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 
 	local tiles = {
-		weapon = Tile.build(
-			root,
-			{ name = "NEW WEAPON", hotkey = "1", order = 1, iconKind = "gun", showPrice = true },
-			profile.tile,
-			profile.hotkeyChips
-		),
 		upgrade = Tile.build(
 			root,
-			{ name = "NEW UPGRADE", hotkey = "2", order = 2, iconKind = "plus", showPrice = true },
+			{ name = "NEW UPGRADE", hotkey = "2", order = 1, iconKind = "plus", showPrice = true },
 			profile.tile,
 			profile.hotkeyChips
 		),
@@ -52,10 +46,7 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		if gameProcessed or ClientState.inHub() then
 			return
 		end
-		local tile = if input.KeyCode == Enum.KeyCode.One
-			then tiles.weapon
-			elseif input.KeyCode == Enum.KeyCode.Two then tiles.upgrade
-			else nil
+		local tile = if input.KeyCode == Enum.KeyCode.Two then tiles.upgrade else nil
 		if tile and tile.enabled and tile.onPress then
 			tile.onPress()
 		end
@@ -66,8 +57,6 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.tiles = tiles
 
 	function component.update(sync: any)
-		tiles.weapon.setPrice(sync.prices.weapon)
-		tiles.weapon.setAffordable(sync.cash >= sync.prices.weapon)
 		tiles.upgrade.setPrice(sync.prices.upgrade)
 		tiles.upgrade.setAffordable(sync.cash >= sync.prices.upgrade)
 	end

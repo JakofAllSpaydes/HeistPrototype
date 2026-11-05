@@ -278,8 +278,6 @@ local Config = {
 	------------------------------------------------------------------ Economy
 	UpgradePrice = 100,
 	UpgradePriceMult = 1.35, -- upgrade n costs UpgradePrice * mult^n
-	WeaponPrice = 300,
-	WeaponPriceMult = 1.4,
 
 	------------------------------------------------------------------ Upgrade overlay
 	ShopDimPct = 35, -- world dim while the pick-3 is open
@@ -292,17 +290,12 @@ local Config = {
 	TradeoffMalusRatio = 0.5, -- malus = one other stat at this ratio of the buff
 	TrackerCols = 10,
 
-	------------------------------------------------------------------ Weapon reel / ground loot
-	RollDurationSec = 2.0,
-	RollLandHoldSec = 0.5, -- reel shows the result this long before the gun ejects
-	RollEjectSec = 0.4,
-	GunDropHeight = 14, -- rolled guns fall in from this height
-	GunDropSec = 0.45,
+	------------------------------------------------------------------ Ground loot
 	SwapCooldownSec = 0.5, -- after a swap, further swaps are ignored for this long (anti-spam mid-combat)
 	GroundWeaponLifetime = 30, -- floor guns despawn after this; a fresh drop (or swap) restarts it
 	GroundWeaponFadeSec = 10, -- beam fades over the last N seconds of lifetime
 	InteractRadius = 8,
-	MaxConsecutiveNonUpgrades = 3, -- pity: rolls below held rarity before the floor kicks in
+	MaxConsecutiveNonUpgrades = 3, -- pity, per player: crate rolls below your held rarity before the floor kicks in on your next roll
 
 	-- Rarity odds per wave bracket, in order Common / Uncommon / Rare / Epic / Legendary.
 	-- Weights, not percentages; they are normalised at roll time. Also drives upgrade card tiers.
@@ -314,18 +307,24 @@ local Config = {
 	},
 	RarityDmgMult = { 1, 1.3, 1.7, 2.3, 3.0 }, -- a legendary of any gun out-DPSes an epic of any other
 
-	------------------------------------------------------------------ Big crate
-	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never (brief says 10)
-	BigCrateIntroDrop = true, -- one crate during the intro; after that only Side Job completion drops one
+	------------------------------------------------------------------ Crates (brief 5: the only in-run weapon source)
+	-- A crate lands closed with party size + CrateRollsExtra rolls. F (OPEN) by any member spends one: the reel plays
+	-- on a billboard above the crate for everyone, then the gun ejects to a free spot CrateDropRadius out as floor loot.
+	-- Sources: the intro, side job success (not the vault), the boss (first roll a guaranteed Legendary).
+	CrateRollsExtra = 1,
+	CrateReelSec = 0.6, -- seconds per reel step
+	CrateReelSteps = 6, -- icons the reel shows, the last one is the gun
+	CrateReelEase = { 1.5, 2.2 }, -- the last two steps last this x CrateReelSec (the ease-out into the land)
+	CrateLandHoldSec = 0.8, -- the landed icon holds this long before the gun ejects
+	CrateDropRadius = 6, -- studs from the crate the gun lands
+	CrateLifetimeSec = 45, -- the crate closes after this even with rolls left (floor guns keep their own timers)
+	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never
+	BigCrateIntroDrop = true, -- one crate during the intro
 	BigCrateIntroPosition = Vector3.new(0, 0, -14), -- where the intro crate lands
-	BigCrateLifetime = 30, -- crate clears after this, or as soon as all its guns are gone
-	BigCrateDespawnOnWaveEnd = false, -- true restores the brief's "crate closes at wave end"
-	BigCrateWeaponCount = { plus = 1, min = 2 }, -- players + plus, never below min
-	BigCrateRarityFloorByBracket = { 2, 3, 3, 4 }, -- Uncommon / Rare / Rare / Epic
+	BigCrateDespawnOnWaveEnd = false, -- true: crates close at wave end
+	BigCrateRarityFloorByBracket = { 2, 3, 3, 4 }, -- the crate's rarity floor per wave bracket: Uncommon / Rare / Rare / Epic
 	BigCrateDropHeight = 40,
 	BigCrateDistanceFromCenter = 20,
-	BigCrateFanMin = 5,
-	BigCrateFanMax = 7,
 
 	------------------------------------------------------------------ Crew call / stub Side Job
 	CallHoldSec = 4.5, -- crew call card shows this long before it collapses to the pill (result cards too)
@@ -513,7 +512,6 @@ local Config = {
 	BossAbilityGapSec = 1.5, -- the boss walks and swings this long between abilities
 	BossBagBurst = 6, -- bags around the body on a kill (half cash, half gold)
 	BossBagBurstRadius = 18, -- a wide ring, clear of the crate on the body
-	BossCrateCount = 2, -- the boss crate: one guaranteed Legendary of a random owned gun plus the rest as normal deals
 	-- TITAN
 	TitanHp = 4000, -- x the wave HP scaling x the player count multiplier
 	TitanSpeed = 5, -- (brief: 7, cut a third with the roster)

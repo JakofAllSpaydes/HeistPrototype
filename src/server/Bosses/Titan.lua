@@ -564,7 +564,7 @@ function Titan.onDeath(d: any, api: any, attacker: Player?)
 	end
 	local cashBags = math.floor(Config.BossBagBurst / 2)
 	Bags.burstAround(pos, cashBags, Config.BossBagBurst - cashBags, Config.BossBagBurstRadius)
-	BigCrate.drop(pos, { legendary = true, count = Config.BossCrateCount })
+	BigCrate.drop(pos, { legendary = true })
 	api.fire("BossDown", {
 		name = Titan.name,
 		position = pos,

@@ -584,8 +584,9 @@ function CrewCallUI.init()
 			centerSlot().toast("ARMS DROP INCOMING", Theme.Colors.gold, 1)
 			UI.sound(Theme.Sounds.crate, 0.6, 0.6)
 		elseif name == "CrateLand" then
+			local rolls = tonumber(data.rolls) or 0
 			centerSlot().toast(
-				string.format("ARMS DROP · %d GUNS", data.total or data.left or 0),
+				string.format("ARMS CRATE · %d ROLL%s", rolls, if rolls == 1 then "" else "S"),
 				Theme.Colors.gold,
 				1.2
 			)

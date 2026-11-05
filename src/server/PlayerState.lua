@@ -28,7 +28,6 @@ export type State = {
 	profile: Profiles.Profile?, -- nil until loaded
 	cash: number,
 	upgradesBought: number,
-	weaponsBought: number,
 	upgrades: { [string]: Types.TrackerItem },
 	upgradeOrder: { string },
 	openPick3: { Types.Card }?,
@@ -38,7 +37,6 @@ export type State = {
 	forcedRarity: number?,
 	forceTradeoff: boolean,
 	god: boolean,
-	cratesTaken: { [string]: boolean },
 	lastShotAt: number,
 	lastSwapAt: number,
 	nextUid: number,
@@ -83,7 +81,6 @@ local function freshState(player: Player, joinIndex: number): State
 		profile = nil,
 		cash = Config.HubCash, -- joiners land in the hub; Hub.beginRun sets StartingCash for the party
 		upgradesBought = 0,
-		weaponsBought = 0,
 		upgrades = {},
 		upgradeOrder = {},
 		openPick3 = nil,
@@ -93,7 +90,6 @@ local function freshState(player: Player, joinIndex: number): State
 		forcedRarity = nil,
 		forceTradeoff = false,
 		god = false,
-		cratesTaken = {},
 		lastShotAt = 0,
 		lastSwapAt = 0,
 		nextUid = 2,
@@ -511,10 +507,6 @@ end
 function PlayerState.buildSync(state: State): Types.Sync
 	local st = PlayerState.computed(state)
 	local w = Weapons.ById[state.held.weaponId]
-	local cratesTaken = {}
-	for id in state.cratesTaken do
-		table.insert(cratesTaken, id)
-	end
 	local total = 0
 	for _, item in state.upgrades do
 		total += item.count
@@ -566,11 +558,9 @@ function PlayerState.buildSync(state: State): Types.Sync
 		stats = st,
 		prices = {
 			upgrade = Stats.upgradePrice(state.upgradesBought),
-			weapon = Stats.weaponPrice(state.weaponsBought),
 		},
 		tracker = { order = state.upgradeOrder, items = state.upgrades, total = total },
 		openPick3 = state.openPick3,
-		cratesTaken = cratesTaken,
 		god = state.god,
 		abilities = abilityView(state),
 		classId = PlayerState.classOf(state),

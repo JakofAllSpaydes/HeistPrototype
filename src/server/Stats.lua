@@ -85,8 +85,4 @@ function Stats.upgradePrice(n: number): number
 	return math.round(Config.UpgradePrice * Config.UpgradePriceMult ^ n)
 end
 
-function Stats.weaponPrice(n: number): number
-	return math.round(Config.WeaponPrice * Config.WeaponPriceMult ^ n)
-end
-
 return Stats

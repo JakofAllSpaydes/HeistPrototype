@@ -1,6 +1,5 @@
 --!strict
--- Weapon roll with pity, ground loot spawn, swap. Also the ground-gun factory used by the big crate.
-local Players = game:GetService("Players")
+-- Rarity with pity, ground loot spawn, swap. The ground-gun factory the arms crate (BigCrate) ejects through.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -12,9 +11,7 @@ local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
-local Economy = require(script.Parent.Economy)
 local Stats = require(script.Parent.Stats)
-local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 
 export type SpawnOpts = {
@@ -25,17 +22,11 @@ export type SpawnOpts = {
 	dmg: number,
 	dps: number?, -- shown on the tag; defaults to the weapon at no upgrades
 	lifetime: number?, -- nil = Config.GroundWeaponLifetime, 0 = never
-	crateId: string?,
-	slot: number?,
 	promptText: string?,
-	dropFrom: number?, -- fall in from this height and bounce on the floor
 	mag: number?, -- rounds left in the mag (a dropped gun); nil = full
 }
 
 local WeaponRoll = {}
-
--- BigCrate installs this so the two modules never require each other: (player, crateId, slot).
-WeaponRoll.CrateGunTakenHandler = nil :: ((Player, string, number) -> ())?
 
 local assets = ReplicatedStorage:WaitForChild("Assets")
 local gunTemplate = assets:WaitForChild("GunTemplate") :: BasePart
@@ -121,10 +112,6 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	if opts.mag ~= nil then
 		gun:SetAttribute("Mag", opts.mag)
 	end
-	if opts.crateId then
-		gun:SetAttribute("CrateId", opts.crateId)
-		gun:SetAttribute("Slot", opts.slot)
-	end
 
 	local a0 = Instance.new("Attachment")
 	a0.Name = "BeamBottom"
@@ -160,24 +147,6 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 
 	gun.Parent = lootFolder
 	WeaponRoll.setLifetime(gun, if opts.lifetime ~= nil then opts.lifetime else Config.GroundWeaponLifetime)
-
-	local dropFrom = opts.dropFrom
-	if dropFrom and dropFrom > 0 then
-		local final = opts.cframe
-		gun.CFrame = final + Vector3.new(0, dropFrom, 0)
-		local fall = TweenService:Create(
-			gun,
-			TweenInfo.new(Config.GunDropSec, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
-			{ CFrame = final }
-		)
-		fall:Play()
-		fall.Completed:Once(function()
-			if gun.Parent then
-				WeaponRoll.dustRing(final.Position, 8, Rarity.color(opts.rarity))
-				World.fireRun("GunLanded", { position = final.Position, rarity = opts.rarity })
-			end
-		end)
-	end
 	return gun
 end
 
@@ -232,8 +201,6 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	local newId = gun:GetAttribute("WeaponId") :: string
 	local newRarity = gun:GetAttribute("Rarity") :: number
 	local newLevel = tonumber(gun:GetAttribute("Level")) or 0
-	local crateId = gun:GetAttribute("CrateId")
-	local slot = gun:GetAttribute("Slot")
 	local floorMag = gun:GetAttribute("Mag")
 	local oldId, oldRarity = state.held.weaponId, state.held.rarity
 	expireTokens[gun] = nil
@@ -242,10 +209,6 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	-- comes up with whatever was in its mag (full for a fresh roll or crate gun).
 	WeaponRoll.dropHeld(state, cf)
 	PlayerState.setHeld(state, newId, newRarity, newLevel, if typeof(floorMag) == "number" then floorMag else nil)
-	local handler = WeaponRoll.CrateGunTakenHandler
-	if handler and typeof(crateId) == "string" and typeof(slot) == "number" then
-		handler(player, crateId, slot)
-	end
 	Remotes.Juice:FireClient(player, "Swap", { weaponId = newId, rarity = newRarity, position = cf.Position })
 	Log.event(
 		"Swap",
@@ -258,8 +221,15 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	)
 end
 
--- Rarity with pity. Returns rarity and a short pity description for the log.
-function WeaponRoll.rollRarity(state: PlayerState.State, wave: number, weights: { number }): (number, string)
+-- Rarity with pity for the player who opened the crate. `minRarity` is the crate's bracket floor; the pity floor
+-- (the held rarity after MaxConsecutiveNonUpgrades rolls below it) raises it further. Returns rarity and a short
+-- note for the log.
+function WeaponRoll.rollRarity(
+	state: PlayerState.State,
+	wave: number,
+	weights: { number },
+	minRarity: number?
+): (number, string)
 	local note = ""
 	local rarity: number
 	if state.forcedRarity then
@@ -267,13 +237,14 @@ function WeaponRoll.rollRarity(state: PlayerState.State, wave: number, weights: 
 		state.forcedRarity = nil
 		note = "forced by debug"
 	else
-		local floor: number? = nil
-		if state.pityStreak >= Config.MaxConsecutiveNonUpgrades then
+		local floor: number = minRarity or 1
+		local pity = state.pityStreak >= Config.MaxConsecutiveNonUpgrades and state.held.rarity > floor
+		if pity then
 			floor = state.held.rarity
 			note = string.format("pity floor %s", Rarity.name(floor))
 		end
 		rarity = Rarity.roll(wave, floor, weights)
-		if floor then
+		if pity then
 			state.pityStreak = 0
 			return rarity, note
 		end
@@ -286,73 +257,6 @@ function WeaponRoll.rollRarity(state: PlayerState.State, wave: number, weights: 
 	return rarity, note
 end
 
-function WeaponRoll.buy(player: Player): any
-	local state = PlayerState.get(player)
-	if state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
-		return { ok = false, reason = "downed" }
-	end
-	local price = Economy.weaponPrice(state)
-	if not Economy.tryCharge(state, price) then
-		return { ok = false, reason = "cash", price = price }
-	end
-	state.weaponsBought += 1
-	-- The roll pool is the owned set and nothing else; the gun carries its Armory level.
-	local pool = PlayerState.ownedWeapons(state)
-	local weapon = pool[math.random(#pool)]
-	local level = PlayerState.weaponLevel(state, weapon.id)
-	local rarity, note = WeaponRoll.rollRarity(state, World.wave, weapon.rarityWeights)
-	local dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state), level)
-	local dps = Stats.weaponDps(weapon.id, rarity, state.upgrades, level)
-	state.dirty = true
-	Log.event(
-		"Roll",
-		"%s paid $%d, rolled %s %s (DMG %d). Pity streak %d/%d%s",
-		player.Name,
-		price,
-		Rarity.name(rarity),
-		weapon.id,
-		math.round(dmg),
-		state.pityStreak,
-		Config.MaxConsecutiveNonUpgrades,
-		if note ~= "" then ", " .. note else ""
-	)
-
-	-- The gun starts falling when the client reel ejects, and lands 4 studs in front of the player.
-	task.delay(Config.RollDurationSec + Config.RollLandHoldSec, function()
-		local char = player.Character
-		if not player.Parent or not char then
-			return
-		end
-		WeaponRoll.spawnGun({
-			weaponId = weapon.id,
-			rarity = rarity,
-			level = level,
-			cframe = WeaponRoll.groundCFrameInFront(char, 4),
-			dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state), level),
-			dps = Stats.weaponDps(weapon.id, rarity, state.upgrades, level),
-			dropFrom = Config.GunDropHeight,
-		})
-	end)
-
-	return {
-		ok = true,
-		weapon = {
-			weaponId = weapon.id,
-			displayName = weapon.displayName,
-			archetype = weapon.archetype,
-			rarity = rarity,
-			rarityName = Rarity.name(rarity),
-			dmg = math.round(dmg),
-			dps = math.round(dps),
-			pellets = weapon.pellets,
-			fireRate = weapon.fireRate, -- base; the client applies its own fire-rate multiplier
-			level = level,
-			levelRateMult = Weapons.levelRateMult(level),
-		},
-		pityStreak = state.pityStreak,
-	}
-end
-
 function WeaponRoll.clearAll()
 	for _, gun in lootFolder:GetChildren() do
 		gun:Destroy()
@@ -360,13 +264,11 @@ function WeaponRoll.clearAll()
 end
 
 function WeaponRoll.init()
-	Remotes.BuyWeapon.OnServerInvoke = WeaponRoll.buy
 	Remotes.SwapWeapon.OnServerEvent:Connect(function(player: Player, gun: any)
 		if typeof(gun) == "Instance" and gun:IsA("BasePart") then
 			WeaponRoll.onPrompt(player, gun)
 		end
 	end)
-	Players.PlayerRemoving:Connect(function() end)
 end
 
 return WeaponRoll

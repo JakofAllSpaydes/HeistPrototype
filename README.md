@@ -44,7 +44,8 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | RMB (hold) | Aim down sights: narrower FOV, camera pulls in, half spread, tighter crosshair, lower sensitivity. `Ads*` in Config. With the cursor unlocked (Ctrl) it only pulls in a little and dragging rotates the camera. |
 | R | Reload. Tube-fed guns (`shellReload` in Weapons, currently the SPAS-12) load one shell per `reloadTime`; firing or R again stops at the current count. |
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
-| 1 / 2 | Buy weapon roll / buy upgrade pick (also clickable tiles, left column). |
+| 2 | Buy an upgrade pick (also the clickable tile, left column). Weapons come only from arms crates; 1 does nothing. |
+| F on an arms crate | `OPEN`: spends one of the crate's rolls (`N ROLLS LEFT` over it). The reel plays above the crate for everyone and the gun ejects beside it as floor loot anyone can take. |
 | Q / E / Z | The equipped class's three abilities, all twelve live (INITIATE barricade / turret / adrenaline, DOC stim shot / med bag / healing turret, SHARPSHOOTER claymore / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown`. Thrown ones (molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange`; placeables stand `StructurePlaceDistance` ahead. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
 | F (hold `BagCollectSec`) | `COLLECT` a cash bag (match cash to everyone) or `BANK` a gold bag (ticks the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
@@ -576,6 +577,20 @@ Local Server through one boss; anything that fails is a Config or one-file fix:
     at phone size, `DBG` chip → the spawn rows work with touch.
 11. Debug `Stats` prints the minigame averages and then `[GHS Heat] clear / par this run:` with one line per wave and
     the mean ratio.
+
+### Brief 5 verify list
+
+Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. Solo through one boss first, then a
+2-player Local Server with a pause and a dealer visit:
+
+1. Crates: the left column is NEW UPGRADE only and 1 does nothing. The intro crate lands closed with `2 ROLLS LEFT`
+   (solo; party size + `CrateRollsExtra`) and a seconds countdown over it. F → the tag hides and a card above the crate
+   cycles six gun icons with rarity frames (0.6s each, the last two slower), ticks rising in pitch from the crate; it
+   lands with a punch (rays from Epic, the sting on a Legendary), holds, drops into the crate and the gun arcs out to a
+   free spot about 6 studs away with its beam and floor tag. A second player sees the same reel and can take the gun.
+   The prompt is gone while a roll plays; the tag reads `1 ROLL LEFT`; the crate closes after its last roll or 45s
+   (`CrateLifetimeSec`), and guns on the floor keep their own 30s timers. Boss crate: its first roll is a Legendary.
+   Force rarity from the debug panel applies to your next crate roll.
 
 ## Layout
 
