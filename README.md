@@ -1032,6 +1032,12 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   (`FIR` / `ICE` / `IMP`); a new one shows `NEW · BURN ON EVERY SHOT`, later takes `+30% BURN` / `SLOW` / `IMPACT`
   (`Upgrades.cardTexts`, `effectLine`, `effectName`; the dealer and the tracker tooltip the same).
 
+- **Round 15d (4 Nov, feedback)** — the gun crate rolls faster (`RollDurationSec` 1.2, `RollLandHoldSec` 0.35,
+  `RollEjectSec` 0.25, `CrateRollGapSec` 0.15), the reel panel is `CrateReelScale` 0.8 of the old size, and it has more
+  juice: opening (`CrateOpened`) bursts gold out of the lid with a floor ring, a light flash, the thump and a shake that
+  fades with distance (`CrateOpenShake`, `CrateFxRange`); every gun (`CrateEject`) kicks the lid and bursts in its rarity
+  color with a ring and a whoosh, Epic and up bigger with a column of light and twice the shake (`CrateEjectShake`).
+
 ## Open design notes (not built)
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15b) apply on every shot to every enemy it hits directly (pellets and

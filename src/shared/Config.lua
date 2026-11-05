@@ -335,11 +335,15 @@ local Config = {
 	-- to back: the sliding reel on a billboard above the crate for everyone, then each gun ejects to a free floor spot
 	-- CrateDropRadius out. Sources: the intro, side job success (not the vault), the boss (first roll a Legendary).
 	CrateRollsExtra = 1,
-	RollDurationSec = 2.0, -- the row of icons slides this long and eases onto the gun
-	RollLandHoldSec = 0.5, -- the result shows this long before the gun ejects...
+	RollDurationSec = 1.2, -- the row of icons slides this long and eases onto the gun
+	RollLandHoldSec = 0.35, -- the result shows this long before the gun ejects...
 	RollHighTierHoldSec = 0.3, -- ...plus this from Epic up
-	RollEjectSec = 0.4, -- the panel closes as the gun flies out
-	CrateRollGapSec = 0.3, -- then the next roll starts
+	RollEjectSec = 0.25, -- the panel closes as the gun flies out
+	CrateRollGapSec = 0.15, -- then the next roll starts
+	CrateReelScale = 0.8, -- the reel panel over the crate, as a share of the original weapon reel's size
+	CrateOpenShake = 0.35, -- camera shake when a crate opens (fades with distance over CrateFxRange)...
+	CrateEjectShake = 0.15, -- ...and per gun that flies out (Epic and up twice this)
+	CrateFxRange = 60, -- studs
 	CrateDropRadius = 6, -- studs from the crate the gun lands
 	CrateLifetimeSec = 45, -- the crate closes after this even with rolls left (floor guns keep their own timers)
 	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never

@@ -8,6 +8,8 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -142,7 +144,9 @@ local function playReel(data: any)
 	if not body then
 		return
 	end
-	local S = SS
+	local function S(n: number): number
+		return SS(n * Config.CrateReelScale)
+	end
 	local w = S(340)
 	local h = S(128)
 	local gui = Instance.new("BillboardGui")
@@ -373,6 +377,153 @@ local function playReel(data: any)
 	gui:Destroy()
 end
 
+------------------------------------------------------------------ Open / eject juice
+-- Opening: a gold burst out of the lid, a floor ring, a light flash, a shake that fades with distance and the crate
+-- thump. Each gun: a burst and ring in its rarity color (Epic and up bigger, with a column of light), a kick of the
+-- lid (server) and the whoosh.
+
+local function fxFolder(): Instance
+	return Workspace:FindFirstChild("Effects") or Workspace
+end
+
+-- Shake that fades with distance from the crate.
+local function nearShake(position: Vector3, amp: number, dur: number)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	local k = 1 - math.clamp((root.Position - position).Magnitude / math.max(Config.CrateFxRange, 1), 0, 1)
+	if k > 0.05 then
+		ClientState.Juice:Fire("Shake", { amp = amp * k, dur = dur })
+	end
+end
+
+-- A burst of glowing chips and a light flash at a point.
+local function burst(position: Vector3, color: Color3, count: number, speed: number, light: number)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Transparency = 1
+	p.Size = Vector3.new(0.2, 0.2, 0.2)
+	p.CFrame = CFrame.new(position)
+	p.Parent = fxFolder()
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 0
+	e.Color = ColorSequence.new(Color3.new(1, 1, 1), color)
+	e.LightEmission = 1
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 0) })
+	e.Lifetime = NumberRange.new(0.35, 0.8)
+	e.Speed = NumberRange.new(speed * 0.5, speed)
+	e.SpreadAngle = Vector2.new(70, 70)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Acceleration = Vector3.new(0, -35, 0)
+	e.Drag = 2
+	e.Parent = p
+	e:Emit(count)
+	local l = Instance.new("PointLight")
+	l.Color = color
+	l.Range = 16
+	l.Brightness = light
+	l.Parent = p
+	TweenService:Create(l, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 0 })
+		:Play()
+	task.delay(1.2, function()
+		p:Destroy()
+	end)
+end
+
+-- A ring that rushes out along the floor.
+local function floorRing(position: Vector3, color: Color3, size: number)
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.Size = Vector3.new(0.15, 2, 2)
+	ring.CFrame = CFrame.new(position.X, Config.FloorTop + 0.15, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Color = color
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.2
+	ring.Parent = fxFolder()
+	TweenService:Create(ring, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.15, size, size),
+		Transparency = 1,
+	}):Play()
+	task.delay(0.5, function()
+		ring:Destroy()
+	end)
+end
+
+-- Epic and up: a column of light shoots up out of the crate.
+local function pillar(position: Vector3, color: Color3)
+	local col = Instance.new("Part")
+	col.Shape = Enum.PartType.Cylinder
+	col.Anchored = true
+	col.CanCollide = false
+	col.CanQuery = false
+	col.CanTouch = false
+	col.Size = Vector3.new(1, 2.2, 2.2)
+	col.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+	col.Color = color
+	col.Material = Enum.Material.Neon
+	col.Transparency = 0.25
+	col.Parent = fxFolder()
+	TweenService:Create(col, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(26, 0.6, 0.6),
+		CFrame = CFrame.new(position + Vector3.new(0, 13, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Transparency = 1,
+	}):Play()
+	task.delay(0.65, function()
+		col:Destroy()
+	end)
+end
+
+local function onOpened(data: any)
+	local pos = data.position
+	if typeof(pos) ~= "Vector3" then
+		return
+	end
+	local model = crateById(tostring(data.crateId))
+	local body = model and bodyOf(model)
+	local gold = Theme.Colors.gold
+	burst(pos, gold, 40, 26, 6)
+	floorRing(pos, gold, 20)
+	nearShake(pos, Config.CrateOpenShake, 0.3)
+	if body then
+		soundOn(body, Theme.Sounds.crate, 1.1, 0.8)
+		soundOn(body, Theme.Sounds.reelLand, 0.7, 0.6)
+	end
+	if data.by == player.UserId then
+		ClientState.Juice:Fire("RarityFlash", { color = gold, alpha = 0.15 })
+	end
+end
+
+local function onEject(data: any)
+	local pos = data.position
+	if typeof(pos) ~= "Vector3" then
+		return
+	end
+	local rarity = tonumber(data.rarity) or 1
+	local color = Rarity.color(rarity)
+	local high = rarity >= 4
+	burst(pos, color, if high then 45 else 22, if high then 30 else 20, if high then 8 else 4)
+	floorRing(pos, color, if high then 18 else 11)
+	if high then
+		pillar(pos, color)
+	end
+	nearShake(pos, Config.CrateEjectShake * (if high then 2 else 1), 0.2)
+	local model = crateById(tostring(data.crateId))
+	local body = model and bodyOf(model)
+	if body then
+		soundOn(body, Theme.Sounds.swap, 0.9 + rarity * 0.08, 0.7)
+		soundOn(body, Theme.Sounds.take, 0.8 + rarity * 0.1, 0.5)
+	end
+end
+
 function CrateReelUI.init()
 	for _, m in CollectionService:GetTagged(TAG) do
 		task.spawn(addTag, m)
@@ -386,8 +537,15 @@ function CrateReelUI.init()
 		end
 	end)
 	ClientState.Juice:Connect(function(name: string, data: any)
-		if name == "CrateRoll" and typeof(data) == "table" then
+		if typeof(data) ~= "table" then
+			return
+		end
+		if name == "CrateRoll" then
 			task.spawn(playReel, data)
+		elseif name == "CrateOpened" then
+			onOpened(data)
+		elseif name == "CrateEject" then
+			onEject(data)
 		end
 	end)
 	-- Crate lifetime countdown above the tag.

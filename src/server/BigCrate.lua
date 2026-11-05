@@ -267,6 +267,23 @@ local function rollOnce(player: Player, state: PlayerState.State, crate: Crate)
 
 	Pause.wait(CrateReel.ejectSec(rarity))
 	if crate.model.Parent then
+		-- The lid kicks as the gun leaves; the clients burst it in the gun's rarity.
+		TweenService:Create(crate.lid, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = crate.lidClosed * CFrame.new(0, 1.6, 0) * CFrame.Angles(math.rad(-25), 0, 0),
+		}):Play()
+		task.delay(0.14, function()
+			if crate.model.Parent then
+				TweenService:Create(crate.lid, TweenInfo.new(0.3, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+					CFrame = crate.lidClosed * CFrame.new(0, 0.6, 0) * CFrame.Angles(math.rad(-8), 0, 0),
+				}):Play()
+			end
+		end)
+		World.fireRun("CrateEject", {
+			crateId = crate.id,
+			position = crate.landPos + Vector3.new(0, crate.body.Size.Y + 0.6, 0),
+			rarity = rarity,
+			by = player.UserId,
+		})
 		task.spawn(eject, crate, entry, rarity, state)
 	end
 	Pause.wait(Config.RollEjectSec + Config.CrateRollGapSec)
@@ -287,6 +304,12 @@ function BigCrate.open(player: Player, crate: Crate)
 	end
 	crate.busy = true
 	syncAttributes(crate)
+	World.fireRun("CrateOpened", {
+		crateId = crate.id,
+		position = crate.landPos + Vector3.new(0, crate.body.Size.Y, 0),
+		by = player.UserId,
+		rolls = crate.rolls,
+	})
 	-- The lid pops up for the whole chain and settles back after the last eject.
 	TweenService:Create(crate.lid, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		CFrame = crate.lidClosed * CFrame.new(0, 0.6, 0) * CFrame.Angles(math.rad(-8), 0, 0),
