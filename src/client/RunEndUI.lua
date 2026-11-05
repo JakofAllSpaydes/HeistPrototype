@@ -1,7 +1,7 @@
 --!strict
 -- Run end on the client: the camera timeline (low front shot of the line, push in on the poses, hold for
 -- the cash rain, cut to a tight 3/4 shot of the MVP with a slow orbit), the poses, the MVP stamp with gold
--- rays, then the summary panel (TOTAL BANKED count-up, per-player rows, GOLD count-up, PLAY AGAIN /
+-- rays, then the summary panel (GOLD BANKED count-up, per-player rows, the level card above, PLAY AGAIN /
 -- TO LOBBY with the auto countdown). Runs off the server clock in RunEndBegin.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -35,7 +35,6 @@ local dim: Frame? = nil
 local stampFrame: Frame? = nil
 local summaryShownAt = -1
 local hiddenForMvp: { Instance } = {} -- the rest of the crew and their tags, hidden locally for the MVP beat
-local goldLabel: TextLabel? = nil
 local bankedLabel: TextLabel? = nil
 local xpAnim: any = nil -- the XP row and its fill segments (see showSummary)
 
@@ -125,7 +124,6 @@ local function teardown()
 	showOthers()
 	dim = nil
 	stampFrame = nil
-	goldLabel = nil
 	bankedLabel = nil
 	xpAnim = nil
 	lobbyButton = nil
@@ -237,7 +235,7 @@ local function showSummary(d: any)
 	local vp = camera.ViewportSize
 	local W = math.min(math.floor(vp.X * 0.9), S(700))
 	local rowH = S(30)
-	local headerH = S(140) -- the headline block (the level card floats above the panel)
+	local headerH = S(100) -- the headline block (the level card floats above the panel)
 	local H = headerH + S(24) + rowH * n + S(72) + S(28)
 	H = math.min(H, math.floor(vp.Y * 0.94))
 	local panel = UI.frame({
@@ -255,10 +253,10 @@ local function showSummary(d: any)
 	UI.tween(panel, { Position = UDim2.fromScale(0.5, 0.5) }, 0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	UI.sound(Theme.Sounds.call, 1, 0.6)
 
-	-- Headline: TOTAL BANKED (the team's gold bags, paid to everyone) above GOLD EARNED (the run payout
-	-- plus your side job gold). Cash is the per-run currency and sits in the rows.
+	-- Headline: GOLD BANKED, one number: the team's gold bags plus the run payout and your side job gold, all
+	-- of it paid to your profile. Cash is the per-run currency and sits in the rows.
 	UI.text({
-		Text = "TOTAL BANKED",
+		Text = "GOLD BANKED",
 		Font = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.textDim,
@@ -276,28 +274,6 @@ local function showSummary(d: any)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(S(24), S(30)),
 		Size = UDim2.fromOffset(S(360), S(46)),
-		ZIndex = 11,
-		Parent = panel,
-	})
-	UI.text({
-		Text = "GOLD EARNED",
-		Font = Theme.Fonts.display,
-		TextSize = S(12),
-		TextColor3 = Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(24), S(78)),
-		Size = UDim2.fromOffset(S(300), S(16)),
-		ZIndex = 11,
-		Parent = panel,
-	})
-	goldLabel = UI.text({
-		Text = "+0",
-		Font = Theme.Fonts.display,
-		TextSize = S(26),
-		TextColor3 = Theme.Colors.gold,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(24), S(92)),
-		Size = UDim2.fromOffset(S(360), S(30)),
 		ZIndex = 11,
 		Parent = panel,
 	})
@@ -321,7 +297,7 @@ local function showSummary(d: any)
 		TextSize = if #bests > 0 then S(13) else S(10),
 		TextColor3 = if #bests > 0 then Theme.Colors.cash else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(26), S(124)),
+		Position = UDim2.fromOffset(S(26), S(80)),
 		Size = UDim2.fromOffset(S(400), S(14)),
 		ZIndex = 11,
 		Parent = panel,
@@ -619,34 +595,28 @@ local function step(_dt: number)
 	camera.CFrame = cf
 	camera.Focus = cf
 
-	-- Summary count-ups (TOTAL BANKED first, then GOLD EARNED) and the lobby countdown.
+	-- The GOLD BANKED count-up and the lobby countdown.
 	if summaryShownAt >= 0 then
 		local e = os.clock() - summaryShownAt
 		local countUp = math.max(d.countUpSec or 1, 0.05)
 		local k = easeOut(e / countUp)
-		local k2 = easeOut((e - countUp) / countUp)
 		if bankedLabel then
-			local banked = tonumber(d.banked) or 0
-			bankedLabel.Text = string.format("◆ %d", math.floor(banked * k))
-			bankedLabel.TextSize = if k < 1 then UI.S(40 + 6 * math.sin(e * 30)) else UI.S(40)
-		end
-		if goldLabel then
-			-- Your own GOLD EARNED: the run payout plus your side job gold (falls back to the base figure).
-			local mine = d.gold or 0
+			-- Your own total: the team's banked bags plus the run payout and your side job gold.
+			local mine = (tonumber(d.banked) or 0) + (tonumber(d.gold) or 0)
 			for _, row in d.players do
-				if row.userId == player.UserId and typeof(row.gold) == "number" then
-					mine = row.gold
+				if row.userId == player.UserId and typeof(row.goldTotal) == "number" then
+					mine = row.goldTotal
 				end
 			end
-			goldLabel.Text = string.format("+%d", math.floor(mine * k2))
-			goldLabel.TextSize = if k2 > 0 and k2 < 1 then UI.S(26 + 4 * math.sin(e * 30)) else UI.S(26)
+			bankedLabel.Text = string.format("◆ %d", math.floor(mine * k))
+			bankedLabel.TextSize = if k < 1 then UI.S(40 + 6 * math.sin(e * 30)) else UI.S(40)
 		end
 		-- The level card: drops in after the Gold count-up, the bar fills over XpFillSec at a constant XP
 		-- speed with `+N XP` counting; a level crossed flashes, bumps the card, pops the reward line and keeps
 		-- filling.
 		local anim = xpAnim
 		if anim then
-			local xpStart = countUp * 2 + 0.15
+			local xpStart = countUp + 0.15
 			if e >= xpStart then
 				local card = anim.card
 				if not anim.shown then

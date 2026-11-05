@@ -346,7 +346,7 @@ local Config = {
 		Hotwire = 1,
 		Keypad = 1,
 		Charges = 1,
-		Safe = 1,
+		Safe = 0, -- the Safe dial is the vault's own beat now, out of the normal rotation
 		Freq = 1,
 		vault = 1, -- CRACK THE VAULT (from VaultJobMinWave, once per run when VaultJobOnce)
 	},
@@ -462,8 +462,8 @@ local Config = {
 	CashBagPerWave = 0.25,
 	GoldBagValue = 25, -- a gold bag adds GoldBagValue x (1 + GoldBagPerWave x wave) to the team's Banked total
 	GoldBagPerWave = 0.1,
-	CashBagsPerWave = 2, -- spawned at every wave start (not the boss cutscene), up to MaxActiveBags
-	GoldBagsPerWave = 1,
+	CashBagsPerWave = 1, -- spawned at every wave start (not the boss cutscene), up to MaxActiveBags; fractions carry (0.5 = every other wave)
+	GoldBagsPerWave = 0.5,
 	MaxActiveBags = 6, -- caps the wave-start trickle; bursts (boss, vault) bypass it
 	BagCollectSec = 0.5, -- hold F on a bag
 	BagFarMult = 3, -- spot weight beyond BagFarDistance from the crew...
@@ -512,7 +512,7 @@ local Config = {
 	BossCutsceneBeats = { call = 0, blow = 0.8, gun = 2.2, back = 3.4 }, -- seconds: MARLOW's call and the low wall shot, the wall blows and the boss steps through, barrels spin and the name card, camera snaps back and the bar slides in
 	BossAbilityGapSec = 1.5, -- the boss walks and swings this long between abilities
 	BossBagBurst = 6, -- bags around the body on a kill (half cash, half gold)
-	BossBagBurstRadius = 9,
+	BossBagBurstRadius = 18, -- a wide ring, clear of the crate on the body
 	BossCrateCount = 2, -- the boss crate: one guaranteed Legendary of a random owned gun plus the rest as normal deals
 	-- TITAN
 	TitanHp = 4000, -- x the wave HP scaling x the player count multiplier
@@ -530,7 +530,7 @@ local Config = {
 	TitanSweepDps = 27, -- to players in the beam with LoS; placeables take it too (brief: 40)
 	TitanSweepCooldown = 9,
 	TitanChargeTelegraphSec = 1.0, -- red line on the floor from TITAN to the locked player
-	TitanChargeSpeedMult = 3,
+	TitanChargeSpeedMult = 6, -- (brief: 3; doubled in Round 14c)
 	TitanChargeDmg = 33, -- the first player hit on the line (brief: 50)
 	TitanChargeKnockback = 18,
 	TitanChargeHitRadius = 5.5, -- studs either side of the run that count as hit: the telegraph rectangle is this wide

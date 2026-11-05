@@ -216,7 +216,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	-- Gold pill with + and INVITE FRIENDS, bottom-left; the level card sits above them.
 	local goldW = if mobile then S(170) else S(230)
-	local levelCard = LevelCard.build(root, if mobile then S(230) else S(320), mobile)
+	local levelCard = LevelCard.build(root, goldW, true) -- the same width as the Gold pill and INVITE under it
 	levelCard.frame.AnchorPoint = Vector2.new(0, 1)
 	levelCard.frame.Position = UDim2.new(0, S(20), 1, -S(62) - S(38) - S(12))
 	local gold = UI.frame({

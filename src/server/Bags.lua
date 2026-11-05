@@ -248,29 +248,29 @@ function Bags.pickSpot(kind: string): Vector3?
 	return candidates[#candidates]
 end
 
--- Wave start: the trickle, up to the cap.
+-- Wave start: the trickle, up to the cap. Fractional per-wave counts carry over (0.5 = every other wave).
+local carry = { cash = 0, gold = 0 }
+
+local function spawnKind(kind: string, perWave: number): number
+	carry[kind] += perWave
+	local n = 0
+	while carry[kind] >= 1 do
+		carry[kind] -= 1
+		if Bags.count() >= Config.MaxActiveBags then
+			break
+		end
+		local spot = Bags.pickSpot(kind)
+		if spot then
+			Bags.spawnAt(kind, spot)
+			n += 1
+		end
+	end
+	return n
+end
+
 function Bags.onWaveStart(wave: number)
-	local cash, gold = 0, 0
-	for _ = 1, Config.CashBagsPerWave do
-		if Bags.count() >= Config.MaxActiveBags then
-			break
-		end
-		local spot = Bags.pickSpot("cash")
-		if spot then
-			Bags.spawnAt("cash", spot)
-			cash += 1
-		end
-	end
-	for _ = 1, Config.GoldBagsPerWave do
-		if Bags.count() >= Config.MaxActiveBags then
-			break
-		end
-		local spot = Bags.pickSpot("gold")
-		if spot then
-			Bags.spawnAt("gold", spot)
-			gold += 1
-		end
-	end
+	local cash = spawnKind("cash", Config.CashBagsPerWave)
+	local gold = spawnKind("gold", Config.GoldBagsPerWave)
 	if cash + gold > 0 then
 		World.fireRun("BagsDropped", { cash = cash, gold = gold })
 		Log.event("Bags", "wave %d: %d cash, %d gold dropped (%d active)", wave, cash, gold, Bags.count())
@@ -404,6 +404,7 @@ function Bags.fizzleVault()
 end
 
 function Bags.clearAll()
+	carry.cash, carry.gold = 0, 0
 	for _, b in table.clone(bags) do
 		remove(b, false)
 		World.fireRun("BagFizzled", { id = b.id })

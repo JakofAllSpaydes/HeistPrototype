@@ -141,13 +141,14 @@ shows the final stars next to the wave. A debug skip or the run ending leaves th
 `CashBagBase × (1 + CashBagPerWave × wave)` match cash to every member; a gold case adds `GoldBagValue × (1 +
 GoldBagPerWave × wave)` to the team's Banked total (`◆ N BANKED` row under the cash row, ticks on collect). Hold F
 `BagCollectSec` to collect (`GRABBING` over your head), the bag pops in a money burst and a `<NAME> GRABBED $300` /
-`<NAME> BANKED ◆ 40` toast. `CashBagsPerWave` and `GoldBagsPerWave` spawn at every wave start on free arena spots
-weighted away from the crew (`BagFarMult` beyond `BagFarDistance`, `BagNearMult` within `BagNearDistance`; gold bags
-keep `GoldBagMinDistance` when any spot allows it), up to `MaxActiveBags`; bursts (the boss body, the vault, the debug
-Loot Rush) bypass the cap; `BAGS DROPPED · 2 CASH · 1 GOLD` toasts the drop. Bags persist until collected or the run
-ends; their beacons read through walls as markers with a `$` / `◆` badge far away. At the summary TOTAL BANKED is the
-headline above GOLD EARNED and both land in `profile.gold`; `stats.bagsCollected`, `stats.goldBanked` accumulate and
-`topBanked["TheBank:Normal"]` gets a `★ NEW BEST BANKED` callout.
+`<NAME> BANKED ◆ 40` toast. `CashBagsPerWave` (1) and `GoldBagsPerWave` (0.5: fractions carry, so every other wave)
+spawn at every wave start on free arena spots weighted away from the crew (`BagFarMult` beyond `BagFarDistance`,
+`BagNearMult` within `BagNearDistance`; gold bags keep `GoldBagMinDistance` when any spot allows it), up to
+`MaxActiveBags`; bursts (the boss body, the vault, the debug Loot Rush) bypass the cap; `BAGS DROPPED · 1 CASH · 1
+GOLD` toasts the drop. Bags persist until collected or the run ends; their beacons read through walls as markers with
+a `$` / `◆` badge far away. At the summary the banked total and the run payout are one GOLD BANKED number that lands
+in `profile.gold`; `stats.bagsCollected`, `stats.goldBanked` accumulate and `topBanked["TheBank:Normal"]` gets a
+`★ NEW BEST BANKED` callout.
 
 **The vault job (brief 4, `VaultJob.lua`).** A 24×24 vault closet behind a heavy sliding door on the arena's north wall
 (`VaultSize`, `VaultDoorWidth`; the door frame is its amber beacon, a `VAULT` sign above, lights and a gas emitter in
@@ -256,10 +257,11 @@ Kills by turrets, fields and claymores pay the owner's kill cash. Abilities are 
 is a label). Cooldown sweeps on the ability tiles. Airstrike was removed.
 
 **Crew call / side job.** A call from MARLOW on wave 1 and every `SideJobEveryWaves` (2) waves, kind rolled from
-`SideJobKindWeights` (nine kinds, equal odds): "VAULT PING" (hack the terminal, hold F), "HOLD THE FLOOR" (stand in
-the circle for `SideJobCaptureSec`; progress pauses when nobody is inside, a green disc fills on the floor), one of
-the six minigames (the beacon carries an OPEN prompt; a validated done finishes the job, fails can retry until the
-timer), or CRACK THE VAULT (above; drawn only when the vault can be). The dialogue card slides in from the right into
+`SideJobKindWeights` (equal odds; the Safe dial is weighted 0 since it is the vault's own beat): "VAULT PING" (hack
+the terminal, hold F), "HOLD THE FLOOR" (stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is
+inside, a green disc fills on the floor), one of the minigames (the beacon carries an OPEN prompt; a validated done
+finishes the job, fails can retry until the timer), or CRACK THE VAULT (above; forced every `VaultJobEveryWaves`
+waves, otherwise drawn only when the vault can be). The dialogue card slides in from the right into
 the top-right stack with typewriter text, collapses in place to a timer pill (with a progress bar for capture), and the
 result card expands from that pill. A world marker over the beacon shows name, hint, timer and distance; past
 `MarkerCompactDistance` it shrinks to a badge. Cards hold `CallHoldSec` (4.5s) before collapsing. If the job is still
@@ -453,9 +455,9 @@ bill rain (`CashRainPerBanked` × Total Banked, capped at `CashRainMax`, over `C
 3/4 orbit (`MvpOrbitSec`) on the MVP (kills × `MvpKillWeight` + cash collected × `MvpCashWeight` + revives ×
 `MvpReviveWeight`; ties to the earlier joiner; solo still gets the beat) with the rest of the crew hidden, the MVP's
 equipped MVP emote (`MvpAnimationId` for dummies), a gold MVP stamp, name, the winning stat line, rays, shake and a bigger haptic. The summary
-panel slides up over a dim: TOTAL BANKED count-up (the team's gold bags, paid in full to everyone), GOLD EARNED under it
-(the GDD payout plus your side job gold), both into the profile, `★ NEW PERSONAL BEST WAVE` / `★ NEW BEST BANKED`
-callouts, `WAVE N · TIME · ★ stars`, then the XP row (above), one row per player (level and name, kills, jobs, cash
+panel slides up over a dim: one GOLD BANKED count-up (the team's gold bags plus the GDD payout plus your side job
+gold, all of it into the profile), `★ NEW PERSONAL BEST WAVE` / `★ NEW BEST BANKED` callouts, `WAVE N · TIME ·
+★ stars`, the level card above the panel, one row per player (level and name, kills, jobs, cash
 collected, downs, revives, MVP tag, NEW BEST), PLAY AGAIN and TO LOBBY with a `SummaryAutoLobbySec` countdown. TO
 LOBBY returns the party to the hub spawn; PLAY AGAIN re-forms the party on the queue pad and starts the countdown.
 
@@ -558,7 +560,7 @@ Local Server through one boss; anything that fails is a Config or one-file fix:
    off and the second pip goes dark; at 33% the shoulder pads go and four Henchmen arrive at the nearest marker every
    12s. Kill: slow-mo, `TITAN DOWN`, `+$600` on everyone, six bags round the body, a crate on the body with one
    Legendary, `+1 BOSS` beside the stars; the wave end logs the boss wave with a par that includes `BossParBonusSec`.
-8. Summary: `TOTAL BANKED ◆ N` counts up first, then `GOLD EARNED +N` (the payout plus jobs), `WAVE N · 12:34 · ★ 2.5`
+8. Summary: `GOLD BANKED ◆ N` counts up (bags plus the payout plus jobs, one number), `WAVE N · 12:34 · ★ 2.5`
    with the time survived, then the level card drops in above the panel (emblem, `LV 1 ROOKIE`, `+N XP` counting
    in green on the right, the bar reading `350 / 400 XP`); cross a level (use `+500 XP` before a run, or a long run)
    and it flashes, reads `LV 2`, pops `LEVEL 2 · +100 GOLD` above the card and keeps filling; `FIRST HEIST OF THE
@@ -805,6 +807,13 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   Boomer killed by damage leaves a bigger circle growing where it fell (`BoomerDeathRadiusMult` 1.3 ×, over
   `BoomerDeathFuseSec` 0.6) before the burst. Thrown abilities (molotov, flashbang) land at the cursor's floor point
   up to `ThrowMaxRange` from the player (`UseAbility` carries the aim point); placeables still stand in front.
+
+- **Round 14c (4 Nov, feedback)** — the hub level card is the Gold pill's width (compact) so the three bottom-left
+  pieces line up; bags halved (`CashBagsPerWave` 1, `GoldBagsPerWave` 0.5 with fractional carry); the boss's bag ring
+  is `BossBagBurstRadius` 18 so it clears the crate; the charge runs at `TitanChargeSpeedMult` 6; the Safe dial is
+  out of the side job rotation (`SideJobKindWeights.Safe` 0); the summary leads with one GOLD BANKED number (the
+  banked bags plus the run payout plus side job gold: `Row.goldTotal`) instead of TOTAL BANKED over GOLD EARNED, and
+  the level card follows one count-up.
 
 ## Open design notes (not built)
 

@@ -40,8 +40,9 @@ export type Row = {
 	reviveAll: number,
 	jobs: number, -- side jobs + minigames completed
 	bags: number, -- bags this player collected
-	gold: number, -- GOLD EARNED: the run payout (GDD_7 formula) plus this player's side job Gold
-	banked: number, -- TOTAL BANKED: the team's gold bag total, paid in full to everyone
+	gold: number, -- the run payout (GDD_7 formula) plus this player's side job Gold
+	banked: number, -- the team's gold bag total, paid in full to everyone
+	goldTotal: number, -- GOLD BANKED on the summary: gold + banked, what this player's profile receives
 	newBest: boolean, -- the run's wave beat this player's top wave
 	newBestBanked: boolean, -- the banked total beat this player's best
 	level: number, -- account level after the run
@@ -207,6 +208,7 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 		bags = math.random(0, 3),
 		gold = World.payoutBase(),
 		banked = World.banked,
+		goldTotal = World.payoutBase() + World.banked,
 		newBest = false,
 		newBestBanked = false,
 		level = math.random(2, 9),
@@ -308,6 +310,7 @@ function RunEnd.play(): string
 			bags = s.bags,
 			gold = earned,
 			banked = banked,
+			goldTotal = earned + banked,
 			newBest = newBest,
 			newBestBanked = newBestBanked,
 			level = Progression.level(p),
