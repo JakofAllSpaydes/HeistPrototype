@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Enemies = require(Shared:WaitForChild("Enemies"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -165,6 +166,31 @@ local function build()
 	btn(r6, "Drop crate", 0.5, function()
 		send("DropCrate")
 	end, Theme.Colors.gold)
+
+	-- Brief 4: spawn any archetype at the marker nearest you; ELITE prefixes the next spawns.
+	UI.text({
+		Text = "ENEMIES (spawn near you)",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.new(1, 0, 0, S(14)),
+		LayoutOrder = 17,
+		Parent = panel,
+	})
+	local elitePrefix = false
+	local rE1 = row(panel, 18, rh)
+	local rE2 = row(panel, 19, rh)
+	for i, e in Enemies.List do
+		btn(if i <= 4 then rE1 else rE2, e.name, if i <= 4 then 0.25 else 0.25, function()
+			send("SpawnEnemy", (if elitePrefix then "elite:" else "") .. e.id)
+		end, Color3.fromHex(e.color):Lerp(Theme.Colors.text, 0.45))
+	end
+	toggles.elite = btn(rE2, "ELITE", 0.25, function()
+		elitePrefix = not elitePrefix
+		local b = toggles.elite
+		if b then
+			b.TextColor3 = if elitePrefix then Theme.Colors.gold else Theme.Colors.text
+		end
+	end)
 
 	local r7 = row(panel, 8, rh)
 	btn(r7, "Trigger call", 0.5, function()

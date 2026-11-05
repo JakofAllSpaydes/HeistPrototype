@@ -281,7 +281,7 @@ function RunEnd.play(): string
 	if topKills == 0 and topCash == 0 then
 		-- Debug skip with nothing earned: give the dummies something to show.
 		topKills = World.wave * 10
-		topCash = topKills * Config.CashPerKill
+		topCash = topKills * 20
 	end
 
 	-- Everyone gets a fresh character standing in the line, anchored, bag and mask on. Dummies fill the squad.

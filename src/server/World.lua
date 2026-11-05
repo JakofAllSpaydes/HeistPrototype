@@ -133,6 +133,28 @@ function World.addHeat(delta: number, reason: string)
 	)
 end
 
+-- Heat effects at S stars (GDD_7 pace meter): cash, elite chance, spawn pace and the composition shift.
+function World.cashMult(): number
+	return 1 + Config.HeatCashPerStar * World.heat
+end
+
+function World.eliteChance(): number
+	return Config.HeatElitePerStar * math.max(0, World.heat - 1)
+end
+
+function World.spawnIntervalMult(): number
+	return math.max(0.2, 1 - Config.HeatSpawnPerStar * World.heat)
+end
+
+function World.bracketShift(): number
+	return if World.heat >= Config.HeatShiftStars then Config.HeatBracketShift else 0
+end
+
+-- Boss waves: the first at BossWaveInterval and every multiple after.
+function World.isBossWave(wave: number): boolean
+	return Config.BossWaveInterval > 0 and wave > 0 and wave % Config.BossWaveInterval == 0
+end
+
 -- Payout accumulators.
 function World.addWaveGold(wave: number)
 	World.runGold += Config.GoldPerWaveBase + Config.GoldPerWaveAdd * math.max(0, wave - 1)

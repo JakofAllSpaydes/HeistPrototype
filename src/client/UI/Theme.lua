@@ -72,6 +72,13 @@ Theme.Sounds = {
 	cardFlip = "rbxasset://sounds/clickfast.wav",
 	toast = "rbxasset://sounds/button.wav",
 	wave = "rbxasset://sounds/bass.wav",
+	-- Brief 4 enemies: the Runner's approach wail, the Boomer's fuse beep, the Marksman's laser hum, a plate
+	-- or wall crunch, the Grenadier's lob thump.
+	runner = "rbxasset://sounds/HalloweenGhost.wav",
+	beep = "rbxasset://sounds/electronicpingshort.wav",
+	laser = "rbxasset://sounds/switch3.wav",
+	crunch = "rbxasset://sounds/collide.wav",
+	lob = "rbxasset://sounds/Rocket shot.wav",
 }
 
 return Theme

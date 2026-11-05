@@ -7,6 +7,8 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Rarity = require(Shared.Rarity)
+local Enemies = require(Shared.Enemies)
+local Room = require(script.Parent.Room)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
@@ -51,6 +53,35 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	KillAll = function(_player, _state, _args)
 		Enemy.killAll()
+	end,
+	-- Spawn one archetype (args = id, "elite:<id>" for an elite) at the marker nearest the player.
+	SpawnEnemy = function(player, _state, args)
+		local id = tostring(args)
+		local elite = false
+		if string.sub(id, 1, 6) == "elite:" then
+			elite = true
+			id = string.sub(id, 7)
+		end
+		if not Enemies.ById[id] then
+			toast(player, "NO SUCH ENEMY: " .. id)
+			return
+		end
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local best = Room.randomSpawnPoint()
+		if root then
+			local bestDist = math.huge
+			for _, p in Room.spawnPoints do
+				local d = (p - root.Position).Magnitude
+				if d < bestDist then
+					bestDist = d
+					best = p
+				end
+			end
+		end
+		Enemy.spawn(id, World.wave, best, { elite = elite })
+		World.enemiesLeft = math.max(World.enemiesLeft, Enemy.count())
+		PlayerState.markAllDirty()
 	end,
 	ForceRarity = function(player, state, args)
 		local r = if typeof(args) == "number" then args else Rarity.fromLetter(tostring(args))

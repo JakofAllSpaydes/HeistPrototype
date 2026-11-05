@@ -10,35 +10,181 @@ local Config = {
 	SpawnInterval = 0.4, -- seconds between drip spawns
 	OpeningSurgePct = 25, -- % of the wave budget spawned fast at wave start
 	OpeningSurgeIntervalMult = 0.3, -- SpawnInterval multiplier during the surge
-	MaxActiveEnemies = 50, -- hard cap on alive enemies, backfilled as they die
+	MaxActiveEnemies = 100, -- hard cap on alive enemies; the rest of the budget queues and backfills at once as they die
 	IntermissionSec = 5, -- NEXT WAVE IN countdown
 	IntroSec = 5.0, -- run start sequence length (START RUN pressed -> WAVE 1); also the GET READY hold
 	SkipVoteFraction = 1, -- share of players that must vote (or have AUTO SKIP on) to end the intermission early; 1 = everyone
 	SkipMinIntermissionSec = 1, -- the intermission always lasts at least this long, even with every vote in
 	AutoSkipWaveSec = 10, -- with AUTO SKIP on, the next wave starts this long into the current one (once it has all spawned)
 
-	------------------------------------------------------------------ Enemy
-	EnemyHP = 60,
-	EnemyHPMultPerWave = 1.12, -- HP = EnemyHP * mult^(wave-1)
-	EnemyDmg = 8,
-	EnemyDmgMultPerWave = 1.06,
-	EnemyWalkSpeed = 12,
-	RetargetSec = 0.5, -- how often an enemy re-picks the nearest player
-	EnemyMeleeReach = 4.5, -- studs, root-to-root distance that counts as a touch
-	EnemySwingCooldown = 1, -- seconds between melee hits
+	------------------------------------------------------------------ Enemies (Brief 4: the roster, Enemies.lua reads these rows)
+	-- One row per archetype. hp / dmg are wave-1 bases (scaled below), speed is walk speed, range is the melee
+	-- reach for melee kinds and the hold distance for ranged kinds, cooldown is seconds between attacks, scale and
+	-- color make the silhouette (no enemy uses job blue, door amber or the bag colors), cash is match cash per kill.
+	-- attack picks the behaviour module in src/server/Enemies/.
+	Enemies = {
+		{
+			id = "Henchman",
+			name = "HENCHMAN",
+			hp = 80,
+			speed = 12,
+			dmg = 5,
+			range = 4,
+			cooldown = 1.0,
+			scale = 1.0,
+			color = "8A8F99",
+			cash = 15,
+			attack = "melee",
+		},
+		{
+			id = "Runner",
+			name = "RUNNER",
+			hp = 45,
+			speed = 22,
+			dmg = 4,
+			range = 4,
+			cooldown = 0.7,
+			scale = 0.85,
+			color = "D8D2C4",
+			cash = 12,
+			attack = "melee",
+			lean = true,
+		},
+		{
+			id = "Shooter",
+			name = "SHOOTER",
+			hp = 100,
+			speed = 10,
+			dmg = 2,
+			range = 45,
+			cooldown = 1.5,
+			scale = 1.0,
+			color = "2F4A8A",
+			cash = 20,
+			attack = "shooter",
+		},
+		{
+			id = "Marksman",
+			name = "MARKSMAN",
+			hp = 70,
+			speed = 8,
+			dmg = 15,
+			range = 90,
+			cooldown = 3.0,
+			scale = 1.0,
+			color = "8A2A2A",
+			cash = 25,
+			attack = "marksman",
+		},
+		{
+			id = "Boomer",
+			name = "BOOMER",
+			hp = 150,
+			speed = 8,
+			dmg = 12,
+			range = 8,
+			cooldown = 0,
+			scale = 1.2,
+			color = "E88A2A",
+			cash = 25,
+			attack = "boomer",
+			round = true,
+		},
+		{
+			id = "Grenadier",
+			name = "GRENADIER",
+			hp = 90,
+			speed = 9,
+			dmg = 10,
+			range = 40,
+			cooldown = 3.5,
+			scale = 1.0,
+			color = "6B7A3A",
+			cash = 22,
+			attack = "grenadier",
+			backpack = true,
+		},
+		{
+			id = "Heavy",
+			name = "HEAVY",
+			hp = 450,
+			speed = 6,
+			dmg = 20,
+			range = 5,
+			cooldown = 1.6,
+			scale = 1.4,
+			color = "1A1A1E",
+			cash = 60,
+			attack = "heavy",
+			wide = true,
+			noElite = true,
+		},
+	},
+	-- Scaling: FinalHp = BaseHp x (1 + HpWaveMult)^(wave - 1) x (1 + HpPerPlayerMult x (players - 1)) x DiffHpMult;
+	-- FinalDamage = BaseDamage x (1 + DamageWaveMult)^(wave - 1) x DiffDamageMult. Player count never changes spawn counts.
+	HpWaveMult = 0.12,
+	DamageWaveMult = 0.06,
+	HpPerPlayerMult = 0.5,
+	RetargetInterval = 1.0, -- how often an enemy re-picks its target
 	EnemyCollidesWithPlayers = false, -- false: enemies walk through players and each other, never body-block
 	EnemyStuckDetourSec = 1, -- no progress for this long -> sidestep + jump around the obstacle
 	EnemyStuckTeleportSec = 8, -- still stuck after this long -> re-spawn at a random spawn point
 	SpawnRingRadius = 90, -- studs from room center
 	SpawnPointCount = 8,
-	-- Hit feedback: every bullet shoves the enemy along its line and stops its feet for a beat (capped per enemy
-	-- so a fast gun cannot stun-lock), then a player kill knocks the body over (server physics) instead of shrinking it.
-	EnemyHitKnockback = 6, -- studs/s added along the shot on a hit (0 = none)
-	EnemyHitFlinchSec = 0.1, -- feet stop for this long per flinch
-	EnemyFlinchCooldownSec = 0.35, -- at most one flinch per enemy this often
+	-- Proximity-weighted spawning (GDD): each marker's chance scales by its distance to the nearest living player.
+	NearRange = 60, -- within this: x NearWeightMult
+	FarRange = 150, -- up to this: x1; beyond: x FarWeightMult
+	NearWeightMult = 3.0,
+	FarWeightMult = 0.25,
+	-- Shooter / Marksman / Boomer / Grenadier / Heavy tuning.
+	ShooterHitChance = 0.55, -- a miss cracks a tracer past the player
+	MarksmanAimSec = 1.5, -- the red laser paints the line this long, then the shot goes down the line
+	MarksmanHitRadius = 2.2, -- studs from the laser line that still counts as "in the beam"
+	BoomerPlaceableSearch = 40, -- a placeable this close is preferred over players
+	BoomerFuseSec = 1.2, -- beeps rising and swelling once in range, then the blast
+	BoomerDamage = 12, -- to players in the blast
+	BoomerPlaceableMult = 4, -- x BoomerDamage to structures
+	BoomerRadius = 8,
+	BoomerDeathRadiusMult = 0.6, -- a Boomer killed by damage still goes off, smaller
+	GrenadierRadius = 7, -- the red circle grows from 0 to this over GrenadierTelegraphSec, then bursts
+	GrenadierTelegraphSec = 1.2,
+	GrenadierFireSec = 3, -- the fire patch the shell leaves (the molotov field look)
+	GrenadierFireDps = 6, -- to players standing in the patch
+	HeavyPlaceableMult = 3, -- x damage when a Heavy stomps a placeable in its path
+	HeavyKnockback = 12, -- studs a Heavy's melee hit throws the player back
+	HeavyPlateHpPcts = { 0.66, 0.33 }, -- the two armor plates fly off at these HP shares
+	-- Compressed test brackets: a row applies from WaveMin until the next row; weights are relative chances rolled
+	-- per enemy at spawn time. At HeatShiftStars or more stars the active row shifts HeatBracketShift rows down.
+	Composition = {
+		{ WaveMin = 1, Henchman = 100, Runner = 0, Shooter = 0, Marksman = 0, Boomer = 0, Grenadier = 0, Heavy = 0 },
+		{ WaveMin = 2, Henchman = 75, Runner = 25, Shooter = 0, Marksman = 0, Boomer = 0, Grenadier = 0, Heavy = 0 },
+		{ WaveMin = 3, Henchman = 60, Runner = 22, Shooter = 0, Marksman = 0, Boomer = 0, Grenadier = 18, Heavy = 0 },
+		{ WaveMin = 4, Henchman = 50, Runner = 20, Shooter = 10, Marksman = 0, Boomer = 5, Grenadier = 15, Heavy = 0 },
+		{ WaveMin = 5, Henchman = 44, Runner = 18, Shooter = 10, Marksman = 0, Boomer = 6, Grenadier = 14, Heavy = 8 },
+		{ WaveMin = 6, Henchman = 40, Runner = 16, Shooter = 10, Marksman = 6, Boomer = 6, Grenadier = 14, Heavy = 8 },
+		{ WaveMin = 8, Henchman = 34, Runner = 16, Shooter = 12, Marksman = 8, Boomer = 8, Grenadier = 14, Heavy = 8 },
+		{
+			WaveMin = 12,
+			Henchman = 30,
+			Runner = 15,
+			Shooter = 14,
+			Marksman = 10,
+			Boomer = 8,
+			Grenadier = 13,
+			Heavy = 10,
+		},
+	},
+	------------------------------------------------------------------ Elites
+	EliteHpMult = 2.5,
+	EliteCashMult = 3,
+	EliteScale = 1.15,
+	-- Hit reaction: a flinch pop only (never movement or timing), re-triggered at most once per FlinchAnimRate.
+	-- EnemyHitKnockback is the Round 13 shove along the shot; 0 keeps hits from moving enemies (the brief's rule).
+	FlinchAnimRate = 0.5,
+	EnemyHitKnockback = 0, -- studs/s added along the shot on a hit (0 = none)
 	RagdollEnabled = true, -- false: every kill shrinks out as before
-	RagdollMaxActive = 12, -- bodies on the floor at once; past this a kill shrinks out (performance cap)
-	RagdollSec = 2.5, -- a body lies this long, then fades over RagdollFadeSec and is removed
+	ActiveRagdolls = 8, -- bodies on the floor at once; past this a kill shrinks out (performance cap)
+	RagdollLifetime = 2.0, -- a body lies this long, then fades over RagdollFadeSec and is removed
 	RagdollFadeSec = 0.5,
 	RagdollImpulse = 40, -- studs/s along the killing shot
 	RagdollLift = 14, -- studs/s upward, so the body hops before it drops
@@ -59,7 +205,7 @@ local Config = {
 
 	------------------------------------------------------------------ Combat
 	StartingCash = 3000, -- Match Cash at run start (brief says 0; raised for testing)
-	CashPerKill = 40,
+	-- Kill cash is the archetype's `cash` row (Enemies) x greed x the elite and heat multipliers.
 	HoldToFire = true, -- true: every weapon fires while LMB is held; false: Weapons.auto decides
 	HeadshotMult = 1.5,
 	CritDmgMult = 2, -- damage multiplier when a crit lands (Crit Chance upgrade)
@@ -282,6 +428,17 @@ local Config = {
 	HeatSideJobDone = 1, -- per Side Job completed
 	HeatSideJobFail = -0.5,
 	HeatDowned = -0.5, -- per time health hits 0
+	-- Effects at S stars, continuous: cash x (1 + HeatCashPerStar x S), elite chance HeatElitePerStar x max(0, S - 1),
+	-- spawn interval x (1 - HeatSpawnPerStar x S), and at HeatShiftStars+ the composition bracket shifts HeatBracketShift rows.
+	HeatCashPerStar = 0.15,
+	HeatElitePerStar = 0.05,
+	HeatSpawnPerStar = 0.08,
+	HeatBracketShift = 1,
+	HeatShiftStars = 4,
+
+	------------------------------------------------------------------ Boss (TITAN, Boss.lua; step 5 of brief 4)
+	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)
+	BossWaveBudgetPct = 0.4, -- boss waves spawn this share of the normal budget alongside the boss
 
 	------------------------------------------------------------------ HUD
 	DebugEnabled = true,

@@ -147,6 +147,57 @@ local function soundAt(parent: Instance, id: string, pitch: number, volume: numb
 	end)
 end
 
+-- A 3D sound at a world point (an enemy's gun, a shell landing): a throwaway attachment carries it.
+local function soundAtPoint(position: Vector3, id: string, pitch: number, volume: number, range: number)
+	local att = Instance.new("Attachment")
+	att.WorldPosition = position
+	att.Parent = Workspace.Terrain
+	soundAt(att, id, pitch, volume, range)
+	task.delay(5, function()
+		att:Destroy()
+	end)
+end
+
+-- Enemy tracers: orange-red so they never read as a teammate's shot; a Marksman round is wider.
+local ENEMY_TRACER = Color3.fromHex("FF8A5A")
+local function enemyTracer(from: Vector3, to: Vector3, heavy: boolean)
+	local a0 = Instance.new("Attachment")
+	a0.WorldPosition = from
+	a0.Parent = Workspace.Terrain
+	local a1 = Instance.new("Attachment")
+	a1.WorldPosition = to
+	a1.Parent = Workspace.Terrain
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = a0
+	beam.Attachment1 = a1
+	beam.Width0 = if heavy then 0.3 else 0.14
+	beam.Width1 = if heavy then 0.2 else 0.06
+	beam.FaceCamera = true
+	beam.LightEmission = 1
+	beam.Color = ColorSequence.new(if heavy then Theme.Colors.red else ENEMY_TRACER)
+	beam.Transparency = NumberSequence.new(0.05)
+	beam.Parent = a0
+	task.delay(if heavy then 0.12 else 0.06, function()
+		a0:Destroy()
+		a1:Destroy()
+	end)
+end
+
+-- Muzzle flash on an enemy gun: a short glow plus a few chips at the muzzle.
+local function muzzleFlash(position: Vector3)
+	local att = Instance.new("Attachment")
+	att.WorldPosition = position
+	att.Parent = Workspace.Terrain
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 200, 120)
+	light.Brightness = 4
+	light.Range = 10
+	light.Parent = att
+	task.delay(0.06, function()
+		att:Destroy()
+	end)
+end
+
 -- Short burst of glowing chips off a hit point (bullet impact / kill).
 local function sparks(position: Vector3, color: Color3, count: number, speed: number)
 	if count <= 0 then
@@ -235,16 +286,69 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = gui,
 	})
 
-	-- Enemy spawn puff: a dark ring where each enemy appears.
+	-- Enemy spawn puff: a dark ring where each enemy appears. Every enemy also gets its flinch watcher
+	-- (the server stamps FlinchAt on a hit; a white pop reads as the hit reaction on every client) and the
+	-- Runner its shrill approach wail.
 	local enemies = Workspace:FindFirstChild("Enemies")
-	if enemies then
-		track(enemies.ChildAdded:Connect(function(model)
-			task.defer(function()
-				local root = model:FindFirstChild("HumanoidRootPart")
-				if root and root:IsA("BasePart") then
-					blastRing(root.Position, 5, Color3.fromRGB(120, 40, 40))
+	local function watchEnemy(model: Instance, fresh: boolean)
+		if not model:IsA("Model") then
+			return
+		end
+		local root = model:FindFirstChild("HumanoidRootPart")
+		if fresh and root and root:IsA("BasePart") then
+			blastRing(root.Position, 5, Color3.fromRGB(120, 40, 40))
+		end
+		local conn: RBXScriptConnection
+		conn = model:GetAttributeChangedSignal("FlinchAt"):Connect(function()
+			if not model.Parent then
+				conn:Disconnect()
+				return
+			end
+			local pop = Instance.new("Highlight")
+			pop.Name = "FlinchPop"
+			pop.FillColor = Theme.Colors.white
+			pop.FillTransparency = 0.35
+			pop.OutlineTransparency = 1
+			pop.DepthMode = Enum.HighlightDepthMode.Occluded
+			pop.Parent = model
+			task.delay(0.09, function()
+				pop:Destroy()
+			end)
+		end)
+		track(conn)
+		if
+			model:GetAttribute("Archetype") == "Runner"
+			and root
+			and root:IsA("BasePart")
+			and not root:FindFirstChild("RunnerWail")
+		then
+			local wail = Instance.new("Sound")
+			wail.Name = "RunnerWail"
+			wail.SoundId = Theme.Sounds.runner
+			wail.PlaybackSpeed = 1.7
+			wail.Volume = 0.25
+			wail.Looped = true
+			wail.RollOffMode = Enum.RollOffMode.InverseTapered
+			wail.RollOffMinDistance = 10
+			wail.RollOffMaxDistance = 70
+			wail.Parent = root
+			wail:Play()
+			-- The wail stops with the body: a kill removes the Humanoid.
+			model.ChildRemoved:Connect(function(child)
+				if child:IsA("Humanoid") and wail.Parent then
+					wail:Destroy()
 				end
 			end)
+		end
+	end
+	if enemies then
+		for _, model in enemies:GetChildren() do
+			if model:FindFirstChildOfClass("Humanoid") then
+				watchEnemy(model, false)
+			end
+		end
+		track(enemies.ChildAdded:Connect(function(model)
+			task.defer(watchEnemy, model, true)
 		end))
 	end
 
@@ -437,6 +541,50 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			vignette.BackgroundTransparency = 0.55
 			UI.tween(vignette, { BackgroundTransparency = 1 }, 0.45)
 			UI.sound(Theme.Sounds.hurt, 1, 0.25)
+		elseif name == "EnemyShot" then
+			-- A Shooter or Marksman fired: tracer from its muzzle, flash and crack at the gun; a miss aimed at you
+			-- whips past your ear.
+			if typeof(data.from) == "Vector3" and typeof(data.to) == "Vector3" then
+				enemyTracer(data.from, data.to, data.heavy == true)
+				muzzleFlash(data.from)
+				sparks(data.from, Color3.fromRGB(255, 210, 140), 4, 10)
+				soundAtPoint(data.from, Theme.Sounds.shot, if data.heavy then 0.55 else 0.8, 0.35, 140)
+				if data.userId == Players.LocalPlayer.UserId and not data.hit then
+					UI.sound(Theme.Sounds.swap, 1.8, 0.35)
+				end
+			end
+		elseif name == "EnemyLaser" and typeof(data.position) == "Vector3" then
+			soundAtPoint(data.position, Theme.Sounds.laser, 0.45, 0.45, 120)
+		elseif name == "BoomerFuse" and typeof(data.model) == "Instance" then
+			-- Rising beeps at the Boomer for the length of the fuse.
+			local root = data.model:FindFirstChild("HumanoidRootPart")
+			local sec = tonumber(data.sec) or 1.2
+			local beeps = 6
+			task.spawn(function()
+				for i = 1, beeps do
+					if not root or not root.Parent then
+						return
+					end
+					soundAt(root, Theme.Sounds.beep, 0.9 + i * 0.25, 0.45, 90)
+					task.wait(sec / beeps)
+				end
+			end)
+		elseif name == "EnemyLob" and typeof(data.from) == "Vector3" then
+			soundAtPoint(data.from, Theme.Sounds.lob, 1.3, 0.35, 110)
+		elseif name == "PlateOff" and typeof(data.position) == "Vector3" then
+			sparks(data.position, Color3.fromRGB(200, 205, 215), 14, 22)
+			soundAtPoint(data.position, Theme.Sounds.crunch, 0.6, 0.6, 120)
+		elseif name == "Knockback" and typeof(data.dir) == "Vector3" then
+			-- A Heavy's hit: this client owns its character's physics, so the throw is applied here.
+			local char = Players.LocalPlayer.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if root and root:IsA("BasePart") then
+				local studs = tonumber(data.studs) or 10
+				local flat = Vector3.new(data.dir.X, 0, data.dir.Z)
+				local dir = if flat.Magnitude > 0.05 then flat.Unit else Vector3.zAxis
+				root.AssemblyLinearVelocity = dir * studs * 2.4 + Vector3.new(0, 12, 0)
+				ClientState.Juice:Fire("Shake", { amp = 0.5, dur = 0.3 })
+			end
 		elseif name == "Ricochet" then
 			trail(data.from, data.to, Theme.Colors.gold, 0.12)
 			UI.sound(Theme.Sounds.reelTick, 1.8, 0.45)

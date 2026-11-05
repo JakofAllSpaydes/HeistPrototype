@@ -68,7 +68,7 @@ local function dealDamage(
 	allowSplash: boolean
 )
 	dmg = math.max(1, math.round(dmg))
-	local killed = Enemy.damage(model, dmg, shooter.player, {
+	local killed, killCash = Enemy.damage(model, dmg, shooter.player, {
 		dir = info.dir,
 		headshot = info.headshot == true,
 		-- A direct hit throws with the gun's force; a splash victim is thrown out of the blast instead.
@@ -80,7 +80,8 @@ local function dealDamage(
 	})
 	local cash = 0
 	if killed then
-		cash = math.round(Config.CashPerKill * shooter.stats.greed)
+		-- The archetype's cash (x elite, x heat) x greed.
+		cash = math.round(killCash * shooter.stats.greed)
 		Economy.addCash(shooter.state, cash)
 	end
 	heal(shooter, dmg * shooter.stats.lifesteal / 100)

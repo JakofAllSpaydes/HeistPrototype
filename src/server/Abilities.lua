@@ -143,7 +143,7 @@ local function hitEnemy(
 	hit: Enemy.Hit?
 ): boolean
 	dmg = math.max(1, math.round(dmg))
-	local killed = Enemy.damage(
+	local killed, killCash = Enemy.damage(
 		model,
 		dmg,
 		if owner.Parent then owner else nil,
@@ -155,7 +155,7 @@ local function hitEnemy(
 	local state = PlayerState.get(owner)
 	local cash = 0
 	if killed then
-		cash = math.round(Config.CashPerKill * PlayerState.computed(state).greed)
+		cash = math.round(killCash * PlayerState.computed(state).greed)
 		Economy.addCash(state, cash)
 	end
 	Remotes.Juice:FireClient(owner, "Hit", {
