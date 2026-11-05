@@ -58,6 +58,7 @@ local function shellReload(token: number)
 				return
 			end
 			mag = math.min(h.magSize, mag + 1)
+			Remotes.AmmoReport:FireServer(mag)
 			UI.sound(Theme.Sounds.take, 1.1 + (mag / h.magSize) * 0.4, 0.35)
 			if mag >= h.magSize then
 				reloading = false
@@ -92,6 +93,7 @@ local function reload()
 		if token == reloadToken and held then
 			mag = held.magSize
 			reloading = false
+			Remotes.AmmoReport:FireServer(mag)
 			publishAmmo()
 		end
 	end)
@@ -109,19 +111,14 @@ local function cancelReload(): boolean
 	return true
 end
 
--- Mags remembered per gun uid, so a stowed gun (downed sidearm) comes back with the ammo it had.
-local savedMags: { [number]: number } = {}
-
+-- The mag lives with the gun on the server (every shot and reload reports it), so a new uid arrives with
+-- the rounds that gun had when it was last put down: full for a fresh gun, whatever was left for a floor
+-- pickup or the stowed gun coming back after a revive.
 ClientState.Changed:Connect(function(sync: Types.Sync)
 	local h = sync.held
 	if not held or h.uid ~= held.uid then
-		if held then
-			savedMags[held.uid] = mag
-		end
 		held = h
-		local saved = savedMags[h.uid]
-		mag = if saved then math.min(saved, h.magSize) else h.magSize
-		savedMags[h.uid] = nil
+		mag = if h.mag ~= nil then math.clamp(h.mag, 0, h.magSize) else h.magSize
 		reloading = false
 		reloadToken += 1
 	else
@@ -198,7 +195,7 @@ local function fire()
 	local dir = (target - headPos).Unit
 	local spread = h.spread * (if ClientState.ads then Config.AdsSpreadMult else 1)
 	local sendDir = if h.pellets > 1 then dir else coneSpread(dir, spread)
-	Remotes.FireShot:FireServer(headPos, sendDir, Workspace:GetServerTimeNow())
+	Remotes.FireShot:FireServer(headPos, sendDir, Workspace:GetServerTimeNow(), mag)
 
 	local heldGun = char:FindFirstChild("HeldGun")
 	local muzzleAtt = heldGun and heldGun:FindFirstChild("Muzzle") :: Attachment?
@@ -212,13 +209,7 @@ local function fire()
 		tracer(muzzle, endPoint, color)
 	end
 
-	local pitch = if h.archetype == "Sniper"
-		then 0.6
-		elseif h.archetype == "Shotgun" then 0.7
-		elseif h.archetype == "SMG" then 1.3
-		elseif h.archetype == "LMG" then 0.85
-		else 1
-	UI.sound(Theme.Sounds.shot, pitch, 0.35)
+	UI.sound(Theme.Sounds.shot, Config.ShotPitchByArchetype[h.archetype] or 1, 0.35)
 	ClientState.Juice:Fire("LocalFire", { weaponId = h.weaponId })
 
 	if mag <= 0 then

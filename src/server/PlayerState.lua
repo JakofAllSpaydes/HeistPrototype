@@ -390,12 +390,14 @@ local function stripAccessories(char: Model)
 	end
 end
 
-function PlayerState.setHeld(state: State, weaponId: string, rarity: number, level: number?)
+-- mag: rounds the gun still has (a floor pickup); nil = a fresh gun with a full mag.
+function PlayerState.setHeld(state: State, weaponId: string, rarity: number, level: number?, mag: number?)
 	state.held = {
 		weaponId = weaponId,
 		rarity = rarity,
 		level = level or PlayerState.weaponLevel(state, weaponId),
 		uid = state.nextUid,
+		mag = mag,
 	}
 	state.nextUid += 1
 	PlayerState.refreshHeldVisual(state)
@@ -550,6 +552,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 			displayRate = Weapons.effectiveRate(w, if w.fireRate > 0 then st.fireRate / w.fireRate else 1),
 			builtInPierce = Weapons.builtInPierce(w, state.held.rarity),
 			uid = state.held.uid,
+			mag = state.held.mag,
 			sidearm = state.stowed ~= nil,
 			wrapColor = if wrap then wrap.color else nil,
 			levelRateMult = levelRate,
@@ -586,13 +589,17 @@ end
 
 -- Collision groups: enemies never body-block players (or each other) unless Config says so.
 function PlayerState.setupCollisionGroups()
-	for _, name in { "Player", "Enemy" } do
+	for _, name in { "Player", "Enemy", "Corpse" } do
 		pcall(function()
 			PhysicsService:RegisterCollisionGroup(name)
 		end)
 	end
 	PhysicsService:CollisionGroupSetCollidable("Enemy", "Player", Config.EnemyCollidesWithPlayers)
 	PhysicsService:CollisionGroupSetCollidable("Enemy", "Enemy", Config.EnemyCollidesWithPlayers)
+	-- Ragdolled bodies rest on the floor and walls only: never under a player's feet or in an enemy's way.
+	PhysicsService:CollisionGroupSetCollidable("Corpse", "Player", false)
+	PhysicsService:CollisionGroupSetCollidable("Corpse", "Enemy", false)
+	PhysicsService:CollisionGroupSetCollidable("Corpse", "Corpse", false)
 end
 
 local function onCharacter(player: Player, char: Model)

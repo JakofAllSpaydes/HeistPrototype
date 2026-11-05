@@ -14,7 +14,9 @@ export type Card = {
 export type TrackerItem = { count: number, pct: number, highestTier: number, everMalus: boolean }
 export type Tracker = { order: { string }, items: { [string]: TrackerItem }, total: number }
 
-export type Held = { weaponId: string, rarity: number, level: number, uid: number }
+-- mag: rounds left in this gun's mag as the owning client last reported it (nil = full). It follows the gun:
+-- stowed for the sidearm, written on the floor part when dropped, read back on pickup.
+export type Held = { weaponId: string, rarity: number, level: number, uid: number, mag: number? }
 
 export type HeldView = {
 	weaponId: string,
@@ -36,6 +38,7 @@ export type HeldView = {
 	displayRate: number, -- shots per second as delivered (bursts count the pause): what RATE shows
 	builtInPierce: number, -- the gun's own pierce at this rarity (snipers)
 	uid: number,
+	mag: number?, -- rounds in this gun's mag when it was last put down (nil = full); read once per uid
 	level: number, -- Armory level
 	sidearm: boolean, -- the downed pistol; the real gun is stowed
 	wrapColor: string?, -- hex of the equipped wrap on this gun

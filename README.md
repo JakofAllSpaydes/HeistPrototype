@@ -10,8 +10,10 @@ and a party-scoped run, a real Gold payout, the customization scene (Weapons / C
 State as of **4 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
 and phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes: Adrenaline, Dead Eye pierce,
-rarity-colored collections, scroll memory). Everything on `main` builds clean and is what Studio sees through Rojo. The
-"Brief 3 verify list" and the "Round 12 verify list" are the walk-throughs for a fresh Studio session.
+rarity-colored collections, scroll memory), then the Round 13 multiplayer pass (revive pauses the bleed, teammates'
+tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun, ragdolls and hit sparks). Everything
+on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify list" and
+the "Round 13 verify list" are the walk-throughs for a fresh Studio session.
 
 ## Run it
 
@@ -43,12 +45,12 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
 | Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
 | PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
-| F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
+| F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
 | Esc / X | Cancel an open minigame (counts as `cancel` in the log). |
 | ◀ ▶ / A D | Spectating (bled out): cycle living teammates. REVIVE EVERYBODY button bottom-center. |
 | F (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Minigame jobs: F opens the game at the beacon. Kind is rolled per job from `SideJobKindWeights` (eight kinds, equal odds by default). |
 | Esc / X / 2 | Close the upgrade overlay. |
-| V | Vote to skip the intermission (or click the VOTES pill). `SkipVoteFraction` / `SkipMinIntermissionSec` in Config. |
+| V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
 | Ctrl | In a run: toggle the cursor lock so you can click HUD tiles. While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
 | Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, minigame stats, +1,000 Gold, unlock all, reset profile. Mobile: the `DBG` chip top-left. |
@@ -64,8 +66,36 @@ Every minigame is tap or drag only (no double-tap, long-press or keyboard); the 
 steps) go up on wave clear and side-job success, down on side-job fail and on being downed. Enemies never collide
 with players or each other; stuck enemies detour, then teleport back to the spawn ring. Center banners mark WAVE N,
 WAVE N CLEAR and the 3-2-1 countdown; "N LEFT" sits under the heat stars. The intermission can be skipped by vote
-(V / VOTES pill, `SkipVoteFraction`), and AUTO SKIP rolls waves into each other `AutoSkipWaveSec` after each one has
-fully spawned. Kill chains show a combo counter from x2 with words at tier counts (`ComboTiers`).
+(V / VOTES pill; every player in the party must vote, `SkipVoteFraction` = 1), and AUTO SKIP rolls waves into each
+other `AutoSkipWaveSec` after each one has fully spawned once everyone has it on. Kill chains show a combo counter
+from x2 with words at tier counts (`ComboTiers`).
+
+**Hit and kill feedback.** Every bullet that lands on an enemy shoves it along the shot and stops its feet for a beat
+(`EnemyHitKnockback`, `EnemyHitFlinchSec`, at most once per `EnemyFlinchCooldownSec` so a fast gun cannot pin it), with
+a small spark burst at the impact (`HitSparks`) next to the damage number and hit flash. A player kill knocks the body
+over instead of shrinking it: the Humanoid goes, the parts become a loose body in the `Corpse` collision group (rests on
+the room only, never under a player's feet, bullets pass through it), thrown along the killing shot with a hop and a
+tumble (`RagdollImpulse` / `RagdollLift` / `RagdollSpin`); a headshot kill pops the head off (`RagdollHeadPop`). How
+far it flies depends on what killed it: the gun sets the base (`RagdollForceByArchetype`: shotgun 2.8x, sniper 2.4x,
+LMG 1.5x, rifle 1.3x, pistol 1x, SMG 0.8x), damage past the remaining HP adds up to `RagdollOverkillMax` more (a
+point-blank shotgun dump or a sniper headshot on a fresh enemy launches it, a pistol finishing a sliver flops it), and
+`RagdollVariance` jitters every throw. Explosions (claymore, a Splash upgrade kill) throw bodies outward from the blast
+center with their own numbers (`RagdollBlastImpulse` / `RagdollBlastLift` / `RagdollBlastSpin`, falling to
+`RagdollBlastEdge` at the radius). Fire fields, the flame turret and turret rounds only slump the body
+(`RagdollTickForce`) and never flinch it. Bodies
+lie `RagdollSec`, fade over `RagdollFadeSec` and go; at most `RagdollMaxActive` (12) are on the floor at once, past that
+a kill shrinks out as before (`RagdollEnabled = false` turns the whole thing off). Kills by the run clear, a fall or
+the cap shrink out. A bigger red burst (`KillSparks`) marks the kill for the shooter.
+
+**Teammates' shots.** The server hands every other player in the run the end points of each bullet (`RemoteShot`):
+their client draws the same tracer from that gun's muzzle and plays the shot sound at the gun, 3D and quieter with
+distance (`RemoteShotVolume`, `RemoteShotRange`, pitch per archetype from `ShotPitchByArchetype`, which the local shot
+uses too). No damage numbers or hitmarkers for anyone but the shooter. `RemoteTracers = false` turns it off.
+
+**Busy tags.** A small blue pill over a teammate's head says what they are doing: LOCKPICK / KEYPAD / … while a
+minigame is open for them (yard props or a minigame job), HACKING while they hold the hack prompt, CAPTURING while
+they stand in the capture circle (`PlayerBusy` events from Minigames and CrewCall; `PlayerTags.lua`, `BusyTagOffset`).
+Never shown over yourself.
 
 **Weapons.** 15 guns across six archetypes (pistol, SMG, rifle, shotgun, sniper, LMG) with five rarities. The SCAR-H is a
 3-round burst (`burst` / `burstDelay`; RATE and DPS show the delivered rate) and snipers carry built-in pierce by rarity
@@ -265,7 +295,8 @@ code), Arm charges (tap: caps), Safe dial (drag: numbers), Frequency jam (drag: 
 abilities / buys / swaps, enemies drop you from targeting, the health bar becomes a red bleed bar from
 `BleedOutSec` (15s) with GIVE UP (bleed out now) and SELF-REVIVE (free, counter) above it, a red-cross marker with name
 and seconds over you for teammates. A standing teammate within `ReviveRadius` holds F for `ReviveHoldSec` (ring on their crosshair and on your
-bleed bar, releasing resets) → you stand at `ReviveHPPct` with `ReviveInvulnSec` of invulnerability and a
+bleed bar, releasing resets; the bleed timer stands still for the length of the hold, `RevivePausesBleed`, and the
+marker's seconds turn green while someone is on you) → you stand at `ReviveHPPct` with `ReviveInvulnSec` of invulnerability and a
 `REVIVED BY` toast for both. Bleed-out removes the character and opens spectate (camera orbits living teammates, name
 and HP top-center, REVIVE EVERYBODY free with a counter: everyone downed or bled out stands up where they fell,
 `<NAME> REVIVED THE CREW` center toast). **Run over** when nobody is standing and nobody is still bleeding, so a solo
@@ -274,8 +305,14 @@ desaturates under a `RUN OVER · WAVE N` stamp for `RunOverSlowSec + RunOverHold
 EVERYBODY still saves the run: the crew stands up, enemies clear and the same wave restarts (SECOND CHANCE); after it
 the press is ignored and the run end plays. Characters are loaded by hand (`Players.CharacterAutoLoads = false`).
 
-**Downed sidearm (brief 3).** A downed player keeps shooting: the held gun is stowed server-side (id, rarity, level;
-the client remembers its mag per gun uid) and a Common `DownedPistolId` (M1911) at its own Armory level with a full
+**Mags live with the gun (Round 13).** The server never simulates ammo, but it keeps the count with the gun: every
+shot carries the rounds left (`FireShot`'s fourth argument) and every reload reports it (`AmmoReport`), stored on the
+held record (`Held.mag`). A swap writes it on the floor gun (`Mag` attribute) and reads the new gun's; a stow keeps it
+on the stowed record. The client loads a mag only when the gun uid changes: a fresh roll or crate gun is full, a floor
+pickup or the gun you get back after a revive has what it had, whoever used it last.
+
+**Downed sidearm (brief 3).** A downed player keeps shooting: the held gun is stowed server-side (id, rarity, level,
+mag) and a Common `DownedPistolId` (M1911) at its own Armory level with a full
 mag takes its place; spread × `DownedSpreadMult` (1.5), damage and in-run upgrades apply as normal. The held slot
 shows the pistol with a red `SIDEARM` tag, the crosshair and ammo stay, ADS is off, reload works, the crawl animation
 is unchanged. Any revive hands the stowed gun back exactly as it was (same uid, same mag); bleed-out drops it where
@@ -377,8 +414,8 @@ Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), H
 (with `HUD.setMode` for hub / meta / downed / spectate / cinematic and `HubHUD` for the hub layout), QueueUI (Create
 Match card, compact party card), MetaScene with `src/client/Meta/` (MetaUI, WeaponsTab, ClassesTab, AvatarTab),
 UpgradeOverlay, WeaponReel, GroundLoot, CrewCallUI, Markers (beacon billboards), Minigames (Frame + one module per
-game), DownedUI (bleed bar hooks, revive hold, downed markers), Spectate, RunStartUI, RunEndUI (sequence cameras,
-poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
+game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Spectate,
+RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
 
 ## Changelog (playtest rounds)
 
@@ -512,6 +549,41 @@ poses, MVP stamp, summary), DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   (`Emotes.Rarity`): rarity-colored tiles and well, the slot color on the icon, a RARITY row in the detail. Buying
   or equipping an emote re-renders the tab at once (the handlers never marked the state dirty, and the scene's
   profile stamp ignored emotes, so even the 2s resend did not redraw it).
+- **Round 13 (4 Nov, multiplayer feedback)** — a revive hold freezes the target's bleed timer (`Downed` pushes
+  `bleedEndsAt` forward each frame of the hold and sends it with `ReviveProgress`; the bleed bar and the marker follow,
+  the marker's seconds go green; `RevivePausesBleed`). Teammates' shots are visible and audible: `Combat` returns where
+  each bullet stopped and sends `RemoteShot` to everyone else in the run; `WorldFx` draws the tracer from that gun's
+  muzzle and plays the shot sound at the gun in 3D (`RemoteTracers`, `RemoteShotVolume`, `RemoteShotRange`; the
+  per-archetype pitch moved to `ShotPitchByArchetype`). Busy tags over teammates (`PlayerTags.lua`): LOCKPICK / … while
+  a minigame is open, HACKING on the hack hold, CAPTURING inside the circle (`PlayerBusy` from `Minigames` and
+  `CrewCall`, copy in `Lines.busyTag`). Skip votes need everyone (`SkipVoteFraction` 0.5 → 1; AUTO SKIP needs everyone
+  too). Mags follow the gun instead of the client's per-uid memory: shots and reloads report the count, the server keeps
+  it on the held record, writes it on a dropped floor gun and reads it back on pickup, so a swapped-away gun comes back
+  with what it had and a fresh gun is always full (the old client memory survived run resets, where uids restart, so a
+  new gun could inherit a stale count). Enemies ragdoll on a player kill (server physics, `Corpse` collision group, head
+  pop on headshot, capped at `RagdollMaxActive`, fade and remove after `RagdollSec`), flinch and get shoved on every hit
+  (`EnemyHitKnockback`, `EnemyHitFlinchSec`, `EnemyFlinchCooldownSec`), impact sparks on hits and a red burst on kills
+  (`HitSparks`, `KillSparks`). Built without a Studio playtest.
+
+  **Round 13 verify list.** Two clients (or one plus `Down me` from the debug panel on a second Studio player): down
+  one, hold F on them: the bleed seconds on their marker and bar stop and turn green, let go and they tick again from
+  where they were. From the second client, watch the first fire: a tracer leaves their gun on every shot and the shot
+  sound comes from where they stand, quieter far away; no numbers over their targets. Open a yard prop or a minigame
+  job on one client: the other sees `LOCKPICK` (etc.) over their head until the panel closes; hold the hack prompt:
+  `HACKING`; stand in a capture circle: `CAPTURING`. Intermission with two players: VOTES reads 0/2 and one vote does
+  not skip. Fire a shotgun down to 3, swap to a floor SMG: the SMG is full; swap back: the shotgun shows 3. Get downed
+  with a half mag, revive: the same count. Kill an enemy: it drops and tumbles along the shot, bodies never block you,
+  bullets pass through them, they fade after ~2.5s; a headshot kill sends the head flying; with 12 bodies down the
+  13th shrinks out. Every hit nudges the enemy and sparks; `Kill all` shrinks them out instead.
+- **Round 13b (4 Nov, feedback)** — ragdolls vary by what killed the enemy. `Enemy.Hit` carries `force`, `blast`,
+  `blastT` and `tick`; `Enemy.damage` works out the overkill (damage past the remaining HP over max HP) and
+  `throwStrength` turns the gun's `RagdollForceByArchetype` base, the overkill bonus (`RagdollOverkillMax`) and
+  `RagdollVariance` into impulse, lift and spin. Blasts (claymore, Splash kills) use `RagdollBlast*`, strongest at the
+  center and `RagdollBlastEdge` at the rim, thrown outward from the blast. Abilities' ticks (fields, flame turret,
+  turret rounds) pass `tick`: a `RagdollTickForce` slump and no flinch, so a fire field no longer holds an enemy's
+  feet every `EnemyFlinchCooldownSec`. Verify: a pistol kill tips the body; a shotgun blast up close flings it a good
+  way; a sniper headshot on a fresh enemy sends body and head flying; a claymore scatters the group outward, the
+  closest the furthest; an enemy that dies in a molotov field just slumps.
 
 ## Open design notes (not built)
 

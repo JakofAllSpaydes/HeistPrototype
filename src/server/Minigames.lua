@@ -48,10 +48,16 @@ local function record(s: Session, outcome: string, misses: number)
 	end
 end
 
+-- Teammates see what a player is busy with as a tag over their head (PlayerTags on the client).
+local function busy(player: Player, label: string, on: boolean)
+	World.fireRun("PlayerBusy", { userId = player.UserId, name = player.Name, label = label, on = on })
+end
+
 local function close(s: Session, outcome: string, misses: number)
 	sessions[s.token] = nil
 	if byPlayer[s.player] == s then
 		byPlayer[s.player] = nil
+		busy(s.player, string.upper(s.name), false)
 	end
 	record(s, outcome, misses)
 end
@@ -81,6 +87,7 @@ function Minigames.open(player: Player, name: string, opts: OpenOpts?)
 	}
 	sessions[s.token] = s
 	byPlayer[player] = s
+	busy(player, string.upper(name), true)
 	local prop = Room.props[name]
 	local position = if opts and opts.position then opts.position elseif prop then prop.panel.Position else nil
 	Remotes.MinigameStart:FireClient(player, {

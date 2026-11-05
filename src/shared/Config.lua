@@ -13,7 +13,7 @@ local Config = {
 	MaxActiveEnemies = 50, -- hard cap on alive enemies, backfilled as they die
 	IntermissionSec = 5, -- NEXT WAVE IN countdown
 	IntroSec = 5.0, -- run start sequence length (START RUN pressed -> WAVE 1); also the GET READY hold
-	SkipVoteFraction = 0.5, -- share of players that must vote (or have AUTO SKIP on) to end the intermission early
+	SkipVoteFraction = 1, -- share of players that must vote (or have AUTO SKIP on) to end the intermission early; 1 = everyone
 	SkipMinIntermissionSec = 1, -- the intermission always lasts at least this long, even with every vote in
 	AutoSkipWaveSec = 10, -- with AUTO SKIP on, the next wave starts this long into the current one (once it has all spawned)
 
@@ -31,6 +31,31 @@ local Config = {
 	EnemyStuckTeleportSec = 8, -- still stuck after this long -> re-spawn at a random spawn point
 	SpawnRingRadius = 90, -- studs from room center
 	SpawnPointCount = 8,
+	-- Hit feedback: every bullet shoves the enemy along its line and stops its feet for a beat (capped per enemy
+	-- so a fast gun cannot stun-lock), then a player kill knocks the body over (server physics) instead of shrinking it.
+	EnemyHitKnockback = 6, -- studs/s added along the shot on a hit (0 = none)
+	EnemyHitFlinchSec = 0.1, -- feet stop for this long per flinch
+	EnemyFlinchCooldownSec = 0.35, -- at most one flinch per enemy this often
+	RagdollEnabled = true, -- false: every kill shrinks out as before
+	RagdollMaxActive = 12, -- bodies on the floor at once; past this a kill shrinks out (performance cap)
+	RagdollSec = 2.5, -- a body lies this long, then fades over RagdollFadeSec and is removed
+	RagdollFadeSec = 0.5,
+	RagdollImpulse = 40, -- studs/s along the killing shot
+	RagdollLift = 14, -- studs/s upward, so the body hops before it drops
+	RagdollSpin = 10, -- tumble
+	RagdollHeadPop = true, -- a headshot kill knocks the head off the body
+	-- How hard a kill throws the body. The gun sets the base (a shotgun blast or sniper round launches, an SMG
+	-- round barely tips the body); damage past the enemy's remaining HP adds up to RagdollOverkillMax more, so a
+	-- point-blank dump on a fresh enemy flies while a pistol finishing a sliver of HP flops. Explosions use their
+	-- own outward throw from the blast center, strongest at the middle. Fire and turret ticks just tip the body.
+	RagdollForceByArchetype = { Pistol = 1, SMG = 0.8, Rifle = 1.3, Shotgun = 2.8, Sniper = 2.4, LMG = 1.5 }, -- x RagdollImpulse / RagdollLift / RagdollSpin
+	RagdollOverkillMax = 1.5, -- extra multiplier when the overkill damage reaches the enemy's max HP (scales up to it)
+	RagdollVariance = 0.25, -- +/- random share on every throw so no two look alike
+	RagdollBlastImpulse = 90, -- studs/s outward from an explosion (claymore, Splash upgrade kill), at the center
+	RagdollBlastLift = 40, -- upward at the center; both fall off to RagdollBlastEdge at the blast radius
+	RagdollBlastSpin = 25,
+	RagdollBlastEdge = 0.35,
+	RagdollTickForce = 0.4, -- fire fields, flame turret and turret shots: a slump, not a throw
 
 	------------------------------------------------------------------ Combat
 	StartingCash = 3000, -- Match Cash at run start (brief says 0; raised for testing)
@@ -46,6 +71,14 @@ local Config = {
 	RicochetDmgRatio = 0.75, -- ricochet damage as a share of the original hit
 	SplashRadius = 9, -- studs around a kill that Splash damages
 	MultishotSpread = 4, -- extra cone (degrees) on the multishot bullet
+	-- Other players' shots: the server sends every teammate the shot's end points, the client draws the same
+	-- tracer from that gun's muzzle and plays the shot sound at the gun (3D, falls off over RemoteShotRange).
+	RemoteTracers = true,
+	RemoteShotVolume = 0.3,
+	RemoteShotRange = 110, -- studs the teammate's shot sound carries
+	ShotPitchByArchetype = { Sniper = 0.6, Shotgun = 0.7, SMG = 1.3, LMG = 0.85 }, -- anything else plays at 1
+	HitSparks = 6, -- impact particles per bullet hit on an enemy (0 = none)
+	KillSparks = 18, -- extra burst on a kill
 	-- Damage falloff by archetype: full damage out to `start` studs, scaling down to `min` at `finish`,
 	-- flat `min` beyond. The room is 200 studs across; the spawn ring is 90 out.
 	FalloffByArchetype = {
@@ -367,6 +400,8 @@ local Config = {
 	ReviveHPPct = 50, -- HP after a teammate revive or REVIVE EVERYBODY, % of max
 	SelfReviveHPPct = 50,
 	ReviveInvulnSec = 1, -- no damage for this long after standing up
+	RevivePausesBleed = true, -- a teammate's revive hold freezes the bleed timer; letting go resumes it
+	BusyTagOffset = 3.2, -- studs above a teammate's head for the LOCKPICK / HACKING / CAPTURING tag
 	RunOverSlowSec = 1, -- slow-mo under the RUN OVER stamp
 	-- The red screen and stamp stay this much longer, then the run end cutscene starts. The whole window
 	-- (RunOverSlowSec + RunOverHoldSec) is when REVIVE EVERYBODY still saves the run: the crew stands up and the

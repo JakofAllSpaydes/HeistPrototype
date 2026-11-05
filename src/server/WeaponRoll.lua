@@ -29,6 +29,7 @@ export type SpawnOpts = {
 	slot: number?,
 	promptText: string?,
 	dropFrom: number?, -- fall in from this height and bounce on the floor
+	mag: number?, -- rounds left in the mag (a dropped gun); nil = full
 }
 
 local WeaponRoll = {}
@@ -117,6 +118,9 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	gun:SetAttribute("Dps", math.round(opts.dps or Stats.weaponDps(opts.weaponId, opts.rarity, {}, opts.level)))
 	gun:SetAttribute("Level", opts.level or 0)
 	gun:SetAttribute("RateMult", Weapons.levelRateMult(opts.level or 0))
+	if opts.mag ~= nil then
+		gun:SetAttribute("Mag", opts.mag)
+	end
 	if opts.crateId then
 		gun:SetAttribute("CrateId", opts.crateId)
 		gun:SetAttribute("Slot", opts.slot)
@@ -207,6 +211,7 @@ function WeaponRoll.dropGun(state: PlayerState.State, gun: Types.Held, cframe: C
 		cframe = cframe,
 		dmg = Stats.weaponDamage(gun.weaponId, gun.rarity, PlayerState.damagePct(state), gun.level),
 		dps = Stats.weaponDps(gun.weaponId, gun.rarity, state.upgrades, gun.level),
+		mag = gun.mag, -- the floor gun keeps whatever was in the mag
 	})
 end
 
@@ -229,12 +234,14 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	local newLevel = tonumber(gun:GetAttribute("Level")) or 0
 	local crateId = gun:GetAttribute("CrateId")
 	local slot = gun:GetAttribute("Slot")
+	local floorMag = gun:GetAttribute("Mag")
 	local oldId, oldRarity = state.held.weaponId, state.held.rarity
 	expireTokens[gun] = nil
 	gun:Destroy()
-	-- The old gun lands where the new one was, with a fresh timer.
+	-- The old gun lands where the new one was, with a fresh timer and the rounds it had left; the new one
+	-- comes up with whatever was in its mag (full for a fresh roll or crate gun).
 	WeaponRoll.dropHeld(state, cf)
-	PlayerState.setHeld(state, newId, newRarity, newLevel)
+	PlayerState.setHeld(state, newId, newRarity, newLevel, if typeof(floorMag) == "number" then floorMag else nil)
 	local handler = WeaponRoll.CrateGunTakenHandler
 	if handler and typeof(crateId) == "string" and typeof(slot) == "number" then
 		handler(player, crateId, slot)

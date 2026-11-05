@@ -295,6 +295,13 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		UI.punch(health, 1.2, 0.4)
 	end
 
+	-- The server moved the bleed end time (a revive hold pauses it).
+	function component.setBleedEndsAt(endsAt: number)
+		if bleeding then
+			bleedEndsAt = endsAt
+		end
+	end
+
 	-- Teammate's revive hold on this player: 0 hides the ring.
 	function component.setReviveRing(progress: number, reviver: string?)
 		if progress <= 0 then

@@ -1,6 +1,8 @@
 --!strict
--- World-space juice: damage numbers, kill pop, cash floats, enemy hit flash, red screen pulse on damage.
+-- World-space juice: damage numbers, kill pop, cash floats, enemy hit flash, impact sparks, red screen pulse
+-- on damage, and teammates' shots (tracer from their gun, shot sound at their gun).
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -93,6 +95,80 @@ local function trail(from: Vector3, to: Vector3, color: Color3, lifetime: number
 	task.delay(lifetime, function()
 		a0:Destroy()
 		a1:Destroy()
+	end)
+end
+
+-- Bullet line, the same look as the local one in Gun.client.lua.
+local TRACER_COLOR = Color3.fromHex("FFE2A0")
+local function tracer(from: Vector3, to: Vector3)
+	local a0 = Instance.new("Attachment")
+	a0.WorldPosition = from
+	a0.Parent = Workspace.Terrain
+	local a1 = Instance.new("Attachment")
+	a1.WorldPosition = to
+	a1.Parent = Workspace.Terrain
+	local beam = Instance.new("Beam")
+	beam.Attachment0 = a0
+	beam.Attachment1 = a1
+	beam.Width0 = 0.12
+	beam.Width1 = 0.05
+	beam.FaceCamera = true
+	beam.LightEmission = 1
+	beam.Color = ColorSequence.new(TRACER_COLOR)
+	beam.Transparency = NumberSequence.new(0.1)
+	beam.Parent = a0
+	task.delay(0.05, function()
+		a0:Destroy()
+		a1:Destroy()
+	end)
+end
+
+-- A sound that sits in the world (a teammate's gun): quieter with distance, panned.
+local function soundAt(parent: Instance, id: string, pitch: number, volume: number, range: number)
+	if id == "" then
+		return
+	end
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.PlaybackSpeed = pitch
+	s.Volume = volume
+	s.RollOffMode = Enum.RollOffMode.InverseTapered
+	s.RollOffMinDistance = 8
+	s.RollOffMaxDistance = range
+	s.Parent = parent
+	s:Play()
+	s.Ended:Once(function()
+		s:Destroy()
+	end)
+	task.delay(5, function()
+		if s.Parent then
+			s:Destroy()
+		end
+	end)
+end
+
+-- Short burst of glowing chips off a hit point (bullet impact / kill).
+local function sparks(position: Vector3, color: Color3, count: number, speed: number)
+	if count <= 0 then
+		return
+	end
+	local att = Instance.new("Attachment")
+	att.WorldPosition = position
+	att.Parent = Workspace.Terrain
+	local e = Instance.new("ParticleEmitter")
+	e.Rate = 0
+	e.Lifetime = NumberRange.new(0.15, 0.4)
+	e.Speed = NumberRange.new(speed * 0.4, speed)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+	e.Color = ColorSequence.new(color)
+	e.LightEmission = 1
+	e.Acceleration = Vector3.new(0, -40, 0)
+	e.Drag = 4
+	e.Parent = att
+	e:Emit(count)
+	task.delay(1, function()
+		att:Destroy()
 	end)
 end
 
@@ -248,7 +324,12 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	-- that reads through walls, so the last few are findable.
 	local highlighting = false
 	local function highlight(model: Instance)
-		if not model:IsA("Model") or model:FindFirstChild("StragglerGlow") then
+		-- A ragdolled body has no Humanoid any more: it is not a straggler.
+		if
+			not model:IsA("Model")
+			or model:FindFirstChild("StragglerGlow")
+			or not model:FindFirstChildOfClass("Humanoid")
+		then
 			return
 		end
 		local h = Instance.new("Highlight")
@@ -307,9 +388,15 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			if typeof(data.model) == "Instance" then
 				flashEnemy(data.model)
 			end
+			if typeof(data.position) == "Vector3" then
+				sparks(data.position, TRACER_COLOR, Config.HitSparks, 18)
+			end
 			UI.sound(Theme.Sounds.hit, if data.headshot then 1.4 else 1, 0.2)
 			if data.killed then
 				killPop(data.position)
+				if typeof(data.position) == "Vector3" then
+					sparks(data.position, Theme.Colors.red, Config.KillSparks, 28)
+				end
 				UI.sound(Theme.Sounds.kill, 1.2, 0.12)
 				onKill()
 				if data.cash and data.cash > 0 then
@@ -322,6 +409,29 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 						1.1
 					)
 				end
+			end
+		elseif name == "RemoteShot" then
+			-- A teammate fired: their tracer from their gun's muzzle to where each bullet stopped, and the shot
+			-- sound at their gun. No numbers, no hitmarker: that feedback is the shooter's.
+			local p = Players:GetPlayerByUserId(tonumber(data.userId) or 0)
+			local char = p and p.Character
+			local heldGun = char and char:FindFirstChild("HeldGun")
+			local muzzleAtt = heldGun and heldGun:FindFirstChild("Muzzle")
+			local from = if muzzleAtt and muzzleAtt:IsA("Attachment")
+				then muzzleAtt.WorldPosition
+				elseif typeof(data.from) == "Vector3" then data.from
+				else nil
+			if from and typeof(data.ends) == "table" then
+				for _, to in data.ends do
+					if typeof(to) == "Vector3" then
+						tracer(from, to)
+					end
+				end
+			end
+			local head = char and char:FindFirstChild("Head")
+			if head then
+				local pitch = Config.ShotPitchByArchetype[tostring(data.archetype)] or 1
+				soundAt(head, Theme.Sounds.shot, pitch, Config.RemoteShotVolume, Config.RemoteShotRange)
 			end
 		elseif name == "PlayerHit" then
 			vignette.BackgroundTransparency = 0.55

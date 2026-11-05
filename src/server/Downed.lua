@@ -20,7 +20,8 @@ local WeaponRoll = require(script.Parent.WeaponRoll)
 local Downed = {}
 
 -- Sidearm: the held gun is stowed and a Common DownedPistolId (at its own Armory level, full mag) takes
--- its place. Revive hands the stowed gun back exactly; bleed-out drops it on the floor.
+-- its place. Revive hands the stowed gun back exactly (same uid, the mag it had: the record carries the
+-- last count the client reported); bleed-out drops it on the floor with that mag.
 local function giveSidearm(state: PlayerState.State)
 	if not Config.DownedCanShoot or state.stowed then
 		return
@@ -37,7 +38,7 @@ local function restoreStowed(state: PlayerState.State)
 		return
 	end
 	state.stowed = nil
-	state.held = stowed -- same uid: the client restores the mag it remembered
+	state.held = stowed -- same uid and mag: the client loads what the record says
 	PlayerState.refreshHeldVisual(state)
 	state.dirty = true
 	Log.event("Downed", "%s has %s back", state.player.Name, stowed.weaponId)
@@ -85,6 +86,7 @@ local function sendProgress(target: Player, reviver: Player?, progress: number, 
 		reviverId = if reviver then reviver.UserId else nil,
 		reviver = if reviver then reviver.Name else nil,
 		progress = progress,
+		bleedEndsAt = PlayerState.get(target).bleedEndsAt, -- moves while a hold pauses the bleed
 	})
 end
 
@@ -320,6 +322,10 @@ function Downed.init()
 					ts.reviver = reviver
 					ts.reviveProgress = math.min(1, ts.reviveProgress + dt / math.max(Config.ReviveHoldSec, 0.1))
 					progressed[target] = reviver
+					if Config.RevivePausesBleed then
+						-- The bleed timer stands still for as long as the hold lasts.
+						ts.bleedEndsAt += dt
+					end
 				end
 			end
 		end

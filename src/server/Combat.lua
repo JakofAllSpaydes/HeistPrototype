@@ -68,7 +68,16 @@ local function dealDamage(
 	allowSplash: boolean
 )
 	dmg = math.max(1, math.round(dmg))
-	local killed = Enemy.damage(model, dmg, shooter.player)
+	local killed = Enemy.damage(model, dmg, shooter.player, {
+		dir = info.dir,
+		headshot = info.headshot == true,
+		-- A direct hit throws with the gun's force; a splash victim is thrown out of the blast instead.
+		force = if info.secondary
+			then Config.RagdollTickForce * 2
+			else Config.RagdollForceByArchetype[shooter.weapon.archetype] or 1,
+		blast = info.blast == true,
+		blastT = info.blastT,
+	})
 	local cash = 0
 	if killed then
 		cash = math.round(Config.CashPerKill * shooter.stats.greed)
@@ -91,7 +100,13 @@ local function dealDamage(
 		World.fireRun("Splash", { position = position, radius = Config.SplashRadius, hits = #victims })
 		for _, victim in victims do
 			local vp = Enemy.rootPosition(victim) or position
-			dealDamage(shooter, victim, splashDmg, vp, { secondary = true }, false)
+			local away = vp - position
+			dealDamage(shooter, victim, splashDmg, vp, {
+				secondary = true,
+				dir = if away.Magnitude > 0.1 then away.Unit else nil,
+				blast = true,
+				blastT = 1 - math.clamp(away.Magnitude / Config.SplashRadius, 0, 1),
+			}, false)
 		end
 	end
 end
@@ -108,26 +123,40 @@ local function bulletHit(
 	local st = shooter.stats
 	local headshot = part.Name == "Head"
 	local crit = math.random() * 100 < st.critChance
+	local travel = position - origin
 	local dmg = st.damage
 		* scale
-		* falloff(shooter, (position - origin).Magnitude)
+		* falloff(shooter, travel.Magnitude)
 		* (if headshot then st.headshotMult else 1)
 		* (if crit then Config.CritDmgMult else 1)
-	dealDamage(shooter, model, dmg, position, { headshot = headshot, crit = crit }, true)
+	local dir = if travel.Magnitude > 0.1 then travel.Unit else nil
+	dealDamage(shooter, model, dmg, position, { headshot = headshot, crit = crit, dir = dir }, true)
 
 	if st.ricochet > 0 and math.random() * 100 < st.ricochet then
 		local target = Enemy.nearest(position, Config.RicochetRange, model)
 		if target then
 			local tp = Enemy.rootPosition(target) or position
+			local hop = tp - position
 			World.fireRun("Ricochet", { from = position, to = tp })
-			dealDamage(shooter, target, dmg * Config.RicochetDmgRatio, tp, { secondary = true, crit = crit }, true)
+			dealDamage(shooter, target, dmg * Config.RicochetDmgRatio, tp, {
+				secondary = true,
+				crit = crit,
+				dir = if hop.Magnitude > 0.1 then hop.Unit else nil,
+			}, true)
 		end
 	end
 end
 
 -- One bullet: raycast, hit, then keep going through `pierce` more enemies. A fractional pierce adds one
 -- more enemy that only takes that fraction of the damage (2.2 = two full hits past the first, then one at 20%).
-local function fireBullet(shooter: Shooter, origin: Vector3, dir: Vector3, baseFilter: { Instance }, pierce: number)
+-- Returns where the bullet stopped (for the teammates' tracer).
+local function fireBullet(
+	shooter: Shooter,
+	origin: Vector3,
+	dir: Vector3,
+	baseFilter: { Instance },
+	pierce: number
+): Vector3
 	local filter = table.clone(baseFilter)
 	local from = origin
 	local remaining = Config.MaxShotRange
@@ -140,69 +169,108 @@ local function fireBullet(shooter: Shooter, origin: Vector3, dir: Vector3, baseF
 		params.FilterDescendantsInstances = filter
 		local result = Workspace:Raycast(from, dir * remaining, params)
 		if not result then
-			return
+			return from + dir * remaining
 		end
 		local model = Enemy.fromPart(result.Instance)
 		if not model then
-			return -- wall, pillar, floor: the bullet stops
+			return result.Position -- wall, pillar, floor: the bullet stops
 		end
 		bulletHit(shooter, model, result.Instance :: BasePart, result.Position, origin, if i > full then frac else 1)
 		table.insert(filter, model)
 		remaining -= (result.Position - from).Magnitude
 		from = result.Position
 		if remaining <= 0 then
-			return
+			return from
 		end
 	end
+	return from + dir * remaining
+end
+
+-- Rounds left in the held mag, as the client counts it. The server never simulates the mag; it only keeps
+-- the number with the gun so a swap, stow or floor pickup hands it back.
+local function rememberMag(state: PlayerState.State, mag: any)
+	if typeof(mag) ~= "number" or mag ~= mag then
+		return
+	end
+	local st = PlayerState.computed(state)
+	state.held.mag = math.clamp(math.floor(mag), 0, st.magSize)
 end
 
 function Combat.init()
 	local groundLoot = Workspace:WaitForChild("GroundLoot")
 	local effects = Workspace:WaitForChild("Effects")
 
-	Remotes.FireShot.OnServerEvent:Connect(function(player: Player, origin: any, direction: any, _clientTime: any)
-		if typeof(origin) ~= "Vector3" or typeof(direction) ~= "Vector3" then
-			return
-		end
-		if direction.Magnitude < 0.5 then
-			return
-		end
-		local char = player.Character
-		local head = char and char:FindFirstChild("Head") :: BasePart?
-		if not char or not head then
-			return
-		end
-		if (origin - head.Position).Magnitude > Config.MaxOriginDriftStuds then
-			return
-		end
-
-		local state = PlayerState.get(player)
-		-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire.
-		if state.bledOut or (state.downed and not Config.DownedCanShoot) then
-			return
-		end
-		local st = PlayerState.computed(state)
-		local now = os.clock()
-		if now - state.lastShotAt < 1 / (st.fireRate * Config.FireRateTolerance) then
-			return
-		end
-		state.lastShotAt = now
-
-		local weapon = Weapons.ById[state.held.weaponId]
-		local shooter: Shooter = { player = player, state = state, stats = st, char = char, weapon = weapon }
-		local dir = direction.Unit
-		local baseFilter: { Instance } = { char, groundLoot, effects }
-		local spread = weapon.spread * st.spreadMult * (if state.downed then Config.DownedSpreadMult else 1)
-
-		for _ = 1, weapon.pellets do
-			local d = if weapon.pellets > 1 then coneSpread(dir, spread) else dir
-			fireBullet(shooter, head.Position, d, baseFilter, st.pierce)
-		end
-		if st.multishot > 0 and math.random() * 100 < st.multishot then
-			fireBullet(shooter, head.Position, coneSpread(dir, spread + Config.MultishotSpread), baseFilter, st.pierce)
-			Remotes.Juice:FireClient(player, "Multishot", {})
-		end
+	Remotes.AmmoReport.OnServerEvent:Connect(function(player: Player, mag: any)
+		rememberMag(PlayerState.get(player), mag)
 	end)
+
+	Remotes.FireShot.OnServerEvent:Connect(
+		function(player: Player, origin: any, direction: any, _clientTime: any, mag: any)
+			if typeof(origin) ~= "Vector3" or typeof(direction) ~= "Vector3" then
+				return
+			end
+			rememberMag(PlayerState.get(player), mag)
+			if direction.Magnitude < 0.5 then
+				return
+			end
+			local char = player.Character
+			local head = char and char:FindFirstChild("Head") :: BasePart?
+			if not char or not head then
+				return
+			end
+			if (origin - head.Position).Magnitude > Config.MaxOriginDriftStuds then
+				return
+			end
+
+			local state = PlayerState.get(player)
+			-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire.
+			if state.bledOut or (state.downed and not Config.DownedCanShoot) then
+				return
+			end
+			local st = PlayerState.computed(state)
+			local now = os.clock()
+			if now - state.lastShotAt < 1 / (st.fireRate * Config.FireRateTolerance) then
+				return
+			end
+			state.lastShotAt = now
+
+			local weapon = Weapons.ById[state.held.weaponId]
+			local shooter: Shooter = { player = player, state = state, stats = st, char = char, weapon = weapon }
+			local dir = direction.Unit
+			local baseFilter: { Instance } = { char, groundLoot, effects }
+			local spread = weapon.spread * st.spreadMult * (if state.downed then Config.DownedSpreadMult else 1)
+
+			local ends: { Vector3 } = {}
+			for _ = 1, weapon.pellets do
+				local d = if weapon.pellets > 1 then coneSpread(dir, spread) else dir
+				table.insert(ends, fireBullet(shooter, head.Position, d, baseFilter, st.pierce))
+			end
+			if st.multishot > 0 and math.random() * 100 < st.multishot then
+				table.insert(
+					ends,
+					fireBullet(
+						shooter,
+						head.Position,
+						coneSpread(dir, spread + Config.MultishotSpread),
+						baseFilter,
+						st.pierce
+					)
+				)
+				Remotes.Juice:FireClient(player, "Multishot", {})
+			end
+			-- Teammates see the shot: the same tracer from this gun's muzzle to where each bullet stopped, and the
+			-- shot sound at the gun. The shooter already drew its own.
+			if Config.RemoteTracers then
+				local payload =
+					{ userId = player.UserId, from = head.Position, ends = ends, archetype = weapon.archetype }
+				for _, other in World.runAudience() do
+					if other ~= player then
+						Remotes.Juice:FireClient(other, "RemoteShot", payload)
+					end
+				end
+			end
+		end
+	)
 end
 
 return Combat

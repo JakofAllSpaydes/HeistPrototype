@@ -30,6 +30,21 @@ type Data = {
 	slowMult: number, -- walk speed multiplier while slowed (molotov / drum fire)
 	slowUntil: number,
 	headColor: Color3, -- the head's own color, restored when a stun ends
+	flinchUntil: number, -- a bullet just landed: feet stop until this server clock (Config.EnemyHitFlinchSec)
+	lastFlinch: number,
+}
+
+-- What the killing (or hitting) shot looked like: its direction, whether it took the head, and how hard it
+-- throws a body: `force` scales the bullet throw (Config.RagdollForceByArchetype), `blast` switches to the
+-- explosion throw with `blastT` 1 at the center and 0 at the edge of the blast.
+-- `tick` marks turret rounds and field ticks: they never flinch an enemy (a fire field would hold its feet).
+export type Hit = {
+	dir: Vector3?,
+	headshot: boolean?,
+	force: number?,
+	blast: boolean?,
+	blastT: number?,
+	tick: boolean?,
 }
 
 local Enemy = {}
@@ -119,6 +134,8 @@ function Enemy.spawn(wave: number, position: Vector3): Model
 		slowMult = 1,
 		slowUntil = 0,
 		headColor = head.Color,
+		flinchUntil = 0,
+		lastFlinch = -math.huge,
 	}
 	count += 1
 	return model
@@ -198,19 +215,12 @@ function Enemy.rootPosition(model: Model): Vector3?
 	return if d then d.root.Position else nil
 end
 
-function Enemy.kill(model: Model, attacker: Player?)
-	local d = active[model]
-	if not d or d.dead then
-		return
-	end
-	d.dead = true
-	active[model] = nil
-	count -= 1
-	if attacker then
-		local ks = PlayerState.get(attacker)
-		ks.kills += 1
-	end
-	-- Shrink out, no ragdoll.
+-- Bodies on the floor (ragdolls). They are not enemies any more: bullets pass through them (CanQuery off),
+-- nothing targets them, and they only collide with the room (the Corpse collision group).
+local corpses: { [Model]: boolean } = {}
+local corpseCount = 0
+
+local function shrinkOut(model: Model)
 	for _, p in model:GetDescendants() do
 		if p:IsA("BasePart") then
 			p.Anchored = true
@@ -225,17 +235,149 @@ function Enemy.kill(model: Model, attacker: Player?)
 	end)
 end
 
--- Returns true if this damage killed the enemy.
-function Enemy.damage(model: Model, amount: number, attacker: Player?): boolean
+-- Impulse, lift and spin for a kill: the gun's base, the overkill bonus and a little randomness; explosions
+-- throw outward from the center with their own numbers, falling off toward the blast edge.
+local function throwStrength(hit: Hit?, overkill: number): (number, number, number)
+	local impulse, lift, spin
+	if hit and hit.blast then
+		local t = math.clamp(hit.blastT or 1, 0, 1)
+		local edge = Config.RagdollBlastEdge
+		local falloff = edge + (1 - edge) * t
+		impulse = Config.RagdollBlastImpulse * falloff
+		lift = Config.RagdollBlastLift * falloff
+		spin = Config.RagdollBlastSpin * falloff
+	else
+		local force = if hit and hit.force then hit.force else 1
+		impulse = Config.RagdollImpulse * force
+		lift = Config.RagdollLift * force
+		spin = Config.RagdollSpin * force
+	end
+	-- Overkill: damage past what was left, as a share of max HP, adds up to RagdollOverkillMax.
+	local bonus = 1 + math.clamp(overkill, 0, 1) * Config.RagdollOverkillMax
+	local v = Config.RagdollVariance
+	local wobble = 1 + (math.random() * 2 - 1) * v
+	return impulse * bonus * wobble, lift * bonus * wobble, spin * bonus * (1 + (math.random() * 2 - 1) * v)
+end
+
+-- The Humanoid goes (no more standing up or walking), the parts become a loose body that the killing shot
+-- throws over; a headshot pops the head off. It lies RagdollSec, fades over RagdollFadeSec, then is removed.
+local function ragdoll(d: Data, hit: Hit?, overkill: number)
+	local model, root = d.model, d.root
+	corpses[model] = true
+	corpseCount += 1
+	model.Destroying:Once(function()
+		if corpses[model] then
+			corpses[model] = nil
+			corpseCount -= 1
+		end
+	end)
+	d.humanoid:Destroy()
+	local head = model:FindFirstChild("Head")
+	local dir = if hit and hit.dir then hit.dir else Vector3.zero
+	local flat = Vector3.new(dir.X, 0, dir.Z)
+	if flat.Magnitude < 0.05 then
+		local a = math.random() * math.pi * 2
+		flat = Vector3.new(math.cos(a), 0, math.sin(a))
+	end
+	flat = flat.Unit
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.CollisionGroup = "Corpse"
+			p.CanQuery = false
+			p.CanTouch = false
+			p.CanCollide = true
+			p.Massless = false
+			p.Anchored = false
+		end
+	end
+	local pop = Config.RagdollHeadPop and hit ~= nil and hit.headshot == true and head ~= nil and head:IsA("BasePart")
+	if pop and head then
+		local weld = head:FindFirstChildOfClass("WeldConstraint")
+		if weld then
+			weld:Destroy()
+		end
+	end
+	local impulse, lift, spin = throwStrength(hit, overkill)
+	local mass = root.AssemblyMass
+	root:ApplyImpulse((flat * impulse + Vector3.new(0, lift, 0)) * mass)
+	root:ApplyAngularImpulse(
+		Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 * spin * mass
+	)
+	if pop and head and head:IsA("BasePart") then
+		head:ApplyImpulse((flat * impulse * 0.6 + Vector3.new(0, lift * 1.5, 0)) * head.AssemblyMass)
+	end
+	task.delay(Config.RagdollSec, function()
+		if not model.Parent then
+			return
+		end
+		for _, p in model:GetDescendants() do
+			if p:IsA("BasePart") then
+				TweenService:Create(p, TweenInfo.new(Config.RagdollFadeSec, Enum.EasingStyle.Quad), {
+					Transparency = 1,
+				}):Play()
+			end
+		end
+		task.delay(Config.RagdollFadeSec + 0.05, function()
+			model:Destroy()
+		end)
+	end)
+end
+
+-- A player kill (attacker set) knocks the body over while the floor has room (RagdollMaxActive); clears,
+-- falls and the cap shrink the enemy out instead. `overkill` is the damage past the remaining HP as a share
+-- of max HP (0 for a kill with nothing to spare).
+function Enemy.kill(model: Model, attacker: Player?, hit: Hit?, overkill: number?)
+	local d = active[model]
+	if not d or d.dead then
+		return
+	end
+	d.dead = true
+	active[model] = nil
+	count -= 1
+	if attacker then
+		local ks = PlayerState.get(attacker)
+		ks.kills += 1
+	end
+	if attacker and Config.RagdollEnabled and corpseCount < Config.RagdollMaxActive and model.Parent then
+		ragdoll(d, hit, overkill or 0)
+	else
+		shrinkOut(model)
+	end
+end
+
+-- A bullet that did not kill: a shove along the shot and a short stop of the feet, at most once per
+-- EnemyFlinchCooldownSec so a fast gun cannot hold an enemy in place.
+local function flinch(d: Data, hit: Hit?)
+	local now = os.clock()
+	if now - d.lastFlinch < Config.EnemyFlinchCooldownSec then
+		return
+	end
+	d.lastFlinch = now
+	d.flinchUntil = now + Config.EnemyHitFlinchSec
+	local dir = if hit and hit.dir then hit.dir else nil
+	if dir and Config.EnemyHitKnockback > 0 then
+		local flat = Vector3.new(dir.X, 0, dir.Z)
+		if flat.Magnitude > 0.05 then
+			d.root:ApplyImpulse(flat.Unit * Config.EnemyHitKnockback * d.root.AssemblyMass)
+		end
+	end
+end
+
+-- Returns true if this damage killed the enemy. `hit` carries the shot direction (knockback / ragdoll).
+function Enemy.damage(model: Model, amount: number, attacker: Player?, hit: Hit?): boolean
 	local d = active[model]
 	if not d or d.dead then
 		return false
 	end
+	local before = d.hp
 	d.hp -= amount
 	model:SetAttribute("HP", d.hp)
 	if d.hp <= 0 then
-		Enemy.kill(model, attacker)
+		Enemy.kill(model, attacker, hit, (amount - math.max(before, 0)) / math.max(d.maxHP, 1))
 		return true
+	end
+	if hit and not hit.tick then
+		flinch(d, hit) -- bullets and blasts only; turret rounds and field ticks never stop an enemy's feet
 	end
 	return false
 end
@@ -244,6 +386,9 @@ function Enemy.killAll()
 	Enemy.frozen = false
 	for model in table.clone(active) do
 		Enemy.kill(model, nil)
+	end
+	for model in table.clone(corpses) do
+		model:Destroy()
 	end
 end
 
@@ -330,7 +475,7 @@ function Enemy.init()
 				d.slowUntil = 0
 				d.slowMult = 1
 			end
-			local speed = if stunned then 0 else Config.EnemyWalkSpeed * d.slowMult
+			local speed = if stunned or now < d.flinchUntil then 0 else Config.EnemyWalkSpeed * d.slowMult
 			if d.humanoid.WalkSpeed ~= speed then
 				d.humanoid.WalkSpeed = speed
 				if not stunned then

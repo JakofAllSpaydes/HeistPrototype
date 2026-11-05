@@ -133,9 +133,22 @@ local function part(props: { [string]: any }): Part
 end
 
 -- Damage one enemy on the owner's behalf: kill cash with the owner's greed, the Hit juice to the owner.
-local function hitEnemy(owner: Player, model: Model, dmg: number, position: Vector3, secondary: boolean): boolean
+-- `hit` says how a kill throws the body (nil: the tick slump, Config.RagdollTickForce).
+local function hitEnemy(
+	owner: Player,
+	model: Model,
+	dmg: number,
+	position: Vector3,
+	secondary: boolean,
+	hit: Enemy.Hit?
+): boolean
 	dmg = math.max(1, math.round(dmg))
-	local killed = Enemy.damage(model, dmg, if owner.Parent then owner else nil)
+	local killed = Enemy.damage(
+		model,
+		dmg,
+		if owner.Parent then owner else nil,
+		hit or { force = Config.RagdollTickForce, tick = true }
+	)
 	if not owner.Parent then
 		return killed
 	end
@@ -782,7 +795,14 @@ local function claymoreTick(s: Structure, t: number)
 	local kills = 0
 	for _, model in victims do
 		local ep = Enemy.rootPosition(model) or pos
-		if hitEnemy(s.owner, model, s.dmg, ep, false) then
+		-- Thrown out of the blast, hardest at the center.
+		local away = ep - pos
+		local hit: Enemy.Hit = {
+			dir = if away.Magnitude > 0.1 then away.Unit else nil,
+			blast = true,
+			blastT = 1 - math.clamp(away.Magnitude / Config.ClaymoreBlastRadius, 0, 1),
+		}
+		if hitEnemy(s.owner, model, s.dmg, ep, false, hit) then
 			kills += 1
 		end
 	end
@@ -934,7 +954,12 @@ local function turretTick(s: Structure, t: number)
 	s.lastTick = t
 	aimHead(head, tp)
 	World.fireRun("TurretShot", { from = muzzleOf(head), to = tp })
-	hitEnemy(s.owner, target, s.dmg, tp, true)
+	local travel = tp - head.Position
+	hitEnemy(s.owner, target, s.dmg, tp, true, {
+		dir = if travel.Magnitude > 0.1 then travel.Unit else nil,
+		force = Config.RagdollTickForce,
+		tick = true,
+	})
 end
 
 ------------------------------------------------------------------ Use

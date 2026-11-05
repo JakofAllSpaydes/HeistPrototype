@@ -29,6 +29,7 @@ type Job = {
 	position: Vector3,
 	progress: number, -- capture: 0..1
 	inside: boolean, -- capture: someone is in the circle
+	insideSet: { [Player]: boolean }, -- capture: who is in it (CAPTURING tag over their head)
 	lastSent: number,
 	reminded: boolean, -- the half-time reminder line went out
 }
@@ -43,6 +44,11 @@ local GREEN = Color3.fromHex("8FE3A1")
 
 local function isMinigame(kind: string): boolean
 	return table.find(Room.PropNames, kind) ~= nil
+end
+
+-- Teammates see what a player is busy with as a tag over their head (PlayerTags on the client).
+local function busy(player: Player, label: string, on: boolean)
+	World.fireRun("PlayerBusy", { userId = player.UserId, name = player.Name, label = label, on = on })
 end
 
 -- Crew call copy per kind. Minigame kinds build theirs from Lines.minigame with the prop's name.
@@ -164,6 +170,15 @@ local function buildHackBeacon(
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = terminal
 	prompt.Triggered:Connect(onTriggered)
+	if holdSec > 0 then
+		-- The hold itself is the work: HACKING over the holder's head until they let go or it lands.
+		prompt.PromptButtonHoldBegan:Connect(function(player: Player)
+			busy(player, Lines.job.busyTag or "HACKING", true)
+		end)
+		prompt.PromptButtonHoldEnded:Connect(function(player: Player)
+			busy(player, Lines.job.busyTag or "HACKING", false)
+		end)
+	end
 	model.Parent = effects
 	return model
 end
@@ -189,7 +204,9 @@ local function sendProgress(j: Job, force: boolean)
 	World.fireRun("JobProgress", { id = j.id, progress = j.progress, inside = j.inside })
 end
 
-local function anyoneInside(position: Vector3, radius: number): boolean
+-- Standing players inside the capture circle.
+local function playersInside(position: Vector3, radius: number): { [Player]: boolean }
+	local set: { [Player]: boolean } = {}
 	for _, player in World.runAudience() do
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -197,11 +214,27 @@ local function anyoneInside(position: Vector3, radius: number): boolean
 		if root and hum and hum.Health > 0 and PlayerState.isStanding(PlayerState.get(player)) then
 			local d = root.Position - position
 			if Vector3.new(d.X, 0, d.Z).Magnitude <= radius then
-				return true
+				set[player] = true
 			end
 		end
 	end
-	return false
+	return set
+end
+
+-- Step in / step out: the CAPTURING tag follows each player's presence in the circle.
+local function updateInsideSet(j: Job, set: { [Player]: boolean })
+	local label = Lines.capture.busyTag or "CAPTURING"
+	for player in set do
+		if not j.insideSet[player] then
+			busy(player, label, true)
+		end
+	end
+	for player in j.insideSet do
+		if not set[player] then
+			busy(player, label, false)
+		end
+	end
+	j.insideSet = set
 end
 
 function CrewCall.trigger()
@@ -262,6 +295,7 @@ function CrewCall.trigger()
 		position = position,
 		progress = 0,
 		inside = false,
+		insideSet = {},
 		lastSent = 0,
 		reminded = false,
 	}
@@ -304,6 +338,7 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 	j.active = false
 	job = nil
 	j.beacon:Destroy()
+	updateInsideSet(j, {}) -- nobody is capturing a finished job
 	local copy = copyFor(j.kind)
 	if success then
 		for _, p in World.runAudience() do
@@ -370,7 +405,9 @@ function CrewCall.init()
 			Log.event("Call", "Side Job #%d reminder at %d%%", j.id, math.round(Config.SideJobReminderPct * 100))
 		end
 		if j.kind == "capture" then
-			local inside = anyoneInside(j.position, Config.SideJobCaptureRadius)
+			local set = playersInside(j.position, Config.SideJobCaptureRadius)
+			updateInsideSet(j, set)
+			local inside = next(set) ~= nil
 			local changed = inside ~= j.inside
 			j.inside = inside
 			if inside then

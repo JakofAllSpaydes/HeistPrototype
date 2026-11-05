@@ -13,6 +13,7 @@ local Lines = {
 		rewardLine = "+$%d CASH · +%d GOLD",
 		promptAction = "HACK",
 		promptObject = "TERMINAL",
+		busyTag = "HACKING", -- over the holder's head for teammates
 		doneTitle = "NICE WORK",
 		doneText = {
 			"Clean. That's how it's done.",
@@ -35,6 +36,7 @@ local Lines = {
 		},
 		rewardLine = "+$%d CASH · +%d GOLD",
 		markerHint = "STAND IN THE CIRCLE",
+		busyTag = "CAPTURING", -- over anyone in the circle, for teammates
 		holdingHint = "HOLDING · %d%%",
 		leftHint = "%d%% · GET BACK IN",
 		doneTitle = "NICE WORK",

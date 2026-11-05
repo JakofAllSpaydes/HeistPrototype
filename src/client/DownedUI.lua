@@ -364,10 +364,26 @@ function DownedUI.init()
 			end
 		elseif name == "ReviveProgress" then
 			local progress = tonumber(data.progress) or 0
-			if data.userId == player.UserId then
+			local userId = tonumber(data.userId) or 0
+			local endsAt = tonumber(data.bleedEndsAt)
+			-- The hold pauses the bleed (Config.RevivePausesBleed): the timer follows the server's end time, and
+			-- the marker's seconds turn green while someone is on it.
+			local m = marks[userId]
+			if m then
+				if endsAt then
+					m.bleedEndsAt = endsAt
+				end
+				if m.seconds then
+					m.seconds.TextColor3 = if progress > 0 then Theme.Colors.cash else Theme.Colors.red
+				end
+			end
+			if userId == player.UserId then
 				local bottom = HUD.get("bottom")
 				if bottom then
 					bottom.setReviveRing(progress, data.reviver)
+					if endsAt then
+						bottom.setBleedEndsAt(endsAt)
+					end
 				end
 			end
 			if data.reviverId == player.UserId then
