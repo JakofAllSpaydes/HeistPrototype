@@ -786,13 +786,17 @@ local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vect
 		fire.Heat = 6
 		fire.Parent = p
 	end
+	-- A longer throw arcs higher (ThrowArcPerStud), so a far frag reads as a lob, not a flat line.
+	local span = Vector3.new(to.X - from.X, 0, to.Z - from.Z).Magnitude
+	local peak = math.max(1.5, span * Config.ThrowArcPerStud)
 	task.spawn(function()
-		local flight = math.max(0.05, Config.ThrowFlightSec)
+		-- ThrowFlightSec up to ThrowFlightRefStuds away, then longer in proportion, so far throws do not snap.
+		local flight = math.max(0.05, Config.ThrowFlightSec * math.max(1, span / Config.ThrowFlightRefStuds))
 		local elapsed = 0
 		while elapsed < flight do
 			elapsed += RunService.Heartbeat:Wait()
 			local a = math.clamp(elapsed / flight, 0, 1)
-			local pos = from:Lerp(to, a) + Vector3.new(0, 6 * a * (1 - a), 0)
+			local pos = from:Lerp(to, a) + Vector3.new(0, peak * 4 * a * (1 - a), 0)
 			p.CFrame = CFrame.new(pos) * CFrame.Angles(a * 6, a * 4, 0)
 		end
 		p:Destroy()

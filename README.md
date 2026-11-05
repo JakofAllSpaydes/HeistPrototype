@@ -50,7 +50,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 | Buy an upgrade pick (also the clickable tile, left column). Weapons come only from gun crates. |
 | F on a gun crate | `OPEN` (a `GUN CRATE` tag over it): every roll the crate holds plays back to back on the reel above it, seen by everyone, and each gun ejects onto the floor beside it as loot anyone can take. |
-| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange`; placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
+| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange` (52); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
 | P | Vote to pause (in a wave, the intermission or the dealer break; solo pauses at once). Also on the dealer card and the scoreboard. RESUME on the overlay (anyone). |
 | T / V / F at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
@@ -1065,6 +1065,9 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   charge and its seconds; the dark sweep only shows at zero charges; a returning charge pops `+1`. Every clock change
   floats on the tile: `+0.5s` gold when ADRENALINE JUNKIE extends Adrenaline (`AbilityExtend`), `-0.1s` / `-0.2s` for
   BACKDRAFT / OVERDRIVE trims, and `-8% CD` on all three tiles when ABILITY COOLDOWN is taken.
+
+- **Round 15k (5 Nov, feedback)** — thrown abilities (frag, molotov, flashbang) reach twice as far (`ThrowMaxRange`
+  52, was 26); longer throws arc higher (`ThrowArcPerStud`) and take proportionally longer past `ThrowFlightRefStuds`.
 
 ## Open design notes (not built)
 
