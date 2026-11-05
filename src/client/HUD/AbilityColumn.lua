@@ -19,7 +19,16 @@ local Tile = require(script.Parent.Tile)
 
 local AbilityColumn = {}
 
-type CooldownUI = { sweep: Frame, label: TextLabel, chargePill: Frame, chargeLabel: TextLabel }
+type CooldownUI = {
+	sweep: Frame,
+	label: TextLabel,
+	chargePill: Frame,
+	chargeLabel: TextLabel,
+	recharge: Frame,
+	rechargeFill: Frame,
+	rechargeLabel: TextLabel,
+	lastCharges: number,
+}
 
 local HOTKEYS = { Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.Z }
 
@@ -120,7 +129,51 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			chargePill.ZIndex = 6
 			chargeLabel.ZIndex = 6
 			chargePill.Visible = false
-			cooldowns[a.id] = { sweep = sweep, label = label, chargePill = chargePill, chargeLabel = chargeLabel }
+			-- Recharging a spare charge while one is still in hand: no dark sweep (the tile is live), just a thin gold
+			-- bar along the bottom filling toward the next charge, with its seconds.
+			local recharge = UI.frame({
+				Name = "Recharge",
+				BackgroundColor3 = Theme.Colors.black,
+				BackgroundTransparency = 0.35,
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.new(0.5, 0, 1, -S(3)),
+				Size = UDim2.new(1, -S(10), 0, S(8)),
+				Visible = false,
+				ZIndex = 6,
+				Parent = t.button,
+			})
+			UI.corner(recharge, S(4))
+			local rechargeFill = UI.frame({
+				BackgroundColor3 = Theme.Colors.gold,
+				Size = UDim2.fromScale(0, 1),
+				ZIndex = 6,
+				Parent = recharge,
+			})
+			UI.corner(rechargeFill, S(4))
+			local rechargeLabel = UI.text({
+				Text = "",
+				Font = Theme.Fonts.display,
+				TextSize = S(10),
+				TextColor3 = Theme.Colors.gold,
+				AnchorPoint = Vector2.new(0, 1),
+				Position = UDim2.new(0, S(5), 1, -S(12)),
+				Size = UDim2.fromOffset(S(40), S(12)),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Visible = false,
+				ZIndex = 6,
+				Parent = t.button,
+			})
+			UI.stroke(rechargeLabel, Theme.Colors.black, S(1.5), 0.3)
+			cooldowns[a.id] = {
+				sweep = sweep,
+				label = label,
+				chargePill = chargePill,
+				chargeLabel = chargeLabel,
+				recharge = recharge,
+				rechargeFill = rechargeFill,
+				rechargeLabel = rechargeLabel,
+				lastCharges = -1,
+			}
 			t.onPress = function()
 				use(a.id)
 			end
@@ -139,6 +192,33 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end))
 
+	-- A small float off the top of a tile: "-0.2s" when a cooldown is trimmed, "+0.5s" when a running effect is
+	-- extended, "+1" when a spare charge comes back. Anything that changes an ability's clock goes through here.
+	local function floatOnTile(id: string, text: string, color: Color3)
+		local t = tiles[id]
+		if not t then
+			return
+		end
+		UI.punch(t.button, 1.08, 0.15)
+		local f = UI.text({
+			Text = text,
+			Font = Theme.Fonts.display,
+			TextSize = S(14),
+			TextColor3 = color,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 0, 0),
+			Size = UDim2.fromOffset(S(60), S(18)),
+			ZIndex = 8,
+			Parent = t.button,
+		})
+		UI.stroke(f, Theme.Colors.black, S(1.5), 0.3)
+		UI.punch(f, 1.3, 0.2)
+		UI.tween(f, { Position = UDim2.new(0.5, 0, 0, -S(18)), TextTransparency = 1 }, 0.6, nil, nil, 0.25)
+		task.delay(0.9, function()
+			f:Destroy()
+		end)
+	end
+
 	local stimPulse = 0
 	track(RunService.Heartbeat:Connect(function(dt)
 		local now = ClientState.serverNow()
@@ -149,25 +229,41 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				continue
 			end
 			local maxCharges = tonumber(a.maxCharges) or 1
+			local charges = tonumber(a.charges) or 1
 			cd.chargePill.Visible = maxCharges > 1
 			if maxCharges > 1 then
-				local text = string.format("x%d", tonumber(a.charges) or 0)
+				local text = string.format("x%d", charges)
 				if cd.chargeLabel.Text ~= text then
 					cd.chargeLabel.Text = text
 					UI.punch(cd.chargePill, 1.25, 0.2)
 				end
+				-- A charge came back while another was still in hand: a small "+1" and a tick.
+				if cd.lastCharges >= 0 and charges > cd.lastCharges and charges < maxCharges then
+					floatOnTile(id, "+1", Theme.Colors.gold)
+					UI.sound(Theme.Sounds.toast, 1.4, 0.3)
+				end
 			end
+			cd.lastCharges = charges
 			local activeUntil = a.activeUntil or 0
 			local remaining = (a.cooldownEndsAt or 0) - now
-			local usable = (tonumber(a.charges) or 1) > 0
+			local usable = charges > 0
+			-- Usable with a spare charge recharging: the gold bar, never the dark sweep.
+			local spareRecharge = usable and remaining > 0 and maxCharges > 1
+			cd.recharge.Visible = spareRecharge
+			cd.rechargeLabel.Visible = spareRecharge and activeUntil <= now
+			if spareRecharge then
+				local frac = math.clamp(remaining / math.max(a.cooldown or 1, 0.01), 0, 1)
+				cd.rechargeFill.Size = UDim2.fromScale(1 - frac, 1)
+				cd.rechargeLabel.Text = string.format("%ds", math.ceil(remaining))
+			end
 			if activeUntil > now then
 				-- A buff / window running: gold pulse and its seconds, with the cooldown (running since the
 				-- use) already draining underneath.
 				stimPulse += dt * 8
 				t.stroke.Color = Theme.Colors.gold
 				t.stroke.Thickness = S(2) + S(2) * (0.5 + 0.5 * math.sin(stimPulse))
-				cd.sweep.Visible = remaining > 0
-				if remaining > 0 then
+				cd.sweep.Visible = remaining > 0 and not spareRecharge
+				if remaining > 0 and not spareRecharge then
 					cd.sweep.Size = UDim2.fromScale(1, math.clamp(remaining / math.max(a.cooldown or 1, 0.01), 0, 1))
 					cd.sweep.BackgroundTransparency = 0.7
 				end
@@ -176,16 +272,21 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				cd.label.Text = string.format("%ds", math.ceil(activeUntil - now))
 				continue
 			end
-			if remaining > 0 then
+			if spareRecharge then
+				-- Ready to use: the tile reads ready, the bar shows the next charge coming.
+				cd.sweep.Visible = false
+				cd.label.Visible = false
+				t.stroke.Color = Theme.Colors.gold
+				t.stroke.Thickness = S(2)
+			elseif remaining > 0 then
 				local frac = math.clamp(remaining / math.max(a.cooldown or 1, 0.01), 0, 1)
 				cd.sweep.Visible = true
 				cd.sweep.Size = UDim2.fromScale(1, frac)
-				-- A charge still in hand: the recharge reads lighter and the tile stays live.
-				cd.sweep.BackgroundTransparency = if usable then 0.7 else 0.45
+				cd.sweep.BackgroundTransparency = 0.45
 				cd.label.Visible = true
 				cd.label.TextColor3 = Theme.Colors.text
 				cd.label.Text = string.format("%ds", math.ceil(remaining))
-				t.stroke.Color = if usable then Theme.Colors.gold else Theme.Colors.grey
+				t.stroke.Color = Theme.Colors.grey
 				t.stroke.Thickness = S(2)
 			else
 				if cd.sweep.Visible then
@@ -219,27 +320,22 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				UI.sound(Theme.Sounds.deny, 1, 0.35)
 			end
 		elseif name == "CooldownTrim" then
-			-- A mastery trimmed this cooldown (BACKDRAFT, DEAD EYE OVERDRIVE): a small "-0.2s" off the tile.
-			local t = tiles[data.id]
-			if t then
-				UI.punch(t.button, 1.08, 0.15)
-				local f = UI.text({
-					Text = string.format("-%ss", UI.fmtNum(tonumber(data.sec) or 0)),
-					Font = Theme.Fonts.display,
-					TextSize = S(14),
-					TextColor3 = Theme.Colors.cash,
-					AnchorPoint = Vector2.new(0.5, 1),
-					Position = UDim2.new(0.5, 0, 0, 0),
-					Size = UDim2.fromOffset(S(60), S(18)),
-					ZIndex = 8,
-					Parent = t.button,
-				})
-				UI.stroke(f, Theme.Colors.black, S(1.5), 0.3)
-				UI.tween(f, { Position = UDim2.new(0.5, 0, 0, -S(18)), TextTransparency = 1 }, 0.6, nil, nil, 0.2)
-				task.delay(0.85, function()
-					f:Destroy()
-				end)
+			-- A mastery trimmed this cooldown (BACKDRAFT, DEAD EYE OVERDRIVE).
+			floatOnTile(tostring(data.id), string.format("-%ss", UI.fmtNum(tonumber(data.sec) or 0)), Theme.Colors.cash)
+		elseif
+			name == "UpgradeApplied"
+			and typeof(data) == "table"
+			and data.card
+			and data.card.stat == "AbilityCooldown"
+		then
+			-- ABILITY COOLDOWN taken: every tile shows it (a malus on it reads as "+N% CD" in red).
+			local pct = tonumber(data.card.pct) or 0
+			for _, abilityId in order do
+				floatOnTile(abilityId, string.format("-%s%% CD", UI.fmtNum(pct)), Theme.Colors.cash)
 			end
+		elseif name == "AbilityExtend" then
+			-- A running effect got longer (ADRENALINE JUNKIE).
+			floatOnTile(tostring(data.id), string.format("+%ss", UI.fmtNum(tonumber(data.sec) or 0)), Theme.Colors.gold)
 		elseif name == "StimStart" then
 			-- Any self buff (stim, stim shot, dead eye): the tile that fired it pops.
 			local t = tiles[data.id or "stim"]

@@ -178,6 +178,7 @@ function Mastery.onKill(model: Model, attacker: Player?)
 			state.stimExtended += addSec
 			state.buffUntil += addSec
 			state.dirty = true
+			Remotes.Juice:FireClient(attacker, "AbilityExtend", { id = "stim", sec = math.round(addSec * 10) / 10 })
 		end
 	end
 	if Elements.isBurning(model) then

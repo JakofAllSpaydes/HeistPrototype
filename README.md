@@ -1060,6 +1060,12 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
 - **Round 15i (4 Nov, feedback)** — when the vault seals, every placeable and ground field inside it is destroyed
   (`Abilities.clearWhere(Room.insideVault)`), so a turret left behind the door is no longer out of every enemy's reach.
 
+- **Round 15j (4 Nov, feedback)** — ability tiles: a spare charge recharging while one is still in hand no longer
+  looks like a full cooldown: the tile stays lit gold with a thin gold bar along its bottom filling toward the next
+  charge and its seconds; the dark sweep only shows at zero charges; a returning charge pops `+1`. Every clock change
+  floats on the tile: `+0.5s` gold when ADRENALINE JUNKIE extends Adrenaline (`AbilityExtend`), `-0.1s` / `-0.2s` for
+  BACKDRAFT / OVERDRIVE trims, and `-8% CD` on all three tiles when ABILITY COOLDOWN is taken.
+
 ## Open design notes (not built)
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;
