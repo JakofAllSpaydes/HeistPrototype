@@ -382,8 +382,11 @@ local Config = {
 	------------------------------------------------------------------ Abilities (the four class kits, Classes.lua)
 	-- Cooldown per ability id, seconds. Abilities are free in a run (the $ on the Classes tab is a label).
 	AbilityCooldown = {
+		frag = 12,
 		barricade = 15,
 		turret = 20,
+		overclock = 30,
+		eagleeye = 25,
 		stim = 20,
 		stimshot = 20,
 		medbag = 25,
@@ -400,7 +403,19 @@ local Config = {
 	ThrowMaxRange = 26, -- thrown abilities land at the cursor's floor point, no further than this from the player
 	ThrowFlightSec = 0.6, -- the throw's arc takes this long, then it goes off
 	FieldTickSec = 0.5, -- ground fields (med bag, molotov, drum fire) apply their per-second numbers this often
-	-- INITIATE
+	-- INITIATE (brief 5): Frag / Adrenaline / Claymore
+	FragDamage = 120, -- to every enemy in the blast (x ABILITY POWER)
+	FragRadius = 9,
+	FragFuseSec = 1, -- it lands, blinks, then goes off
+	-- ENGINEER (brief 5): Turret / Barricade / Overclock
+	OverclockSec = 8, -- every friendly placeable fires / heals OverclockRateMult x for this long...
+	OverclockRateMult = 1.5,
+	OverclockShieldHp = 150, -- ...and every barricade gets a shield that absorbs damage first, gone with the buff
+	-- SHARPSHOOTER (brief 5): Eagle Eye / Dead Eye / Flashbang
+	EagleEyeRadius = 60, -- every enemy this close is marked through walls...
+	EagleEyeSec = 6, -- ...for this long...
+	EagleEyeBonusPct = 0.25, -- ...and takes this much more damage from any source while marked
+	-- Placeables (ENGINEER's Turret / Barricade, the rest of the kits)
 	TurretHP = 150,
 	TurretDmg = 12,
 	TurretFireRate = 3, -- shots per second
@@ -631,6 +646,7 @@ local Config = {
 	-- Character idle in the customization scene, per equipped class (default R15 idles stand in).
 	ClassIdleAnimationId = {
 		INITIATE = "rbxassetid://507766388",
+		ENGINEER = "rbxassetid://507766388",
 		DOC = "rbxassetid://507766666",
 		SHARPSHOOTER = "rbxassetid://507766388",
 		TORCH = "rbxassetid://507766388",

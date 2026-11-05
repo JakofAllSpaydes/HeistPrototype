@@ -1,6 +1,8 @@
 --!strict
--- The four classes and their three abilities (Q / E / Z), restated from GDD_7. All twelve are live
--- (Abilities.lua); every number comes from Config so the designer tunes there.
+-- The five classes and their three abilities (Q / E / Z), brief 5: INITIATE Frag / Adrenaline / Claymore,
+-- ENGINEER Turret / Barricade / Overclock, DOC Stim Shot / Med Bag / Healing Turret, SHARPSHOOTER Eagle Eye /
+-- Dead Eye / Flashbang, TORCH Molotov / Flame Turret / Oil Drum. All fifteen are live (Abilities.lua); every
+-- number comes from Config so the designer tunes there.
 -- `vars` lists the upgradeable variables shown as current > next in the Classes tab; everything else is static.
 export type Var = { id: string, label: string, base: number, unit: string }
 export type Ability = {
@@ -13,7 +15,15 @@ export type Ability = {
 	vars: { Var },
 	icon: string, -- short glyph for the tile
 }
-export type Class = { id: string, name: string, color: string, abilities: { Ability }, free: boolean? }
+-- glyph: the class icon in its colored circle (pills, wells, the hub tag, the scoreboard).
+export type Class = {
+	id: string,
+	name: string,
+	color: string,
+	glyph: string,
+	abilities: { Ability },
+	free: boolean?,
+}
 
 local Config = require(script.Parent.Config)
 
@@ -28,37 +38,31 @@ local function ability(t: { [string]: any }): Ability
 	return t :: Ability
 end
 
+-- Carousel order (brief 5): INITIATE -> ENGINEER -> DOC -> SHARPSHOOTER -> TORCH. Ability levels are keyed by
+-- ability id, so a level follows the ability when it moves class (the claymore went SHARPSHOOTER -> INITIATE,
+-- turret and barricade INITIATE -> ENGINEER).
 Classes.List = {
 	{
 		id = "INITIATE",
 		name = "Initiate",
 		color = "E8B64C",
+		glyph = "I",
 		free = true,
 		abilities = {
 			ability({
-				id = "barricade",
-				name = "Barricade",
+				id = "frag",
+				name = "Frag",
 				hotkey = "Q",
-				system = "A",
+				system = "thrown",
 				price = 150,
-				description = "Blocks a path. Enemies have to break it.",
-				vars = { var("Hp", "HP", Config.BarricadeHP) },
-				icon = "WAL",
-			}),
-			ability({
-				id = "turret",
-				name = "Turret",
-				hotkey = "E",
-				system = "B",
-				price = 250,
-				description = "Hired muscle. Shoots anything that gets close.",
-				vars = { var("Damage", "DMG", Config.TurretDmg), var("Hp", "HP", Config.TurretHP) },
-				icon = "TRT",
+				description = "Cook it, throw it, clear the room.",
+				vars = { var("FragDamage", "DMG", Config.FragDamage) },
+				icon = "FRG",
 			}),
 			ability({
 				id = "stim", -- kept as the saved-level key; the player sees "Adrenaline"
 				name = "Adrenaline",
-				hotkey = "Z",
+				hotkey = "E",
 				system = "self",
 				price = 100,
 				description = "Shoot, reload and move faster for a while.",
@@ -69,12 +73,64 @@ Classes.List = {
 				},
 				icon = "ADR",
 			}),
+			ability({
+				id = "claymore",
+				name = "Claymore",
+				hotkey = "Z",
+				system = "trigger",
+				price = 150,
+				description = "Plant it. Wait for the boom.",
+				vars = { var("ClaymoreDamage", "DMG", Config.ClaymoreDamage) },
+				icon = "CLM",
+			}),
+		},
+	},
+	{
+		id = "ENGINEER",
+		name = "Engineer",
+		color = "D9822B",
+		glyph = "🔧", -- the wrench over the turret
+		abilities = {
+			ability({
+				id = "turret",
+				name = "Turret",
+				hotkey = "Q",
+				system = "B",
+				price = 250,
+				description = "Hired muscle. Shoots anything that gets close.",
+				vars = { var("Damage", "DMG", Config.TurretDmg), var("Hp", "HP", Config.TurretHP) },
+				icon = "TRT",
+			}),
+			ability({
+				id = "barricade",
+				name = "Barricade",
+				hotkey = "E",
+				system = "A",
+				price = 150,
+				description = "Blocks a path. Enemies have to break it.",
+				vars = { var("Hp", "HP", Config.BarricadeHP) },
+				icon = "WAL",
+			}),
+			ability({
+				id = "overclock",
+				name = "Overclock",
+				hotkey = "Z",
+				system = "self",
+				price = 200,
+				description = "Every placeable on the floor works faster; barricades get a shield.",
+				vars = {
+					var("RatePct", "RATE", (Config.OverclockRateMult - 1) * 100, "%"),
+					var("ShieldHp", "SHIELD", Config.OverclockShieldHp),
+				},
+				icon = "OVC",
+			}),
 		},
 	},
 	{
 		id = "DOC",
 		name = "Doc",
 		color = "8FE3A1",
+		glyph = "D",
 		abilities = {
 			ability({
 				id = "stimshot",
@@ -116,16 +172,20 @@ Classes.List = {
 		id = "SHARPSHOOTER",
 		name = "Sharpshooter",
 		color = "4D9FE8",
+		glyph = "S",
 		abilities = {
 			ability({
-				id = "claymore",
-				name = "Claymore",
+				id = "eagleeye",
+				name = "Eagle Eye",
 				hotkey = "Q",
-				system = "trigger",
+				system = "self",
 				price = 150,
-				description = "Plant it. Wait for the boom.",
-				vars = { var("ClaymoreDamage", "DMG", Config.ClaymoreDamage) },
-				icon = "CLM",
+				description = "Mark everything nearby through walls. Marked enemies take more damage.",
+				vars = {
+					var("EagleEyeBonusPct", "BONUS DMG", Config.EagleEyeBonusPct * 100, "%"),
+					var("EagleEyeRadius", "RADIUS", Config.EagleEyeRadius),
+				},
+				icon = "◉", -- an eye in a reticle
 			}),
 			ability({
 				id = "deadeye",
@@ -160,6 +220,7 @@ Classes.List = {
 		id = "TORCH",
 		name = "Torch",
 		color = "E8554D",
+		glyph = "T",
 		abilities = {
 			ability({
 				id = "molotov",

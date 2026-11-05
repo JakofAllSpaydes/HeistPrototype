@@ -47,6 +47,7 @@ export type State = {
 	cooldowns: { [string]: number }, -- ability id -> server time the cooldown ends
 	buffId: string?, -- the running self buff (stim | stimshot | deadeye), nil = none
 	buffUntil: number, -- server time the self buff ends, 0 = inactive
+	abilityActive: { [string]: number }, -- non-buff abilities with a running window (overclock, eagleeye): server time it ends
 	-- Downed / revive
 	downed: boolean,
 	bledOut: boolean, -- spectator: no character until revived or the run ends
@@ -103,6 +104,7 @@ local function freshState(player: Player, joinIndex: number): State
 		cooldowns = {},
 		buffId = nil,
 		buffUntil = 0,
+		abilityActive = {},
 		downed = false,
 		bledOut = false,
 		bleedEndsAt = 0,
@@ -515,7 +517,7 @@ local function abilityView(state: State): { [string]: Types.Ability }
 		out[a.id] = {
 			cooldown = PlayerState.abilityCooldown(state, a.id),
 			cooldownEndsAt = state.cooldowns[a.id] or 0,
-			activeUntil = if state.buffId == a.id then state.buffUntil else nil,
+			activeUntil = if state.buffId == a.id then state.buffUntil else state.abilityActive[a.id],
 		}
 	end
 	return out

@@ -127,7 +127,7 @@ function Hub.refreshTag(player: Player)
 	icon.Size = UDim2.fromScale(1, 1)
 	icon.Font = Enum.Font.LuckiestGuy
 	icon.TextScaled = true
-	icon.Text = string.sub(class.name, 1, 1)
+	icon.Text = class.glyph
 	icon.TextColor3 = DARK
 	icon.Parent = circle
 	local label = Instance.new("TextLabel")

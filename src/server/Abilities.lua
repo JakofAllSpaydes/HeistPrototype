@@ -1,5 +1,6 @@
 --!strict
--- The twelve class abilities (Classes.lua), server side.
+-- The fifteen class abilities (Classes.lua), server side. Brief 5 adds INITIATE's Frag (thrown, fused blast),
+-- ENGINEER's Overclock (team-wide placeable rate + barricade shields) and SHARPSHOOTER's Eagle Eye (marks).
 --   Placeables stand StructurePlaceDistance in front of the player: turret, barricade, healing turret, flame
 --   turret and oil drum are attackable (HP bar, enemies walk to them and hit them); med bag and claymore are not.
 --   Ground fields (med bag, molotov, the fire a broken drum leaves) act on whoever stands in the circle every
@@ -49,6 +50,8 @@ type Structure = {
 	heal: number, -- healing turret HP per second
 	slowMult: number, -- drum fire walk speed multiplier
 	armedAt: number, -- claymore: cannot go off before this
+	shield: number, -- barricade: Overclock's shield, absorbs damage first (0 = none)
+	shieldPart: BasePart?, -- its look
 }
 
 -- A circle on the floor that acts on whoever stands in it every FieldTickSec.
@@ -71,6 +74,19 @@ local Abilities = {}
 local folder: Folder
 local structures: { [BasePart]: Structure } = {}
 local fields: { [Model]: Field } = {}
+
+-- ENGINEER's Overclock: one team-wide window. Every friendly placeable fires / heals `mult` x faster until
+-- `untilT` and barricades carry a `shieldHp` shield; placeables put down during it join in.
+local overclock = { untilT = 0, mult = 1, shieldHp = 0 }
+
+local function overclocked(): boolean
+	return overclock.untilT > Workspace:GetServerTimeNow()
+end
+
+-- Rate multiplier the placeable ticks use.
+local function rateMult(): number
+	return if overclocked() then overclock.mult else 1
+end
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -188,12 +204,83 @@ local function headPosition(player: Player): Vector3?
 	return if head then head.Position else nil
 end
 
+------------------------------------------------------------------ Overclock looks
+local AMBER = Color3.fromHex("E8B64C")
+
+local function setGlow(s: Structure, on: boolean)
+	local existing = s.model:FindFirstChild("OverclockGlow")
+	if on and not existing then
+		local h = Instance.new("Highlight")
+		h.Name = "OverclockGlow"
+		h.FillColor = AMBER
+		h.FillTransparency = 0.65
+		h.OutlineColor = AMBER
+		h.OutlineTransparency = 0
+		h.DepthMode = Enum.HighlightDepthMode.Occluded
+		h.Parent = s.model
+	elseif not on and existing then
+		existing:Destroy()
+	end
+end
+
+local function setShield(s: Structure, hp: number)
+	s.shield = math.max(0, hp)
+	local look = s.shieldPart
+	if s.shield <= 0 then
+		if look then
+			look:Destroy()
+			s.shieldPart = nil
+		end
+		s.hitPart:SetAttribute("ShieldHP", nil)
+		return
+	end
+	s.hitPart:SetAttribute("ShieldHP", s.shield)
+	if not look then
+		local p = Instance.new("Part")
+		p.Name = "Shield"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Size = s.hitPart.Size + Vector3.new(0.6, 0.6, 0.6)
+		p.CFrame = s.hitPart.CFrame
+		p.Color = AMBER
+		p.Material = Enum.Material.ForceField
+		p.Transparency = 0.2
+		p.Parent = s.model
+		s.shieldPart = p
+	end
+end
+
+-- A placeable joins the running Overclock: the glow, and a shield on a barricade.
+local function joinOverclock(s: Structure)
+	setGlow(s, true)
+	if s.kind == "barricade" then
+		setShield(s, overclock.shieldHp)
+	end
+end
+
+local function endOverclock()
+	overclock.untilT = 0
+	overclock.mult = 1
+	for _, s in structures do
+		setGlow(s, false)
+		if s.shield > 0 then
+			setShield(s, 0)
+		end
+	end
+	World.fireRun("OverclockEnd", {})
+end
+
 ------------------------------------------------------------------ Structures
 local function register(s: Structure)
 	structures[s.hitPart] = s
 	if s.attackable then
 		s.hitPart:SetAttribute("StructureHP", s.hp)
 		s.hitPart:SetAttribute("StructureMaxHP", s.maxHP)
+	end
+	if overclocked() then
+		joinOverclock(s)
 	end
 end
 
@@ -239,6 +326,16 @@ function Abilities.damageStructure(hit: BasePart, amount: number)
 	if not s or not s.attackable then
 		return
 	end
+	-- Overclock's shield takes the hit first.
+	if s.shield > 0 then
+		local absorbed = math.min(s.shield, amount)
+		setShield(s, s.shield - absorbed)
+		amount -= absorbed
+		if amount <= 0 then
+			World.fireRun("StructureHit", { kind = s.kind, position = hit.Position, shield = true })
+			return
+		end
+	end
 	s.hp -= amount
 	hit:SetAttribute("StructureHP", s.hp)
 	local fill = s.fill
@@ -280,6 +377,8 @@ local function newStructure(kind: string, owner: Player, model: Model, hit: Base
 		heal = 0,
 		slowMult = 1,
 		armedAt = 0,
+		shield = 0,
+		shieldPart = nil,
 	}
 end
 
@@ -554,7 +653,9 @@ local function flatDistance(a: Vector3, b: Vector3): number
 end
 
 local function fieldTick(f: Field, t: number)
-	if t - f.lastTick < Config.FieldTickSec then
+	-- Overclock: the med bag (a placeable) heals faster; fire fields keep their pace.
+	local interval = if f.kind == "medbag" then Config.FieldTickSec / rateMult() else Config.FieldTickSec
+	if t - f.lastTick < interval then
 		return
 	end
 	f.lastTick = t
@@ -716,7 +817,7 @@ local function lowestTeammate(from: Vector3, range: number): Player?
 end
 
 local function healTurretTick(s: Structure, t: number)
-	if t - s.lastTick < Config.HealTurretTickSec then
+	if t - s.lastTick < Config.HealTurretTickSec / rateMult() then
 		return
 	end
 	local head = s.head
@@ -875,7 +976,7 @@ local function placeFlameTurret(player: Player, state: PlayerState.State, char: 
 end
 
 local function flameTurretTick(s: Structure, t: number)
-	if t - s.lastTick < Config.FlameTurretTickSec then
+	if t - s.lastTick < Config.FlameTurretTickSec / rateMult() then
 		return
 	end
 	local head = s.head
@@ -949,7 +1050,7 @@ end
 
 ------------------------------------------------------------------ Turret (INITIATE) tick
 local function turretTick(s: Structure, t: number)
-	if t - s.lastTick < 1 / Config.TurretFireRate then
+	if t - s.lastTick < 1 / (Config.TurretFireRate * rateMult()) then
 		return
 	end
 	local head = s.head
@@ -975,8 +1076,136 @@ local function turretTick(s: Structure, t: number)
 	})
 end
 
+------------------------------------------------------------------ INITIATE: Frag (brief 5)
+-- Thrown like the flashbang; lands, blinks for FragFuseSec, then FragDamage x ABILITY POWER to every enemy in
+-- FragRadius, thrown out of the blast.
+local function throwFrag(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
+	local lv = level(state, "frag")
+	local dmg = grown("frag", "FragDamage", Config.FragDamage, lv) * PlayerState.abilityPower(state)
+	local radius = Config.FragRadius
+	throw(char, Color3.fromRGB(60, 70, 50), false, function(pos: Vector3)
+		local g = part({
+			Name = "Frag",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(0.8, 0.8, 0.8),
+			CFrame = CFrame.new(pos.X, Config.FloorTop + 0.4, pos.Z),
+			CanCollide = false,
+			CanQuery = false,
+			Color = Color3.fromRGB(60, 70, 50),
+			Material = Enum.Material.Metal,
+			Parent = folder,
+		})
+		local light = Instance.new("PointLight")
+		light.Color = COLOR.red
+		light.Range = 6
+		light.Brightness = 3
+		light.Parent = g
+		World.fireRun("FragFuse", { position = pos, radius = radius, fuse = Config.FragFuseSec })
+		task.spawn(function()
+			local on = false
+			while g.Parent do
+				on = not on
+				g.Color = if on then COLOR.red else Color3.fromRGB(60, 70, 50)
+				g.Material = if on then Enum.Material.Neon else Enum.Material.Metal
+				light.Enabled = on
+				task.wait(0.12)
+			end
+		end)
+		task.delay(Config.FragFuseSec, function()
+			g:Destroy()
+			local victims = Enemy.within(pos, radius)
+			World.fireRun("Blast", { position = pos, radius = radius, color = COLOR.fire, shake = 0.35, pitch = 0.7 })
+			local kills = 0
+			for _, model in victims do
+				local ep = Enemy.rootPosition(model) or pos
+				local away = ep - pos
+				local hit: Enemy.Hit = {
+					dir = if away.Magnitude > 0.1 then away.Unit else nil,
+					blast = true,
+					blastT = 1 - math.clamp(away.Magnitude / radius, 0, 1),
+				}
+				if hitEnemy(player, model, dmg, ep, false, hit) then
+					kills += 1
+				end
+			end
+			Log.event(
+				"Ability",
+				"%s's frag (LV %d, %d dmg): %d hit, %d killed",
+				player.Name,
+				lv,
+				math.round(dmg),
+				#victims,
+				kills
+			)
+		end)
+	end, aim)
+end
+
+------------------------------------------------------------------ ENGINEER: Overclock (brief 5)
+local function startOverclock(player: Player, state: PlayerState.State, _char: Model)
+	local lv = level(state, "overclock")
+	local mult = 1 + grown("overclock", "RatePct", (Config.OverclockRateMult - 1) * 100, lv) / 100
+	local shield = grown("overclock", "ShieldHp", Config.OverclockShieldHp, lv) * PlayerState.abilityPower(state)
+	local untilT = now() + Config.OverclockSec
+	local wasOn = overclocked()
+	overclock.untilT = math.max(overclock.untilT, untilT)
+	overclock.mult = if wasOn then math.max(overclock.mult, mult) else mult
+	overclock.shieldHp = if wasOn then math.max(overclock.shieldHp, shield) else shield
+	local n = 0
+	for _, s in structures do
+		joinOverclock(s)
+		n += 1
+	end
+	state.abilityActive.overclock = overclock.untilT
+	state.dirty = true
+	World.fireRun("Overclock", { owner = player.UserId, untilT = overclock.untilT, count = n })
+	Log.event(
+		"Ability",
+		"%s overclocked %d placeables (LV %d: x%.2f rate, %d shield, %ds)",
+		player.Name,
+		n,
+		lv,
+		mult,
+		math.round(shield),
+		Config.OverclockSec
+	)
+end
+
+------------------------------------------------------------------ SHARPSHOOTER: Eagle Eye (brief 5)
+-- Every enemy within EagleEyeRadius is marked through walls for EagleEyeSec and takes EagleEyeBonusPct more
+-- damage from any source while marked (Enemy.mark / Enemy.damage).
+local function eagleEye(player: Player, state: PlayerState.State, char: Model)
+	local lv = level(state, "eagleeye")
+	local radius = grown("eagleeye", "EagleEyeRadius", Config.EagleEyeRadius, lv)
+	local bonus = grown("eagleeye", "EagleEyeBonusPct", Config.EagleEyeBonusPct * 100, lv) / 100
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	local victims = Enemy.within(root.Position, radius)
+	for _, model in victims do
+		Enemy.mark(model, Config.EagleEyeSec, bonus)
+	end
+	state.abilityActive.eagleeye = now() + Config.EagleEyeSec
+	state.dirty = true
+	World.fireRun("EagleEye", { position = root.Position, radius = radius, owner = player.UserId })
+	Log.event(
+		"Ability",
+		"%s's eagle eye (LV %d): %d marked for %ds at +%d%% damage (r%d)",
+		player.Name,
+		lv,
+		#victims,
+		Config.EagleEyeSec,
+		math.round(bonus * 100),
+		math.round(radius)
+	)
+end
+
 ------------------------------------------------------------------ Use
 local USE: { [string]: (Player, PlayerState.State, Model, Vector3?) -> () } = {
+	frag = throwFrag,
+	overclock = startOverclock,
+	eagleeye = eagleEye,
 	turret = placeTurret,
 	barricade = placeBarricade,
 	stim = adrenaline,
@@ -1043,6 +1272,9 @@ function Abilities.init()
 
 	RunService.Heartbeat:Connect(function()
 		local t = now()
+		if overclock.untilT > 0 and t >= overclock.untilT then
+			endOverclock()
+		end
 		for _, s in table.clone(structures) do
 			if t >= s.expiresAt then
 				destroyStructure(s, "expired")
@@ -1075,6 +1307,9 @@ function Abilities.init()
 end
 
 function Abilities.clearAll()
+	if overclock.untilT > 0 then
+		endOverclock()
+	end
 	for _, s in table.clone(structures) do
 		destroyStructure(s, "cleared")
 	end

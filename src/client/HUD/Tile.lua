@@ -51,6 +51,7 @@ local function makeIcon(kind: string, parent: Frame, size: number): GuiObject
 		elseif kind == "boom" then "BOM"
 		elseif kind == "stim" then "STM"
 		elseif kind == "melee" then "V"
+		elseif (utf8.len(kind) or #kind) < #kind then kind -- a symbol glyph (Eagle Eye's reticle) as it is
 		else string.upper(string.sub(kind, 1, 3)) -- ability icons come straight from Classes.lua
 	local label = UI.text({
 		Text = glyph,

@@ -58,7 +58,10 @@ type Entry = {
 }
 
 local STORE_NAME = "GHS_Profiles_v1"
-local VERSION = 1
+-- 2 (brief 5): the claymore moved SHARPSHOOTER -> INITIATE and turret / barricade INITIATE -> ENGINEER. Levels are
+-- keyed by ability id, so they move with the ability; the migration only logs it. Eagle Eye, Frag and Overclock
+-- start at level 0 (absent).
+local VERSION = 2
 local RETRY_BACKOFF = { 1, 2, 4 }
 
 local Profiles = {}
@@ -258,6 +261,10 @@ local function migrate(raw: any): Profile
 	end
 	if typeof(raw.pendingPayout) == "number" then
 		p.pendingPayout = math.max(0, math.floor(raw.pendingPayout))
+	end
+	local fromVersion = tonumber(raw.version) or 1
+	if fromVersion < 2 and p.classes.owned.SHARPSHOOTER and (p.abilities.claymore or 0) > 0 then
+		Log.event("Profile", "v1 -> v2: claymore LV %d now on INITIATE's Z", p.abilities.claymore)
 	end
 	return p
 end

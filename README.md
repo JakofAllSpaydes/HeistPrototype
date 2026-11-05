@@ -610,6 +610,14 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    same twice in a row) for 2.5s; revived → `Thanks, I owe you.` / `Back in it.`; bled out → `I'm out. Finish the job.`;
    REVIVE EVERYBODY → a gold `NAME brought everyone back.` to everyone. A callout waits while MARLOW's card is up and
    during the boss cutscene.
+4. Classes: the Classes tab reads INITIATE → ENGINEER (orange, a 🔧) → DOC → SHARPSHOOTER → TORCH, each ◆ 100.
+   INITIATE: Q Frag (thrown to the cursor, blinks red for 1s, then a 9-stud blast for 120 that throws bodies out),
+   E Adrenaline, Z Claymore. ENGINEER: Q Turret, E Barricade, Z Overclock (every turret / healing turret / flame turret
+   on the floor glows amber and fires 1.5× for 8s, a med bag heals faster, every barricade gets a 150 shield that soaks
+   hits first and goes with the glow; the Z tile counts the 8s down). SHARPSHOOTER: Q Eagle Eye (`◉`: a red ring sweeps
+   out 60 studs and every enemy in it glows red through walls for 6s and takes +25% from bullets, turrets, fire and
+   blasts), E Dead Eye, Z Flashbang. A profile that leveled the SHARPSHOOTER claymore has that level on INITIATE's Z;
+   Eagle Eye starts at LV 0. UPGRADE on the tab raises Frag DMG, Overclock RATE / SHIELD and Eagle Eye BONUS / RADIUS.
 
 ## Layout
 

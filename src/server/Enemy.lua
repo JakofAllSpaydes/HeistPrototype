@@ -61,6 +61,8 @@ export type Data = {
 	slowUntil: number,
 	headColor: Color3, -- the head's own color, restored when a stun ends
 	lastFlinch: number,
+	markUntil: number, -- Eagle Eye: server clock the mark ends...
+	markBonus: number, -- ...and the extra damage share it takes from any source until then
 	mem: { [string]: any }, -- the brain's scratch space
 }
 
@@ -475,6 +477,8 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		slowUntil = 0,
 		headColor = head.Color,
 		lastFlinch = -math.huge,
+		markUntil = 0,
+		markBonus = 0,
 		mem = {},
 	}
 	count += 1
@@ -521,6 +525,23 @@ function Enemy.slow(model: Model, mult: number, seconds: number)
 		d.slowMult = mult
 	end
 	d.slowUntil = math.max(d.slowUntil, untilT)
+end
+
+-- Eagle Eye: marked through walls (the client draws the red Highlight off MarkedUntil) and +bonus damage from
+-- any source while it lasts. A second mark keeps the longer end and the bigger bonus.
+function Enemy.mark(model: Model, seconds: number, bonus: number)
+	local d = active[model]
+	if not d or d.dead then
+		return
+	end
+	local now = os.clock()
+	if d.markUntil <= now then
+		d.markBonus = bonus
+	else
+		d.markBonus = math.max(d.markBonus, bonus)
+	end
+	d.markUntil = math.max(d.markUntil, now + seconds)
+	model:SetAttribute("MarkedUntil", Workspace:GetServerTimeNow() + (d.markUntil - now))
 end
 
 function Enemy.stunned(model: Model): boolean
@@ -775,6 +796,9 @@ function Enemy.damage(model: Model, amount: number, attacker: Player?, hit: Hit?
 	-- A brain can scale incoming damage (the staggered boss takes more).
 	if d.brain.damageMult then
 		amount *= d.brain.damageMult(d)
+	end
+	if d.markUntil > os.clock() then
+		amount *= 1 + d.markBonus -- Eagle Eye
 	end
 	local before = d.hp
 	d.hp -= amount

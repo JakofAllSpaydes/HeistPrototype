@@ -191,7 +191,7 @@ local function paint()
 		})
 		UI.corner(circle, S(8))
 		UI.text({
-			Text = string.sub(class.name, 1, 1),
+			Text = class.glyph,
 			Font = Theme.Fonts.display,
 			TextSize = S(11),
 			TextColor3 = Theme.Colors.bg,

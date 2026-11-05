@@ -102,7 +102,7 @@ local function classPill(
 	})
 	UI.corner(circle, 999)
 	UI.text({
-		Text = if own then string.sub(c.name, 1, 1) else "🔒",
+		Text = if own then c.glyph else "🔒",
 		Font = Theme.Fonts.display,
 		TextSize = S(if own then 16 else 13),
 		TextColor3 = Theme.Colors.bg,
@@ -293,8 +293,7 @@ function ClassesTab.render(scene: any)
 	end
 
 	-- Detail: tall well, name, status, the kit, action.
-	local ic =
-		MetaUI.well(card, 1, Color3.fromHex(class.color), "class", string.sub(class.name, 1, 1), Theme.Colors.white)
+	local ic = MetaUI.well(card, 1, Color3.fromHex(class.color), "class", class.glyph, Theme.Colors.white)
 	local well = ic.Parent
 	if well and well:IsA("Frame") then
 		well.Size = UDim2.new(1, 0, 0, S(220))
