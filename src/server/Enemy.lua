@@ -20,6 +20,7 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Rig = require(script.Parent.Enemies.Rig)
 local Hazards = require(script.Parent.Enemies.Hazards)
+local Pause = require(script.Parent.Pause)
 
 local BRAINS: { [string]: any } = {
 	melee = require(script.Parent.Enemies.Melee),
@@ -867,7 +868,7 @@ function Enemy.init()
 	Hazards.hitStructure = hitStructure
 	Hazards.init()
 
-	RunService.Heartbeat:Connect(function()
+	RunService.Heartbeat:Connect(function(dt)
 		if Enemy.frozen then
 			return
 		end
@@ -878,6 +879,19 @@ function Enemy.init()
 			end
 			if not model.Parent or d.root.Position.Y < -50 then
 				Enemy.kill(model, nil)
+				continue
+			end
+			if Pause.active() then
+				-- VOTE TO PAUSE: everyone stands still; their timers move with the pause.
+				hold(d)
+				d.stunUntil += dt
+				d.lastAttack += dt
+				if d.slowUntil > 0 then
+					d.slowUntil += dt
+				end
+				if d.markUntil > 0 then
+					d.markUntil += dt
+				end
 				continue
 			end
 			if Enemy.paused then

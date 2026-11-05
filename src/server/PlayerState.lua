@@ -22,6 +22,7 @@ local Stats = require(script.Parent.Stats)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Profiles = require(script.Parent.Profiles)
+local Pause = require(script.Parent.Pause)
 
 export type State = {
 	player: Player,
@@ -508,7 +509,7 @@ PlayerState.onZeroHP = nil :: ((Player) -> ())?
 
 function PlayerState.damage(player: Player, amount: number, source: string?)
 	local state = states[player]
-	if not state or state.god or state.downed or state.bledOut then
+	if not state or state.god or state.downed or state.bledOut or Pause.active() then
 		return
 	end
 	if state.invulnUntil > Workspace:GetServerTimeNow() then
@@ -580,6 +581,9 @@ local function abilityView(state: State): { [string]: Types.Ability }
 	return out
 end
 
+-- Modules that sit above PlayerState add their own per-player views here (dealer, pause): key -> fn(player).
+PlayerState.syncHooks = {} :: { [string]: (Player) -> any }
+
 function PlayerState.buildSync(state: State): Types.Sync
 	local st = PlayerState.computed(state)
 	local w = Weapons.ById[state.held.weaponId]
@@ -591,7 +595,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 	local levelRate = Weapons.levelRateMult(state.held.level)
 	local wrapId = PlayerState.wrapOf(state, state.held.weaponId)
 	local wrap = wrapId and Wraps.ById[wrapId]
-	return {
+	local sync = {
 		wave = World.wave,
 		-- Players outside the party only ever see the hub, whatever the arena is doing.
 		waveState = if inParty or not World.inRunCycle() then World.state else "Hub",
@@ -656,7 +660,11 @@ function PlayerState.buildSync(state: State): Types.Sync
 		bleedEndsAt = state.bleedEndsAt,
 		selfRevives = state.selfRevives,
 		reviveAllUsed = state.reviveAllUsed,
-	}
+	} :: any
+	for key, fn in PlayerState.syncHooks do
+		sync[key] = fn(state.player)
+	end
+	return sync
 end
 
 -- Collision groups: enemies never body-block players (or each other) unless Config says so.
@@ -728,6 +736,23 @@ end
 
 function PlayerState.init()
 	PlayerState.setupCollisionGroups()
+	-- The pause: every party member's character is held where it stands, then let go.
+	Pause.setFreezeHook(function(on: boolean)
+		for _, p in World.partyPlayers() do
+			local char = p.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root then
+				root.Anchored = on
+			end
+			local s = states[p]
+			if s and not on then
+				PlayerState.applyCharacterStats(s)
+			end
+			if s then
+				s.dirty = true
+			end
+		end
+	end)
 	-- Characters are loaded by hand: a bled-out player has none until revived or the run ends, and the
 	-- first character waits for the profile so the starter, mask and wrap are right from the first frame.
 	Players.CharacterAutoLoads = false
@@ -779,7 +804,7 @@ function PlayerState.init()
 		for player, state in states do
 			local char = player.Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			if hum and not state.downed and hum.Health > 0 and hum.Health < hum.MaxHealth then
+			if hum and not state.downed and not Pause.active() and hum.Health > 0 and hum.Health < hum.MaxHealth then
 				local st = PlayerState.computed(state)
 				hum.Health = math.min(hum.MaxHealth, hum.Health + st.hpRegen * dt)
 			end
@@ -792,10 +817,12 @@ function PlayerState.init()
 		end
 		acc = 0
 		-- A full resend every 2s covers a client that loaded after its first sync.
-		local force = forceAcc >= 2 or World.heatDirty
+		local force = forceAcc >= 2 or World.heatDirty or World.pauseDirty or World.dealerDirty
 		if force then
 			forceAcc = 0
 			World.heatDirty = false
+			World.pauseDirty = false
+			World.dealerDirty = false
 		end
 		for player, state in states do
 			if state.dirty or force then

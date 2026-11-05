@@ -10,6 +10,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Enemy = require(script.Parent.Enemy)
+local Pause = require(script.Parent.Pause)
 
 type Record = {
 	wave: number,
@@ -31,6 +32,15 @@ type Record = {
 local Heat = {}
 
 local records: { [number]: Record } = {}
+
+-- A pause never counts against par: every open wave's clock start moves forward with it.
+Pause.onTick(function(dt)
+	for _, r in records do
+		if not r.evaluated then
+			r.startedAt += dt
+		end
+	end
+end)
 local history: { Record } = {} -- evaluated this run, for the Stats print
 
 function Heat.reset()

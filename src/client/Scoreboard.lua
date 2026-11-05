@@ -10,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Classes = require(Shared:WaitForChild("Classes"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
@@ -118,6 +119,28 @@ local function build()
 	})
 	UI.list(rowsFrame :: Frame, Enum.FillDirection.Vertical, S(4))
 	rowH = S(28)
+	-- Brief 5: VOTE TO PAUSE from the scoreboard (P works anywhere in a run).
+	local pauseBtn = UI.button({
+		Name = "Pause",
+		Text = if ClientState.isMobile then "VOTE PAUSE" else "VOTE PAUSE [P]",
+		Font = Theme.Fonts.display,
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.bg,
+		BackgroundColor3 = Theme.Colors.grey,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(10), 0, S(10)),
+		Size = UDim2.fromOffset(S(96), S(20)),
+		ZIndex = 3,
+		Parent = p,
+	})
+	UI.corner(pauseBtn, S(6))
+	pauseBtn.Activated:Connect(function()
+		local pv = ClientState.sync and (ClientState.sync :: any).pause
+		if pv and not pv.active then
+			Remotes.PauseAction:FireServer(if pv.myVote then "unvote" else "vote")
+			UI.punch(pauseBtn, 0.9, 0.15)
+		end
+	end)
 	UI.text({
 		Text = if ClientState.isMobile then "TAP TO CLOSE" else "RELEASE TAB TO CLOSE",
 		TextSize = S(9),

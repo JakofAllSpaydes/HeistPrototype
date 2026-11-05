@@ -665,6 +665,13 @@ function CrewCallUI.init()
 		elseif name == "CrewLine" then
 			holdMarlow(tonumber(data.hold) or Config.CallHoldSec)
 			onCrewLine(data)
+		elseif name == "Resumed" then
+			-- The pause stopped the job / vault clocks on the server; the pill follows.
+			local call = active
+			local d = tonumber(data and data.duration) or 0
+			if call and call.data and typeof(call.data.endsAt) == "number" then
+				call.data.endsAt += d
+			end
 		elseif name == "AllyCallout" and typeof(data) == "table" then
 			data.queuedAt = os.clock()
 			table.insert(calloutQueue, data)

@@ -638,6 +638,24 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`), not yet run in Studio. S
    with a spinning diamond on top, and keeps its full name / timer / distance box at any range (no badge); a strip of
    amber chevrons runs along the floor from where the crew stood to the door, lighting in a wave toward it, for 10s.
    Hold Tab: the header ends in amber `· VAULT OPEN` until the vault seals (or the job fails).
+7. Dealer (clear wave 10's TITAN, or debug `Open dealer` in an intermission): the wave bar reads DEALER, MARLOW's
+   `Dealer's set up by the van…` card, a stall rises out of the floor south of the center (table, crates, a lamp, the
+   DEALER rig idling behind it) and the top-center card reads `DEALER · 1:30` with TELEPORT TO DEALER [T] (once; it
+   then reads TELEPORT USED), SKIP 0/1 [V] and VOTE TO PAUSE [P]. Eight upright cards stand on the table (stat initials
+   in the tier color, a green price); the ammo crate, medkit and dice cup carry ARMS DROP $800, HEAL ALL $300 and
+   REROLL $150 tags. Walk up: the nearest one opens a panel (`HONED · UNCOMMON · DAMAGE`, `DAMAGE +15% → +37%`,
+   price, F BUY). F: the upgrade lands at once (toast, tracker), the card disappears and the other prices rise; short
+   of cash the panel shakes and the price goes red. ARMS DROP drops a crate beside the stall; HEAL ALL fills every
+   member; REROLL deals eight new cards and the next reroll costs $300. Nothing spawns; at 0:00 or once everyone has
+   voted SKIP the stall sinks away and the normal intermission and next wave follow. A second player sees their own
+   eight cards on the same table.
+8. Pause: P (or the dealer card, or the scoreboard's VOTE PAUSE): solo pauses at once; with two players the first vote
+   toasts `NAME VOTED TO PAUSE · 1/2` and the second pauses. Everything stops: enemies stand, nobody takes damage, you
+   cannot move or fire, the bleed bar, floor gun and crate countdowns, the job pill, the vault pill, the dealer timer,
+   cooldown sweeps and turret lifetimes all hold. `PAUSED` and the names over a dim with RESUME (anyone); left alone,
+   `RESUMING IN 10` counts down from 2:50 and it resumes at 3:00. After it the wave's par and TIME on the scoreboard
+   do not include the pause. A second pause is refused for 5 waves (the dealer button reads `PAUSE IN N WAVES`).
+   Debug `Pause / resume` skips the vote.
 
 ## Layout
 

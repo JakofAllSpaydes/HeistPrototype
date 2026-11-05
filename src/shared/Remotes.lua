@@ -27,6 +27,9 @@ local DEFS: { [string]: string } = {
 	QueueAction = "RemoteEvent", -- client -> server: "create" { settings } | "cancel" | "leave"
 	QueueState = "RemoteEvent", -- server -> client: the zone / party view for the local player (Queue.lua)
 	Meta = "RemoteFunction", -- client -> server: action, args; returns { ok, reason?, toast? } (unlock / upgrade / equip)
+	-- Brief 5: the dealer break and the pause
+	DealerAction = "RemoteEvent", -- client -> server: "buy" (stand index | "crate" | "heal" | "reroll") | "skip" | "teleport"
+	PauseAction = "RemoteEvent", -- client -> server: "vote" | "unvote" | "resume"
 }
 
 local folder: Instance

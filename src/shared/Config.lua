@@ -585,6 +585,25 @@ local Config = {
 	TorchBurnRateMult = 2, -- I: your burns (fire fields, INCENDIARY) tick this much faster
 	BackdraftCdr = 0.1, -- III: every burning enemy that dies trims this off your Molotov cooldown
 
+	------------------------------------------------------------------ Dealer (brief 5; Dealer.lua, DealerUI.lua)
+	-- After every boss wave is cleared: a DealerSec break (no spawns, heat frozen) with a stall of per-player stands.
+	DealerSec = 90,
+	DealerLine = "Dealer's set up by the van. Ninety seconds, then we're back on.", -- MARLOW's call (match DealerSec)
+	DealerStallPosition = Vector3.new(0, 0, 18), -- arena center for the prototype (clear of the center spawn)
+	DealerStock = 8, -- upgrade stands per player
+	DealerStandSpacing = 2.2, -- studs between stands on the table
+	DealerTeleportDistance = 6, -- TELEPORT TO DEALER lands you this far in front of the table
+	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
+	ShopPriceByTier = { 100, 160, 260, 420, 700 }, -- x UpgradePriceMult ^ upgrades bought (placeholders)
+	ShopCratePrice = 800, -- ARMS DROP: a crate at the stall for the party
+	ShopHealPrice = 300, -- HEAL ALL: full HP for every member
+	ShopRerollPrice = 150, -- REROLL: your eight stands again; doubles per use
+
+	------------------------------------------------------------------ Pause (brief 5; Pause.lua)
+	PauseMaxSec = 180, -- a pause resumes by itself here...
+	PauseCountdownSec = 10, -- ...after this long a countdown on the overlay
+	PauseCooldownWaves = 5, -- one pause per this many waves
+
 	------------------------------------------------------------------ Boss (TITAN, Boss.lua; step 5 of brief 4)
 	BossWaveInterval = 10, -- the first boss wave and every multiple after (0 = never)
 	BossWaveBudgetPct = 0.4, -- boss waves spawn this share of the normal budget alongside the boss

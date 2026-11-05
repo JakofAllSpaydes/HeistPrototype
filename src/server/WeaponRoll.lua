@@ -12,6 +12,7 @@ local Remotes = require(Shared.Remotes)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
 local Stats = require(script.Parent.Stats)
+local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Log)
 
 export type SpawnOpts = {
@@ -51,7 +52,7 @@ function WeaponRoll.setLifetime(gun: BasePart, lifetime: number)
 	local token = (expireTokens[gun] or 0) + 1
 	expireTokens[gun] = token
 	if lifetime > 0 then
-		task.delay(lifetime, function()
+		Pause.delay(lifetime, function() -- paused time does not count
 			if gun.Parent and expireTokens[gun] == token then
 				expireTokens[gun] = nil
 				gun:Destroy()
@@ -264,6 +265,15 @@ function WeaponRoll.clearAll()
 end
 
 function WeaponRoll.init()
+	-- After a pause the floor tags' countdowns pick up where they stopped.
+	Pause.onResume(function(duration: number)
+		for _, gun in lootFolder:GetChildren() do
+			local at = gun:GetAttribute("SpawnedAt")
+			if typeof(at) == "number" then
+				gun:SetAttribute("SpawnedAt", at + duration)
+			end
+		end
+	end)
 	Remotes.SwapWeapon.OnServerEvent:Connect(function(player: Player, gun: any)
 		if typeof(gun) == "Instance" and gun:IsA("BasePart") then
 			WeaponRoll.onPrompt(player, gun)

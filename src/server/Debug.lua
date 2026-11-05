@@ -29,6 +29,8 @@ local VaultJob = require(script.Parent.VaultJob)
 local Boss = require(script.Parent.Boss)
 local Progression = require(script.Parent.Progression)
 local Mastery = require(script.Parent.Mastery)
+local Dealer = require(script.Parent.Dealer)
+local Pause = require(script.Parent.Pause)
 
 local Debug = {}
 
@@ -99,6 +101,17 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	ForceTradeoff = function(player, state, _args)
 		state.forceTradeoff = true
 		toast(player, "NEXT PICK-3 HAS A TRADEOFF")
+	end,
+	OpenDealer = function(player, _state, _args)
+		if Dealer.isActive() then
+			toast(player, "DEALER ALREADY OPEN")
+			return
+		end
+		Dealer.requested = true
+		toast(player, if World.state == "Intermission" then "DEALER OPENING" else "DEALER OPENS AFTER THIS WAVE")
+	end,
+	TogglePause = function(player, _state, _args)
+		Pause.debugToggle(player)
 	end,
 	AddMastery = function(player, _state, _args)
 		Mastery.debugAdd(player, 100)

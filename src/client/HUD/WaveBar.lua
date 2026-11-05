@@ -349,7 +349,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	-- Hub (the yard): the bar is hidden by the hub HUD; it reads HUB if ever shown. Run over: RUN OVER.
 	local function paintState()
-		local inRun = state == "Intro" or state == "Wave" or state == "Intermission"
+		local inRun = state == "Intro" or state == "Wave" or state == "Intermission" or state == "Dealer"
 		stars.Visible = inRun
 		autoSkip.Visible = inRun
 		votes.Visible = inRun
@@ -372,6 +372,10 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		elseif state == "RunOver" or state == "RunEnd" or state == "Summary" then
 			wave.Text = "RUN OVER"
 			wave.TextColor3 = Theme.Colors.red
+			lastShown = -1
+		elseif state == "Dealer" then
+			wave.Text = "DEALER"
+			wave.TextColor3 = Theme.Colors.amber
 			lastShown = -1
 		elseif state ~= "Intermission" then
 			wave.Text = string.format("WAVE %d", currentWave)

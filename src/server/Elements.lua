@@ -20,6 +20,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local World = require(script.Parent.World)
+local Pause = require(script.Parent.Pause)
 
 type Status = {
 	model: Model,
@@ -237,8 +238,23 @@ function Elements.clearAll()
 end
 
 function Elements.init()
+	-- Paused: burns, chills and freezes hold their remaining time.
+	Pause.onTick(function(dt)
+		for _, s in statuses do
+			if s.burnUntil > 0 then
+				s.burnUntil += dt
+				s.nextBurn += dt
+			end
+			if s.chillUntil > 0 then
+				s.chillUntil += dt
+			end
+			if s.frozenUntil > 0 then
+				s.frozenUntil += dt
+			end
+		end
+	end)
 	RunService.Heartbeat:Connect(function()
-		if Enemy.frozen or Enemy.paused then
+		if Enemy.frozen or Enemy.paused or Pause.active() then
 			return
 		end
 		local now = os.clock()

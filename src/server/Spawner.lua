@@ -14,6 +14,7 @@ local World = require(script.Parent.World)
 local PlayerState = require(script.Parent.PlayerState)
 local Log = require(script.Parent.Log)
 local Heat = require(script.Parent.Heat)
+local Pause = require(script.Parent.Pause)
 
 local Spawner = {}
 
@@ -103,6 +104,10 @@ function Spawner.runWave(wave: number): boolean
 	publishLeft(budget + Enemy.count())
 
 	while remaining > 0 and not World.skipRequested and not World.runOver do
+		if Pause.active() then
+			startedAt += Pause.hold() -- no spawns while paused, and the AUTO SKIP clock waits too
+			continue
+		end
 		if World.spawnsPaused then
 			task.wait(0.25)
 			continue
@@ -147,6 +152,9 @@ function Spawner.runWave(wave: number): boolean
 	)
 
 	while Enemy.count() > 0 and not World.skipRequested and not World.runOver do
+		if Pause.active() then
+			startedAt += Pause.hold()
+		end
 		publishLeft(Enemy.count())
 		if World.autoSkipActive() then
 			Heat.onAutoSkip(wave)

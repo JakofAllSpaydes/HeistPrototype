@@ -24,6 +24,7 @@ local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
 local Minigames = require(script.Parent.Minigames)
 local Bags = require(script.Parent.Bags)
+local Pause = require(script.Parent.Pause)
 
 local VaultJob = {}
 
@@ -369,12 +370,12 @@ function VaultJob.open()
 		hint = Lines.vault.lootHint,
 	})
 	Log.event("Vault", "open for %ds, gas at %ds", Config.VaultOpenSec, Config.VaultGasWarnSec)
-	task.delay(math.max(0, warnAt - now()), function()
+	Pause.delay(math.max(0, warnAt - now()), function()
 		if token == runToken then
 			startWarn()
 		end
 	end)
-	task.delay(math.max(0, endsAt - now()), function()
+	Pause.delay(math.max(0, endsAt - now()), function()
 		if token == runToken then
 			startGas()
 		end
@@ -410,6 +411,12 @@ function VaultJob.resetRun()
 end
 
 function VaultJob.init()
+	Pause.onTick(function(dt)
+		if VaultJob.phase == "open" or VaultJob.phase == "warn" then
+			endsAt += dt
+			warnAt += dt
+		end
+	end)
 	local v = Room.vault
 	if not v then
 		Log.event("Vault", "no VaultDoor in the map; CRACK THE VAULT is never drawn")

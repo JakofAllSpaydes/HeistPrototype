@@ -15,6 +15,7 @@ local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local Elements = require(script.Parent.Elements)
 local Mastery = require(script.Parent.Mastery)
+local Pause = require(script.Parent.Pause)
 local World = require(script.Parent.World)
 
 local Combat = {}
@@ -264,8 +265,9 @@ function Combat.init()
 			end
 
 			local state = PlayerState.get(player)
-			-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire.
-			if state.bledOut or (state.downed and not Config.DownedCanShoot) then
+			-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire; nobody
+			-- fires while the run is paused.
+			if state.bledOut or (state.downed and not Config.DownedCanShoot) or Pause.active() then
 				return
 			end
 			local st = PlayerState.computed(state)

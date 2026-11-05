@@ -19,6 +19,7 @@ local WeaponRoll = require(script.Parent.WeaponRoll)
 local Stats = require(script.Parent.Stats)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Pause = require(script.Parent.Pause)
 
 type Entry = { weapon: Weapons.Weapon, level: number }
 
@@ -265,7 +266,7 @@ function BigCrate.roll(player: Player, crate: Crate)
 	TweenService:Create(crate.lid, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		CFrame = crate.lidClosed * CFrame.new(0, 0.6, 0) * CFrame.Angles(math.rad(-8), 0, 0),
 	}):Play()
-	task.delay(CrateReel.ejectSec(), function()
+	Pause.delay(CrateReel.ejectSec(), function()
 		if not crate.model.Parent then
 			return
 		end
@@ -340,7 +341,7 @@ function BigCrate.drop(at: Vector3?, opts: DropOpts?)
 	crates[id] = crate
 	model.Parent = effects
 	CollectionService:AddTag(model, BigCrate.Tag)
-	task.delay(Config.CrateLifetimeSec, function()
+	Pause.delay(Config.CrateLifetimeSec, function()
 		if not crate.active then
 			return
 		end
@@ -470,6 +471,14 @@ function BigCrate.onWaveEnd()
 	end
 end
 
-function BigCrate.init() end
+function BigCrate.init()
+	-- After a pause the crates' countdowns pick up where they stopped.
+	Pause.onResume(function(duration: number)
+		for _, crate in crates do
+			crate.endsAt += duration
+			crate.model:SetAttribute("EndsAt", crate.endsAt)
+		end
+	end)
+end
 
 return BigCrate

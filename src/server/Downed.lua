@@ -18,6 +18,7 @@ local Log = require(script.Parent.Log)
 local WeaponRoll = require(script.Parent.WeaponRoll)
 local Heat = require(script.Parent.Heat)
 local Callouts = require(Shared.Callouts)
+local Pause = require(script.Parent.Pause)
 
 local Downed = {}
 
@@ -367,6 +368,17 @@ function Downed.init()
 
 	RunService.Heartbeat:Connect(function(dt)
 		local t = now()
+		-- Paused: bleed timers stand still and revive holds do nothing.
+		if Pause.active() then
+			for _, player in World.runAudience() do
+				local state = PlayerState.get(player)
+				if state.downed then
+					state.bleedEndsAt += dt
+					state.dirty = true
+				end
+			end
+			return
+		end
 		-- Bleed timers.
 		for _, player in World.runAudience() do
 			local state = PlayerState.get(player)

@@ -41,6 +41,8 @@ local Roster = require(script.Parent.Roster)
 local Economy = require(script.Parent.Economy)
 local Elements = require(script.Parent.Elements)
 local Mastery = require(script.Parent.Mastery)
+local Pause = require(script.Parent.Pause)
+local Dealer = require(script.Parent.Dealer)
 
 Profiles.init()
 PlayerState.init()
@@ -56,6 +58,10 @@ Enemy.onDeath = function(d, attacker)
 	Mastery.onKill(d.model, attacker)
 end
 Mastery.init()
+Pause.init()
+Dealer.init()
+PlayerState.syncHooks.dealer = Dealer.view
+PlayerState.syncHooks.pause = Pause.view
 Elements.init()
 Combat.init()
 UpgradeShop.init()
@@ -76,13 +82,17 @@ local function setState(state: string)
 	PlayerState.markAllDirty()
 end
 
+-- Paused time does not count (Pause pushes intermissionEndsAt forward every frame of a pause).
 local function waitIntermission()
-	local t0 = os.clock()
-	while os.clock() - t0 < Config.IntermissionSec do
-		if World.skipRequested or World.pendingWave or World.runOver then
+	local minAt = World.intermissionEndsAt - Config.IntermissionSec + Config.SkipMinIntermissionSec
+	while Workspace:GetServerTimeNow() < World.intermissionEndsAt do
+		if World.skipRequested or World.pendingWave or World.runOver or Dealer.requested then
 			break
 		end
-		if os.clock() - t0 >= Config.SkipMinIntermissionSec and World.skipVotePassed() then
+		if Pause.active() then
+			minAt += Pause.hold()
+		end
+		if Workspace:GetServerTimeNow() >= minAt and World.skipVotePassed() then
 			Log.event("Wave", "Intermission skipped by vote (%d/%d)", World.skipVoteCount(), World.skipNeeded())
 			World.fireRun("SkipPassed", { votes = World.skipVoteCount(), needed = World.skipNeeded() })
 			break
@@ -148,6 +158,19 @@ local function runWaves()
 		if not World.skipRequested then
 			World.addWaveGold(wave)
 		end
+		-- The dealer break: after a boss wave is cleared (or on debug request), before the intermission.
+		if
+			not World.runOver
+			and not World.pendingWave
+			and not advanced
+			and (World.isBossWave(wave) or Dealer.requested)
+		then
+			World.skipRequested = false
+			Dealer.run(wave)
+			if World.runOver then
+				return
+			end
+		end
 		if World.pendingWave then
 			continue
 		end
@@ -163,6 +186,13 @@ local function runWaves()
 		setState("Intermission")
 		World.fireRun("Intermission", { wave = wave, endsAt = World.intermissionEndsAt })
 		waitIntermission()
+		-- Debug "Open dealer now" during the intermission: the break runs, then the next wave.
+		if Dealer.requested and not World.runOver and not World.pendingWave then
+			Dealer.run(wave)
+			if World.runOver then
+				return
+			end
+		end
 		if not World.pendingWave then
 			World.wave = wave + 1
 		end
@@ -183,6 +213,7 @@ task.spawn(function()
 		World.summaryChoice = nil
 		World.roster = nil
 		setState("Hub")
+		Pause.reset()
 		Queue.onRunEnded(choice)
 		Hub.enter(lastParty)
 		World.fireRun("HubEnter", {})

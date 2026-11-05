@@ -20,6 +20,7 @@ local Log = require(script.Parent.Log)
 local Minigames = require(script.Parent.Minigames)
 local Heat = require(script.Parent.Heat)
 local VaultJob = require(script.Parent.VaultJob)
+local Pause = require(script.Parent.Pause)
 
 type Job = {
 	id: number,
@@ -424,9 +425,16 @@ function CrewCall.onWaveStart(wave: number)
 end
 
 function CrewCall.init()
+	-- Paused: the job window stands still (the clients shift their pill and marker on Resumed).
+	Pause.onTick(function(dt)
+		local j = job
+		if j and j.active then
+			j.endsAt += dt
+		end
+	end)
 	RunService.Heartbeat:Connect(function(dt)
 		local j = job
-		if not j or not j.active then
+		if not j or not j.active or Pause.active() then
 			return
 		end
 		local now = Workspace:GetServerTimeNow()

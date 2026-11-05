@@ -47,6 +47,8 @@ local World = {
 	roster = nil :: any, -- the scoreboard view (Roster.lua rebuilds it every RosterSyncSec; StateSync carries it)
 	crewOverclockUntil = 0, -- server time: an ENGINEER III's Overclock boosts every crew member's gun until then
 	vaultLive = false, -- CRACK THE VAULT is drawn, open or warning: the scoreboard header reads VAULT OPEN
+	pauseDirty = false, -- the pause or its votes changed: everyone resyncs
+	dealerDirty = false, -- the dealer's votes / teleports changed: everyone resyncs
 }
 
 function World.survivedSec(): number
@@ -59,7 +61,7 @@ end
 
 -- True while a run is on: waves can spawn, downs count, cash is Match Cash.
 function World.inRun(): boolean
-	return World.state == "Intro" or World.state == "Wave" or World.state == "Intermission"
+	return World.state == "Intro" or World.state == "Wave" or World.state == "Intermission" or World.state == "Dealer" -- the dealer break (brief 5)
 end
 
 -- Anything but the hub: a party is in the arena (run, run over, run end or summary).

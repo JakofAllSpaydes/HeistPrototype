@@ -336,6 +336,13 @@ function Markers.init()
 				-- The vault job: twice the size, a rotating amber diamond, never a badge.
 				if vault then { scale = Config.VaultBeaconScale, noCompact = true, diamond = true } else nil
 			)
+		elseif name == "Resumed" then
+			local d = tonumber(data and data.duration) or 0
+			for _, m in markers do
+				if m.endsAt > 0 then
+					m.endsAt += d
+				end
+			end
 		elseif name == "VaultArrows" and typeof(data.from) == "Vector3" and typeof(data.to) == "Vector3" then
 			floorArrows(data.from, data.to, tonumber(data.sec) or Config.VaultArrowSec)
 			if capture then

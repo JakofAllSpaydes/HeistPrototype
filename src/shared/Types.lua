@@ -121,6 +121,20 @@ export type Sync = {
 	bleedEndsAt: number, -- server time, while downed
 	selfRevives: number, -- used this run
 	reviveAllUsed: number, -- REVIVE EVERYBODY presses this run
+	-- Brief 5 (PlayerState.syncHooks): the dealer break (nil outside it) and the pause.
+	dealer: { endsAt: number, skips: number, needed: number, mySkip: boolean, teleportUsed: boolean, position: Vector3 }?,
+	pause: {
+		active: boolean,
+		names: string,
+		startedAt: number,
+		resumeAt: number,
+		countdownSec: number,
+		votes: number,
+		needed: number,
+		myVote: boolean,
+		canVote: boolean,
+		cooldownWaves: number,
+	}?,
 }
 
 return {}

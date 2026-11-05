@@ -22,6 +22,7 @@ local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local Elements = require(script.Parent.Elements)
 local Downed = require(script.Parent.Downed)
+local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Log)
 local World = require(script.Parent.World)
 
@@ -1370,7 +1371,14 @@ function Abilities.use(player: Player, id: any, aim: any)
 	local aimPoint: Vector3? = if typeof(aim) == "Vector3" and aim == aim then aim else nil
 	local state = PlayerState.get(player)
 	local char = player.Character
-	if not char or state.downed or state.bledOut or not World.inRun() or not World.isInParty(player) then
+	if
+		not char
+		or state.downed
+		or state.bledOut
+		or Pause.active()
+		or not World.inRun()
+		or not World.isInParty(player)
+	then
 		return
 	end
 	-- Only the equipped class's abilities can fire.
@@ -1404,7 +1412,38 @@ function Abilities.init()
 	Enemy.onStructureHit = Abilities.damageStructure
 	Remotes.UseAbility.OnServerEvent:Connect(Abilities.use)
 
+	-- Paused: placeables, fields, buffs, windows and cooldowns all keep what they had left.
+	Pause.onTick(function(dt)
+		for _, s in structures do
+			s.expiresAt += dt
+		end
+		for _, f in fields do
+			f.expiresAt += dt
+		end
+		if overclock.untilT > 0 then
+			overclock.untilT += dt
+		end
+		if World.crewOverclockUntil > 0 then
+			World.crewOverclockUntil += dt
+		end
+		for _, state in PlayerState.all() do
+			if state.buffUntil > 0 then
+				state.buffUntil += dt
+			end
+			for id, untilT in state.abilityActive do
+				state.abilityActive[id] = untilT + dt
+			end
+			for id, ends in state.cooldowns do
+				state.cooldowns[id] = ends + dt
+			end
+			state.fieldHospitalUntil += dt
+			state.dirty = true
+		end
+	end)
 	RunService.Heartbeat:Connect(function(dt)
+		if Pause.active() then
+			return
+		end
 		local t = now()
 		if overclock.untilT > 0 and t >= overclock.untilT then
 			endOverclock()
