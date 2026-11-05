@@ -535,6 +535,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		banked = World.banked,
 		bags = state.bags,
 		boss = World.bossView,
+		roster = if inParty then World.roster else nil,
 		maxHP = st.maxHP,
 		held = {
 			weaponId = w.id,

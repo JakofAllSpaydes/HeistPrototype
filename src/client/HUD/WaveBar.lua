@@ -113,6 +113,41 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	UI.stroke(left, Theme.Colors.black, S(1), 0.5)
 
+	-- Mobile: a small ≡ chip beside N LEFT hints that tapping the wave bar opens the scoreboard.
+	if ClientState.isMobile then
+		local chip = UI.frame({
+			Name = "ScoreChip",
+			BackgroundColor3 = Theme.Colors.panel,
+			BackgroundTransparency = 0.3,
+			AnchorPoint = Vector2.new(0, 0),
+			Position = UDim2.new(0.5, S(86), 0, S(74)),
+			Size = UDim2.fromOffset(S(24), S(20)),
+			Parent = root,
+		})
+		UI.corner(chip, S(6))
+		UI.stroke(chip, Theme.Colors.grey, S(1), 0.5)
+		UI.text({
+			Text = "≡",
+			Font = Theme.Fonts.display,
+			TextSize = S(16),
+			TextColor3 = Theme.Colors.grey,
+			Size = UDim2.fromScale(1, 1),
+			Parent = chip,
+		})
+		-- Under the pills (ZIndex 0) so AUTO SKIP and VOTES still take their taps.
+		local tap = UI.button({
+			Name = "ScoreTap",
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, S(96)),
+			ZIndex = 0,
+			Parent = root,
+		})
+		tap.Activated:Connect(function()
+			ClientState.Juice:Fire("ToggleScoreboard", {})
+			UI.punch(chip, 1.2, 0.2)
+		end)
+	end
+
 	-- Auto skip toggle (left) and skip votes (right).
 	local autoSkip, autoSkipLabel = UI.pill(root, "AUTO SKIP", Theme.Colors.panel2, Theme.Colors.grey, S(24))
 	autoSkip.AnchorPoint = Vector2.new(1, 0)

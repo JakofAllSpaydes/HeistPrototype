@@ -44,6 +44,7 @@ local World = {
 	runClockEnd = 0, -- server time the clock froze, 0 = running
 	wavesCleared = 0, -- waves cleared this run (XP)
 	bossKills = 0, -- bosses killed this run (XP, credited to every member)
+	roster = nil :: any, -- the scoreboard view (Roster.lua rebuilds it every RosterSyncSec; StateSync carries it)
 }
 
 function World.survivedSec(): number

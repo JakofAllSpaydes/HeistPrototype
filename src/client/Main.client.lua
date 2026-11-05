@@ -7,12 +7,13 @@ local UserInputService = game:GetService("UserInputService")
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 
--- Our own health bar and no backpack.
+-- Our own health bar, no backpack, and our own scoreboard on Tab (the core player list would take the key).
 task.spawn(function()
 	for _ = 1, 10 do
 		local ok = pcall(function()
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 		end)
 		if ok then
 			break
@@ -34,6 +35,7 @@ require(script.Parent:WaitForChild("Spectate")).init()
 require(script.Parent:WaitForChild("RunStartUI")).init()
 require(script.Parent:WaitForChild("RunEndUI")).init()
 require(script.Parent:WaitForChild("BossCutscene")).init()
+require(script.Parent:WaitForChild("Scoreboard")).init()
 require(script.Parent:WaitForChild("QueueUI")).init()
 require(script.Parent:WaitForChild("MetaScene")).init()
 require(script.Parent:WaitForChild("DebugPanel")).init()

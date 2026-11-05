@@ -37,6 +37,7 @@ local Heat = require(script.Parent.Heat)
 local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
 local Boss = require(script.Parent.Boss)
+local Roster = require(script.Parent.Roster)
 
 Profiles.init()
 PlayerState.init()
@@ -61,6 +62,7 @@ Meta.init()
 Minigames.init()
 VaultJob.init()
 RunEnd.init()
+Roster.init()
 Debug.init()
 
 local function setState(state: string)
@@ -169,6 +171,7 @@ task.spawn(function()
 		World.pendingWave = nil
 		World.skipRequested = false
 		World.summaryChoice = nil
+		World.roster = nil
 		setState("Hub")
 		Queue.onRunEnded(choice)
 		Hub.enter(lastParty)

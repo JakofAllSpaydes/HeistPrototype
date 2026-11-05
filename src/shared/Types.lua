@@ -80,6 +80,7 @@ export type Sync = {
 	banked: number, -- the team's Banked total (gold bags) this run
 	bags: number, -- bags this player collected this run
 	boss: { id: string, name: string, hp: number, maxHP: number, phase: number }?, -- the live boss, for the bar
+	roster: any?, -- the scoreboard (Roster.View): rows in MVP order plus team cash, banked and time survived
 	maxHP: number,
 	held: HeldView,
 	stats: Computed,
