@@ -25,6 +25,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local Minigames = require(script.Parent.Minigames)
 local Bags = require(script.Parent.Bags)
 local Pause = require(script.Parent.Pause)
+local Abilities = require(script.Parent.Abilities)
 
 local VaultJob = {}
 
@@ -293,8 +294,10 @@ local function seal()
 	for player in table.clone(tinted) do
 		tint(player, false)
 	end
+	-- Nothing stays behind the door: a turret or barricade left inside would be out of every enemy's reach.
+	local cleared = Abilities.clearWhere(Room.insideVault, "sealed in the vault")
 	World.fireRun("VaultSealed", { position = VaultJob.front(), label = Lines.vault.sealedLabel })
-	Log.event("Vault", "sealed")
+	Log.event("Vault", "sealed (%d placeables / fields inside cleared)", cleared)
 end
 
 local function startGas()

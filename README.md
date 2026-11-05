@@ -1057,6 +1057,9 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   near the number never reads WRONG WAY and elsewhere only after `SafeWrongWayDeg` 40, and the vault caps the dial at
   tier 2 (`VaultSafeTierMax`, three numbers).
 
+- **Round 15i (4 Nov, feedback)** — when the vault seals, every placeable and ground field inside it is destroyed
+  (`Abilities.clearWhere(Room.insideVault)`), so a turret left behind the door is no longer out of every enemy's reach.
+
 ## Open design notes (not built)
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;

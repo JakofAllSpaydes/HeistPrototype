@@ -1472,6 +1472,24 @@ function Abilities.init()
 	end)
 end
 
+-- Everything standing where `inside(position)` says (the vault sealing): placeables break, fields go out.
+function Abilities.clearWhere(inside: (Vector3) -> boolean, reason: string): number
+	local n = 0
+	for _, s in table.clone(structures) do
+		if inside(s.hitPart.Position) then
+			destroyStructure(s, reason)
+			n += 1
+		end
+	end
+	for _, f in table.clone(fields) do
+		if inside(f.position) then
+			removeField(f, reason)
+			n += 1
+		end
+	end
+	return n
+end
+
 function Abilities.clearAll()
 	if overclock.untilT > 0 then
 		endOverclock()
