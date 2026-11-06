@@ -716,6 +716,8 @@ function MetaScene.open(tab: string?)
 		selectTab(t)
 		return
 	end
+	-- One premium scene at a time (brief 6): the store closes first.
+	ClientState.Juice:Fire("CloseStore", {})
 	open = true
 	customize = false
 	build()
@@ -839,7 +841,7 @@ function MetaScene.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "OpenMeta" then
 			MetaScene.open(tostring(data.tab))
-		elseif name == "RunStartBegin" or name == "Downed" or name == "BledOut" then
+		elseif name == "RunStartBegin" or name == "Downed" or name == "BledOut" or name == "CloseMeta" then
 			MetaScene.close()
 		end
 	end)

@@ -211,7 +211,11 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local shop = iconTile(shopHolder, 1, "Shop", "$", Theme.Colors.amber, Theme.Colors.bg, shopSize)
 	shop.Activated:Connect(function()
 		UI.punch(shop, 0.92, 0.15)
-		component.showPlaceholder("Shop")
+		if component.onShop then
+			component.onShop() -- brief 6: the store scene
+		else
+			component.showPlaceholder("Shop")
+		end
 	end)
 
 	-- Gold pill with + and INVITE FRIENDS, bottom-left; the level card sits above them.
@@ -262,7 +266,11 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.corner(plus, S(6))
 	plus.Activated:Connect(function()
 		UI.punch(plus, 0.9, 0.15)
-		component.showPlaceholder("Gold")
+		if component.onGoldPlus then
+			component.onGoldPlus() -- brief 6: the store's GOLD tab
+		else
+			component.showPlaceholder("Gold")
+		end
 	end)
 	-- Brief 6: revive tokens beside the Gold pill; tap for the token packs.
 	local tokenChip = UI.button({
