@@ -234,22 +234,24 @@ end
 function Fx.cascade(items: { GuiObject }, stagger: number?, rise: number?)
 	local S = UI.S
 	for i, item in items do
-		local scale = item:FindFirstChild("CascadeScale") :: UIScale?
+		-- A card's inner Lift frame moves (the holder belongs to its parent's layout, which owns its Position).
+		local mover = (item:FindFirstChild("Lift") :: GuiObject?) or item
+		local scale = mover:FindFirstChild("CascadeScale") :: UIScale?
 		if not scale then
-			scale = UI.new("UIScale", { Name = "CascadeScale", Parent = item })
+			scale = UI.new("UIScale", { Name = "CascadeScale", Parent = mover })
 		end
 		local sc = scale :: UIScale
 		sc.Scale = 0.85
 		local group = item:FindFirstChildOfClass("CanvasGroup")
-		local to = item.Position
-		item.Position = to + UDim2.fromOffset(0, S(rise or 26))
+		local to = mover.Position
+		mover.Position = to + UDim2.fromOffset(0, S(rise or 26))
 		item.Visible = false
 		task.delay((i - 1) * (stagger or 0.04), function()
 			if not item.Parent then
 				return
 			end
 			item.Visible = true
-			UI.tween(item, { Position = to }, 0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+			UI.tween(mover, { Position = to }, 0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 			UI.tween(sc, { Scale = 1 }, 0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 			if group then
 				group.GroupTransparency = 1
@@ -347,9 +349,10 @@ function Fx.interactive(
 	local o = opts or {}
 	local lift = o.lift or btn
 	local base = lift.Position
-	local scale = lift:FindFirstChild("PressScale") :: UIScale?
+	-- The press scale lives on the button (one UIScale per object: the lift frame may carry the cascade's).
+	local scale = btn:FindFirstChild("PressScale") :: UIScale?
 	if not scale then
-		scale = UI.new("UIScale", { Name = "PressScale", Parent = lift })
+		scale = UI.new("UIScale", { Name = "PressScale", Parent = btn })
 	end
 	local sc = scale :: UIScale
 	local enabled = true

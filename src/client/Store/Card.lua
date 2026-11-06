@@ -77,7 +77,15 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		ZIndex = z,
 		Parent = parent,
 	})
-	local _glowFrame, setGlow = Fx.glow(holder, color, S(12), z)
+	-- The holder is what a parent layout positions; the Lift frame inside is what hovers and cascades.
+	local lift = UI.frame({
+		Name = "Lift",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = z,
+		Parent = holder,
+	})
+	local _glowFrame, setGlow = Fx.glow(lift, color, S(12), z)
 	setGlow(if spec.hero then 1.4 else 1)
 	local body = UI.button({
 		Name = "Body",
@@ -85,7 +93,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		Size = UDim2.fromScale(1, 1),
 		ClipsDescendants = false,
 		ZIndex = z + 1,
-		Parent = holder,
+		Parent = lift,
 	})
 	UI.corner(body, S(12))
 	UI.stroke(body, Color3.new(1, 1, 1), S(1), 0.82)
@@ -271,7 +279,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		Position = UDim2.new(1, S(6), 0, -S(6)),
 		Size = UDim2.fromOffset(S(110), S(60)),
 		ZIndex = z + 9,
-		Parent = holder,
+		Parent = lift,
 	})
 	UI.list(ribbonHolder, Enum.FillDirection.Vertical, S(3), Enum.HorizontalAlignment.Right)
 	local function setRibbons(list: { string })
@@ -317,7 +325,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	end
 	setPrice(spec.price, spec.priceText)
 
-	local handle = Fx.interactive(body, { lift = holder, glow = setGlow })
+	local handle = Fx.interactive(body, { lift = lift, glow = setGlow })
 	if spec.onClick then
 		body.Activated:Connect(function()
 			if spec.onClick then
