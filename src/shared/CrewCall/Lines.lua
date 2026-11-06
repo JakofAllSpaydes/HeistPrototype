@@ -19,6 +19,8 @@ local Lines = {
 			"Clean. That's how it's done.",
 			"Payment's in, and I sent you a little extra.",
 		},
+		-- Round 16: the completion card shows the player who finished the job, in their own voice.
+		doneByText = { "Terminal's hacked.", "Payment's coming through." },
 		failText = {
 			"Window's closed. They locked it down.",
 			"Next one, don't dawdle.",
@@ -44,6 +46,7 @@ local Lines = {
 			"Got it. That relay's ours now.",
 			"Payment's in. Keep moving.",
 		},
+		doneByText = { "Held the floor. That relay's ours.", "Payment's coming through." },
 		failText = {
 			"Signal's gone. You couldn't hold it.",
 			"Next time, plant your feet.",
@@ -73,6 +76,7 @@ local Lines = {
 			"Smooth hands. That's the stuff.",
 			"Payment's in. Keep moving.",
 		},
+		doneByText = { "Got the %s open.", "Payment's coming through." }, -- %s: the prop
 		failText = {
 			"Window's closed. Fingers too slow.",
 			"Next one, don't dawdle.",
@@ -97,6 +101,7 @@ local Lines = {
 			"We're in. Move!",
 			"Grab everything before the gas.",
 		},
+		doneByText = { "Vault's open. Move!", "Grab everything before the gas." },
 		failText = {
 			"Window's closed. That door's staying shut.",
 			"Next one, don't dawdle.",
@@ -128,7 +133,12 @@ local Lines = {
 	hackMarkerHint = "HACK THE TERMINAL",
 	doneToast = "%s CLEAR · +$%d · +%d GOLD",
 	failToast = "TOO SLOW",
-	portraitLabel = "[IMG: TBA]",
+	-- Round 16: NPC portraits are a dummy avatar bust (CrewCallUI) in these hex colors until real art lands.
+	portraits = {
+		MARLOW = { skin = "D9A87E", shirt = "2B2F3A", accent = "4D9FE8", hair = "2A1E18" },
+		DEALER = { skin = "A8714F", shirt = "5A2E2E", accent = "E8B64C", hair = "141414" },
+		default = { skin = "C9C2B8", shirt = "3A3F4A", accent = "9BA0A8", hair = "2A2A2A" },
+	},
 	-- Half-time reminder while a job is still open (Config.SideJobReminderPct).
 	reminder = {
 		title = "STILL OPEN",

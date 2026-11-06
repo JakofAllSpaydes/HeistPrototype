@@ -12,7 +12,7 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local Frame = require(script.Parent.Frame)
 
-local SAMPLES = 48
+local SAMPLES = 64
 
 local Freq = {
 	title = "FREQUENCY JAM",
@@ -145,16 +145,24 @@ function Freq.open(host: Frame.Host)
 	local done = false
 	local merging = false
 
+	-- The slider spans a fixed band around FreqCenter; each target lands somewhere new inside it (it used to be
+	-- scaled off the target, which put every answer at the same slider spot).
+	local fmin, fmax = Config.FreqCenter / range, Config.FreqCenter * range
 	local function freqAt(slider: number): number
-		local fmin, fmax = baseFreq / range, baseFreq * range
 		return fmin + slider * (fmax - fmin)
 	end
 
+	local lastAnswer = -1
 	local function newTarget()
-		baseFreq = 1.5 + math.random() * 3
+		local edge = Config.FreqTargetEdge
+		local answer
+		repeat
+			answer = edge + math.random() * (1 - 2 * edge)
+		until lastAnswer < 0 or math.abs(answer - lastAnswer) > Config.FreqTargetMinMove
+		lastAnswer = answer
+		baseFreq = freqAt(answer)
 		drawWave(fixedSegs, baseFreq, u(3))
 		-- Start the slider well away from the answer.
-		local answer = (baseFreq - baseFreq / range) / (baseFreq * range - baseFreq / range)
 		repeat
 			t = math.random()
 		until math.abs(t - answer) > 0.2
@@ -177,7 +185,7 @@ function Freq.open(host: Frame.Host)
 		ZIndex = 6,
 		Parent = host.content,
 	})
-	Frame.drag(host, dragArea, function(p: Vector2)
+	local releaseDrag = Frame.drag(host, dragArea, function(p: Vector2)
 		t0 = t
 		p0 = p
 		UI.punch(knob, 1.2, 0.15)
@@ -216,6 +224,8 @@ function Freq.open(host: Frame.Host)
 				-- Lock: both waves flash and merge into one line.
 				locks += 1
 				merging = true
+				-- Drop the hold: the next frequency needs a fresh press, so a held slider can't drift onto it.
+				releaseDrag()
 				pips[locks].BackgroundColor3 = Theme.Colors.cash
 				UI.punch(pips[locks], 1.5, 0.3)
 				host.haptic(1)

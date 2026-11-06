@@ -1,10 +1,15 @@
 --!strict
 -- Hotwire (drag). Colored stubs on the left, shuffled sockets on the right. Drag each stub to the socket
 -- of its color; the wire draws live, locks on the right socket, snaps back from the wrong one.
+-- Round 16: a COLORBLIND toggle on the panel (saved to the account, profile.options.hotwireSymbols) swaps the
+-- original palette for the Okabe-Ito colorblind-safe set and letters every wire and its socket, so color is never
+-- the only cue. It repaints live, mid-game.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
 local Client = script.Parent.Parent
+local ClientState = require(Client:WaitForChild("ClientState"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local Frame = require(script.Parent.Frame)
@@ -17,6 +22,27 @@ local PALETTE = {
 	Color3.fromHex("A864E8"),
 	Color3.fromHex("F2E6C8"),
 }
+-- Okabe-Ito: orange, sky blue, bluish green, yellow, reddish purple, plus white (its dark blue reads poorly here).
+local COLORBLIND = {
+	Color3.fromHex("E69F00"),
+	Color3.fromHex("56B4E9"),
+	Color3.fromHex("009E73"),
+	Color3.fromHex("F0E442"),
+	Color3.fromHex("CC79A7"),
+	Color3.fromHex("F2F2F2"),
+}
+local SYMBOLS = { "A", "B", "C", "D", "E", "F" }
+
+-- The local choice wins until the next sync carries it back from the server.
+local symbolsOverride: boolean? = nil
+local function symbolsOn(): boolean
+	if symbolsOverride ~= nil then
+		return symbolsOverride
+	end
+	local sync = ClientState.sync
+	local options = sync and sync.profile and sync.profile.options
+	return options ~= nil and options.hotwireSymbols == true
+end
 
 local Hotwire = {
 	title = "HOTWIRE",
@@ -53,8 +79,43 @@ function Hotwire.open(host: Frame.Host)
 	local wireLayer =
 		UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Parent = host.content })
 
+	-- The active palette, and everything that wears a wire color (repainted when the toggle flips).
+	local function col(i: number): Color3
+		return (if symbolsOn() then COLORBLIND else PALETTE)[i]
+	end
+	local painters: { () -> () } = {}
+
+	-- Symbol badges: a letter in a dark circle on every stub and socket, shown while SYMBOLS is on.
+	local badges: { GuiObject } = {}
+	local function badge(parent: GuiObject, i: number)
+		local size = math.floor(stubH * 0.72)
+		local b = UI.frame({
+			BackgroundColor3 = Theme.Colors.black,
+			BackgroundTransparency = 0.25,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(size, size),
+			ZIndex = 7,
+			Parent = parent,
+		})
+		UI.corner(b, size / 2)
+		local letter = UI.text({
+			Text = SYMBOLS[i],
+			Font = Theme.Fonts.display,
+			TextSize = math.floor(size * 0.7),
+			TextColor3 = col(i),
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 8,
+			Parent = b,
+		})
+		table.insert(painters, function()
+			letter.TextColor3 = col(i)
+		end)
+		table.insert(badges, b)
+	end
+
 	for i = 1, n do
-		local color = PALETTE[i]
+		local color = col(i)
 		local y = rowH * i
 		local stub = UI.frame({
 			BackgroundColor3 = color,
@@ -66,7 +127,7 @@ function Hotwire.open(host: Frame.Host)
 		})
 		UI.corner(stub, u(8))
 		UI.stroke(stub, Theme.Colors.black, u(1.5), 0.5)
-		local socketColor = PALETTE[order[i]]
+		local socketColor = col(order[i])
 		local socket = UI.frame({
 			BackgroundColor3 = Theme.Colors.panel2,
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -76,7 +137,7 @@ function Hotwire.open(host: Frame.Host)
 			Parent = host.content,
 		})
 		UI.corner(socket, u(8))
-		UI.stroke(socket, socketColor, u(3))
+		local socketStroke = UI.stroke(socket, socketColor, u(3))
 		local well = UI.frame({
 			BackgroundColor3 = socketColor,
 			BackgroundTransparency = 0.7,
@@ -88,8 +149,68 @@ function Hotwire.open(host: Frame.Host)
 		})
 		UI.corner(well, u(5))
 		sockets[socket] = order[i]
-		wires[i] = { index = i, stub = stub, socket = socket, line = nil, locked = false }
+		local wire: Wire = { index = i, stub = stub, socket = socket, line = nil, locked = false }
+		wires[i] = wire
+		local socketIndex = order[i]
+		table.insert(painters, function()
+			stub.BackgroundColor3 = col(i)
+			socketStroke.Color = col(socketIndex)
+			well.BackgroundColor3 = col(socketIndex)
+			-- A wired socket is lit in its wire's color.
+			for _, other in wires do
+				if other.locked and other.index == socketIndex then
+					socket.BackgroundColor3 = col(socketIndex)
+				end
+			end
+			if wire.line then
+				wire.line.BackgroundColor3 = col(i)
+			end
+		end)
+		badge(stub, i)
+		badge(socket, order[i])
 	end
+
+	-- SYMBOLS toggle, top center of the play area.
+	local toggle = UI.button({
+		Text = "",
+		BackgroundColor3 = Theme.Colors.panel2,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromOffset(host.width / 2, u(4)),
+		Size = UDim2.fromOffset(u(100), u(20)),
+		ZIndex = 9,
+		Parent = host.content,
+	})
+	UI.corner(toggle, u(10))
+	local toggleStroke = UI.stroke(toggle, Theme.Colors.grey, u(1), 0.5)
+	local toggleLabel = UI.text({
+		Text = "COLORBLIND",
+		Font = Theme.Fonts.display,
+		TextSize = u(12),
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 10,
+		Parent = toggle,
+	})
+	local function paintSymbols()
+		local on = symbolsOn()
+		for _, b in badges do
+			b.Visible = on
+		end
+		for _, paint in painters do
+			paint()
+		end
+		toggle.BackgroundColor3 = if on then Theme.Colors.gold else Theme.Colors.panel2
+		toggleLabel.TextColor3 = if on then Theme.Colors.bg else Theme.Colors.grey
+		toggleStroke.Transparency = if on then 1 else 0.5
+	end
+	paintSymbols()
+	host.track(toggle.Activated:Connect(function()
+		local on = not symbolsOn()
+		symbolsOverride = on
+		Remotes.SetOption:FireServer("hotwireSymbols", on)
+		UI.sound(Theme.Sounds.cardFlip, 1.2, 0.4)
+		UI.punch(toggle, 1.08, 0.15)
+		paintSymbols()
+	end))
 
 	for _, w in wires do
 		local start = Vector2.zero
@@ -103,7 +224,7 @@ function Hotwire.open(host: Frame.Host)
 			if w.line then
 				w.line:Destroy()
 			end
-			w.line = Frame.line(wireLayer, from, from, u(6), PALETTE[w.index], 3)
+			w.line = Frame.line(wireLayer, from, from, u(6), col(w.index), 3)
 			UI.punch(w.stub, 1.1, 0.15)
 		end, function(p: Vector2)
 			local line = w.line
@@ -138,7 +259,7 @@ function Hotwire.open(host: Frame.Host)
 				w.locked = true
 				locked += 1
 				Frame.setLine(line, from, Frame.centerOf(host, socket) - Vector2.new(stubW / 2, 0), u(6))
-				socket.BackgroundColor3 = PALETTE[w.index]
+				socket.BackgroundColor3 = col(w.index)
 				UI.punch(socket, 1.25, 0.3)
 				w.stub.BackgroundTransparency = 0.5
 				host.haptic(0.6)

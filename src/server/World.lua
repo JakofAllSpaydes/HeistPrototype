@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Enemies = require(ReplicatedStorage.Shared.Enemies)
 
 export type PartySettings = { partySize: number, mapId: string, difficultyId: string }
 
@@ -191,7 +192,10 @@ end
 
 -- GoldEarned for the run (before per-player side job Gold): the GDD_7 formula.
 function World.payoutBase(): number
-	return math.floor((World.runGold + Config.GoldPerObjective * World.objectivesDone) * Config.DiffGoldMult)
+	return math.floor(
+		(World.runGold + Config.GoldPerObjective * World.objectivesDone)
+			* (Enemies.difficulty(World.partySettings.difficultyId).goldMult or 1)
+	)
 end
 
 return World

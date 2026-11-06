@@ -180,9 +180,9 @@ Classes.List = {
 				hotkey = "Q",
 				system = "self",
 				price = 150,
-				description = "Mark everything nearby through walls. Marked enemies take more damage.",
+				description = "Mark everything nearby through walls. Marked enemies are slowed.",
 				vars = {
-					var("EagleEyeBonusPct", "BONUS DMG", Config.EagleEyeBonusPct * 100, "%"),
+					var("EagleEyeSlowPct", "SLOW", Config.EagleEyeSlowPct * 100, "%"),
 					var("EagleEyeRadius", "RADIUS", Config.EagleEyeRadius),
 				},
 				icon = "EGV",

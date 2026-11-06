@@ -50,7 +50,14 @@ export type Profile = {
 		classMasteryXp: number, -- lifetime mastery XP earned, all classes
 	},
 	pendingPayout: number, -- Gold granted this session that has not reached the store yet
+	-- Round 16: per-account client options (Profiles.OPTIONS lists the keys), e.g. hotwireSymbols (colorblind).
+	options: { [string]: boolean },
 	version: number,
+}
+
+-- The options a client may set with Remotes.SetOption, and their defaults.
+local OPTIONS: { [string]: boolean } = {
+	hotwireSymbols = false, -- Hotwire COLORBLIND: the colorblind-safe palette plus a letter on each wire and socket
 }
 
 type Entry = {
@@ -69,6 +76,7 @@ local VERSION = 2
 local RETRY_BACKOFF = { 1, 2, 4 }
 
 local Profiles = {}
+Profiles.OPTIONS = OPTIONS
 Profiles.Loaded = Signal.new() -- (player, profile)
 Profiles.available = true -- false once the DataStore refused us; everything stays in memory
 
@@ -139,6 +147,7 @@ function Profiles.fresh(): Profile
 			classMasteryXp = 0,
 		},
 		pendingPayout = 0,
+		options = table.clone(OPTIONS),
 		version = VERSION,
 	}
 end
@@ -281,6 +290,13 @@ local function migrate(raw: any): Profile
 	end
 	if typeof(raw.pendingPayout) == "number" then
 		p.pendingPayout = math.max(0, math.floor(raw.pendingPayout))
+	end
+	if typeof(raw.options) == "table" then
+		for k in OPTIONS do
+			if typeof(raw.options[k]) == "boolean" then
+				p.options[k] = raw.options[k]
+			end
+		end
 	end
 	local fromVersion = tonumber(raw.version) or 1
 	if fromVersion < 2 and p.classes.owned.SHARPSHOOTER and (p.abilities.claymore or 0) > 0 then

@@ -17,7 +17,7 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local WeaponRoll = require(script.Parent.WeaponRoll)
 local Heat = require(script.Parent.Heat)
-local Callouts = require(Shared.Callouts)
+local AllyCallout = require(script.Parent.AllyCallout)
 local Pause = require(script.Parent.Pause)
 
 local Downed = {}
@@ -63,29 +63,12 @@ end
 local holding: { [Player]: boolean } = {}
 local lastSent: { [Player]: number } = {}
 
--- Ally callouts: a random line per event, never the same one back to back, to teammates only (the speaker never
--- hears their own), except Revive Everybody which goes to everyone in the run.
-local lastLine: { [string]: number } = {}
+-- Ally callouts go through AllyCallout (teammates only; Revive Everybody to everyone).
 local function callout(speaker: Player, event: string)
-	local pool = Callouts.Lines[event]
-	if not pool or #pool == 0 then
-		return
-	end
-	local i = math.random(#pool)
-	if #pool > 1 and i == lastLine[event] then
-		i = (i % #pool) + 1
-	end
-	lastLine[event] = i
-	local gold = Callouts.Gold[event] == true
-	local line = pool[i]
-	if string.find(line, "%%s") then
-		line = string.format(line, speaker.Name)
-	end
-	local payload = { userId = speaker.UserId, name = speaker.Name, event = event, line = line, gold = gold }
-	for _, p in World.runAudience() do
-		if gold or p ~= speaker then
-			Remotes.Juice:FireClient(p, "AllyCallout", payload)
-		end
+	if event == "reviveAll" then
+		AllyCallout.send(speaker, event, speaker.Name)
+	else
+		AllyCallout.send(speaker, event)
 	end
 end
 

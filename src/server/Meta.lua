@@ -328,6 +328,20 @@ function Meta.init()
 		state.dirty = true
 		return result
 	end
+	-- Account options (Round 16): allowed any time, in a run too (the Hotwire symbols toggle lives on the minigame).
+	Remotes.SetOption.OnServerEvent:Connect(function(player: Player, key: any, value: any)
+		if typeof(key) ~= "string" or Profiles.OPTIONS[key] == nil or typeof(value) ~= "boolean" then
+			return
+		end
+		local profile = Profiles.get(player)
+		if not profile then
+			return
+		end
+		profile.options[key] = value
+		Profiles.markDirty(player)
+		PlayerState.get(player).dirty = true
+		Log.event("Meta", "%s set option %s = %s", player.Name, key, tostring(value))
+	end)
 	-- Nothing else: the MatchMode is local, so there is no server list to talk to.
 	local _ = Config.MatchMode
 end

@@ -21,6 +21,7 @@ local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
+local CardFace = require(script.Parent:WaitForChild("UI"):WaitForChild("CardFace"))
 
 local DealerUI = {}
 
@@ -37,15 +38,27 @@ type Item = {
 	color: Color3,
 	sold: boolean,
 	tag: Attachment?, -- the world card / price tag
+	card: any?, -- a stand's Types.Card (Round 16: its panel is drawn as a pick-3 card with a price bar)
 }
 
 local items: { Item } = {}
 local readRadius = 6
-local panel: { gui: BillboardGui, att: Attachment, frame: Frame, price: TextLabel, key: any }? = nil
+local panel: {
+	gui: Instance, -- a BillboardGui (props) or the stand card's ScreenGui
+	att: Attachment,
+	frame: Frame,
+	price: TextLabel,
+	key: any,
+	hidden: BillboardGui?, -- the stand's small card, hidden while its big card stands in for it
+}? =
+	nil
 local card: { root: Frame, inner: Frame, title: TextLabel, teleport: TextButton, skip: TextButton }? = nil
 local active = false
 
 -- Phones render UI.S at about half scale: the card, tags and panels are sized up there for thumbs.
+-- The small card on a stand, in studs (the big card anchors to its bottom edge).
+local STAND_CARD_STUDS = Vector2.new(2.4, 3.5)
+
 local function MS(n: number): number
 	return UI.S(n * (if ClientState.isMobile then 1.4 else 1))
 end
@@ -72,10 +85,14 @@ local function closePanel()
 	if p then
 		p.gui:Destroy()
 		p.att:Destroy()
+		if p.hidden and p.hidden.Parent then
+			p.hidden.Enabled = true
+		end
 	end
 end
 
 ------------------------------------------------------------------ World cards on the stands and props
+-- The card on a stand, a small pick-3 card: tier border, stat icon, the big number, and the price pill under it.
 local function standCard(it: Item, statId: string, tier: number)
 	local att = Instance.new("Attachment")
 	att.WorldPosition = it.position
@@ -87,7 +104,7 @@ local function standCard(it: Item, statId: string, tier: number)
 	-- Pure UI over the table: always drawn on top, so no part ever hides it.
 	local gui = Instance.new("BillboardGui")
 	gui.Adornee = att
-	gui.Size = UDim2.fromScale(2.2, 2.9)
+	gui.Size = UDim2.fromScale(STAND_CARD_STUDS.X, STAND_CARD_STUDS.Y)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.MaxDistance = 90
@@ -95,18 +112,32 @@ local function standCard(it: Item, statId: string, tier: number)
 	local color = Rarity.color(tier)
 	local face = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.fromScale(1, 0.78),
+		Size = UDim2.fromScale(1, 0.8),
 		Parent = gui,
 	})
 	UI.new("UICorner", { CornerRadius = UDim.new(0.12, 0), Parent = face })
 	UI.stroke(face, color, 3)
 	local icon = UI.frame({
 		BackgroundColor3 = color,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.78, 0.6),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.07),
+		Size = UDim2.fromScale(0.72, 0.5),
 		Parent = face,
 	})
+	local card = it.card
+	if card then
+		local bigText = Upgrades.cardTexts(card.stat, card.pct)
+		UI.text({
+			Text = bigText,
+			Font = Theme.Fonts.display,
+			TextScaled = true,
+			TextColor3 = Theme.Colors.cash,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromScale(0.5, 0.62),
+			Size = UDim2.fromScale(0.86, 0.3),
+			Parent = face,
+		})
+	end
 	UI.new("UICorner", { CornerRadius = UDim.new(0.18, 0), Parent = icon })
 	UI.text({
 		Text = Upgrades.shortName(statId),
@@ -120,7 +151,7 @@ local function standCard(it: Item, statId: string, tier: number)
 		BackgroundColor3 = Theme.Colors.cash,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 1),
-		Size = UDim2.fromScale(0.9, 0.2),
+		Size = UDim2.fromScale(0.96, 0.17),
 		Parent = gui,
 	})
 	UI.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = pill })
@@ -176,6 +207,7 @@ local function onStock(data: any)
 			color = Rarity.color(tonumber(c.tier) or 1),
 			sold = s.sold == true,
 			tag = nil,
+			card = c,
 		}
 		standCard(it, c.stat, tonumber(c.tier) or 1)
 		table.insert(items, it)
@@ -205,8 +237,131 @@ local function buy(key: any)
 	Remotes.DealerAction:FireServer("buy", key) -- the server checks reach, cash and stock
 end
 
+-- A stand's panel: the pick-3 card (icon well, NAME, big number, stat line, malus strip) with the stat's
+-- current → new line under it and a price bar across the bottom (cash price, F BUY).
+local function openCardPanel(it: Item, card: any)
+	local S = MS
+	local color = CardFace.tierColor(tonumber(card.tier) or 1)
+	local w = S(Config.DealerCardWidth)
+	-- Round 16: the big card takes the small card's place on the stand instead of floating above it: the small
+	-- one hides, and the big one stands on the same spot, its bottom edge where the small card's bottom was.
+	local small = it.tag and it.tag:FindFirstChildOfClass("BillboardGui")
+	if small then
+		small.Enabled = false
+	end
+	local att = Instance.new("Attachment")
+	att.WorldPosition = it.position - Vector3.new(0, STAND_CARD_STUDS.Y / 2, 0)
+	att.Parent = Workspace.Terrain
+	-- A ScreenGui that follows the stand on screen (not a BillboardGui), so it always draws in front of the other
+	-- stands' cards: AlwaysOnTop billboards sort among themselves by distance, and a nearer small card covered it.
+	local gui = UI.new("ScreenGui", {
+		Name = "DealerCard",
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		DisplayOrder = 2,
+		Parent = playerGui,
+	}) :: ScreenGui
+	local holder = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 1), -- grows up from the anchor
+		Parent = gui,
+	})
+	local camera = Workspace.CurrentCamera :: Camera
+	local follow: RBXScriptConnection
+	local function place()
+		if not holder.Parent then
+			follow:Disconnect()
+			return
+		end
+		local p, onScreen = camera:WorldToViewportPoint(att.WorldPosition)
+		holder.Visible = onScreen and p.Z <= 40
+		holder.Position = UDim2.fromOffset(p.X, p.Y)
+	end
+	follow = RunService.RenderStepped:Connect(place)
+	local frame = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel,
+		BackgroundTransparency = 0.02,
+		Size = UDim2.fromScale(1, 1),
+		Parent = holder,
+	})
+	UI.corner(frame, S(14))
+	UI.stroke(frame, color, S(3))
+	-- Icon well at the top, like the pick-3 reel's landing cell.
+	local wellSize = S(84)
+	local well = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, S(12)),
+		Size = UDim2.fromOffset(wellSize, wellSize),
+		Parent = frame,
+	})
+	UI.corner(well, S(14))
+	UI.stroke(well, color, S(2))
+	CardFace.statIcon(well, card.stat, color, S(64), false)
+	local y = CardFace.body(frame, card, S, S(12) + wellSize + S(8), 0.9)
+	-- What it does to your total: "DAMAGE +30% → +52%".
+	for _, line in it.lines do
+		UI.text({
+			Text = line,
+			TextSize = S(11),
+			TextColor3 = Theme.Colors.textDim,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Position = UDim2.fromOffset(S(8), y),
+			Size = UDim2.new(1, -S(16), 0, S(14)),
+			Parent = frame,
+		})
+		y += S(15)
+	end
+	y += S(6)
+	-- Price bar: the cost is the loudest thing after the number.
+	local barH = S(40)
+	local bar = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		Position = UDim2.fromOffset(0, y),
+		Size = UDim2.new(1, 0, 0, barH),
+		Parent = frame,
+	})
+	UI.corner(bar, S(14))
+	UI.pad(bar, S(10), 0, S(8), 0)
+	local affordable = (ClientState.sync and ClientState.sync.cash or 0) >= it.price
+	local price = UI.text({
+		Text = UI.fmtCash(it.price),
+		Font = Theme.Fonts.display,
+		TextSize = S(24),
+		TextColor3 = if affordable then Theme.Colors.cash else Theme.Colors.malus,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Size = UDim2.new(1, -S(90), 1, 0),
+		Parent = bar,
+	})
+	local buyBtn = UI.button({
+		Text = if ClientState.isMobile then "BUY" else "F  BUY",
+		Font = Theme.Fonts.display,
+		TextSize = S(14),
+		TextColor3 = Theme.Colors.bg,
+		BackgroundColor3 = if affordable then Theme.Colors.cash else Theme.Colors.grey,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Size = UDim2.fromOffset(S(80), S(28)),
+		Parent = bar,
+	})
+	UI.corner(buyBtn, S(8))
+	holder.Size = UDim2.fromOffset(w, y + barH)
+	place()
+	local key = it.key
+	buyBtn.Activated:Connect(function()
+		buy(key)
+	end)
+	UI.punch(frame, 1.12, 0.25)
+	UI.sound(Theme.Sounds.cardFlip, 1.1, 0.3)
+	panel = { gui = gui, att = att, frame = frame, price = price, key = it.key, hidden = small }
+end
+
 local function openPanel(it: Item)
 	closePanel()
+	if it.card then
+		openCardPanel(it, it.card)
+		return
+	end
 	local S = MS
 	local att = Instance.new("Attachment")
 	att.WorldPosition = it.position + Vector3.new(0, 3.2, 0)

@@ -19,6 +19,7 @@ local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local Juice = require(script.Parent:WaitForChild("Juice"))
+local CardFace = require(script.Parent:WaitForChild("UI"):WaitForChild("CardFace"))
 
 local UpgradeOverlay = {}
 
@@ -43,30 +44,8 @@ local function tierColor(tier: number): Color3
 	return Rarity.color(math.clamp(tier, 1, 5))
 end
 
--- Stat icon: a rounded tile in a tier color with the short name. Shared by cards, reels and tracker.
-local function statIcon(parent: Instance, statId: string, color: Color3, size: number, ghost: boolean): Frame
-	local S = UI.S
-	local tile = UI.frame({
-		BackgroundColor3 = color,
-		BackgroundTransparency = if ghost then 0.55 else 0.1,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(size, size),
-		Parent = parent,
-	})
-	UI.corner(tile, math.floor(size * 0.18))
-	UI.stroke(tile, color, S(2), if ghost then 0.6 else 0)
-	UI.text({
-		Text = Upgrades.shortName(statId),
-		Font = Theme.Fonts.display,
-		TextSize = math.floor(size * 0.34),
-		TextColor3 = Theme.Colors.bg,
-		TextTransparency = if ghost then 0.3 else 0,
-		Size = UDim2.fromScale(1, 1),
-		Parent = tile,
-	})
-	return tile
-end
+-- Stat icon: a rounded tile in a tier color with the short name (CardFace, shared with the dealer's stands).
+local statIcon = CardFace.statIcon
 
 -- Tracker tile: icon, count badge, border = highest tier, card-back layers per 5 taken, red pip if ever a malus.
 local function buildTrackerTile(

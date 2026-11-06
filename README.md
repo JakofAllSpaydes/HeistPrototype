@@ -19,7 +19,7 @@ phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback 
 (revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
 ragdolls and hit sparks), the brief 4 build (Round 14: roster, boss, heat as pace, bags, vault, level, scoreboard) and
 the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause) with its feedback
-rounds 15b–15m.
+rounds 15b–15m, and the Round 16 / 16b feedback passes.
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list" and the "Brief 5 verify list" are the walk-throughs for a
 fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -52,7 +52,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 | Buy an upgrade pick (also the clickable tile, left column). Weapons come only from gun crates. |
 | F on a gun crate | `OPEN` (a `GUN CRATE` tag over it): every roll the crate holds plays back to back on the reel above it, seen by everyone, and each gun ejects onto the floor beside it as loot anyone can take. |
-| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land at the cursor's floor point up to `ThrowMaxRange` (100); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
+| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land where the cursor points up to `ThrowMaxRange` (100), locking on and homing to the enemy under the cursor (or the one the camera ray just missed, or the one nearest the point: `ThrowAssist*`); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
 | P | Vote to pause (in a wave, the intermission or the dealer break; solo pauses at once). Also on the dealer card and the scoreboard. RESUME on the overlay (anyone). |
 | T / V / F at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
@@ -68,7 +68,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Esc / X / 2 | Close the upgrade overlay. |
 | V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
-| Ctrl | In a run: toggle the cursor lock so you can click HUD tiles. While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
+| Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
 | Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
@@ -88,13 +88,12 @@ from x2 with words at tier counts (`ComboTiers`).
 
 **Enemy roster (brief 4).** `Config.Enemies` is one row per archetype (hp, speed, dmg, range, cooldown, scale, color,
 cash, attack); `Enemies.lua` reads it and does the scaling: `FinalHp = BaseHp × (1 + HpWaveMult)^(wave − 1) × (1 +
-HpPerPlayerMult × (players − 1)) × DiffHpMult`, `FinalDamage = BaseDamage × (1 + DamageWaveMult)^(wave − 1) ×
-DiffDamageMult`; player count never changes spawn counts. `Enemy.lua` is the base (rig from `Enemies/Rig.lua`,
+HpPerPlayerMult × (players − 1)) × hpMult`, `FinalDamage = BaseDamage × (1 + DamageWaveMult)^(wave − 1) ×
+dmgMult` (the run's `QueueDifficulties` row); player count never changes spawn counts. `Enemy.lua` is the base (rig from `Enemies/Rig.lua`,
 targeting, movement with the stuck detour, damage / flinch / kill / ragdoll, stun and slow) and hands each enemy a
 brain from `src/server/Enemies/` every heartbeat through one `api` of helpers: Henchman and Runner (`Melee`: walk at
-the nearest player or the placeable in the way, hit on reach; the Runner sprints at 22 with a shrill wail), Shooter
-(`Shooter`: advances to range with line of sight, holds, fires every cooldown at `ShooterHitChance`; a miss cracks a
-tracer past you, muzzle flash on every shot, losing line of sight walks again), Marksman (`Marksman`: paints a red laser
+the nearest player or the placeable in the way, hit on reach; the Runner sprints at 22 with a shrill wail),
+Marksman (`Marksman`: paints a red laser
 on the nearest visible player for `MarksmanAimSec`, the line locks, the shot goes down it and only hits a player still
 inside `MarksmanHitRadius` of it; a stun cancels the aim), Boomer (`Boomer`: runs at the nearest placeable within
 `BoomerPlaceableSearch`, else the nearest player; in range it stops, beeps rising and its belly swells for `BoomerFuseSec`,
@@ -287,9 +286,11 @@ Self buffs (stim, stim shot, dead eye) share one slot per player; the tile that 
 - Claymore (INITIATE's Z): planted, arms after `ClaymoreArmSec`, an enemy inside `ClaymoreTriggerRadius` sets it
   off for `ClaymoreDamage` to everything in `ClaymoreBlastRadius`, 60s.
 - SHARPSHOOTER: eagle vision (brief 5: every enemy within `EagleEyeRadius` glows red through walls for `EagleEyeSec` and
-  takes `EagleEyeBonusPct` more from any source), dead eye (8s: weapon damage +25%, move
+  walks `EagleEyeSlowPct` slower, capped `EagleEyeSlowCap`, the boss `EagleEyeBossSlowMult` of it; Round 16 replaced the damage bonus), dead eye (8s: weapon damage +25%, move
   +20%, every bullet passes through `DeadEyePierce` more enemies; a fractional pierce like 2.2 is one more enemy
   at 20% damage), flashbang (thrown; every enemy in `FlashRadius` stops and stops swinging for `StunDuration`, head goes white).
+- Friendly fields (molotov, burst oil drum) burn `AllyFireColor` blue with a solid segmented rim (`AllyFieldRim*`, the med
+  bag's green field too), so they never read as the enemies' orange, rimless fire.
 - TORCH: molotov (thrown; a fire circle for `MolotovLifetime` that burns `MolotovBurnPerSec` and slows
   `MolotovMoveSlowPct`), flame turret (150 HP, a `FlameTurretRange` stream at `FlameTurretDps`, 30s), oil drum
   (200 HP drum that blocks like a barricade; when enemies break it, not when it expires, it burns for `OilDrumBurnSec`).
@@ -311,7 +312,7 @@ up to `StimExtendCap`), ENGINEER (placeables +`EngineerPlaceablePct` HP and fire
 (med bag radius and healing turret range +`DocReachPct`; downed or bled-out allies inside stand up on their own over
 `AutoReviveSec`; the med bag heals `FieldHospitalHealMult` × over `FieldHospitalRadiusMult` × and allies inside deal
 +`FieldHospitalDmgPct`), SHARPSHOOTER (headshots +`SharpHeadshotAdd`; snipers and pistols reload `MarksmanKitReloadPct`
-faster and Eagle Vision +`MarksmanKitEagleEyePct`; headshots during Dead Eye put a round back and trim
+faster; headshots during Dead Eye put a round back and trim
 `DeadEyeHeadshotCdr`), TORCH (burns tick `TorchBurnRateMult` × faster; runs start with Fire Ammo; burning kills trim
 `BackdraftCdr` off the Molotov). A tier crossed mid-run applies at once and drops the MasteryUp card under the wave bar
 (emblem, rays, sting, `AK-47 · MASTERY II`, the reward; `MasteryUI.lua`, `MasteryPopSec`). Weapon tiles carry a bar with
@@ -324,9 +325,11 @@ run's tier-ups.
 a compact card in the top-right stack (`DEALER · 1:30`, TELEPORT any number of times, unanimous SKIP); a stall of three
 tables in a half circle (`DealerArcRadius`, `DealerTableAngles`, `DealerPerTable`) round an idling DEALER at
 `DealerStallPosition`. Per-player stock: `DealerStock` stands from the pick-3 generator priced `ShopPriceByTier` × the
-upgrade escalation (each buy counts as an upgrade bought), drawn by each client as always-on-top UI on the same tables; ARMS DROP
+upgrade escalation (each buy counts as an upgrade bought), drawn by each client as always-on-top small upgrade cards (icon, big number, price pill) on the same tables; ARMS DROP
 (`ShopCratePrice`, a crate at the stall), HEAL ALL (`ShopHealPrice`), REROLL (`ShopRerollPrice`, doubling). The nearest
-stand or prop within `ShopReadRadius` opens a panel with the effect lines current → new; F (or BUY) buys.
+stand within `ShopReadRadius` swaps its small card for the full pick-3 card on the same spot (`UI/CardFace.lua`,
+`DealerCardWidth`; screen-space, so always in front of the other stands) with the effect lines current → new and a
+price bar; a prop opens a small panel. F (or BUY) buys.
 
 **Pause (brief 5, `Pause.lua`, `PauseUI.lua`).** VOTE TO PAUSE (P, the PAUSE pill on the wave bar, the scoreboard) in a wave, the
 intermission or the dealer break; unanimous, solo at once. Frozen: enemies, damage,
@@ -382,8 +385,8 @@ above every character in the hub. Top-left stays empty for server chat.
 
 **Queue zone and Create Match (`Queue.lua` / `QueueUI.lua`, GDD_7 Hub → Queue Zones minus the teleport).** Walk into an
 empty zone (or press PLAY) → the Create Party card (reference layout: blue header bar with X, Select Map thumbnails
-with COMING SOON fillers, Difficulty segment with HARD / NIGHTMARE disabled and a bonus row showing `DiffGoldMult` and
-your top wave, Party size 1–`MaxPartySize` segment, a row of purple boost chips that toast `PHASE 4`, CREATE PARTY;
+with COMING SOON fillers, Difficulty segment NORMAL / HARD / NIGHTMARE (each a `QueueDifficulties` row: enemy `hpMult`, `dmgMult`, wave size
+`budgetMult`, Gold `goldMult`) and a bonus row showing the chosen row's Gold and enemy multipliers and your top wave on it, Party size 1–`MaxPartySize` segment, a row of purple boost chips that toast `PHASE 4`, CREATE PARTY;
 movement is locked while it is open; X cancels and steps you out). CREATE locks the settings and makes you the owner;
 the billboard shows map · difficulty, one slot per party size
 and the countdown; members see the same card compact under PLAY. Others join by walking in (`<NAME> JOINED THE PARTY
@@ -410,7 +413,7 @@ price file (`weaponUnlock`, `weaponUpgrade`, `class`, `ability`, `mask`, `wrap`,
 equipped mask (head recolor plus a visor or bandana Part welded to the head) shows in the hub and the run.
 
 **Payout (GDD_7).** At the summary each party member earns `GoldEarned = (Σ over cleared waves of (GoldPerWaveBase +
-GoldPerWaveAdd × (wave − 1)) + GoldPerObjective × side jobs) × DiffGoldMult` plus their `SideJobGold` per job, paid once
+GoldPerWaveAdd × (wave − 1)) + GoldPerObjective × side jobs) × goldMult` (the difficulty's) plus their `SideJobGold` per job, paid once
 into the profile (it accumulates across REVIVE EVERYBODY saves; players who left earn nothing). `topWave` updates when
 the run beat it with a `★ NEW PERSONAL BEST` callout on the summary; lifetime kills, matches and gold accumulate. The
 summary's GOLD EARNED headline is this number, and the hub Gold row shows the new balance on return.
@@ -489,8 +492,11 @@ the session: the prompt opens it, the client sends done / fail / cancel with its
 `MinigameMinSec[name]` is logged as a fail, and every close prints
 `minigame <name> tier <n> done in <sec>s, <fails> fails` (or `… fail|cancel <sec>s <misses> misses`). The debug panel's
 `Stats` button prints per-game averages. Tier (1–3, `MinigameTier`) is session-wide from the pad or the debug panel:
-Lockpick (tap: zone width and points needed), Hotwire (drag: wires), Keypad (tap: digits; typing early hides the
-code), Arm charges (tap: caps), Safe dial (drag: numbers), Frequency jam (drag: locks and slider range).
+Lockpick (tap: zone width and points needed), Hotwire (drag: wires; a COLORBLIND toggle on the panel, saved to the
+account as `options.hotwireSymbols` via `SetOption`, swaps to the Okabe-Ito palette and letters each wire and socket),
+Keypad (tap: digits; typing early hides the code), Arm charges (tap: caps), Safe dial (drag: numbers; a number only
+counts when reached turning the asked way, and tumbler clicks rise near it: `SafeTick*`), Frequency jam (drag: locks
+and slider range; the slider spans a fixed band round `FreqCenter`, targets move, a lock drops the hold).
 
 **Downed, revive, game over.** 0 HP → `Downed.down`: crawl speed and animation (`DownedAnimationId`), no jump, no
 abilities / buys / swaps, enemies drop you from targeting, the health bar becomes a red bleed bar from
@@ -501,8 +507,12 @@ a centered bar under their crosshair, `REVIVING NAME` with the seconds left, tic
 with `NAME IS REVIVING YOU` and your marker shows the same fill to the party; the bleed timer stands still for the
 length of the hold, `RevivePausesBleed`, and the marker's seconds turn green) → you stand at `ReviveHPPct` with
 `ReviveInvulnSec` of invulnerability, a green pulse, the camera easing up from the floor and a `REVIVED BY` toast for
-both. Ally callouts (`Callouts.lua`): downed, revived and bled-out players radio a line with their Roblox headshot to
-teammates (`CalloutSec`, red frame; Revive Everybody gold to all), queued behind MARLOW and the boss cutscene. Bleed-out removes the character and opens spectate (camera orbits living teammates, name
+both. Ally callouts (`Callouts.lua`, sent by `AllyCallout.lua`): downed, revived and bled-out players radio a line with their
+Roblox headshot to teammates (`CalloutSec`, red frame; Revive Everybody gold to all), and (Round 16) gold lines for the
+boss's last hit, a Legendary from a crate, a `CalloutMultiKill`+ frag or claymore and a mastery tier; all queued
+behind MARLOW and the boss cutscene. A finished side job's NICE WORK card is the completer's (headshot, name,
+`doneByText`); NPC cards (MARLOW, DEALER) show a dummy avatar bust (`Lines.portraits`), also the fallback for a
+missing headshot. Bleed-out removes the character and opens spectate (camera orbits living teammates, name
 and HP top-center, REVIVE EVERYBODY free with a counter: everyone downed or bled out stands up where they fell,
 `<NAME> REVIVED THE CREW` center toast). **Run over** when nobody is standing and nobody is still bleeding, so a solo
 player bleeds (and can self-revive) before game over: enemies freeze and fade, the lens pulls in and the world
@@ -612,8 +622,7 @@ Local Server through one boss; anything that fails is a Config or one-file fix:
    hurts you standing in it. Every wave end prints `[GHS Wave] Wave N composition (bracket B): …` and `[GHS Heat] wave
    N clear 42.1s par 58.0s heat +0.5 → 0.5 (fast)`. The stars start empty and `+1 FAST CLEAR` / `+0.5 PAR` floats beside
    them; getting downed adds a `−0.5 DOWNED` float at that wave's end; a side job `+0.5 JOB`. No HEAT UP toast.
-2. Wave 4+: Shooters (dark blue, a gun) stop at range and fire orange tracers with a flash, roughly half land (the rest
-   crack past your ear); Boomers (orange, a belly) run at your turret or barricade, stop, beep rising and swell, then
+2. Wave 4+: Boomers (orange, a belly) run at your turret or barricade, stop, beep rising and swell, then
    burst (orange ring; a turret in it takes 4×); killing one mid-run still bursts smaller. Wave 5+: a Heavy (black,
    wide, slow) shrugs off flinch, stomps a barricade in its path, knocks you back on a hit, loses a chest plate at 66%
    and the shoulder plate at 33% (each with a crunch and chips). Wave 6+: Marksmen (dark red, a long gun) paint a red
@@ -657,14 +666,27 @@ Local Server through one boss; anything that fails is a Config or one-file fix:
    level, class circle, green dot, kills, cash, bags, jobs, downs, revives, MVP score, updating every second; release
    closes it; shooting keeps working while it is up. Mobile: tap the wave bar (the `≡` chip), tap outside to close.
    Two players: rows in MVP order, a downed teammate's dot goes red, a bled-out one grey.
-10. Mobile (device emulator, landscape): the boss bar and the scoreboard fit the width, the red telegraph circles read
+10. Round 16: no Shooters anywhere in the roster. A frag / molotov / flashbang with the cursor on an enemy (or just
+    missing it, even at head height) lands on it and follows it in the air. The molotov burns blue with a solid blue rim (the Grenadier's fire stays orange, rimless);
+    the med bag's green field has the rim too. Eagle Vision marks and slows (no damage bonus; MARKSMAN'S KIT is reload only). The camera chip above
+    the ammo reads CTRL · CAMERA LOCKED / CAMERA FREE (gold). The Safe dial only counts a number reached turning the
+    asked way (coming in from the far side reads WRONG WAY) and clicks louder and higher near each number. Freq: each
+    new target sits somewhere else on the slider, and a lock drops your hold. Hotwire: the original colors; the COLORBLIND toggle swaps to
+    the colorblind-safe palette with A–F badges, live, and is still on next session. Dealer stands are small upgrade
+    cards (icon, big number, price pill); walking up swaps the small card for the pick-3 card with a price bar on the
+    same spot. Create Party: HARD / NIGHTMARE are live, the blue highlight follows the pick and the bonus row too.
+    Side jobs: the NICE WORK card shows whoever finished it (headshot, name, their own line); MARLOW / DEALER cards
+    show a dummy avatar bust instead of the empty portrait. Teammates get gold callouts for the boss's last hit, a
+    Legendary out of a crate, a 5+ kill frag or claymore and a mastery tier. In a 2-player run, the gun your teammate drops shows YOUR level's numbers
+    on its tag and the reel, and picking it up gives you your own level of it.
+11. Mobile (device emulator, landscape): the boss bar and the scoreboard fit the width, the red telegraph circles read
     at phone size, `DBG` chip → the spawn rows work with touch.
 11. Debug `Stats` prints the minigame averages and then `[GHS Heat] clear / par this run:` with one line per wave and
     the mean ratio.
 
 ### Brief 5 verify list
 
-Written and built (`stylua`, `luau-lsp`, `rojo build`) through Round 15m, not yet run in Studio. Solo through one boss
+Written and built (`stylua`, `luau-lsp`, `rojo build`) through Round 16b, not yet run in Studio. Solo through one boss
 first, then a 2-player Local Server with a pause and a dealer visit:
 
 1. Gun crates: the left column is NEW UPGRADE only (key 1). The intro crate lands closed with a `GUN CRATE` tag and a
@@ -691,7 +713,7 @@ first, then a 2-player Local Server with a pause and a dealer visit:
    inside the bar and three tier cards (earned gold, next green). INITIATE: Q Frag (thrown to the cursor up to 100
    studs, a higher arc the further it goes, bursts on landing for 120 in 9 studs), E Adrenaline, Z Claymore. ENGINEER:
    Q Turret, E Barricade, Z Overclock (placeables glow amber and work 1.5× for 8s, barricades get a 150 shield).
-   SHARPSHOOTER: Q Eagle Vision (`EGV`: enemies within 60 studs glow red through walls for 6s and take +25%), E Dead Eye,
+   SHARPSHOOTER: Q Eagle Vision (`EGV`: enemies within 60 studs glow red through walls for 6s and walk 35% slower), E Dead Eye,
    Z Flashbang. Players walk through every placeable; enemies stop at them.
 5. Ability tiles: a used charge starts its cooldown at once; with a spare charge still in hand the tile stays gold and a
    thin gold bar along its bottom fills toward the next charge (`+1` when it lands); at zero charges the dark sweep
@@ -728,7 +750,7 @@ See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/serv
 
 Server modules: World (run state, the party, `fireRun`, payout accumulators, heat effects, the run clock, the boss
 view and the roster), Room (map refs including `Room.vault`), Stats, Profiles (DataStore), PlayerState (per-player run
-state + profile-derived held / mask / wrap / class), Enemy (base) with `Enemies/` (Rig, Hazards, Ranged, Melee, Shooter,
+state + profile-derived held / mask / wrap / class), Enemy (base) with `Enemies/` (Rig, Hazards, Ranged, Melee,
 Marksman, Boomer, Grenadier, Heavy), Spawner (brackets, proximity markers, cap, elites), Heat (pace meter), Bags,
 VaultJob, Boss with `Bosses/Titan`, Progression (XP, level, rewards), Roster (scoreboard rows), Combat, Economy,
 UpgradeShop (`generate(state, wave, count)`, `applyCard`), WeaponRoll, BigCrate (`drop(at, { legendary })`, rolls),
@@ -736,7 +758,7 @@ Elements (element procs and statuses), Mastery (XP, tiers, kill passives), Deale
 (the freeze and its hooks), CrewCall (the vault kind), Abilities, SkipVote,
 Hub (yard dressing, stations, tier pad, resets, the LV · TOP WAVE tag), Queue (zones, Create Match, party, countdown,
 PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions), Minigames (sessions, log, stats, a tier override), Downed
-(down / revive / bleed-out / game over / sidearm), RunStart, RunEnd (payout, XP award, summary), Squad (dummy crew for
+(down / revive / bleed-out / game over / sidearm), AllyCallout (teammate radio lines), RunStart, RunEnd (payout, XP award, summary), Squad (dummy crew for
 the sequences), Debug, Log; `GameLoop.server.lua` is the entry. All cash, Gold, HP, spawns, rolls, loot, minigame
 results, bags, XP and revives are server-authoritative; every remote is created in `src/shared/Remotes.lua`. Shared
 data: Config, Prices, Weapons (with `saleType` and the level math), Enemies (roster rows, scaling, brackets), BagSpots,
@@ -748,7 +770,7 @@ Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), H
 under the wave bar; `Currency` with the Banked row), QueueUI (Create Match card, compact party card), MetaScene with
 `src/client/Meta/` (MetaUI with the mastery bar, WeaponsTab, ClassesTab, AvatarTab), UpgradeOverlay, CrateReelUI (crate
 tags and the reel), StatusFx (element looks, Eagle Vision marks), MasteryUI (the tier-up card), DealerUI (dealer card, stands,
-shop panels), PauseUI (the overlay), GroundLoot, CrewCallUI (job cards, the vault pill, MARLOW's line cards, ally
+shop panels; `UI/CardFace.lua` is the upgrade card look it shares with UpgradeOverlay), PauseUI (the overlay), GroundLoot, CrewCallUI (job cards, the vault pill, MARLOW's line cards, ally
 callouts), Markers (beacon, bag and vault billboards, the vault chevrons), Minigames (Frame + one module
 per game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Spectate,
 RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary with the XP row), BossCutscene, Scoreboard,
@@ -1045,6 +1067,36 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
 
 - **Round 15m (5 Nov, feedback)** — `ThrowMaxRange` 100; `ThrowFlightRefStuds` 45 so a full-range throw flies about
   1.3s.
+
+- **Round 16 (5 Nov, feedback)** — the Shooter archetype is cut (unavoidable chip damage, no counterplay; its weight
+  went to the rest of each bracket). Thrown abilities aim-assist: the enemy nearest the aim point within
+  `ThrowAssistRadius` 14 becomes the target and the throw homes on it in flight. Eagle Vision marks and slows
+  (`EagleEyeSlowPct` 35%, capped `EagleEyeSlowCap`, the boss `EagleEyeBossSlowMult` of it; MARKSMAN'S KIT +10%)
+  instead of the damage bonus. Friendly fields (molotov, burst oil drum) burn `AllyFireColor` blue with a segmented
+  solid rim (`AllyFieldRim*`; the med bag gets the rim too). The camera lock state sits above the ammo (CTRL chip +
+  CAMERA LOCKED / FREE). Safe dial: a number only counts when reached turning the asked way (entering its warm range
+  from the far side keeps it cold), and every number crossed in the warm range clicks (`SafeTickPitch` /
+  `SafeTickVolume`) with a thunk on the hot range. Freq: the slider spans a fixed band round `FreqCenter` so each
+  target lands somewhere new (it used to sit at the same slider spot every time), and a lock releases the drag.
+  Hotwire: Okabe-Ito palette plus a SYMBOLS toggle saved to the account (`profile.options.hotwireSymbols` through the
+  new `SetOption` remote). Dealer stands are mini upgrade cards and the stand panel is the pick-3 card
+  (`UI/CardFace.lua`, shared with UpgradeOverlay) with a price bar. Difficulty is live: `QueueDifficulties` rows carry
+  `hpMult` / `dmgMult` / `budgetMult` / `goldMult` (NORMAL 1 / HARD / NIGHTMARE), the Create Party bonus row follows
+  the pick. Floor guns carry only id + rarity: tags and the crate reel show the viewer's own Armory level and damage
+  upgrades (`ClientState.gunAsMine`), and picking one up gives you your own level of it.
+
+- **Round 16b (5 Nov, feedback)** — Hotwire keeps its original colors; the toggle is COLORBLIND and swaps to the
+  Okabe-Ito palette plus the letters, repainting live. MARKSMAN'S KIT is reload speed only (Eagle Vision's slow no
+  longer grows with it). The Create Party segments move their highlight to the pick. The dealer's big card replaces
+  the stand's small card in place (anchored to its bottom edge) instead of floating above it. Aim assist uses what the
+  cursor is on: the client sends the camera ray's origin and the hit part with the aim point, and the server locks the
+  enemy under the cursor, else the one within `ThrowAssistRayStuds` of the camera ray (a head-height near miss that
+  carried on to the wall), else the one nearest the hit point. Ally callouts moved to `AllyCallout.lua` and gained
+  gold teammate moments (`bossKill`, `legendary`, `multiKill` at `CalloutMultiKill` 5, `masteryUp`); a finished side
+  job's card is the completer's (`CallEnd.by` / `doneByText`). NPC portraits are a dummy avatar bust in a
+  ViewportFrame colored per `Lines.portraits` (also the fallback when a player headshot is empty). The expanded dealer
+  card is a ScreenGui that follows the stand on screen, so the nearer small cards (AlwaysOnTop billboards sort by
+  distance) never cover it.
 
 ## Open design notes (not built)
 

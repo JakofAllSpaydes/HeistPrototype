@@ -198,8 +198,6 @@ function Rig.build(row: Enemies.Row, elite: boolean): Built
 			ring.Shape = Enum.PartType.Cylinder
 			ring.Transparency = 0.5
 		end
-	elseif row.attack == "shooter" then
-		gun(root, scale, 2.4, 0.35)
 	elseif row.attack == "marksman" then
 		gun(root, scale, 4.2, 0.3)
 	elseif row.attack == "grenadier" then

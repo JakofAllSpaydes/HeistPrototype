@@ -13,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
+local Enemies = require(Shared.Enemies)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
@@ -246,7 +247,15 @@ local function viewFor(player: Player): any
 		startsAt = zone.startsAt,
 		countdownSec = Config.QueueCountdownSec,
 		topWave = if profile then (profile.topWave[topKey] or 0) else 0,
-		goldMult = Config.DiffGoldMult,
+		-- Per difficulty on this map, so the Create Match bonus row follows the segment (Round 16).
+		topWaves = (function()
+			local out = {}
+			for _, d in Config.QueueDifficulties do
+				out[d.id] = if profile then (profile.topWave[zone.settings.mapId .. ":" .. d.id] or 0) else 0
+			end
+			return out
+		end)(),
+		goldMult = Enemies.difficulty(zone.settings.difficultyId).goldMult or 1,
 		modifiers = "NONE",
 	}
 end

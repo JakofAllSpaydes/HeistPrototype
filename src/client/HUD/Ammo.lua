@@ -1,5 +1,8 @@
 --!strict
--- Bottom-right: ammo large, hint line under it.
+-- Bottom-right: ammo large, hint line under it, and (Round 16) the camera lock state above it: a CTRL key chip
+-- and CAMERA LOCKED / CAMERA FREE, so the Ctrl toggle is never a guess. Desktop only (touch has no lock).
+local RunService = game:GetService("RunService")
+
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
@@ -29,7 +32,7 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.stroke(ammo, Theme.Colors.black, S(1.5), 0.4)
 	local hint = UI.text({
 		Name = "Hint",
-		Text = "R RELOAD · F INTERACT · Q E Z ABILITIES · CTRL CAMERA · ` DEBUG",
+		Text = "R RELOAD · F INTERACT · Q E Z ABILITIES · ` DEBUG",
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -38,6 +41,55 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Visible = not ClientState.isMobile,
 		Parent = root,
 	})
+
+	-- Camera lock chip, right-aligned just above the count.
+	local camRow = UI.frame({
+		Name = "CameraLock",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, 0, 0, -S(2)),
+		Size = UDim2.fromOffset(S(200), S(20)),
+		Visible = not ClientState.isMobile,
+		Parent = root,
+	})
+	UI.list(camRow, Enum.FillDirection.Horizontal, S(6), Enum.HorizontalAlignment.Right)
+	local key = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel2,
+		Size = UDim2.fromOffset(S(38), S(18)),
+		LayoutOrder = 1,
+		Parent = camRow,
+	})
+	UI.corner(key, S(5))
+	UI.stroke(key, Theme.Colors.grey, S(1), 0.4)
+	UI.text({
+		Text = "CTRL",
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.textDim,
+		Size = UDim2.fromScale(1, 1),
+		Parent = key,
+	})
+	local camPill, camLabel = UI.pill(camRow, "CAMERA LOCKED", Theme.Colors.panel2, Theme.Colors.textDim, S(18), S(11))
+	camPill.LayoutOrder = 2
+	camLabel.Font = Theme.Fonts.display
+	local lastFree: boolean? = nil
+	track(RunService.RenderStepped:Connect(function()
+		local free = ClientState.mouseFree or ClientState.mouseFreeHold
+		if free == lastFree then
+			return
+		end
+		local first = lastFree == nil
+		lastFree = free
+		camLabel.Text = if ClientState.mouseFreeHold and not ClientState.mouseFree
+			then "CAMERA FREE (ALT)"
+			elseif free then "CAMERA FREE"
+			else "CAMERA LOCKED"
+		camPill.BackgroundColor3 = if free then Theme.Colors.gold else Theme.Colors.panel2
+		camLabel.TextColor3 = if free then Theme.Colors.bg else Theme.Colors.textDim
+		if not first then
+			UI.punch(camPill, 1.08, 0.15)
+		end
+	end) :: any)
 
 	local function render(a: any)
 		if a.reloading and a.shell then

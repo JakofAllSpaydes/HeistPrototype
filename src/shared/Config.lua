@@ -50,19 +50,7 @@ local Config = {
 			attack = "melee",
 			lean = true,
 		},
-		{
-			id = "Shooter",
-			name = "SHOOTER",
-			hp = 100,
-			speed = 7, -- (brief: 10 / 2)
-			dmg = 1.3,
-			range = 45,
-			cooldown = 1.5,
-			scale = 1.0,
-			color = "2F4A8A",
-			cash = 20,
-			attack = "shooter",
-		},
+		-- (Round 16: the Shooter archetype was cut; its unavoidable chip damage had no counterplay.)
 		{
 			id = "Marksman",
 			name = "MARKSMAN",
@@ -120,8 +108,8 @@ local Config = {
 			noElite = true,
 		},
 	},
-	-- Scaling: FinalHp = BaseHp x (1 + HpWaveMult)^(wave - 1) x (1 + HpPerPlayerMult x (players - 1)) x DiffHpMult;
-	-- FinalDamage = BaseDamage x (1 + DamageWaveMult)^(wave - 1) x DiffDamageMult. Player count never changes spawn counts.
+	-- Scaling: FinalHp = BaseHp x (1 + HpWaveMult)^(wave - 1) x (1 + HpPerPlayerMult x (players - 1)) x hpMult;
+	-- FinalDamage = BaseDamage x (1 + DamageWaveMult)^(wave - 1) x dmgMult (hpMult / dmgMult from the run's QueueDifficulties row). Player count never changes spawn counts.
 	HpWaveMult = 0.12,
 	DamageWaveMult = 0.06,
 	HpPerPlayerMult = 0.5,
@@ -136,8 +124,7 @@ local Config = {
 	FarRange = 150, -- up to this: x1; beyond: x FarWeightMult
 	NearWeightMult = 3.0,
 	FarWeightMult = 0.25,
-	-- Shooter / Marksman / Boomer / Grenadier / Heavy tuning.
-	ShooterHitChance = 0.55, -- a miss cracks a tracer past the player
+	-- Marksman / Boomer / Grenadier / Heavy tuning.
 	MarksmanAimSec = 1.5, -- the red laser paints the line this long, then the shot goes down the line
 	MarksmanHitRadius = 2.2, -- studs from the laser line that still counts as "in the beam"
 	BoomerPlaceableSearch = 40, -- a placeable this close is preferred over players
@@ -160,19 +147,18 @@ local Config = {
 	-- Compressed test brackets: a row applies from WaveMin until the next row; weights are relative chances rolled
 	-- per enemy at spawn time. At HeatShiftStars or more stars the active row shifts HeatBracketShift rows down.
 	Composition = {
-		{ WaveMin = 1, Henchman = 100, Runner = 0, Shooter = 0, Marksman = 0, Boomer = 0, Grenadier = 0, Heavy = 0 },
-		{ WaveMin = 2, Henchman = 75, Runner = 25, Shooter = 0, Marksman = 0, Boomer = 0, Grenadier = 0, Heavy = 0 },
-		{ WaveMin = 3, Henchman = 60, Runner = 22, Shooter = 0, Marksman = 0, Boomer = 0, Grenadier = 18, Heavy = 0 },
-		{ WaveMin = 4, Henchman = 50, Runner = 20, Shooter = 10, Marksman = 0, Boomer = 5, Grenadier = 15, Heavy = 0 },
-		{ WaveMin = 5, Henchman = 44, Runner = 18, Shooter = 10, Marksman = 0, Boomer = 6, Grenadier = 14, Heavy = 8 },
-		{ WaveMin = 6, Henchman = 40, Runner = 16, Shooter = 10, Marksman = 6, Boomer = 6, Grenadier = 14, Heavy = 8 },
-		{ WaveMin = 8, Henchman = 34, Runner = 16, Shooter = 12, Marksman = 8, Boomer = 8, Grenadier = 14, Heavy = 8 },
+		{ WaveMin = 1, Henchman = 100, Runner = 0, Marksman = 0, Boomer = 0, Grenadier = 0, Heavy = 0 },
+		{ WaveMin = 2, Henchman = 75, Runner = 25, Marksman = 0, Boomer = 0, Grenadier = 0, Heavy = 0 },
+		{ WaveMin = 3, Henchman = 60, Runner = 22, Marksman = 0, Boomer = 0, Grenadier = 18, Heavy = 0 },
+		{ WaveMin = 4, Henchman = 54, Runner = 22, Marksman = 0, Boomer = 7, Grenadier = 17, Heavy = 0 },
+		{ WaveMin = 5, Henchman = 48, Runner = 20, Marksman = 0, Boomer = 8, Grenadier = 16, Heavy = 8 },
+		{ WaveMin = 6, Henchman = 44, Runner = 18, Marksman = 8, Boomer = 8, Grenadier = 14, Heavy = 8 },
+		{ WaveMin = 8, Henchman = 38, Runner = 18, Marksman = 10, Boomer = 10, Grenadier = 16, Heavy = 8 },
 		{
 			WaveMin = 12,
-			Henchman = 30,
-			Runner = 15,
-			Shooter = 14,
-			Marksman = 10,
+			Henchman = 34,
+			Runner = 17,
+			Marksman = 14,
 			Boomer = 8,
 			Grenadier = 13,
 			Heavy = 10,
@@ -407,6 +393,11 @@ local Config = {
 	StructurePlaceDistance = 5, -- studs in front of the player (placeables: turrets, barricade, oil drum, med bag, claymore)
 	ThrowDistance = 12, -- studs in front of the player a thrown ability lands when no aim point comes with it (flashbang, molotov)
 	ThrowMaxRange = 100, -- thrown abilities land at the cursor's floor point, no further than this from the player
+	-- Aim assist (Round 16): the throw locks, and homes on in flight, the enemy under the cursor; else the one
+	-- closest to the camera ray (within ThrowAssistRayStuds of it); else the one nearest the aim point (ThrowAssistRadius).
+	ThrowAssistRadius = 14, -- 0 turns aim assist off
+	ThrowAssistRayStuds = 5,
+	ThrowAssistOriginSlack = 60, -- the camera ray's origin is only trusted this close to the thrower
 	ThrowArcPerStud = 0.12, -- the throw's arc peaks this many studs high per stud of distance (never under 1.5)
 	ThrowFlightRefStuds = 45, -- throws up to this far take ThrowFlightSec; further ones take proportionally longer (100 studs ~1.3s)
 	ThrowFlightSec = 0.6, -- the throw's arc takes this long, then it goes off
@@ -421,7 +412,9 @@ local Config = {
 	-- SHARPSHOOTER (brief 5): Eagle Vision (id eagleeye, EagleEye* keys) / Dead Eye / Flashbang
 	EagleEyeRadius = 60, -- every enemy this close is marked through walls...
 	EagleEyeSec = 6, -- ...for this long...
-	EagleEyeBonusPct = 0.25, -- ...and takes this much more damage from any source while marked
+	EagleEyeSlowPct = 0.35, -- ...and walks this much slower while marked (Round 16: replaced the bonus damage)
+	EagleEyeSlowCap = 0.7, -- the slow never passes this, whatever the level
+	EagleEyeBossSlowMult = 0.5, -- the boss takes this share of the slow
 	-- Placeables (ENGINEER's Turret / Barricade, the rest of the kits)
 	TurretHP = 150,
 	TurretDmg = 12,
@@ -462,6 +455,14 @@ local Config = {
 	FlashRadius = 12, -- enemies this close to the burst are stunned
 	StunDuration = 3, -- stunned enemies stop and do not swing
 	-- TORCH
+	-- Round 16: friendly fire fields (molotov, burst oil drum) burn in these colors with a solid rim (the med bag's
+	-- green field gets the rim too); the enemies' fire stays orange / red, rimless.
+	AllyFireColor = "3FA9FF",
+	AllyFireSecondary = "D8F0FF",
+	AllyFireDiscTransparency = 0.6,
+	AllyFieldRimStuds = 0.5, -- rim width, centered on the field's edge
+	AllyFieldRimSegments = 24, -- parts the rim ring is built from
+	AllyFieldRimTransparency = 0.15,
 	MolotovRadius = 7,
 	MolotovLifetime = 8,
 	MolotovBurnPerSec = 15,
@@ -585,8 +586,7 @@ local Config = {
 	FieldHospitalDmgPct = 0.2, -- ...and allies inside deal this much more damage
 	-- SHARPSHOOTER
 	SharpHeadshotAdd = 0.3, -- I: added to the headshot multiplier
-	MarksmanKitReloadPct = 0.25, -- II: snipers and pistols reload this much faster...
-	MarksmanKitEagleEyePct = 0.15, -- ...and Eagle Vision's bonus damage goes up by this
+	MarksmanKitReloadPct = 0.25, -- II: snipers and pistols reload this much faster
 	DeadEyeHeadshotCdr = 0.2, -- III: every headshot during Dead Eye puts a round back and trims this off its cooldown
 	-- TORCH
 	TorchBurnRateMult = 2, -- I: your burns (fire fields, INCENDIARY) tick this much faster
@@ -603,6 +603,7 @@ local Config = {
 	DealerPerTable = 3, -- cards per table (the last takes what is left)
 	DealerStandSpacing = 2.8, -- studs between cards on a table
 	DealerTeleportDistance = 4, -- TELEPORT TO DEALER (any number of times) lands you this far outside the middle table
+	DealerCardWidth = 190, -- the stand panel (a pick-3 card with a price bar), design px
 	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
 	ShopPriceByTier = { 100, 160, 260, 420, 700 }, -- x UpgradePriceMult ^ upgrades bought (placeholders)
 	ShopCratePrice = 800, -- ARMS DROP: a crate at the stall for the party
@@ -699,10 +700,13 @@ local Config = {
 	MaxPartySize = 4,
 	QueueCountdownSec = 15, -- from CREATE; a full party or a party of 1 starts at once
 	QueueMaps = { { id = "TheBank", name = "THE BANK" } }, -- one entry in the prototype
-	QueueDifficulties = { { id = "Normal", name = "NORMAL" } },
-	DiffHpMult = 1.0,
-	DiffDamageMult = 1.0,
-	DiffGoldMult = 1.0,
+	-- Round 16: difficulty is live. Each row scales enemy HP (hpMult) and damage (dmgMult), the wave's enemy count
+	-- (budgetMult) and the run's Gold payout (goldMult). Top waves are kept per map:difficulty.
+	QueueDifficulties = {
+		{ id = "Normal", name = "NORMAL", hpMult = 1.0, dmgMult = 1.0, budgetMult = 1.0, goldMult = 1.0 },
+		{ id = "Hard", name = "HARD", hpMult = 1.4, dmgMult = 1.3, budgetMult = 1.2, goldMult = 1.5 },
+		{ id = "Nightmare", name = "NIGHTMARE", hpMult = 2.0, dmgMult = 1.6, budgetMult = 1.4, goldMult = 2.25 },
+	},
 
 	------------------------------------------------------------------ Meta (profiles, Armory levels, classes, masks)
 	StubBoostSec = 1800, -- the hub HUD's stub +50% GOLD boost chip counts down from this (display only)
@@ -735,7 +739,7 @@ local Config = {
 	GoldPerWaveBase = 20, -- per cleared wave
 	GoldPerWaveAdd = 5, -- x (wave - 1)
 	GoldPerObjective = 50, -- per side job completed
-	-- GoldEarned = (sum over cleared waves + GoldPerObjective x objectives) x DiffGoldMult, plus SideJobGold per job.
+	-- GoldEarned = (sum over cleared waves + GoldPerObjective x objectives) x the difficulty's goldMult, plus SideJobGold per job.
 
 	------------------------------------------------------------------ Minigames (test props in the yard)
 	MinigameTier = 1, -- starting tier for every game (1..3); the tier pad and the debug panel change it per session
@@ -762,11 +766,18 @@ local Config = {
 	SafeLockSec = 0.3, -- hold inside the hot range this long to lock a number...
 	SafeHotGraceSec = 0.2, -- ...a wobble out of it shorter than this keeps the hold
 	SafeWrongWayDeg = 40, -- turning against the direction this far (outside the warm range) reads WRONG WAY; backing up near the number never does
+	-- Round 16: reaching the number turning the wrong way (from its far side) keeps it cold until the dial leaves
+	-- the warm range and comes back the right way. Each number crossed in the warm range clicks:
+	SafeTickPitch = { 0.9, 1.7 }, -- click pitch at the edge of the warm range .. on the number
+	SafeTickVolume = { 0.12, 0.45 }, -- click volume, same span
 	SafeNumbersByTier = { 3, 4, 5 }, -- numbers to lock per tier (Round 15l: raised with the more lenient dial)
 	FreqTolerance = 0.06, -- the two waves count as overlapping within this share of the fixed frequency
 	FreqLockSec = 0.5, -- hold the overlap this long to lock
 	FreqLocksByTier = { 1, 2, 3 },
-	FreqRangeByTier = { 1.6, 2.4, 3.5 }, -- slider range as a multiple of the base frequency; wider = harder
+	FreqRangeByTier = { 1.6, 2.4, 3.5 }, -- slider spans FreqCenter / r .. FreqCenter x r; wider = harder
+	FreqCenter = 3, -- middle of the slider's frequency band
+	FreqTargetEdge = 0.1, -- targets land at least this share of the slider in from either end
+	FreqTargetMinMove = 0.25, -- each new target sits at least this share of the slider from the last one
 
 	------------------------------------------------------------------ Downed / revive / game over
 	DownedWalkSpeed = 6,
@@ -781,7 +792,9 @@ local Config = {
 	RevivePausesBleed = true, -- a teammate's revive hold freezes the bleed timer; letting go resumes it
 	ReviveTickSec = 0.5, -- the reviver's centered bar ticks this often while it fills
 	BusyTagOffset = 3.2, -- studs above a teammate's head for the LOCKPICK / HACKING / CAPTURING tag
-	-- Ally callouts (brief 5, lines in Callouts.lua): downed / revived / bled-out radio to teammates.
+	-- Ally callouts (brief 5, lines in Callouts.lua): downed / revived / bled-out radio to teammates, and (Round 16)
+	-- the big moments: the boss's last hit, a Legendary from a crate, a multi-kill, a mastery tier.
+	CalloutMultiKill = 5, -- one frag / claymore killing at least this many sends the multi-kill callout
 	CalloutSec = 2.5, -- on screen this long
 	CalloutMaxWaitSec = 8, -- a callout still queued behind MARLOW or a cutscene after this long is dropped
 	RunOverSlowSec = 1, -- slow-mo under the RUN OVER stamp

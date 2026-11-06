@@ -1,7 +1,7 @@
 --!strict
 -- Enemy base: spawn (a Rig from the roster row, scaled by wave and party size), targeting and movement
 -- helpers, damage / flinch / kill / ragdoll, stun and slow, and the per-archetype brains in
--- src/server/Enemies/ (Melee, Shooter, Marksman, Boomer, Grenadier, Heavy; Boss.lua adds its own). Every brain
+-- src/server/Enemies/ (Melee, Marksman, Boomer, Grenadier, Heavy; Boss.lua adds its own). Every brain
 -- gets the same `api` of helpers each heartbeat; no pathfinding, straight MoveTo with a sidestep + jump
 -- when stuck and a re-spawn as a last resort.
 local Players = game:GetService("Players")
@@ -24,7 +24,6 @@ local Pause = require(script.Parent.Pause)
 
 local BRAINS: { [string]: any } = {
 	melee = require(script.Parent.Enemies.Melee),
-	shooter = require(script.Parent.Enemies.Shooter),
 	marksman = require(script.Parent.Enemies.Marksman),
 	boomer = require(script.Parent.Enemies.Boomer),
 	grenadier = require(script.Parent.Enemies.Grenadier),
@@ -62,8 +61,7 @@ export type Data = {
 	slowUntil: number,
 	headColor: Color3, -- the head's own color, restored when a stun ends
 	lastFlinch: number,
-	markUntil: number, -- Eagle Eye: server clock the mark ends...
-	markBonus: number, -- ...and the extra damage share it takes from any source until then
+	markUntil: number, -- Eagle Eye: server clock the mark ends
 	mem: { [string]: any }, -- the brain's scratch space
 }
 
@@ -442,8 +440,9 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 	root:SetNetworkOwner(nil)
 
 	local players = math.max(1, #World.runAudience())
-	local hp = Enemies.hpAt(row, wave, players) * (if elite then Config.EliteHpMult else 1)
-	local dmg = Enemies.dmgAt(row, wave)
+	local diffId = World.partySettings.difficultyId
+	local hp = Enemies.hpAt(row, wave, players, diffId) * (if elite then Config.EliteHpMult else 1)
+	local dmg = Enemies.dmgAt(row, wave, diffId)
 	model:SetAttribute("MaxHP", hp)
 	model:SetAttribute("HP", hp)
 	model:SetAttribute("Wave", wave)
@@ -479,7 +478,6 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		headColor = head.Color,
 		lastFlinch = -math.huge,
 		markUntil = 0,
-		markBonus = 0,
 		mem = {},
 	}
 	count += 1
@@ -528,19 +526,14 @@ function Enemy.slow(model: Model, mult: number, seconds: number)
 	d.slowUntil = math.max(d.slowUntil, untilT)
 end
 
--- Eagle Eye: marked through walls (the client draws the red Highlight off MarkedUntil) and +bonus damage from
--- any source while it lasts. A second mark keeps the longer end and the bigger bonus.
-function Enemy.mark(model: Model, seconds: number, bonus: number)
+-- Eagle Eye: marked through walls (the client draws the red Highlight off MarkedUntil). Round 16: the mark is
+-- vision only; the slow that goes with it is an Enemy.slow from Abilities. A second mark keeps the longer end.
+function Enemy.mark(model: Model, seconds: number)
 	local d = active[model]
 	if not d or d.dead then
 		return
 	end
 	local now = os.clock()
-	if d.markUntil <= now then
-		d.markBonus = bonus
-	else
-		d.markBonus = math.max(d.markBonus, bonus)
-	end
 	d.markUntil = math.max(d.markUntil, now + seconds)
 	model:SetAttribute("MarkedUntil", Workspace:GetServerTimeNow() + (d.markUntil - now))
 end
@@ -797,9 +790,6 @@ function Enemy.damage(model: Model, amount: number, attacker: Player?, hit: Hit?
 	-- A brain can scale incoming damage (the staggered boss takes more).
 	if d.brain.damageMult then
 		amount *= d.brain.damageMult(d)
-	end
-	if d.markUntil > os.clock() then
-		amount *= 1 + d.markBonus -- Eagle Eye
 	end
 	local before = d.hp
 	d.hp -= amount

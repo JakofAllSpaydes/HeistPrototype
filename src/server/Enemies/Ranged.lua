@@ -1,5 +1,5 @@
 --!strict
--- Shared movement for the ranged kinds (Shooter, Marksman, Grenadier): pick the nearest standing player
+-- Shared movement for the ranged kinds (Marksman, Grenadier): pick the nearest standing player
 -- (one with line of sight when any has it), walk until within the row's range with a clear line, then hold
 -- and face the target. Losing line of sight means walking again (the repath).
 local Ranged = {}

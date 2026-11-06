@@ -71,10 +71,15 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			return
 		end
 		UI.punch(t.button, 0.9, 0.2)
-		-- The cursor's floor point rides along: thrown abilities land there (up to ThrowMaxRange).
+		-- What the cursor is on rides along: thrown abilities land there (up to ThrowMaxRange), and the camera ray's
+		-- origin and the hit part feed the server's aim assist.
 		local char = Players.LocalPlayer.Character
-		local aim = if char then ClientState.cursorAimPoint(char) else nil
-		Remotes.UseAbility:FireServer(id, aim)
+		if char then
+			local aim, origin, hit = ClientState.cursorAim(char)
+			Remotes.UseAbility:FireServer(id, aim, origin, hit)
+		else
+			Remotes.UseAbility:FireServer(id, nil)
+		end
 	end
 
 	local function rebuild(newClassId: string)

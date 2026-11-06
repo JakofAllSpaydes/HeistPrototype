@@ -32,11 +32,12 @@ local tags: { [BasePart]: Tag } = {}
 -- Two rows against the held gun: damage per shot ("33x8" for pellets) and fire rate, each with its own
 -- arrow, so a slow heavy gun and a fast light one read as a trade instead of one number.
 local function refreshTag(gun: BasePart, tag: Tag)
-	local dmg = gun:GetAttribute("Dmg") :: number? or 0
-	local w = Weapons.ById[tostring(gun:GetAttribute("WeaponId"))]
+	local weaponId = tostring(gun:GetAttribute("WeaponId"))
+	local w = Weapons.ById[weaponId]
 	local pellets = if w then w.pellets else 1
-	-- The gun's own Armory level is baked into RateMult; the held gun's upgrade / stim multiplier goes on top.
-	local levelMult = tonumber(gun:GetAttribute("RateMult")) or 1
+	-- Round 16: the tag shows the gun as YOU would hold it (your Armory level for this weapon, your damage
+	-- upgrades), whoever dropped it; the held gun's upgrade / stim rate multiplier goes on top.
+	local dmg, levelMult = ClientState.gunAsMine(weaponId, tonumber(gun:GetAttribute("Rarity")) or 1)
 	local rate = if w then Weapons.effectiveRate(w, ClientState.rateMult() * levelMult) else 0
 	local sync = ClientState.sync
 	local held = sync and sync.held

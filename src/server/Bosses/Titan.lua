@@ -431,7 +431,7 @@ local function startVolley(d: any, api: any, t: number)
 	end)
 	m.ability = "volley"
 	m.stageUntil = t + Config.TitanVolleyTelegraphSec + 0.4
-	local dmg = Enemies.dmgAt(Enemies.ById.Grenadier, World.wave)
+	local dmg = Enemies.dmgAt(Enemies.ById.Grenadier, World.wave, World.partySettings.difficultyId)
 	local from = api.muzzle(d)
 	for i = 1, Config.TitanVolleyCount do
 		local target = targets[((i - 1) % #targets) + 1]

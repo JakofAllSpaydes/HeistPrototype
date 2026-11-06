@@ -311,13 +311,13 @@ local function playReel(data: any)
 	title.Text = string.upper(tostring(data.rarityName or Rarity.name(rarity)))
 	title.TextColor3 = color
 	local w0 = Weapons.ById[tostring(data.weaponId)]
-	local rate = if w0
-		then Weapons.effectiveRate(w0, ClientState.rateMult() * (tonumber(data.levelRateMult) or 1))
-		else 0
+	-- As the viewer would hold it (their own level and upgrades), like the floor tag.
+	local myDmg, myLevelRate = ClientState.gunAsMine(tostring(data.weaponId), rarity)
+	local rate = if w0 then Weapons.effectiveRate(w0, ClientState.rateMult() * myLevelRate) else 0
 	result.Text = string.format(
 		"%s  ·  DMG %s  ·  %s",
 		string.upper(tostring(data.displayName or "")),
-		UI.fmtDmg(tonumber(data.dmg) or 0, tonumber(data.pellets) or 1),
+		UI.fmtDmg(myDmg, tonumber(data.pellets) or 1),
 		UI.fmtRate(rate)
 	)
 	result.TextColor3 = color

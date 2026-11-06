@@ -16,12 +16,12 @@ local Rarity = require(Shared.Rarity)
 local CrateReel = require(Shared.CrateReel)
 local PlayerState = require(script.Parent.PlayerState)
 local WeaponRoll = require(script.Parent.WeaponRoll)
-local Stats = require(script.Parent.Stats)
+local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Pause = require(script.Parent.Pause)
 
-type Entry = { weapon: Weapons.Weapon, level: number }
+type Entry = { weapon: Weapons.Weapon }
 
 type Crate = {
 	id: string,
@@ -57,23 +57,24 @@ local function rollCount(): number
 	return math.max(1, #World.runAudience() + Config.CrateRollsExtra)
 end
 
--- The crate pool: every weapon owned by someone in the run, carrying the highest Armory level among its owners.
+-- The crate pool: every weapon owned by someone in the run. Round 16: no level rides along; whoever picks the
+-- gun up holds it at their own Armory level for that weapon (WeaponRoll.swap).
 local function partyPool(): { Entry }
-	local levels: { [string]: number } = {}
+	local owned: { [string]: boolean } = {}
 	for _, p in World.runAudience() do
 		local state = PlayerState.get(p)
 		for _, w in PlayerState.ownedWeapons(state) do
-			levels[w.id] = math.max(levels[w.id] or 0, PlayerState.weaponLevel(state, w.id))
+			owned[w.id] = true
 		end
 	end
 	local out = {}
 	for _, w in Weapons.List do
-		if levels[w.id] then
-			table.insert(out, { weapon = w, level = levels[w.id] })
+		if owned[w.id] then
+			table.insert(out, { weapon = w })
 		end
 	end
 	if #out == 0 then
-		table.insert(out, { weapon = Weapons.ById[Weapons.Starter], level = 0 })
+		table.insert(out, { weapon = Weapons.ById[Weapons.Starter] })
 	end
 	return out
 end
@@ -163,17 +164,14 @@ local function freeSpot(crate: Crate): Vector3
 	return best or (center + Vector3.new(Config.CrateDropRadius, 0, 0))
 end
 
-local function eject(crate: Crate, entry: Entry, rarity: number, roller: PlayerState.State)
+local function eject(crate: Crate, entry: Entry, rarity: number, _roller: PlayerState.State)
 	local weapon = entry.weapon
 	local spot = freeSpot(crate)
 	local start = CFrame.new(crate.landPos + Vector3.new(0, crate.body.Size.Y + 0.6, 0))
 	local gun = WeaponRoll.spawnGun({
 		weaponId = weapon.id,
 		rarity = rarity,
-		level = entry.level,
 		cframe = start,
-		dmg = Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(roller), entry.level),
-		dps = Stats.weaponDps(weapon.id, rarity, roller.upgrades, entry.level),
 		lifetime = Config.GroundWeaponLifetime,
 	})
 	-- No pickup mid-arc: the prompt comes on once the gun is on the floor.
@@ -247,9 +245,7 @@ local function rollOnce(player: Player, state: PlayerState.State, crate: Crate)
 		displayName = weapon.displayName,
 		rarity = rarity,
 		rarityName = Rarity.name(rarity),
-		dmg = math.round(Stats.weaponDamage(weapon.id, rarity, PlayerState.damagePct(state), entry.level)),
-		pellets = weapon.pellets,
-		levelRateMult = Weapons.levelRateMult(entry.level),
+		pellets = weapon.pellets, -- each client computes DMG / RATE at its own level (ClientState.gunAsMine)
 		left = crate.rolls,
 		position = crate.landPos,
 	})
@@ -266,6 +262,10 @@ local function rollOnce(player: Player, state: PlayerState.State, crate: Crate)
 	)
 
 	Pause.wait(CrateReel.ejectSec(rarity))
+	-- A Legendary landed: the crew hears who pulled it (after the reel, so it never spoils the land).
+	if rarity >= Rarity.Legendary then
+		AllyCallout.send(player, "legendary", string.upper(weapon.displayName))
+	end
 	if crate.model.Parent then
 		-- The lid kicks as the gun leaves; the clients burst it in the gun's rarity.
 		TweenService:Create(crate.lid, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {

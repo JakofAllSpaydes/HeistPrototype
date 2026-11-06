@@ -19,8 +19,10 @@ local Pause = require(script.Parent.Pause)
 local Spawner = {}
 
 -- The regular budget (heat's par is computed on it); boss waves spawn BossWaveBudgetPct of it alongside the boss.
+-- The difficulty's budgetMult scales it (Round 16).
 function Spawner.regularBudget(wave: number): number
-	return Config.WaveBudgetBase + Config.WaveBudgetPerWave * (wave - 1)
+	local base = Config.WaveBudgetBase + Config.WaveBudgetPerWave * (wave - 1)
+	return math.max(1, math.round(base * (Enemies.difficulty(World.partySettings.difficultyId).budgetMult or 1)))
 end
 
 function Spawner.budgetFor(wave: number): number

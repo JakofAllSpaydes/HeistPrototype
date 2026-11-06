@@ -360,6 +360,13 @@ function Weapons.atLevel(
 	}
 end
 
+-- Damage per shot of a gun: Armory level, then in-run damage pct, then rarity (Stats.weaponDamage on the server;
+-- the client uses it for the floor-gun tags, which show the viewer's own level and upgrades).
+function Weapons.damageAt(weaponId: string, rarity: number, dmgPct: number, level: number?): number
+	local w = Weapons.ById[weaponId]
+	return Weapons.atLevel(w, level or 0).dmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
+end
+
 -- Gold cost of the next level: upgBaseCost x RarityUpgCostMult ^ level (both 100 / 1.0 in the prototype).
 function Weapons.upgradeCost(w: Weapon, level: number): number
 	return math.round((w.upgBaseCost or Prices.weaponUpgrade) * Config.RarityUpgCostMult ^ math.max(0, level))

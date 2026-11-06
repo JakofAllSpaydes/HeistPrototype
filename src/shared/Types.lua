@@ -96,6 +96,7 @@ export type Sync = {
 	boss: { id: string, name: string, hp: number, maxHP: number, phase: number }?, -- the live boss, for the bar
 	roster: any?, -- the scoreboard (Roster.View): rows in MVP order plus team cash, banked and time survived
 	maxHP: number,
+	dmgPct: number, -- in-run damage upgrade share (Round 16: floor-gun tags compute your own numbers from it)
 	held: HeldView,
 	stats: Computed,
 	prices: { upgrade: number },

@@ -101,7 +101,7 @@ local function segment(
 		Parent = parent,
 	})
 	UI.list(row, Enum.FillDirection.Horizontal, S(8))
-	local buttons = {}
+	local buttons: { TextButton } = {}
 	local n = #entries
 	for i, e in entries do
 		local on = i == selectedIndex
@@ -120,6 +120,10 @@ local function segment(
 			b.Activated:Connect(function()
 				UI.punch(b, 0.95, 0.15)
 				UI.sound(Theme.Sounds.toast, 1.3, 0.3)
+				-- The highlight moves to the pick (Round 16: the difficulty row kept its first highlight).
+				for k, other in buttons do
+					other.BackgroundColor3 = if k == i then Theme.Colors.blue else Theme.Colors.panel
+				end
 				onPick(i)
 			end)
 		end
@@ -281,7 +285,7 @@ local function openCreate(v: any)
 	end
 	paintMaps()
 
-	-- Difficulty: Normal live, Hard / Nightmare disabled, bonus row under it.
+	-- Difficulty: every Config.QueueDifficulties row is live (Round 16); the bonus row follows the segment.
 	section(body, 3, "Difficulty")
 	local diffEntries = {}
 	for _, d in Config.QueueDifficulties do
@@ -296,10 +300,14 @@ local function openCreate(v: any)
 	local bonus: TextLabel? = nil
 	local function paintBonus()
 		if bonus then
+			local d = Config.QueueDifficulties[chosen.diffIndex] or Config.QueueDifficulties[1]
+			local top = if v.topWaves then v.topWaves[d.id] else v.topWave
 			bonus.Text = string.format(
-				"◆ x%.1f Gold Bonus   |   ★ Top wave %d",
-				tonumber(v.goldMult) or 1,
-				tonumber(v.topWave) or 0
+				"◆ x%s Gold   |   ENEMY HP x%s · DMG x%s   |   ★ Top wave %d",
+				tostring(d.goldMult or 1),
+				tostring(d.hpMult or 1),
+				tostring(d.dmgMult or 1),
+				tonumber(top) or 0
 			)
 		end
 	end

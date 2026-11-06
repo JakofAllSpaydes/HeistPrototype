@@ -189,6 +189,71 @@ local function typewrite(label: TextLabel, head: GuiObject)
 	end)
 end
 
+-- Player headshots for ally callouts and the completer on a finished job, cached per user.
+local headshots: { [number]: string } = {}
+local function headshot(userId: number): string
+	local cached = headshots[userId]
+	if cached then
+		return cached
+	end
+	local ok, url = pcall(function()
+		return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+	end)
+	local img = if ok and typeof(url) == "string" then url else ""
+	headshots[userId] = img
+	return img
+end
+
+-- An NPC's portrait (Round 16): a blocky dummy bust in a ViewportFrame (classic head with the default face,
+-- torso, shoulders, a collar in the NPC's accent color, a hair cap), colored per Lines.portraits.
+local function dummyBust(parent: GuiObject, crewLead: string): ViewportFrame
+	local look = Lines.portraits[crewLead] or Lines.portraits.default
+	local vp = UI.new("ViewportFrame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Ambient = Color3.fromRGB(150, 150, 160),
+		LightColor = Color3.new(1, 1, 1),
+		LightDirection = Vector3.new(-0.4, -1, 0.6),
+		Parent = parent,
+	}) :: ViewportFrame
+	local function block(size: Vector3, cf: CFrame, hex: string): Part
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.Size = size
+		p.CFrame = cf
+		p.Color = Color3.fromHex(hex)
+		p.Material = Enum.Material.SmoothPlastic
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = vp
+		return p
+	end
+	block(Vector3.new(2, 2, 1), CFrame.new(0, 0, 0), look.shirt)
+	block(Vector3.new(1, 2, 1), CFrame.new(1.5, 0, 0), look.shirt)
+	block(Vector3.new(1, 2, 1), CFrame.new(-1.5, 0, 0), look.shirt)
+	block(Vector3.new(1.1, 0.25, 1.05), CFrame.new(0, 0.95, 0), look.accent)
+	local head = block(Vector3.new(2, 1, 1), CFrame.new(0, 1.5, 0), look.skin)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	mesh.Parent = head
+	local face = Instance.new("Decal")
+	face.Face = Enum.NormalId.Front
+	face.Texture = "rbxasset://textures/face.png"
+	face.Parent = head
+	local hair = block(Vector3.new(1.3, 0.35, 1.3), CFrame.new(0, 2.05, 0.05), look.hair)
+	local hairMesh = Instance.new("SpecialMesh")
+	hairMesh.MeshType = Enum.MeshType.Head
+	hairMesh.Scale = Vector3.new(1, 1.2, 1)
+	hairMesh.Parent = hair
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 34
+	cam.CFrame = CFrame.lookAt(Vector3.new(0.9, 1.4, -5.2), Vector3.new(0, 1.05, 0))
+	cam.Parent = vp
+	vp.CurrentCamera = cam
+	return vp
+end
+
 type CardSpec = {
 	kind: string,
 	crewLead: string,
@@ -222,7 +287,7 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 	})
 	UI.corner(portrait, S(10))
 	local head: GuiObject
-	if spec.portraitImage then
+	if spec.portraitImage and spec.portraitImage ~= "" then
 		local img = UI.new("ImageLabel", {
 			BackgroundTransparency = 1,
 			Image = spec.portraitImage,
@@ -234,31 +299,8 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 		UI.corner(img, S(9))
 		head = img
 	else
-		local silhouette = UI.frame({
-			BackgroundColor3 = Theme.Colors.grey,
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, S(12)),
-			Size = UDim2.fromOffset(S(28), S(28)),
-			Parent = portrait,
-		})
-		UI.corner(silhouette, S(14))
-		head = silhouette
-		local shoulders = UI.frame({
-			BackgroundColor3 = Theme.Colors.grey,
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -S(14)),
-			Size = UDim2.fromOffset(S(56), S(30)),
-			Parent = portrait,
-		})
-		UI.corner(shoulders, S(12))
-		UI.text({
-			Text = Lines.portraitLabel,
-			TextSize = S(9),
-			TextColor3 = Theme.Colors.grey,
-			Position = UDim2.new(0, 0, 1, -S(14)),
-			Size = UDim2.new(1, 0, 0, S(12)),
-			Parent = portrait,
-		})
+		portrait.ClipsDescendants = true
+		head = dummyBust(portrait, spec.crewLead)
 	end
 	local textX = h + S(4)
 	UI.text({
@@ -431,14 +473,28 @@ local function onCallEnd(data: any)
 		box, inner = buildBox(PILL_H)
 		slideIn(inner)
 	end
+	-- Round 16: a success is the completer's card (their headshot, name, their own line), not MARLOW's.
+	local by = if data.success and typeof(data.by) == "table" and #data.by > 0 then data.by else nil
+	local crewLead = data.crewLead or Lines.job.crewLead
+	local portraitImage: string? = nil
+	local text = data.text or {}
+	if by then
+		crewLead = string.upper(tostring(by[1].name))
+		if #by > 1 then
+			crewLead ..= string.format(" + %d", #by - 1)
+		end
+		portraitImage = headshot(tonumber(by[1].userId) or 0)
+		text = data.byText or text
+	end
 	local card = buildCard(inner, {
 		kind = data.kind or "job",
-		crewLead = data.crewLead or Lines.job.crewLead,
+		crewLead = crewLead,
 		label = data.title or (if data.success then Lines.job.doneTitle else Lines.failToast),
 		labelColor = color,
-		text = data.text or {},
+		text = text,
 		rewardLine = data.rewardLine or "",
 		showTimer = false,
+		portraitImage = portraitImage,
 	})
 	active = { data = data, box = box, inner = inner, timerLabel = nil, stroke = nil, token = token }
 	resizeBox(box, CARD_H)
@@ -570,23 +626,9 @@ end
 local calloutQueue: { any } = {}
 local calloutBusy = false
 local marlowUntil = 0 -- os.clock until which MARLOW's card owns the corner
-local headshots: { [number]: string } = {}
 
 local function holdMarlow(sec: number)
 	marlowUntil = math.max(marlowUntil, os.clock() + sec + 0.4)
-end
-
-local function headshot(userId: number): string
-	local cached = headshots[userId]
-	if cached then
-		return cached
-	end
-	local ok, url = pcall(function()
-		return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
-	end)
-	local img = if ok and typeof(url) == "string" then url else ""
-	headshots[userId] = img
-	return img
 end
 
 local function calloutBlocked(): boolean

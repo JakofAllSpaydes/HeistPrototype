@@ -23,6 +23,7 @@ local UpgradeShop = require(script.Parent.UpgradeShop)
 local Elements = require(script.Parent.Elements)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local AllyCallout = require(script.Parent.AllyCallout)
 
 export type Line = { kind: string, id: string, name: string, gained: number }
 export type TierUp = { kind: string, id: string, tier: number, text: string }
@@ -119,6 +120,9 @@ local function add(player: Player, kind: string, id: string, xp: number, countFo
 			wrap = if kind == "weapon" then Config.MasteryWrapIds[t] else nil,
 		})
 		Log.event("Mastery", "%s: %s", player.Name, text)
+		if World.inRun() then
+			AllyCallout.send(player, "masteryUp", nameOf(kind, id), MasteryCopy.Roman[t] or tostring(t))
+		end
 	end
 	if kind == "class" and after > before then
 		applyClassTier(PlayerState.get(player), id, after)

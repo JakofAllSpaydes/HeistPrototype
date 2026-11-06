@@ -163,6 +163,12 @@ function Safe.open(host: Frame.Host)
 	local hotSince = -1
 	local coldSince = -1 -- left the hot range at this clock (the grace before the hold resets)
 	local wrongWay = 0 -- degrees turned against the required direction since the last right-way turn
+	-- Round 16: the number only counts when the dial reaches it turning the required way. On entering the warm
+	-- range we note which side it came in from; from the far side (turning the wrong way) it stays cold until the
+	-- dial leaves the range and comes back the right way. Inside, overshoot and backing up stay free.
+	local inWarm = false
+	local approachOk = false
+	local lastTick = 0 -- the whole number last under the pointer (the tumbler click on each one near the target)
 	local lastDist = 100
 	local draining = false
 	local done = false
@@ -178,7 +184,14 @@ function Safe.open(host: Frame.Host)
 		hotSince = -1
 		coldSince = -1
 		wrongWay = 0
+		inWarm = false
+		approachOk = false
 		lastDist = circDist(value(), target)
+	end
+
+	-- Numbers still to turn, going the required way, to reach the target (0..99.99).
+	local function ahead(v: number): number
+		return ((target - v) * direction) % 100
 	end
 	newTarget()
 
@@ -216,8 +229,15 @@ function Safe.open(host: Frame.Host)
 		lastAngle = a
 		rot += delta
 		dial.Rotation = rot
-		-- Backing up near the number (correcting an overshoot) never counts as the wrong way.
-		local near = circDist(value(), target) <= warm
+		local v = value()
+		local nowWarm = circDist(v, target) <= warm
+		if nowWarm and not inWarm then
+			-- Came in with the target still ahead in the required direction = the right way.
+			approachOk = ahead(v) <= warm
+		end
+		inWarm = nowWarm
+		-- Backing up near the number (correcting an overshoot after a right-way approach) is not the wrong way.
+		local near = inWarm and approachOk
 		if delta * direction < 0 and not near then
 			wrongWay += math.abs(delta)
 		else
@@ -233,10 +253,24 @@ function Safe.open(host: Frame.Host)
 		local v = value()
 		readout.Text = tostring(math.floor(v + 0.5) % 100)
 		local dist = circDist(v, target)
-		local againstDir = wrongWay > Config.SafeWrongWayDeg
+		local againstDir = wrongWay > Config.SafeWrongWayDeg or (inWarm and not approachOk)
 		local closeness = if againstDir then 0 else math.clamp(1 - dist / warm, 0, 1)
 		local isHot = not againstDir and dist <= hot
 		local isWarm = not againstDir and dist <= warm
+
+		-- Tumbler clicks: every whole number crossed inside the warm range clicks, higher and louder the
+		-- closer it is; the hot range adds a deeper thunk as the dial drops into it.
+		local whole = math.floor(v + 0.5) % 100
+		if whole ~= lastTick then
+			lastTick = whole
+			if isWarm then
+				UI.sound(
+					Theme.Sounds.reelTick,
+					Config.SafeTickPitch[1] + (Config.SafeTickPitch[2] - Config.SafeTickPitch[1]) * closeness,
+					Config.SafeTickVolume[1] + (Config.SafeTickVolume[2] - Config.SafeTickVolume[1]) * closeness
+				)
+			end
+		end
 
 		-- Pointer and readout color.
 		local color = if isHot then Theme.Colors.cash elseif isWarm then Theme.Colors.amber else Theme.Colors.grey
@@ -277,6 +311,7 @@ function Safe.open(host: Frame.Host)
 			coldSince = -1
 			if hotSince < 0 then
 				hotSince = os.clock()
+				UI.sound(Theme.Sounds.reelLand, 0.7, Config.SafeTickVolume[2])
 			elseif os.clock() - hotSince >= Config.SafeLockSec then
 				locked += 1
 				pips[locked].BackgroundColor3 = Theme.Colors.cash

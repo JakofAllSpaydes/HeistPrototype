@@ -42,17 +42,29 @@ function Enemies.color(id: string): Color3
 	return if row then Color3.fromHex(row.color) else Color3.fromHex("8A8F99")
 end
 
--- FinalHp = BaseHp x (1 + HpWaveMult)^(wave - 1) x (1 + HpPerPlayerMult x (players - 1)) x DiffHpMult
-function Enemies.hpAt(row: Row, wave: number, players: number): number
+-- The Config.QueueDifficulties row for an id (Round 16: difficulty is live), the first row when unknown.
+function Enemies.difficulty(id: string?): any
+	for _, d in Config.QueueDifficulties do
+		if d.id == id then
+			return d
+		end
+	end
+	return Config.QueueDifficulties[1]
+end
+
+-- FinalHp = BaseHp x (1 + HpWaveMult)^(wave - 1) x (1 + HpPerPlayerMult x (players - 1)) x the difficulty's hpMult
+function Enemies.hpAt(row: Row, wave: number, players: number, difficultyId: string?): number
 	return row.hp
 		* (1 + Config.HpWaveMult) ^ math.max(0, wave - 1)
 		* (1 + Config.HpPerPlayerMult * math.max(0, players - 1))
-		* Config.DiffHpMult
+		* (Enemies.difficulty(difficultyId).hpMult or 1)
 end
 
--- FinalDamage = BaseDamage x (1 + DamageWaveMult)^(wave - 1) x DiffDamageMult (player count never scales damage)
-function Enemies.dmgAt(row: Row, wave: number): number
-	return row.dmg * (1 + Config.DamageWaveMult) ^ math.max(0, wave - 1) * Config.DiffDamageMult
+-- FinalDamage = BaseDamage x (1 + DamageWaveMult)^(wave - 1) x the difficulty's dmgMult (player count never scales damage)
+function Enemies.dmgAt(row: Row, wave: number, difficultyId: string?): number
+	return row.dmg
+		* (1 + Config.DamageWaveMult) ^ math.max(0, wave - 1)
+		* (Enemies.difficulty(difficultyId).dmgMult or 1)
 end
 
 -- The composition row for a wave: the one with the largest WaveMin at or below the wave, shifted `shift`

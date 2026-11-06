@@ -11,17 +11,16 @@ local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
-local Stats = require(script.Parent.Stats)
 local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Log)
 
+-- Round 16: a floor gun is only a weapon id + rarity. Its numbers belong to whoever picks it up (their own Armory
+-- level for that id and their own upgrades), so no level or damage rides on the Part; each client draws its tag
+-- from its own profile (ClientState.gunAsMine).
 export type SpawnOpts = {
 	weaponId: string,
 	rarity: number,
-	level: number?, -- Armory level the gun carries (nil = 0)
 	cframe: CFrame,
-	dmg: number,
-	dps: number?, -- shown on the tag; defaults to the weapon at no upgrades
 	lifetime: number?, -- nil = Config.GroundWeaponLifetime, 0 = never
 	promptText: string?,
 	mag: number?, -- rounds left in the mag (a dropped gun); nil = full
@@ -106,10 +105,6 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	gun:SetAttribute("WeaponId", opts.weaponId)
 	gun:SetAttribute("DisplayName", weapon.displayName)
 	gun:SetAttribute("Rarity", opts.rarity)
-	gun:SetAttribute("Dmg", math.round(opts.dmg))
-	gun:SetAttribute("Dps", math.round(opts.dps or Stats.weaponDps(opts.weaponId, opts.rarity, {}, opts.level)))
-	gun:SetAttribute("Level", opts.level or 0)
-	gun:SetAttribute("RateMult", Weapons.levelRateMult(opts.level or 0))
 	if opts.mag ~= nil then
 		gun:SetAttribute("Mag", opts.mag)
 	end
@@ -173,14 +168,11 @@ function WeaponRoll.dropHeld(state: PlayerState.State, cframe: CFrame): BasePart
 end
 
 -- Drop any gun record (held or stowed) as ground loot at a CFrame.
-function WeaponRoll.dropGun(state: PlayerState.State, gun: Types.Held, cframe: CFrame): BasePart
+function WeaponRoll.dropGun(_state: PlayerState.State, gun: Types.Held, cframe: CFrame): BasePart
 	return WeaponRoll.spawnGun({
 		weaponId = gun.weaponId,
 		rarity = gun.rarity,
-		level = gun.level,
 		cframe = cframe,
-		dmg = Stats.weaponDamage(gun.weaponId, gun.rarity, PlayerState.damagePct(state), gun.level),
-		dps = Stats.weaponDps(gun.weaponId, gun.rarity, state.upgrades, gun.level),
 		mag = gun.mag, -- the floor gun keeps whatever was in the mag
 	})
 end
@@ -205,7 +197,6 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
 	local newId = gun:GetAttribute("WeaponId") :: string
 	local newRarity = gun:GetAttribute("Rarity") :: number
-	local newLevel = tonumber(gun:GetAttribute("Level")) or 0
 	local floorMag = gun:GetAttribute("Mag")
 	local oldId, oldRarity = state.held.weaponId, state.held.rarity
 	expireTokens[gun] = nil
@@ -213,7 +204,8 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	-- The old gun lands where the new one was, with a fresh timer and the rounds it had left; the new one
 	-- comes up with whatever was in its mag (full for a fresh roll or crate gun).
 	WeaponRoll.dropHeld(state, cf)
-	PlayerState.setHeld(state, newId, newRarity, newLevel, if typeof(floorMag) == "number" then floorMag else nil)
+	-- nil level = the picker's own Armory level for this weapon id (PlayerState.weaponLevel), never the dropper's.
+	PlayerState.setHeld(state, newId, newRarity, nil, if typeof(floorMag) == "number" then floorMag else nil)
 	Remotes.Juice:FireClient(player, "Swap", { weaponId = newId, rarity = newRarity, position = cf.Position })
 	Log.event(
 		"Swap",

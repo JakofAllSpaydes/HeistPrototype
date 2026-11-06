@@ -34,8 +34,7 @@ local function mult(upgrades: { [string]: Types.TrackerItem }, id: string): numb
 end
 
 function Stats.weaponDamage(weaponId: string, rarity: number, dmgPct: number, level: number?): number
-	local w = Weapons.ById[weaponId]
-	return Weapons.atLevel(w, level or 0).dmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
+	return Weapons.damageAt(weaponId, rarity, dmgPct, level)
 end
 
 -- A self buff (stim, stim shot, dead eye): multipliers on top of upgrades.

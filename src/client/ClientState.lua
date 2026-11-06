@@ -136,6 +136,22 @@ function ClientState.rateMult(): number
 	return held.fireRate / (w.fireRate * (tonumber(held.levelRateMult) or 1))
 end
 
+-- A gun on the floor (or in the crate reel) as the local player would hold it (Round 16): their own Armory level
+-- for that weapon id and their own in-run damage pct, whoever dropped or rolled it. Returns the shot damage and
+-- the level's fire-rate multiplier (the held gun's upgrades go on top through rateMult).
+function ClientState.gunAsMine(weaponId: string, rarity: number): (number, number)
+	local sync = ClientState.sync
+	if not Weapons.ById[weaponId] then
+		return 0, 1
+	end
+	local entry = sync and sync.profile and sync.profile.weapons and sync.profile.weapons[weaponId]
+	local level = if entry then tonumber(entry.level) or 0 else 0
+	local dmgPct = if sync then tonumber((sync :: any).dmgPct) or 0 else 0
+	local dmg: number = Weapons.damageAt(weaponId, math.clamp(rarity, 1, 5), dmgPct, level)
+	local rate: number = Weapons.levelRateMult(level)
+	return dmg, rate
+end
+
 -- True while this player is in the hub (not in a run, not in a party that is in the arena).
 function ClientState.inHub(): boolean
 	local sync = ClientState.sync
@@ -147,6 +163,13 @@ end
 local aimParams = RaycastParams.new()
 aimParams.FilterType = Enum.RaycastFilterType.Exclude
 function ClientState.cursorAimPoint(char: Model): Vector3
+	local point = ClientState.cursorAim(char)
+	return point
+end
+
+-- The same aim as the point, the camera ray's origin and the part it hit (nil past MaxShotRange). Thrown
+-- abilities send all three so the server's aim assist can lock what the cursor is on (Round 16).
+function ClientState.cursorAim(char: Model): (Vector3, Vector3, Instance?)
 	local camera = Workspace.CurrentCamera :: Camera
 	local x, y
 	if ClientState.isMouseFree() then
@@ -166,7 +189,10 @@ function ClientState.cursorAimPoint(char: Model): Vector3
 	end
 	aimParams.FilterDescendantsInstances = filter
 	local result = Workspace:Raycast(ray.Origin, ray.Direction * Config.MaxShotRange, aimParams)
-	return if result then result.Position else ray.Origin + ray.Direction * Config.MaxShotRange
+	if result then
+		return result.Position, ray.Origin, result.Instance
+	end
+	return ray.Origin + ray.Direction * Config.MaxShotRange, ray.Origin, nil
 end
 
 Remotes.StateSync.OnClientEvent:Connect(function(data: Types.Sync)

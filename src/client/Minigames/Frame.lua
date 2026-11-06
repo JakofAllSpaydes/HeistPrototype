@@ -107,14 +107,15 @@ function Frame.press(host: Host, gui: GuiObject, fn: (Vector2) -> ())
 	end))
 end
 
--- Drag: press on `handle`, move anywhere, release. One path for touch and mouse.
+-- Drag: press on `handle`, move anywhere, release. One path for touch and mouse. Returns a release function
+-- that drops the current hold (no onEnd), so a game can make the player press again (Freq after a lock).
 function Frame.drag(
 	host: Host,
 	handle: GuiObject,
 	onStart: (Vector2) -> (),
 	onMove: (Vector2) -> (),
 	onEnd: (Vector2) -> ()
-)
+): () -> ()
 	handle.Active = true
 	local current: InputObject? = nil
 	host.track(handle.InputBegan:Connect(function(input: InputObject)
@@ -151,6 +152,9 @@ function Frame.drag(
 			onEnd(Vector2.new(input.Position.X, input.Position.Y))
 		end
 	end))
+	return function()
+		current = nil
+	end
 end
 
 -- Straight line between two points in content-local px. Rotation pivots on the frame center, so the

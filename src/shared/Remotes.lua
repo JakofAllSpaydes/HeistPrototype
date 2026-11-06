@@ -30,6 +30,8 @@ local DEFS: { [string]: string } = {
 	-- Brief 5: the dealer break and the pause
 	DealerAction = "RemoteEvent", -- client -> server: "buy" (stand index | "crate" | "heal" | "reroll") | "skip" | "teleport"
 	PauseAction = "RemoteEvent", -- client -> server: "vote" | "unvote" (to pause) | "extend" | "resume" (votes while paused)
+	-- Round 16
+	SetOption = "RemoteEvent", -- client -> server: key (Profiles.OPTIONS), value (boolean); saved to the profile
 }
 
 local folder: Instance

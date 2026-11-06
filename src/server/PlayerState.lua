@@ -611,6 +611,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		boss = World.bossView,
 		roster = if inParty then World.roster else nil,
 		maxHP = st.maxHP,
+		dmgPct = PlayerState.damagePct(state), -- the floor-gun tags show guns at your own damage upgrades
 		held = {
 			weaponId = w.id,
 			displayName = w.displayName,

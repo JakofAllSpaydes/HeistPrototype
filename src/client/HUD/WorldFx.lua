@@ -554,7 +554,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.tween(vignette, { BackgroundTransparency = 1 }, 0.45)
 			UI.sound(Theme.Sounds.hurt, 1, 0.25)
 		elseif name == "EnemyShot" then
-			-- A Shooter or Marksman fired: tracer from its muzzle, flash and crack at the gun; a miss aimed at you
+			-- A Marksman (or the boss) fired: tracer from its muzzle, flash and crack at the gun; a miss aimed at you
 			-- whips past your ear.
 			if typeof(data.from) == "Vector3" and typeof(data.to) == "Vector3" then
 				enemyTracer(data.from, data.to, data.heavy == true)

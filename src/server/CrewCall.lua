@@ -76,6 +76,7 @@ local function copyFor(kind: string): any
 		propName = prop.name,
 		doneTitle = mg.doneTitle,
 		doneText = mg.doneText,
+		doneByText = { string.format(mg.doneByText[1], prop.name), mg.doneByText[2] },
 		failText = mg.failText,
 	}
 end
@@ -273,7 +274,7 @@ function CrewCall.trigger(forceKind: string?)
 		VaultJob.startJob(function(player)
 			if job == thisJob and thisJob.active then
 				Log.event("Call", "%s cracked the vault for Side Job #%d", player.Name, thisJob.id)
-				CrewCall.finish(true)
+				CrewCall.finish(true, nil, { player })
 			end
 		end)
 	elseif kind == "capture" then
@@ -289,7 +290,7 @@ function CrewCall.trigger(forceKind: string?)
 				onDone = function(p)
 					if job == thisJob and thisJob.active then
 						Log.event("Call", "%s finished the %s for Side Job #%d", p.Name, kind, thisJob.id)
-						CrewCall.finish(true)
+						CrewCall.finish(true, nil, { p })
 					end
 				end,
 			})
@@ -303,7 +304,7 @@ function CrewCall.trigger(forceKind: string?)
 			function(player)
 				if job == thisJob and thisJob.active and PlayerState.isStanding(PlayerState.get(player)) then
 					Log.event("Call", "%s hacked the terminal for Side Job #%d", player.Name, thisJob.id)
-					CrewCall.finish(true)
+					CrewCall.finish(true, nil, { player })
 				end
 			end
 		)
@@ -353,7 +354,8 @@ function CrewCall.trigger(forceKind: string?)
 	)
 end
 
-function CrewCall.finish(success: boolean, silent: boolean?)
+-- `by`: who finished it (the hacker, the minigame player, the capture holders); the completion card shows them.
+function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 	local j = job
 	if not j or not j.active then
 		return
@@ -399,6 +401,19 @@ function CrewCall.finish(success: boolean, silent: boolean?)
 			kind = copy.kind,
 			title = if success then copy.doneTitle else Lines.failToast,
 			text = if success then copy.doneText else copy.failText,
+			-- Round 16: on a success the card is the completer's, not MARLOW's (their headshot, name and line).
+			by = if success
+					and by
+					and #by > 0
+				then (function()
+					local out = {}
+					for _, p in by do
+						table.insert(out, { userId = p.UserId, name = p.Name })
+					end
+					return out
+				end)()
+				else nil,
+			byText = if success then copy.doneByText else nil,
 			rewardLine = if success
 				then string.format(copy.rewardLine, Config.SideJobReward, Config.SideJobGold)
 				else "",
@@ -464,7 +479,11 @@ function CrewCall.init()
 				sendProgress(j, changed)
 				if j.progress >= 1 then
 					Log.event("Call", "Capture point held for Side Job #%d", j.id)
-					CrewCall.finish(true)
+					local holders = {}
+					for p in set do
+						table.insert(holders, p)
+					end
+					CrewCall.finish(true, nil, holders)
 				end
 			elseif changed then
 				sendProgress(j, true)

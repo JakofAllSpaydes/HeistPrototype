@@ -223,7 +223,7 @@ local function dummyRow(d: Squad.Dummy, i: number, k: number, topKills: number, 
 end
 
 -- Payout at the final summary (GDD_7): base = (sum over cleared waves + GoldPerObjective x objectives) x
--- DiffGoldMult, plus the side job Gold already granted per job, plus the team's TOTAL BANKED in full.
+-- the difficulty's goldMult, plus the side job Gold already granted per job, plus the team's TOTAL BANKED in full.
 -- Lands in the profile at once, with the top wave, the top banked and the lifetime stats. Players who left
 -- before the summary earn nothing.
 local function payout(p: Player, s: PlayerState.State, base: number, banked: number): (number, boolean, boolean)

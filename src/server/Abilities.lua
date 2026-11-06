@@ -24,6 +24,7 @@ local Elements = require(script.Parent.Elements)
 local Downed = require(script.Parent.Downed)
 local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Log)
+local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
 
 local triageTick: (number) -> () -- below, after the fields and structures it reads
@@ -35,6 +36,10 @@ local COLOR = {
 	red = Color3.fromHex("E8554D"),
 	fire = Color3.fromRGB(255, 140, 40),
 	white = Color3.new(1, 1, 1),
+	-- Round 16: the crew's own fire (molotov, burst oil drum) burns blue with a solid rim, so it never reads as the
+	-- enemies' orange-and-red patches.
+	allyFire = Color3.fromHex(Config.AllyFireColor),
+	allyFire2 = Color3.fromHex(Config.AllyFireSecondary),
 }
 
 -- Anything that stands in the arena: turret | barricade | healturret | flameturret | oildrum | claymore.
@@ -338,7 +343,10 @@ local function destroyStructure(s: Structure, reason: string)
 			s.dmg,
 			s.slowMult
 		)
-		World.fireRun("Blast", { position = s.hitPart.Position, radius = Config.OilDrumBurnRadius, color = COLOR.fire })
+		World.fireRun(
+			"Blast",
+			{ position = s.hitPart.Position, radius = Config.OilDrumBurnRadius, color = COLOR.allyFire }
+		)
 	end
 end
 
@@ -568,7 +576,7 @@ placeField = function(
 	slowMult: number
 )
 	local isFire = kind ~= "medbag"
-	local color = if isFire then COLOR.fire else COLOR.green
+	local color = if isFire then COLOR.allyFire else COLOR.green
 	local model = Instance.new("Model")
 	model.Name = if isFire then "Fire" else "MedBag"
 	local disc = part({
@@ -580,9 +588,32 @@ placeField = function(
 		CanQuery = false,
 		Color = color,
 		Material = Enum.Material.Neon,
-		Transparency = if isFire then 0.55 else 0.7,
+		Transparency = if isFire then Config.AllyFireDiscTransparency else 0.7,
 		Parent = model,
 	})
+	-- A solid rim on every friendly field: the edge of the area reads at a glance, and the enemies' fire has none.
+	-- Built from short segments round the circle (a filled disc underneath would light the whole patch).
+	local rimW = Config.AllyFieldRimStuds
+	local segments = Config.AllyFieldRimSegments
+	local segLen = 2 * math.pi * radius / segments * 1.08 -- a little overlap so the ring has no gaps
+	for i = 1, segments do
+		local a = (i - 0.5) / segments * math.pi * 2
+		part({
+			Name = "Rim",
+			Size = Vector3.new(rimW, 0.12, segLen),
+			CFrame = CFrame.new(
+				position.X + math.cos(a) * radius,
+				Config.FloorTop + 0.14,
+				position.Z + math.sin(a) * radius
+			) * CFrame.Angles(0, -a, 0),
+			CanCollide = false,
+			CanQuery = false,
+			Color = color,
+			Material = Enum.Material.Neon,
+			Transparency = Config.AllyFieldRimTransparency,
+			Parent = model,
+		})
+	end
 	if isFire then
 		-- One big flame in the middle and four round the edge, so the circle reads as burning.
 		for _, offset in
@@ -606,8 +637,8 @@ placeField = function(
 			local fire = Instance.new("Fire")
 			fire.Size = if offset == Vector3.zero then radius * 1.4 else radius * 0.8
 			fire.Heat = 12
-			fire.Color = COLOR.fire
-			fire.SecondaryColor = COLOR.red
+			fire.Color = COLOR.allyFire
+			fire.SecondaryColor = COLOR.allyFire2
 			fire.Parent = anchor
 		end
 	else
@@ -755,8 +786,73 @@ local function fieldTick(f: Field, t: number)
 end
 
 ------------------------------------------------------------------ Thrown
+-- Aim assist (Round 16). The client sends what the cursor is on: the hit point, the camera ray's origin and the
+-- part it hit. In order: the enemy the cursor is on; else the enemy closest to the camera ray (within
+-- ThrowAssistRayStuds of it, out to the hit point), so a near miss at head height that carried on to the far wall
+-- still locks the enemy it passed; else the enemy nearest the hit point within ThrowAssistRadius. Only enemies
+-- within ThrowMaxRange of the thrower count.
+local assistAim: { origin: Vector3?, hit: Instance? } = {} -- set by Abilities.use for the throw it starts
+
+local function segmentDistance(p: Vector3, a: Vector3, b: Vector3): number
+	local ab = b - a
+	local len2 = ab:Dot(ab)
+	local t = if len2 > 0 then math.clamp((p - a):Dot(ab) / len2, 0, 1) else 0
+	return (a + ab * t - p).Magnitude
+end
+
+local function assistTarget(from: Vector3, aim: Vector3): Model?
+	if Config.ThrowAssistRadius <= 0 then
+		return nil
+	end
+	local function inRange(model: Model): boolean
+		local ep = Enemy.rootPosition(model)
+		return ep ~= nil and flatDistance(ep, from) <= Config.ThrowMaxRange
+	end
+	local hit = assistAim.hit
+	if typeof(hit) == "Instance" then
+		local model = Enemy.fromPart(hit)
+		if model and inRange(model) then
+			return model
+		end
+	end
+	local origin = assistAim.origin
+	local best: Model? = nil
+	local bestD = math.huge
+	if typeof(origin) == "Vector3" and (origin - from).Magnitude <= Config.ThrowAssistOriginSlack then
+		for _, model in Enemy.within(from, Config.ThrowMaxRange) do
+			local d = Enemy.data(model)
+			if d and inRange(model) then
+				local dist = math.min(
+					segmentDistance(d.root.Position, origin, aim),
+					segmentDistance(d.head.Position, origin, aim)
+				)
+				if dist <= Config.ThrowAssistRayStuds and dist < bestD then
+					bestD = dist
+					best = model
+				end
+			end
+		end
+		if best then
+			return best
+		end
+	end
+	for _, model in Enemy.within(aim, Config.ThrowAssistRadius + 6) do
+		local ep = Enemy.rootPosition(model)
+		if ep and inRange(model) then
+			local dist = flatDistance(ep, aim)
+			if dist <= Config.ThrowAssistRadius and dist < bestD then
+				bestD = dist
+				best = model
+			end
+		end
+	end
+	return best
+end
+
 -- A small part arcs from the hand to the floor at the cursor's point (`aim`, clamped to ThrowMaxRange from the
 -- player; ThrowDistance ahead when none came) over ThrowFlightSec, then `onLand` runs there.
+-- Round 16 aim assist: the enemy nearest the aim point (within ThrowAssistRadius of it, and in range) becomes the
+-- target, and the throw homes on it while in the air, so an aimed throw never lands on empty floor beside a crowd.
 local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vector3) -> (), aim: Vector3?)
 	local hand = (char:FindFirstChild("RightHand") or char:FindFirstChild("HumanoidRootPart")) :: BasePart?
 	local target = placementCFrame(char, Config.ThrowDistance).Position
@@ -767,6 +863,13 @@ local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vect
 			offset = offset.Unit * Config.ThrowMaxRange
 		end
 		target = root.Position + offset
+	end
+	local locked: Model? = if aim and root then assistTarget(root.Position, aim) else nil
+	do
+		local lockedPos = locked and Enemy.rootPosition(locked)
+		if lockedPos then
+			target = lockedPos
+		end
 	end
 	local from = if hand then hand.Position else target + Vector3.new(0, 3, 0)
 	local to = Vector3.new(target.X, Config.FloorTop + 0.4, target.Z)
@@ -796,6 +899,11 @@ local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vect
 		while elapsed < flight do
 			elapsed += RunService.Heartbeat:Wait()
 			local a = math.clamp(elapsed / flight, 0, 1)
+			-- Homing: the landing point follows the locked enemy until it lands (or the enemy dies).
+			local lp = locked and Enemy.rootPosition(locked)
+			if lp then
+				to = Vector3.new(lp.X, Config.FloorTop + 0.4, lp.Z)
+			end
 			local pos = from:Lerp(to, a) + Vector3.new(0, peak * 4 * a * (1 - a), 0)
 			p.CFrame = CFrame.new(pos) * CFrame.Angles(a * 6, a * 4, 0)
 		end
@@ -976,6 +1084,9 @@ local function claymoreTick(s: Structure, t: number)
 			kills += 1
 		end
 	end
+	if kills >= Config.CalloutMultiKill then
+		AllyCallout.send(s.owner, "multiKill", kills)
+	end
 	Log.event("Ability", "%s's claymore went off: %d hit, %d killed", s.owner.Name, #victims, kills)
 	destroyStructure(s, "detonated")
 end
@@ -1003,11 +1114,11 @@ local function throwMolotov(player: Player, state: PlayerState.State, char: Mode
 	local lv = level(state, "molotov")
 	local burn = grown("molotov", "BurnPerSec", Config.MolotovBurnPerSec, lv) * PlayerState.abilityPower(state)
 	local slowPct = math.min(90, grown("molotov", "MoveSlowPct", Config.MolotovMoveSlowPct, lv))
-	throw(char, COLOR.fire, true, function(pos: Vector3)
+	throw(char, COLOR.allyFire, true, function(pos: Vector3)
 		placeField("molotov", player, pos, Config.MolotovRadius, Config.MolotovLifetime, burn, 1 - slowPct / 100)
 		World.fireRun(
 			"Blast",
-			{ position = pos, radius = Config.MolotovRadius, color = COLOR.fire, shake = 0.1, pitch = 1.2 }
+			{ position = pos, radius = Config.MolotovRadius, color = COLOR.allyFire, shake = 0.1, pitch = 1.2 }
 		)
 	end, aim)
 end
@@ -1159,6 +1270,9 @@ local function throwFrag(player: Player, state: PlayerState.State, char: Model, 
 					kills += 1
 				end
 			end
+			if kills >= Config.CalloutMultiKill then
+				AllyCallout.send(player, "multiKill", kills)
+			end
 			Log.event(
 				"Ability",
 				"%s's frag (LV %d, %d dmg): %d hit, %d killed",
@@ -1209,34 +1323,35 @@ local function startOverclock(player: Player, state: PlayerState.State, _char: M
 end
 
 ------------------------------------------------------------------ SHARPSHOOTER: Eagle Eye (brief 5)
--- Every enemy within EagleEyeRadius is marked through walls for EagleEyeSec and takes EagleEyeBonusPct more
--- damage from any source while marked (Enemy.mark / Enemy.damage).
+-- Every enemy within EagleEyeRadius is marked through walls and slowed by EagleEyeSlowPct for EagleEyeSec
+-- (Round 16: a slow replaced the old bonus damage). The boss takes EagleEyeBossSlowMult of the slow.
 local function eagleEye(player: Player, state: PlayerState.State, char: Model)
 	local lv = level(state, "eagleeye")
 	local radius = grown("eagleeye", "EagleEyeRadius", Config.EagleEyeRadius, lv)
-	local bonus = grown("eagleeye", "EagleEyeBonusPct", Config.EagleEyeBonusPct * 100, lv) / 100
-	if PlayerState.passive(state, "SHARPSHOOTER", 2) then
-		bonus += Config.MarksmanKitEagleEyePct -- MARKSMAN'S KIT
-	end
+	local slow =
+		math.min(grown("eagleeye", "EagleEyeSlowPct", Config.EagleEyeSlowPct * 100, lv) / 100, Config.EagleEyeSlowCap)
 	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then
 		return
 	end
 	local victims = Enemy.within(root.Position, radius)
 	for _, model in victims do
-		Enemy.mark(model, Config.EagleEyeSec, bonus)
+		Enemy.mark(model, Config.EagleEyeSec)
+		local d = Enemy.data(model)
+		local boss = d ~= nil and d.row.boss == true
+		Enemy.slow(model, 1 - slow * (if boss then Config.EagleEyeBossSlowMult else 1), Config.EagleEyeSec)
 	end
 	state.abilityActive.eagleeye = now() + Config.EagleEyeSec
 	state.dirty = true
 	World.fireRun("EagleEye", { position = root.Position, radius = radius, owner = player.UserId })
 	Log.event(
 		"Ability",
-		"%s's eagle eye (LV %d): %d marked for %ds at +%d%% damage (r%d)",
+		"%s's eagle eye (LV %d): %d marked for %ds, slowed %d%% (r%d)",
 		player.Name,
 		lv,
 		#victims,
 		Config.EagleEyeSec,
-		math.round(bonus * 100),
+		math.round(slow * 100),
 		math.round(radius)
 	)
 end
@@ -1345,12 +1460,17 @@ local function rechargeTick(t: number)
 	end
 end
 
--- `aim` is the client's cursor floor point; thrown abilities land there (clamped), placeables ignore it.
-function Abilities.use(player: Player, id: any, aim: any)
+-- `aim` is the point under the client's cursor (with the camera ray's `origin` and the `hit` part for the aim
+-- assist); thrown abilities land there (clamped), placeables ignore it.
+function Abilities.use(player: Player, id: any, aim: any, origin: any, hit: any)
 	if typeof(id) ~= "string" then
 		return
 	end
 	local aimPoint: Vector3? = if typeof(aim) == "Vector3" and aim == aim then aim else nil
+	assistAim = {
+		origin = if typeof(origin) == "Vector3" and origin == origin then origin else nil,
+		hit = if typeof(hit) == "Instance" then hit else nil,
+	}
 	local state = PlayerState.get(player)
 	local char = player.Character
 	if

@@ -39,6 +39,7 @@ local VaultJob = require(script.Parent.VaultJob)
 local Boss = require(script.Parent.Boss)
 local Roster = require(script.Parent.Roster)
 local Economy = require(script.Parent.Economy)
+local AllyCallout = require(script.Parent.AllyCallout)
 local Elements = require(script.Parent.Elements)
 local Mastery = require(script.Parent.Mastery)
 local Pause = require(script.Parent.Pause)
@@ -56,6 +57,10 @@ end
 Enemy.onDeath = function(d, attacker)
 	Heat.onEnemyDead(d.wave)
 	Mastery.onKill(d.model, attacker)
+	-- The boss's last hit: the crew hears who landed it.
+	if d.row.boss and attacker then
+		AllyCallout.send(attacker, "bossKill", d.row.name)
+	end
 end
 Mastery.init()
 Pause.init()
