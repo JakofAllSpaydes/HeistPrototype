@@ -177,6 +177,16 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 		elseif not vipActive(p) and chips.vip then
 			remove("vip", nil)
 		end
+		-- With any boost (or VIP) chip up, the + steps aside: tapping a live chip opens the store.
+		if plusChip then
+			local live = chips.vip ~= nil
+			for _, def in BoostDefs.List do
+				if chips[def.id] then
+					live = true
+				end
+			end
+			plusChip.holder.Visible = not live
+		end
 		-- Revive tokens (hub only): a chip with the count where a timer would be.
 		if opts.hub then
 			local n = if p and typeof(p.reviveTokens) == "number" then p.reviveTokens else 0
@@ -261,29 +271,28 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 	}
 end
 
--- The match HUD component: small chips under the heat stars (below the boss bar while one is up).
+-- The match HUD component (Round 17c): the chips sit bottom-left, just above the cash row (Currency).
 function BoostChips.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S
 	local holder = UI.frame({
 		Name = "BoostChips",
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, S(100)),
-		Size = UDim2.fromOffset(S(300), S(40)),
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(20), 1, -S(20) - S(70) - S(6)),
+		Size = UDim2.fromOffset(S(300), S(46)),
 		Parent = gui,
 	})
 	local h = BoostChips.new(holder, {
-		size = S(30),
-		align = Enum.HorizontalAlignment.Center,
+		size = S(32),
+		align = Enum.HorizontalAlignment.Left,
 		hub = false,
 	}, track)
-	h.frame.AnchorPoint = Vector2.new(0.5, 0)
-	h.frame.Position = UDim2.fromScale(0.5, 0)
+	h.frame.AnchorPoint = Vector2.new(0, 1)
+	h.frame.Position = UDim2.fromScale(0, 1)
 	local component = {}
 	component.frame = holder
 	function component.update(sync: any)
 		h.update(sync)
-		holder.Position = UDim2.new(0.5, 0, 0, if sync.boss then S(140) else S(100))
 	end
 	return component
 end

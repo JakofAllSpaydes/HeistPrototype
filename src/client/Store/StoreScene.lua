@@ -27,7 +27,7 @@ local StoreScene = {}
 
 local TABS = { "FEATURED", "CRATES", "BOOSTS", "VIP", "GOLD" }
 -- Each section's height at the basis (its module lays out inside it).
-local HEIGHTS = { FEATURED = 480, CRATES = 560, BOOSTS = 600, VIP = 440, GOLD = 600 }
+local HEIGHTS = { FEATURED = 880, CRATES = 540, BOOSTS = 620, VIP = 440, GOLD = 600 }
 local MODULES =
 	{ FEATURED = "FeaturedTab", CRATES = "CratesTab", BOOSTS = "BoostsTab", VIP = "VipTab", GOLD = "GoldTab" }
 local ACCENT = {

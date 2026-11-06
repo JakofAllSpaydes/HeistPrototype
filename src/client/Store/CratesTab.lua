@@ -214,7 +214,7 @@ function CratesTab.render(ctx: any)
 	UI.text({
 		Text = "Every item inside is crate-only. Results land in your Armory and Locker the moment they roll.",
 		Font = Theme.Fonts.body,
-		TextSize = S(11),
+		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(0, S(30)),
@@ -241,11 +241,14 @@ function CratesTab.render(ctx: any)
 	local arg = ctx.arg
 	for i, crate in Crates.List do
 		local focus = typeof(arg) == "table" and arg.crate == crate.id
+		-- The crate takes every pixel the controls leave (no empty space under OPEN 1 / 3 / 10).
+		local need = S(40 + 30 + 56 + 18) + (if freeOpens(profile, crate.id) > 0 then S(46) else 0) + S(94)
+		local share = math.clamp((S(cardH) - need) / S(cardH), 0.3, 0.62)
 		local handle = Card.new(row, {
 			size = Vector2.new(cardW, cardH),
 			art = { kind = "crate", id = crate.id, amount = 1 },
-			artScale = 0.8,
-			wellShare = 0.4,
+			artScale = 1,
+			wellShare = share,
 			rarity = if crate.id == "arms" then 5 else 4,
 			title = crate.name,
 			sub = crate.tagline,

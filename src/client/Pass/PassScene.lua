@@ -453,91 +453,155 @@ local function renderBanner(p: any)
 	end
 end
 
--- Left column: the premium sell card.
+-- Left column: the chase. The PREMIUM+ heroes are the rewards that sell the pass, so they lead the card: the final
+-- one (level 30) big with rays, the other two beside it; tapping one shows it in 3D. Then GET PREMIUM / PREMIUM+.
 local function renderSell(p: any)
 	local S = UI.S
 	local f = clearLayer("sell")
 	local s = seasonNow(p)
 	local tier = tonumber(passOf(p).tier) or 0
+	local GOLDC = Color3.fromHex("F2C14E")
 	local card = UI.frame({
 		BackgroundColor3 = Color3.fromHex("141216"),
 		BackgroundTransparency = 0.05,
 		Size = UDim2.fromScale(1, 1),
+		ClipsDescendants = true,
 		ZIndex = 5,
 		Parent = f,
 	})
 	UI.corner(card, S(12))
-	UI.stroke(card, ORANGE, S(2), 0.15)
+	UI.stroke(card, GOLDC, S(2), 0.1)
 	UI.new(
 		"UIGradient",
-		{ Color = ColorSequence.new(Color3.fromHex("2A1A10"), Color3.fromHex("0E0D10")), Rotation = 90, Parent = card }
+		{ Color = ColorSequence.new(Color3.fromHex("2A1E0E"), Color3.fromHex("0E0D10")), Rotation = 90, Parent = card }
 	)
-	UI.pad(card, S(14), S(12), S(14), S(12))
-	UI.list(card, Enum.FillDirection.Vertical, S(8), Enum.HorizontalAlignment.Center)
-	-- The PREMIUM+ hero on a pedestal (the season's first hero; tap cycles them).
-	local well = UI.frame({
-		BackgroundColor3 = Color3.fromHex("1C140E"),
-		Size = UDim2.new(1, 0, 0.36, 0),
-		ClipsDescendants = true,
-		LayoutOrder = 1,
-		ZIndex = 6,
-		Parent = card,
-	})
-	UI.corner(well, S(10))
-	local hero = s.heroes[1]
-	local heroColor = Rarity.color(Rewards.rarity(hero))
-	Fx.rays(well, heroColor, 8, S(320), 6, 10)
-	local ped = UI.frame({
-		BackgroundColor3 = Color3.fromHex("0C0C10"),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.88),
-		Size = UDim2.fromScale(0.6, 0.12),
+	local title = UI.text({
+		Text = "PREMIUM+ CHASE",
+		Font = Theme.Fonts.display,
+		TextSize = S(20),
+		TextColor3 = GOLDC,
+		Position = UDim2.fromOffset(0, S(8)),
+		Size = UDim2.new(1, 0, 0, S(22)),
 		ZIndex = 7,
-		Parent = well,
+		Parent = card,
 	})
-	UI.corner(ped, S(30))
-	UI.stroke(ped, ORANGE, S(1.5), 0.2)
-	local art = ItemArt.draw(well, hero, S(100), 8)
-	art.AnchorPoint = Vector2.new(0.5, 0.5)
-	art.Position = UDim2.fromScale(0.5, 0.45)
-	Fx.bob(art, S(3), 2.4, 3)
-	Fx.particles(well, heroColor, 4, 9)
-	UI.text({
-		Text = "PREMIUM+ · " .. Rewards.name(hero),
-		Font = Theme.Fonts.display,
-		TextSize = S(13),
-		TextColor3 = heroColor,
-		TextWrapped = true,
-		Size = UDim2.new(1, 0, 0, S(18)),
-		LayoutOrder = 2,
+	UI.stroke(title, Color3.new(0, 0, 0), S(1.5), 0.2)
+	local buttonsH = S(40) * 2 + S(8) + S(12)
+	local heroArea = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(S(10), S(34)),
+		Size = UDim2.new(1, -S(20), 1, -(S(34) + buttonsH + S(6))),
 		ZIndex = 6,
 		Parent = card,
 	})
-	UI.text({
-		Text = "NEW MASKS, WRAPS, POSES, CRATES",
-		Font = Theme.Fonts.display,
-		TextSize = S(16),
-		TextColor3 = Theme.Colors.white,
-		TextWrapped = true,
-		Size = UDim2.new(1, 0, 0, S(40)),
-		LayoutOrder = 3,
+	local function heroTile(index: number, parent: Instance, size: UDim2, pos: UDim2, big: boolean)
+		local hero = s.heroes[index]
+		if not hero then
+			return
+		end
+		local level = PassSeason.heroLevel(s, index)
+		local rc = Rarity.color(Rewards.rarity(hero))
+		local b = UI.button({
+			BackgroundColor3 = Fx.shade(rc, -0.7),
+			Position = pos,
+			Size = size,
+			ClipsDescendants = true,
+			ZIndex = 7,
+			Parent = parent,
+		})
+		UI.corner(b, S(10))
+		local selected = selLevel == level and selLane == "p2"
+		UI.stroke(b, if selected then Theme.Colors.white else GOLDC, S(if big then 2.5 else 1.5), 0)
+		UI.new(
+			"UIGradient",
+			{ Color = ColorSequence.new(Fx.shade(rc, -0.35), Fx.shade(rc, -0.85)), Rotation = 90, Parent = b }
+		)
+		if big then
+			Fx.rays(b, rc, 10, S(420), 7, 9)
+			Fx.particles(b, GOLDC, 5, 9)
+		end
+		local abs = b.AbsoluteSize
+		local artPx = math.floor(
+			math.min(if abs.X > 0 then abs.X else S(120), if abs.Y > 0 then abs.Y else S(120))
+				* (if big then 0.62 else 0.6)
+		)
+		local art = ItemArt.draw(b, hero, artPx, 9)
+		art.AnchorPoint = Vector2.new(0.5, 0.5)
+		art.Position = UDim2.fromScale(0.5, if big then 0.44 else 0.42)
+		Fx.bob(art, S(3), 2.4, if big then 3 else 1.5)
+		local lv = UI.frame({
+			BackgroundColor3 = GOLDC,
+			Position = UDim2.fromOffset(S(6), S(6)),
+			Size = UDim2.fromOffset(S(if big then 58 else 44), S(18)),
+			ZIndex = 10,
+			Parent = b,
+		})
+		UI.corner(lv, S(5))
+		UI.text({
+			Text = "LV " .. level,
+			Font = Theme.Fonts.display,
+			TextSize = S(if big then 14 else 11),
+			TextColor3 = Theme.Colors.bg,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 11,
+			Parent = lv,
+		})
+		local nm = UI.text({
+			Text = Rewards.name(hero),
+			Font = Theme.Fonts.display,
+			TextSize = S(if big then 17 else 11),
+			TextColor3 = Theme.Colors.white,
+			TextWrapped = true,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(4)),
+			Size = UDim2.new(1, -S(8), 0, S(if big then 22 else 26)),
+			ZIndex = 10,
+			Parent = b,
+		})
+		UI.stroke(nm, Color3.new(0, 0, 0), S(1.5), 0.2)
+		local sc = UI.new("UIScale", { Parent = b })
+		b.MouseEnter:Connect(function()
+			UI.tween(sc, { Scale = 1.04 }, 0.1)
+		end)
+		b.MouseLeave:Connect(function()
+			UI.tween(sc, { Scale = 1 }, 0.1)
+		end)
+		b.Activated:Connect(function()
+			selLevel, selLane = level, "p2"
+			UI.sound(Fx.Sounds.press, 1.3, 0.25)
+			render()
+		end)
+	end
+	-- The final hero on the left, big; the other two stacked on the right.
+	heroTile(3, heroArea, UDim2.new(0.62, -S(4), 1, 0), UDim2.fromScale(0, 0), true)
+	heroTile(2, heroArea, UDim2.new(0.38, -S(4), 0.5, -S(4)), UDim2.new(0.62, S(4), 0, 0), false)
+	heroTile(1, heroArea, UDim2.new(0.38, -S(4), 0.5, -S(4)), UDim2.new(0.62, S(4), 0.5, S(4)), false)
+	local buttons = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(10), 1, -S(10)),
+		Size = UDim2.new(1, -S(20), 0, S(40) * 2 + S(8)),
 		ZIndex = 6,
 		Parent = card,
 	})
+	UI.list(buttons, Enum.FillDirection.Vertical, S(8))
 	local function tierButton(order: number, label: string, productId: string, t: number, color: Color3)
 		local owned = tier >= t
 		local price = if owned then 0 else Products.priceFor(Products.ById[productId], p)
 		local b, h = Fx.button(
-			card,
+			buttons,
 			if owned then label .. "  ✓" else string.format("%s · R$ %s", label, UI.fmtInt(price)),
 			if owned then Color3.fromHex("2E3135") else color,
 			Theme.Colors.white,
-			UDim2.new(1, 0, 0, S(46)),
+			UDim2.new(1, 0, 0, S(40)),
 			7
 		)
 		b.LayoutOrder = order
-		b.TextSize = S(17)
+		b.TextSize = S(16)
 		h.setEnabled(not owned)
+		if not owned and t == 2 then
+			Fx.shine(b, 2.2)
+		end
 		b.Activated:Connect(function()
 			if owned then
 				return
@@ -557,22 +621,8 @@ local function renderSell(p: any)
 			})
 		end)
 	end
-	tierButton(4, "GET PREMIUM", "pass_premium", 1, ORANGE)
-	tierButton(5, "GET PREMIUM+", "pass_premiumplus", 2, Color3.fromHex("A864E8"))
-	local statusParts = {}
-	for _, lane in PassSeason.Lanes do
-		table.insert(statusParts, PassSeason.LaneName[lane] .. (if laneOwned(p, lane) then " ✓" else " ✗"))
-	end
-	UI.text({
-		Text = table.concat(statusParts, " · "),
-		Font = Theme.Fonts.display,
-		TextSize = S(12),
-		TextColor3 = Theme.Colors.textDim,
-		Size = UDim2.new(1, 0, 0, S(16)),
-		LayoutOrder = 6,
-		ZIndex = 6,
-		Parent = card,
-	})
+	tierButton(1, "GET PREMIUM", "pass_premium", 1, ORANGE)
+	tierButton(2, "GET PREMIUM+", "pass_premiumplus", 2, Color3.fromHex("A864E8"))
 end
 
 -- Right of the 3D preview: the selected reward's card.
@@ -600,8 +650,11 @@ renderSelected = function(p: any)
 	UI.pad(card, S(16), S(14), S(16), S(14))
 	UI.list(card, Enum.FillDirection.Vertical, S(6))
 	Fx.slideIn(card, UDim2.fromOffset(S(30), 0), 0.22)
+	local isHero = selLane == "p2" and selLevel % math.max(1, math.floor(Config.PassLevels / 3)) == 0
 	UI.text({
-		Text = string.format("LEVEL %d · %s", selLevel, PassSeason.LaneName[selLane]),
+		Text = if isHero
+			then string.format("PREMIUM+ HERO · LEVEL %d", selLevel)
+			else string.format("LEVEL %d · %s", selLevel, PassSeason.LaneName[selLane]),
 		Font = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.textDim,
@@ -765,7 +818,7 @@ local function slotButton(
 		local a = UI.text({
 			Text = amount,
 			Font = Theme.Fonts.display,
-			TextSize = if lane == "free" then S(13) else S(11),
+			TextSize = S(12),
 			TextColor3 = Theme.Colors.white,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			AnchorPoint = Vector2.new(1, 1),
@@ -776,22 +829,47 @@ local function slotButton(
 		})
 		UI.stroke(a, Color3.new(0, 0, 0), S(1.5), 0.2)
 	end
-	if lane ~= "free" then
-		local tag = UI.text({
-			Text = if lane == "p1" then "P" else "P+",
+	local isHero = lane == "p2" and level % math.max(1, math.floor(Config.PassLevels / 3)) == 0
+	if isHero then
+		stroke.Color = Color3.fromHex("F2C14E")
+		stroke.Thickness = S(2.5)
+		stroke.Transparency = 0
+		local ribbon = UI.frame({
+			BackgroundColor3 = Color3.fromHex("F2C14E"),
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, S(14)),
+			Size = UDim2.fromOffset(S(44), S(14)),
+			ZIndex = z + 6,
+			Parent = b,
+		})
+		UI.corner(ribbon, S(4))
+		UI.text({
+			Text = "HERO",
 			Font = Theme.Fonts.display,
-			TextSize = S(10),
+			TextSize = S(11),
+			TextColor3 = Theme.Colors.bg,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = z + 7,
+			Parent = ribbon,
+		})
+		Fx.particles(b, Color3.fromHex("F2C14E"), 3, z + 4)
+	end
+	do
+		local tag = UI.text({
+			Text = PassSeason.LaneName[lane],
+			Font = Theme.Fonts.display,
+			TextSize = S(9),
 			TextColor3 = LANE_COLOR[lane],
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(S(5), S(3)),
-			Size = UDim2.fromOffset(S(24), S(12)),
+			Position = UDim2.fromOffset(S(4), S(2)),
+			Size = UDim2.new(1, -S(8), 0, S(11)),
 			ZIndex = z + 4,
 			Parent = b,
 		})
 		UI.stroke(tag, Color3.new(0, 0, 0), S(1), 0.3)
 	end
 	if isClaimed then
-		check(b, S(if lane == "free" then 18 else 14), z + 5)
+		check(b, S(16), z + 5)
 		for _, d in art:GetDescendants() do
 			if d:IsA("Frame") then
 				d.BackgroundTransparency = math.max(d.BackgroundTransparency, 0.5)
@@ -805,7 +883,7 @@ local function slotButton(
 			ZIndex = z + 5,
 			Parent = b,
 		})
-		padlock(veil, S(if lane == "free" then 20 else 15), z + 6)
+		padlock(veil, S(18), z + 6)
 	elseif not lit then
 		for _, d in art:GetDescendants() do
 			if d:IsA("Frame") then
@@ -966,87 +1044,47 @@ renderTrack = function(p: any)
 			if current then 0 else 0.4
 		)
 		local pad = S(5)
-		local freeH = math.floor((cardH - pad * 3) * 0.58)
-		local subH = cardH - pad * 3 - freeH
+		local bandH = S(22)
+		local band = UI.frame({
+			BackgroundColor3 = if lit then ORANGE else Color3.fromHex("26262E"),
+			BackgroundTransparency = if lit then 0.15 else 0,
+			Position = UDim2.fromOffset(pad, pad),
+			Size = UDim2.new(1, -pad * 2, 0, bandH),
+			ZIndex = 7,
+			Parent = card,
+		})
+		UI.corner(band, S(6))
+		UI.text({
+			Text = "LEVEL " .. level,
+			Font = Theme.Fonts.display,
+			TextSize = S(14),
+			TextColor3 = if lit then Theme.Colors.bg else Theme.Colors.textDim,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 8,
+			Parent = band,
+		})
 		local innerW = colW - S(8) - pad * 2
-		slotButton(
-			card,
-			p,
-			s,
-			level,
-			"free",
-			UDim2.fromOffset(pad, pad),
-			UDim2.fromOffset(innerW, freeH),
-			math.floor(math.min(innerW, freeH) * 0.78),
-			7
-		)
-		local half = math.floor((innerW - pad) / 2)
-		slotButton(
-			card,
-			p,
-			s,
-			level,
-			"p1",
-			UDim2.fromOffset(pad, pad * 2 + freeH),
-			UDim2.fromOffset(half, subH),
-			math.floor(math.min(half, subH) * 0.78),
-			7
-		)
-		slotButton(
-			card,
-			p,
-			s,
-			level,
-			"p2",
-			UDim2.fromOffset(pad * 2 + half, pad * 2 + freeH),
-			UDim2.fromOffset(innerW - half - pad, subH),
-			math.floor(math.min(half, subH) * 0.78),
-			7
-		)
+		local tileW = math.floor((innerW - pad * 2) / 3)
+		local tileH = cardH - bandH - pad * 3
+		for k, lane in PassSeason.Lanes do
+			slotButton(
+				card,
+				p,
+				s,
+				level,
+				lane,
+				UDim2.fromOffset(pad + (k - 1) * (tileW + pad), pad * 2 + bandH),
+				UDim2.fromOffset(tileW, tileH),
+				math.floor(math.min(tileW, tileH) * 0.82),
+				7
+			)
+		end
 	end
 	if not open then
 		return
 	end
-	-- GO TO CURRENT LEVEL above the track, CLAIM ALL bottom-right, the lane key on the left.
+	-- GO TO CURRENT LEVEL above the track, CLAIM ALL bottom-right.
 	local controls = clearLayer("controls")
-	local key = UI.frame({
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.fromOffset(S(380), S(30)),
-		ZIndex = 6,
-		Parent = controls,
-	})
-	UI.list(key, Enum.FillDirection.Horizontal, S(14), nil, Enum.VerticalAlignment.Center)
-	for i, lane in PassSeason.Lanes do
-		local item = UI.frame({
-			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(S(116), S(24)),
-			LayoutOrder = i,
-			ZIndex = 6,
-			Parent = key,
-		})
-		UI.frame({
-			BackgroundColor3 = LANE_COLOR[lane],
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.fromScale(0, 0.5),
-			Size = UDim2.fromOffset(S(14), S(4)),
-			ZIndex = 7,
-			Parent = item,
-		})
-		local l = UI.text({
-			Text = PassSeason.LaneName[lane] .. (if laneOwned(p, lane) then " ✓" else ""),
-			Font = Theme.Fonts.display,
-			TextSize = S(12),
-			TextColor3 = LANE_COLOR[lane],
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(S(20), 0),
-			Size = UDim2.new(1, -S(20), 1, 0),
-			ZIndex = 7,
-			Parent = item,
-		})
-		UI.stroke(l, Color3.new(0, 0, 0), S(1), 0.3)
-	end
 	local gotoBtn, _g = Fx.button(
 		controls,
 		"GO TO CURRENT LEVEL",
@@ -1217,7 +1255,7 @@ local function build()
 	end
 	-- Everything keeps clear of the Roblox top bar.
 	local top = Fx.topInset()
-	local trackH = if mobile then S(180) else S(214)
+	local trackH = if mobile then S(176) else S(196)
 	layer("banner", { Position = UDim2.fromOffset(S(20), top), Size = UDim2.fromOffset(S(440), S(130)), ZIndex = 5 })
 	layer("sell", {
 		Position = UDim2.fromOffset(S(20), top + S(142)),
@@ -1298,9 +1336,10 @@ function PassScene.open(opts: { level: number? }?)
 	ClientState.Juice:Fire("CloseMeta", {})
 	open = true
 	shop("passOpen", {})
-	selLevel = o.level or math.max(1, math.min(pass.level, Config.PassLevels))
-	selLane = "free"
-	page = math.clamp(selLevel - 2, 1, Config.PassLevels - Config.PassPageLevels + 1)
+	-- Unless a link asked for a level, the stage opens on the season's final PREMIUM+ hero: the chase.
+	selLevel = o.level or PassSeason.heroLevel(seasonNow(p), 3)
+	selLane = if o.level then "free" else "p2"
+	page = math.clamp((o.level or pass.level) - 1, 1, Config.PassLevels - Config.PassPageLevels + 1)
 	build()
 	savedMode = ClientState.cameraMode
 	savedHud = HUD.mode

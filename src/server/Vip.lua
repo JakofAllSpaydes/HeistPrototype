@@ -2,7 +2,7 @@
 -- Brief 6: VIP, a fake monthly subscription (profile.vip = { active, since, renewsAt, ever } on the fake clock).
 -- Subscribing goes through the purchase sheet (Config.VipPrice / month): the VIP mask and the two VIP poses (kept
 -- for good), VipMonthlyTokens revive tokens, and while active the VIP tag everywhere, a permanent +VipCashPct
--- CASH boost in runs (Boosts.cashMult), the VipDailyGold gift once per fake UTC day and the dealer's greeting.
+-- CASH boost in runs (Boosts.cashMult), and the VipDailyGold gift once per fake UTC day.
 -- Each fake renewal charges the fake balance again and pays the tokens; a short balance lapses it. CANCEL stops the
 -- perks and keeps the cosmetics; a lapsed player gets the WELCOME BACK card in the VIP tab.
 local Players = game:GetService("Players")

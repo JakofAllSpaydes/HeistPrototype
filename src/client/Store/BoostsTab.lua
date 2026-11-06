@@ -42,7 +42,7 @@ function BoostsTab.render(ctx: any)
 	UI.text({
 		Text = "Real-time from purchase · in-run only · Gold, XP, pass XP and paid crates are never boosted",
 		Font = Theme.Fonts.body,
-		TextSize = S(11),
+		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(0, S(30)),
@@ -165,47 +165,36 @@ function BoostsTab.render(ctx: any)
 
 	-- Bottom row: revive token packs.
 	local bottomY = topH + S(16)
-	UI.text({
-		Text = "REVIVE TOKENS",
+	local have = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
+	local tokenTitle = UI.text({
+		Text = string.format("REVIVE TOKENS · OWNED: %d", have),
 		Font = Theme.Fonts.display,
-		TextSize = S(16),
+		TextSize = S(24),
 		TextColor3 = Color3.fromHex("3FD47A"),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(0, bottomY),
-		Size = UDim2.new(0.5, 0, 0, S(20)),
+		Size = UDim2.new(1, 0, 0, S(28)),
 		ZIndex = 7,
 		Parent = area,
 	})
-	local have = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
-	UI.text({
-		Text = string.format("YOU HAVE %d · SELF-REVIVE 1 · REVIVE EVERYBODY 1 PER PLAYER", have),
-		Font = Theme.Fonts.body,
-		TextSize = S(10),
-		TextColor3 = Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, bottomY + S(4)),
-		Size = UDim2.new(0.6, 0, 0, S(16)),
-		ZIndex = 7,
-		Parent = area,
-	})
+	UI.stroke(tokenTitle, Color3.new(0, 0, 0), S(1.5), 0.3)
 	local bottom = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(0, bottomY + S(26)),
-		Size = UDim2.new(1, 0, 1, -(bottomY + S(26))),
+		Position = UDim2.fromOffset(0, bottomY + S(36)),
+		Size = UDim2.new(1, 0, 1, -(bottomY + S(36))),
 		ZIndex = 6,
 		Parent = area,
 	})
 	UI.list(bottom, Enum.FillDirection.Horizontal, S(14), Enum.HorizontalAlignment.Center)
 	local packW = math.floor(math.min((aw - S(28)) / 3, S(240)) / UI.scale)
-	local packH = math.floor(math.max(S(110), ah - bottomY - S(30)) / UI.scale)
+	local packH = math.floor(math.max(S(120), ah - bottomY - S(40)) / UI.scale)
 	for i, pack in ReviveTokenPacks.List do
 		local h = Card.new(bottom, {
-			size = Vector2.new(packW, math.min(packH, 150)),
+			size = Vector2.new(packW, math.min(packH, 190)),
 			art = { kind = "tokens", amount = pack.tokens },
-			artScale = 0.7,
-			wellShare = 0.42,
-			title = pack.name,
+			artScale = 0.9,
+			wellShare = 0.44,
+			title = string.format("%d TOKENS", pack.tokens),
 			price = pack.price,
 			ribbons = if pack.tag then { pack.tag } else {},
 			layoutOrder = i,

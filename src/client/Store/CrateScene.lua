@@ -358,7 +358,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			task.wait()
 		end
 		m.model:PivotTo(restCf)
-		UI.sound(Fx.Sounds.thump, 0.8, 0.5)
+		UI.sound(Fx.Sounds.stamp, 1.15, 0.22) -- the crate settles on the pedestal
 		if not pause(0.25) then
 			return false
 		end
@@ -380,7 +380,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			m.setGlow(color, k * (0.5 + tier * 0.1))
 			if os.clock() >= nextTick then
 				nextTick = os.clock() + (0.16 - k * 0.11)
-				UI.sound(Fx.Sounds.rattle, 0.9 + k * 1.1, 0.18 + k * 0.2)
+				UI.sound(Fx.Sounds.rattle, 1.1 + k * 0.9, 0.08 + k * 0.08)
 			end
 			task.wait()
 		end
@@ -388,12 +388,11 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		m.setGlow(color, 1)
 		-- The lid blows.
 		flash.BackgroundColor3 = color:Lerp(Color3.new(1, 1, 1), 0.6)
-		flash.BackgroundTransparency = 0.25 - tier * 0.04
+		flash.BackgroundTransparency = 0.55 - tier * 0.06
 		UI.tween(flash, { BackgroundTransparency = 1 }, 0.4)
-		Fx.stinger(tier)
-		UI.sound(Fx.Sounds.lid, 0.7, 0.6)
+		Fx.lootPop(tier)
 		Fx.haptic(0.6)
-		ClientState.Juice:Fire("Shake", { amp = 0.15 + tier * 0.06, dur = 0.25 })
+		ClientState.Juice:Fire("Shake", { amp = 0.06 + tier * 0.03, dur = 0.2 })
 		local lid = m.lid
 		local lid0 = lid:GetPivot()
 		local spin = (math.random() - 0.5) * 6

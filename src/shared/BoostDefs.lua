@@ -58,6 +58,7 @@ BoostDefs.List = {
 		durations = {
 			{ id = "30m", label = "30 MIN", sec = 1800, price = 149 },
 			{ id = "2h", label = "2 HR", sec = 7200, price = 349 },
+			{ id = "24h", label = "24 HR", sec = 86400, price = 899 },
 		},
 	},
 } :: { Boost }

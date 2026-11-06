@@ -32,13 +32,32 @@ Fx.Sounds = {
 }
 
 -- Stinger per rarity tier: pitch rises with the tier, Legendary gets the victory sting on top.
+-- Round 17c: a reveal is a bright chime, never a bang. A rising arpeggio of soft pings, one note more per tier (C,
+-- E, G, high C, high E as playback speeds), a sparkle on top, the victory sting from Epic.
+local ARPEGGIO = { 1.0, 1.26, 1.5, 2.0, 2.52 }
+
 function Fx.stinger(tier: number)
 	local t = math.clamp(tier, 1, 5)
-	UI.sound(Fx.Sounds.thump, 0.7 + t * 0.12, 0.35 + t * 0.08)
-	UI.sound(Fx.Sounds.press, 0.8 + t * 0.18, 0.3 + t * 0.05)
-	if t >= 4 then
-		UI.sound(Fx.Sounds.chime, if t == 5 then 1.0 else 1.25, if t == 5 then 0.7 else 0.4)
+	for i = 1, t do
+		task.delay((i - 1) * 0.07, function()
+			UI.sound(Fx.Sounds.tick, ARPEGGIO[i], 0.16 + i * 0.03)
+		end)
 	end
+	task.delay(t * 0.07, function()
+		UI.sound(Fx.Sounds.hover, 2.2, 0.12) -- the sparkle
+	end)
+	if t >= 4 then
+		task.delay(t * 0.07, function()
+			UI.sound(Fx.Sounds.chime, if t == 5 then 1.0 else 1.2, if t == 5 then 0.45 else 0.28)
+		end)
+	end
+end
+
+-- The crate lid popping (lootbox, not explosion): a soft whoosh up and a pop, then the tier's chime.
+function Fx.lootPop(tier: number)
+	UI.sound(Fx.Sounds.whoosh, 1.5, 0.22)
+	UI.sound(Fx.Sounds.stamp, 1.6, 0.2)
+	Fx.stinger(tier)
 end
 
 function Fx.haptic(strength: number?)

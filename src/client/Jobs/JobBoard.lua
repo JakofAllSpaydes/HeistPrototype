@@ -29,6 +29,7 @@ local HUD = require(Client:WaitForChild("HUD"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local Fx = require(Client:WaitForChild("Store"):WaitForChild("Fx"))
 local Reveal = require(Client:WaitForChild("Store"):WaitForChild("Reveal"))
+local ItemArt = require(Client:WaitForChild("Store"):WaitForChild("ItemArt"))
 
 local JobBoard = {}
 
@@ -66,6 +67,116 @@ end
 local function boardModel(): Model?
 	local m = Workspace:FindFirstChild("JobBoard", true)
 	return if m and m:IsA("Model") then m else nil
+end
+
+-- The rewards as big icon tiles: XP, Gold, pass XP (and the bounty's tokens), each with its amount under it.
+local function rewardTiles(parent: Instance, weekly: boolean, order: number, height: number)
+	local S = UI.S
+	local list = {
+		{
+			kind = "xp",
+			amount = if weekly then Config.WeeklyXp else Config.DailyXp,
+			label = "XP",
+			color = Theme.Colors.blue,
+		},
+		{
+			kind = "gold",
+			amount = if weekly then Config.WeeklyGold else Config.DailyGold,
+			label = "GOLD",
+			color = Theme.Colors.gold,
+		},
+		{
+			kind = "passxp",
+			amount = if weekly then Config.WeeklyPassXp else Config.DailyPassXp,
+			label = "PASS XP",
+			color = Color3.fromHex("E8792A"),
+		},
+	}
+	if weekly then
+		table.insert(
+			list,
+			{ kind = "tokens", amount = Config.WeeklyTokens, label = "TOKENS", color = Color3.fromHex("3FD47A") }
+		)
+	end
+	local row = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, height),
+		LayoutOrder = order,
+		ZIndex = 8,
+		Parent = parent,
+	})
+	UI.list(row, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Center)
+	for i, r in list do
+		local tile = UI.frame({
+			BackgroundColor3 = Color3.fromHex("2A241C"),
+			Size = UDim2.new(1 / #list, -S(7), 1, 0),
+			LayoutOrder = i,
+			ZIndex = 9,
+			Parent = row,
+		})
+		UI.corner(tile, S(10))
+		UI.stroke(tile, r.color, S(2), 0.1)
+		UI.new("UIGradient", {
+			Color = ColorSequence.new(Fx.shade(r.color, -0.45), Color3.fromHex("1A1612")),
+			Rotation = 90,
+			Parent = tile,
+		})
+		local art = ItemArt.draw(tile, { kind = r.kind, amount = r.amount }, math.floor(height * 0.5), 10)
+		art.AnchorPoint = Vector2.new(0.5, 0)
+		art.Position = UDim2.new(0.5, 0, 0, S(6))
+		local amount = UI.text({
+			Text = "+" .. UI.fmtInt(r.amount),
+			Font = Theme.Fonts.display,
+			TextSize = S(20),
+			TextColor3 = Theme.Colors.white,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(18)),
+			Size = UDim2.new(1, 0, 0, S(22)),
+			ZIndex = 10,
+			Parent = tile,
+		})
+		UI.stroke(amount, Color3.new(0, 0, 0), S(1.5), 0.2)
+		UI.text({
+			Text = r.label,
+			Font = Theme.Fonts.display,
+			TextSize = S(11),
+			TextColor3 = Fx.shade(r.color, 0.3),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(4)),
+			Size = UDim2.new(1, 0, 0, S(13)),
+			ZIndex = 10,
+			Parent = tile,
+		})
+	end
+	return row
+end
+
+-- A claimed Job: REFRESH swaps it for a fresh one for a little fake Robux.
+local function refreshButton(parent: Instance, key: string, weekly: boolean): TextButton
+	local S = UI.S
+	local pid = if weekly then "job_refresh_bounty" else "job_refresh_daily"
+	local price = JobPool.RefreshPrice[if weekly then "bounty" else "daily"]
+	local b, _ = Fx.button(
+		parent,
+		string.format("%s · R$ %d", if weekly then "NEW BOUNTY" else "NEW JOB", price),
+		Color3.fromHex("4D9FE8"),
+		Theme.Colors.white,
+		UDim2.new(1, -S(44), 0, S(56)),
+		12
+	)
+	b.TextSize = S(22)
+	Fx.shine(b, 2.6)
+	b.Activated:Connect(function()
+		PurchaseSheet.open(pid, {
+			context = "jobs refresh " .. key,
+			args = { key = key },
+			note = "Swaps this finished Job for a fresh one with its own rewards.",
+			onSuccess = function()
+				UI.sound(Fx.Sounds.tear, 0.8, 0.5)
+			end,
+		})
+	end)
+	return b
 end
 
 local function rewardText(weekly: boolean): string
@@ -216,7 +327,7 @@ local function dailyCard(parent: Frame, slot: number, e: any, order: number)
 		BackgroundColor3 = PAPER,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
-		Size = if claimed then UDim2.new(1, 0, 0, S(130)) else UDim2.fromScale(1, 1),
+		Size = UDim2.fromScale(1, 1),
 		Rotation = ({ -2, 1.5, -1 })[slot] or 0,
 		ZIndex = 6,
 		Parent = holder,
@@ -265,24 +376,12 @@ local function dailyCard(parent: Frame, slot: number, e: any, order: number)
 		Parent = inner,
 	})
 	if claimed then
-		local c = UI.frame({
-			BackgroundColor3 = Color3.fromHex("3FA85C"),
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -S(16), 0.62, 0),
-			Size = UDim2.fromOffset(S(34), S(34)),
-			ZIndex = 9,
-			Parent = card,
-		})
-		UI.corner(c, S(17))
-		UI.text({
-			Text = "✓",
-			Font = Theme.Fonts.body,
-			TextSize = S(24),
-			TextColor3 = Theme.Colors.white,
-			Size = UDim2.fromScale(1, 1),
-			ZIndex = 10,
-			Parent = c,
-		})
+		-- Claimed: the paper fades under a PAID stamp; REFRESH buys a fresh Job in this slot.
+		card.BackgroundTransparency = 0.35
+		stamp(card, "PAID", 12, false)
+		local r = refreshButton(card, "d" .. slot, false)
+		r.AnchorPoint = Vector2.new(0.5, 1)
+		r.Position = UDim2.new(0.5, 0, 1, -S(20))
 		return
 	end
 	UI.text({
@@ -299,17 +398,17 @@ local function dailyCard(parent: Frame, slot: number, e: any, order: number)
 	})
 	progressBar(inner, progress, def.target, 8, 3)
 	UI.text({
-		Text = rewardText(false),
+		Text = "REWARDS",
 		Font = Theme.Fonts.display,
-		TextSize = S(15),
+		TextSize = S(13),
 		TextColor3 = Color3.fromHex("9A6A1A"),
-		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(40)),
+		Size = UDim2.new(1, 0, 0, S(14)),
 		LayoutOrder = 4,
 		ZIndex = 8,
 		Parent = inner,
 	})
+	rewardTiles(inner, false, 5, S(118))
 	if done then
 		-- CLAIM along the bottom of the paper.
 		local b, _ =
@@ -329,19 +428,6 @@ local function dailyCard(parent: Frame, slot: number, e: any, order: number)
 		UI.tween(sc, { Scale = 1.03 }, 0.3, Enum.EasingStyle.Back)
 		local _g, setGlow = Fx.glow(card, Color3.fromHex("FFE08A"), S(6), 4)
 		setGlow(1.2)
-	else
-		-- Still in progress: what is left, along the bottom.
-		UI.text({
-			Text = string.format("%s TO GO", UI.fmtInt(def.target - progress)),
-			Font = Theme.Fonts.display,
-			TextSize = S(18),
-			TextColor3 = Color3.fromHex("8A7A5A"),
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -S(26)),
-			Size = UDim2.new(1, -S(40), 0, S(24)),
-			ZIndex = 8,
-			Parent = card,
-		})
 	end
 end
 
@@ -457,19 +543,12 @@ local function bountyCard(parent: Frame, e: any)
 		Parent = inner,
 	})
 	progressBar(inner, progress, def.target, 8, 7)
-	UI.text({
-		Text = rewardText(true),
-		Font = Theme.Fonts.display,
-		TextSize = S(11),
-		TextColor3 = Color3.fromHex("9A6A1A"),
-		TextWrapped = true,
-		Size = UDim2.new(1, 0, 0, S(28)),
-		LayoutOrder = 8,
-		ZIndex = 8,
-		Parent = inner,
-	})
+	rewardTiles(inner, true, 8, S(96))
 	if claimed then
 		stamp(poster, "PAID", 12, false)
+		local r = refreshButton(inner, "b1", true)
+		r.LayoutOrder = 9
+		r.Size = UDim2.new(1, 0, 0, S(50))
 	elseif done then
 		local b, _ =
 			Fx.button(inner, "CLAIM", Color3.fromHex("2FB75A"), Theme.Colors.white, UDim2.new(1, 0, 0, S(42)), 9)
@@ -519,27 +598,62 @@ render = function()
 		Parent = header,
 	})
 	UI.stroke(title, Color3.new(0, 0, 0), S(2), 0.2)
-	local clocks = UI.text({
-		Text = "",
-		Font = Theme.Fonts.display,
-		TextSize = S(15),
-		TextColor3 = Theme.Colors.text,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(170), S(14)),
-		Size = UDim2.new(1, -S(300), 0, S(30)),
+	-- Framed countdowns: the dailies tick in hh:mm:ss, the bounty in days / hours / minutes.
+	local function timerFrame(order: number, label: string, color: Color3): TextLabel
+		local fr = UI.frame({
+			BackgroundColor3 = Color3.fromHex("141218"),
+			BackgroundTransparency = 0.1,
+			Size = UDim2.fromOffset(S(250), S(52)),
+			LayoutOrder = order,
+			ZIndex = 6,
+			Parent = header,
+		})
+		UI.corner(fr, S(10))
+		UI.stroke(fr, color, S(2), 0.1)
+		UI.text({
+			Text = label,
+			Font = Theme.Fonts.display,
+			TextSize = S(12),
+			TextColor3 = Fx.shade(color, 0.3),
+			Position = UDim2.fromOffset(0, S(4)),
+			Size = UDim2.new(1, 0, 0, S(14)),
+			ZIndex = 7,
+			Parent = fr,
+		})
+		local v = UI.text({
+			Text = "",
+			Font = Theme.Fonts.display,
+			TextSize = S(26),
+			TextColor3 = Theme.Colors.white,
+			Position = UDim2.fromOffset(0, S(18)),
+			Size = UDim2.new(1, 0, 0, S(30)),
+			ZIndex = 7,
+			Parent = fr,
+		})
+		UI.stroke(v, Color3.new(0, 0, 0), S(1.5), 0.2)
+		return v
+	end
+	local clockRow = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(S(170), S(2)),
+		Size = UDim2.new(1, -S(170), 0, S(54)),
 		ZIndex = 6,
 		Parent = header,
 	})
-	UI.stroke(clocks, Color3.new(0, 0, 0), S(1.5), 0.3)
+	UI.list(clockRow, Enum.FillDirection.Horizontal, S(14))
+	local function moveTo(l: TextLabel)
+		(l.Parent :: Frame).Parent = clockRow
+	end
+	local daily = timerFrame(1, "NEW JOBS IN", Theme.Colors.gold)
+	local weekly = timerFrame(2, "BOUNTY RESETS IN", Color3.fromHex("C8323C"))
+	moveTo(daily)
+	moveTo(weekly)
 	task.spawn(function()
-		while clocks.Parent do
+		while daily.Parent do
 			local t = ClientState.fakeNow()
-			clocks.Text = string.format(
-				"NEW JOBS IN %s   ·   BOUNTY RESETS IN %s",
-				Clock.span(Clock.nextDay(t) - t),
-				Clock.span(Clock.nextWeek(t) - t)
-			)
-			task.wait(1)
+			daily.Text = Clock.hms(Clock.nextDay(t) - t)
+			weekly.Text = Clock.dhm(Clock.nextWeek(t) - t)
+			task.wait(0.25)
 		end
 	end)
 	local _ = now

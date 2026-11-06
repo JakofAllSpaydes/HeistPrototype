@@ -19,6 +19,7 @@ local World = require(script.Parent.World)
 local Grants = require(script.Parent.Grants)
 local Shop = require(script.Parent.Shop)
 local RunEvents = require(script.Parent.RunEvents)
+local Purchases = require(script.Parent.Purchases)
 local Log = require(script.Parent.Log)
 
 local Jobs = {}
@@ -229,6 +230,70 @@ Shop.register("jobClaimAll", function(player, profile)
 	end
 	return { ok = true, data = { results = all } }
 end)
+
+-- Round 17c: REFRESH (fake Robux) swaps a claimed Job for a fresh one with its own rewards: a daily of a kind the
+-- board does not have, or a different bounty.
+local function findKey(profile: Profiles.Profile, key: string): (any, number?, boolean)
+	local list = if string.sub(key, 1, 1) == "b" then profile.jobs.bounty else profile.jobs.daily
+	local i = tonumber(string.sub(key, 2))
+	return list, i, string.sub(key, 1, 1) == "b"
+end
+
+Purchases.register("job_refresh", {
+	check = function(player, profile, product, args)
+		Jobs.normalize(player)
+		local key = if typeof(args) == "table" then tostring(args.key) else ""
+		local list, i, weekly = findKey(profile, key)
+		local e = i and list[i]
+		if not e then
+			return "No such Job"
+		end
+		if weekly ~= (product.jobBoard == "bounty") then
+			return "Wrong board"
+		end
+		if not e.claimed then
+			return "Finish and claim it first"
+		end
+		return nil
+	end,
+	grant = function(player, profile, _product, args)
+		local key = tostring(args.key)
+		local list, i, weekly = findKey(profile, key)
+		local old = list[i :: number]
+		local fresh
+		if weekly then
+			local pool = {}
+			for _, j in JobPool.Bounty do
+				if j.id ~= old.id then
+					table.insert(pool, j)
+				end
+			end
+			fresh = draw(profile, pool, 1, {})
+		else
+			local exclude: { [string]: boolean } = {}
+			for k, other in profile.jobs.daily do
+				local def = JobPool.ById[other.id]
+				if def and k ~= i then
+					exclude[def.kind] = true
+				end
+			end
+			local pool = {}
+			for _, j in JobPool.Daily do
+				if j.id ~= old.id then
+					table.insert(pool, j)
+				end
+			end
+			fresh = draw(profile, pool, 1, exclude)
+		end
+		if #fresh == 0 then
+			return nil, "No other Jobs right now"
+		end
+		list[i :: number] = fresh[1]
+		Profiles.markDirty(player)
+		Log.event("Jobs", "%s refreshed %s: %s -> %s", player.Name, key, old.id, fresh[1].id)
+		return { key = key, id = fresh[1].id }
+	end,
+})
 
 ------------------------------------------------------------------ Runs and the hub
 function Jobs.beginRun(players: { Player })

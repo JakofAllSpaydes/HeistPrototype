@@ -1,7 +1,8 @@
 --!strict
 -- Brief 6: the catalog. Every Robux-priced thing in the game is one row here (built from the data files), with
 -- id, kind, price and what it grants. This is the table real DevProduct / gamepass ids map onto later.
--- kinds: crate · boost · gold · bundle · vip · pass · pass_skip · tokens · cash_pack · dealer_restock · robux_topup
+-- kinds: crate · boost · gold · bundle · vip · pass · pass_skip · tokens · cash_pack · dealer_restock · robux_topup ·
+-- item (FEATURED's daily single items) · job_refresh (a new Job in a claimed slot)
 local Config = require(script.Parent.Config)
 local Rewards = require(script.Parent.Rewards)
 local Crates = require(script.Parent.Crates)
@@ -11,6 +12,8 @@ local Bundles = require(script.Parent.Bundles)
 local CashPacks = require(script.Parent.CashPacks)
 local ReviveTokenPacks = require(script.Parent.ReviveTokenPacks)
 local PassSeason = require(script.Parent.PassSeason)
+local DailyShop = require(script.Parent.DailyShop)
+local JobPool = require(script.Parent.JobPool)
 
 export type Product = {
 	id: string,
@@ -30,6 +33,9 @@ export type Product = {
 	bundleId: string?,
 	tier: number?, -- pass tier
 	inRun: boolean?, -- sold during a run (the sheet runs over the live game)
+	itemKind: string?, -- item: the reward kind and id it grants
+	itemId: string?,
+	jobBoard: string?, -- job_refresh: "daily" | "bounty"
 }
 
 local Products = {}
@@ -151,6 +157,31 @@ for _, n in PassSeason.SkipCounts do
 		price = Config.PassSkipPrice * n,
 		icon = { kind = "passskip", amount = n },
 		count = n,
+	})
+end
+
+for _, e in DailyShop.Pool do
+	add({
+		id = DailyShop.productId(e),
+		kind = "item",
+		name = Rewards.name(e :: any),
+		price = DailyShop.price(e),
+		icon = e :: any,
+		sub = Rewards.kindLabel(e :: any),
+		itemKind = e.kind,
+		itemId = e.id,
+	})
+end
+
+for _, board in { "daily", "bounty" } do
+	add({
+		id = "job_refresh_" .. board,
+		kind = "job_refresh",
+		name = if board == "daily" then "NEW DAILY JOB" else "NEW WEEKLY BOUNTY",
+		price = JobPool.RefreshPrice[board],
+		icon = { kind = "passxp", amount = 1 },
+		sub = "Swap a finished Job for a fresh one with its own rewards",
+		jobBoard = board,
 	})
 end
 

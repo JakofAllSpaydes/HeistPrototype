@@ -24,7 +24,7 @@ phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback 
 ragdolls and hit sparks), the brief 4 build (Round 14: roster, boss, heat as pace, bags, vault, level, scoreboard) and
 the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause) with its feedback
 rounds 15b–15m, the Round 16 / 16b feedback passes, and the brief 6 build (Round 17: fake purchase flow, store,
-crates, boosts, VIP, battle pass, Jobs; one commit per build step).
+crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c.
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list" and the "Brief 6 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -372,15 +372,18 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
   window scales and slides in with an overshoot, cards cascade in 40ms apart. The style bar lives in `Store/Fx.lua` (glow, rays, UI particles, hover lift /
   press scale / disabled dim, count-ups, the store's sound set, haptics) and `Store/Card.lua` (the card with every state:
   rarity glow, dark body, light edge, art on a pedestal with an idle bob, price pill, ribbons, OWNED check).
-- **FEATURED / bundles (`Bundles.lua`, `FeaturedTab.lua`).** Three hero cards under `ROTATES IN 2d 14h`
-  (`FeaturedRotationSec` on the fake clock; the order turns each rotation), LIMITED and the `-X%` from list vs bundle
-  price, a contents strip with owned items dimmed. The detail sheet lists every item with art and rarity; owned ones are
-  struck through and their list share comes off the price (`BundleOwnedDiscount`). Buying grants everything not owned in
-  one write and plays the stacked reveal (`Store/Reveal.lua`, `BundleRevealStagger` apart). STARTER HEIST (TORCH, FAL,
+- **FEATURED (`Bundles.lua`, `DailyShop.lua`, `FeaturedTab.lua`, Round 17c).** One wide featured bundle (it rotates
+  every `FeaturedRotationSec` on the fake clock; a VIEW BUNDLE link shows the linked one) with every item laid out on the
+  bar (`CLASS + WEAPON + …`, owned ones marked), the `-X%` against buying them apart, WORTH vs the price and BUY right on
+  it: no detail sheet and no owned discount (owned items are skipped). Under it the DAILY ITEMS: `DailyShopItems` (6)
+  single items from the crate pools and past events, drawn per fake UTC day the same for everyone and sold one by one
+  (`DailyShop.PriceByRarity`, products `item_<kind>_<id>`; the server refuses an owned item or one that left the shop).
+  Both carry a framed `LEAVING IN hh:mm:ss` countdown. Buying a bundle grants everything not owned in one write and
+  plays the stacked reveal (`Store/Reveal.lua`, `BundleRevealStagger` apart). STARTER HEIST (TORCH, FAL,
   2,000 Gold, 5 tokens, 1 Arms open) R$ 399; THE MARKSMAN SET (SHARPSHOOTER, Mosin, Ghillie Hood, Salute, the Woodland
   wrap on the Mosin, 5,000 Gold, 10 tokens) R$ 1,299; HIGH ROLLER (10 + 10 crate opens, a 24h POWER boost, 25 tokens)
   R$ 1,999.
-- **GOLD (`GoldPacks.lua`).** Six packs on two shelves with `R$ x.x PER 100 ◆` and BEST VALUE on the cheapest Gold;
+- **GOLD (`GoldPacks.lua`).** Six packs in a 3 × 2 grid, the art filling each card, BEST VALUE on the cheapest Gold;
   buying flies Gold into the header, which counts up.
 - **Crates (`Crates.lua`, `CrateOpen.lua`, `CratesTab.lua`, `CrateScene.lua`).** ARMS CRATE (the eight guns, weights
   40 / 30 / 18 / 9 / 3, R$ 129 / 299 / 799) and MASK CRATE (the eight masks, 45 / 28 / 17 / 8 / 2, R$ 99 / 249 / 699). The
@@ -397,9 +400,10 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
 - **Boosts (`BoostDefs.lua`, `Boosts.lua`, `BoostsTab.lua`, `HUD/BoostChips.lua`).** POWER (+`PowerBoostPct` weapon
   and ability damage, also element burns), CASH (+`CashBoostPct` match cash from kills, cash bags and job payouts) and
   LUCKY (in-run rarity rolls, gun crates and upgrade card tiers, read the wave bracket `LuckyWeightShift` rows up),
-  30m / 2h / 24h (LUCKY 30m / 2h), real-time from purchase, buying an active one extends it. Applied where the value is
+  30m / 2h / 24h, real-time from purchase, buying an active one extends it. Applied where the value is
   computed (`PlayerState.computed`, the ability and burn damage calls, `Rarity.roll`). Chips (glyph, label, mm:ss) in the
-  hub's BOOSTS corner and small under the heat stars in a run (below the boss bar while one is up); a chip pulses in its
+  hub's BOOSTS corner (the `+` steps aside while any boost or VIP chip is up: tapping a chip opens the store) and in a
+  run bottom-left, just above the cash row; a chip pulses in its
   last `BoostChipWarnSec` and pops out with a toast on expiry. Gold, XP, pass XP and paid crates are never boosted.
 - **Revive tokens (`ReviveTokenPacks.lua`).** `profile.reviveTokens` (fresh: `ReviveTokensStart`). SELF-REVIVE spends
   `SelfReviveTokens`, REVIVE EVERYBODY `ReviveAllTokensPerPlayer` × the party size, both on the press (the SECOND CHANCE
@@ -411,7 +415,7 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
   Stadium / Big Tilt poses (kept for good, listed in the Locker's OWNED / UNOWNED like everything else), `VipMonthlyTokens` tokens now and per renewal;
   while active: the VIP gold tag on the hub name tag, the party card, the scoreboard, the summary rows (with a pulsing gold
   frame) and crew callouts, a permanent +`VipCashPct` CASH chip in runs (stacks with CASH), the `VipDailyGold` gift chip
-  on the hub HUD once per fake UTC day, the VIP mask's sparkles, and the dealer greets you by name. CANCEL (fake) keeps
+  on the hub HUD once per fake UTC day, and the VIP mask's sparkles. CANCEL (fake) keeps
   the cosmetics and stops the perks; a lapsed player sees WELCOME BACK.
 - **Battle pass (`PassSeason.lua`, `Pass.lua`, `Pass/PassScene.lua`).** `SeasonLengthDays` seasons from
   `SeasonEpochUtc` on the fake clock (two defined, then they cycle), `PassLevels` levels of `PassXpPerLevel`. Lanes FREE
@@ -423,8 +427,11 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
   auto-claims owned lanes and shows SEASON OVER on the next open. The scene runs on its own PASS STAGE: the season banner
   (level badge, XP bar, ENDS IN, skips) top-left, the premium sell card left, the selected reward in 3D (on the
   mannequin for cosmetics, turning on the pedestal otherwise) with its card (rarity, REQUIRES PREMIUM / UNLOCKS AT LEVEL
-  N, CLAIM), the track along the bottom (Round 17b: one row; each level is one card with its FREE reward large on top
-  and the PREMIUM / PREMIUM+ rewards side by side under it; lit diamonds, claimable pulse, claimed check, padlock, BACK / NEXT by `PassPageLevels`, GO TO CURRENT LEVEL) and CLAIM ALL bottom-right. The hub HUD PASS button
+  N, CLAIM), the track along the bottom (Round 17c: `PassPageLevels` (4) levels at a time, each a LEVEL band over three
+  equal tiles FREE · PREMIUM · PREMIUM+ side by side; the heroes at 10 / 20 / 30 wear a gold HERO frame; lit diamonds,
+  claimable pulse, claimed check, padlock, BACK / NEXT, GO TO CURRENT LEVEL). The sell card leads with the chase: the
+  level 30 hero big with rays and the 10 / 20 ones beside it (tap to see one in 3D; the stage opens on the level 30
+  hero), then GET PREMIUM / GET PREMIUM+ and CLAIM ALL bottom-right. The hub HUD PASS button
   shows the level, a ring of dots for the progress and a red dot when a cell waits; the summary has a PASS XP bar after
   the account XP bar with CLAIM IN PASS.
 - **Jobs (`JobPool.lua`, `Jobs.lua`, `RunEvents.lua`, `Jobs/JobBoard.lua`).** Three dailies a fake UTC day (no two of a
@@ -433,7 +440,10 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
   party, revives, the class a run finished as, kills by weapon archetype) and persists until the reset; a quarter crossed
   in a run toasts (`JOB · KILL 60 RUNNERS 30 / 60`) and the scoreboard footer lists the dailies. CLAIM pays
   `DailyXp` / `DailyGold` / `DailyPassXp` (the bounty `WeeklyXp` / `WeeklyGold` / `WeeklyPassXp` / `WeeklyTokens`); one
-  no reroll (Round 17b). The board: the camera pushes onto MARLOW's corkboard (`JobBoardPosition`, a
+  no reroll; a claimed Job can be refreshed for fake Robux (`JobPool.RefreshPrice`: NEW JOB R$ 49, NEW BOUNTY R$ 99,
+  product `job_refresh_*`) into a fresh one of a kind the board does not have. The rewards show as big icon tiles (XP,
+  Gold, pass XP, tokens) and the header frames the countdowns (`NEW JOBS IN hh:mm:ss`, `BOUNTY RESETS IN 2D 16H 42M`).
+  The board: the camera pushes onto MARLOW's corkboard (`JobBoardPosition`, a
   beacon that pulses until today's board is opened), header with both reset clocks, three pinned paper dailies filling the board (MARLOW's
   line, progress, rewards, CLAIM), the WANTED bounty poster, a DONE stamp that slams on, claimed
   stubs, CLAIM ALL. MARLOW announces a new board (`JobAnnounceLine`) on the first hub entry after a reset. The summary
@@ -870,9 +880,11 @@ mannequin in its idle; the output shows the load error).
    press (none ever move away), sounds on every tap. LEAVE / Esc return to the hub. R$ + adds 10,000 through the sheet.
 3. GOLD: six packs, BEST VALUE on RESERVE; buy one → the sheet (spinner 0.6s) → `… purchased!`, Gold flies into the
    header and counts up; the output prints the purchase line.
-4. FEATURED: three cards, `ROTATES IN …`, LIMITED and -X%; THE MARKSMAN SET's sheet lists seven items; buy it → the stacked reveal; the Armory has the Mosin with the Woodland
-   wrap, Crew has SHARPSHOOTER, the Locker the hood and the pose, Gold +5,000, tokens +10. Open STARTER HEIST: owned
-   items are struck through and the price is lower.
+4. FEATURED: one wide bundle bar with every item inline, -X%, WORTH and BUY, and `LEAVING IN hh:mm:ss` ticking; buy
+   it → the stacked reveal and everything lands (the MARKSMAN SET: the Mosin with the Woodland wrap in the Armory,
+   SHARPSHOOTER in Crew, the hood and the pose in the Locker, Gold +5,000, tokens +10); owned items are marked and
+   skipped at the same price. Under it six DAILY ITEMS with their own countdown; buy one → a mini reveal and OWNED on its
+   card; debug `+1 day` draws a new six.
 5. CRATES: each card shows the strip, ODDS (percentages that sum to 100, the items, `[Legal copy: TBA]`) and `EPIC+
    GUARANTEED IN 10`. OPEN 1 → straight into the crate room: rattle, seams in the rarity color, the lid, the item on its
    beam, the name card, CONFIRM back to CRATES. OPEN 10 → ten in a row with NEXT / auto-advance, SKIP from the first
@@ -880,7 +892,7 @@ mannequin in its idle; the output shows the load error).
    `DUPLICATE · +◆ N · +N mastery`. Debug `Force rarity L` then OPEN 1: the Legendary slow motion. New guns hold with
    their own silhouette; new masks wear in the hub and the run.
 6. BOOSTS: buy POWER 30m → a chip in BOOSTS with a timer and `ACTIVE · 29:59` on the card (EXTEND adds 30m). In a run:
-   the chip sits under the heat stars, damage numbers are ~20% higher (POWER), kill cash 50% higher (CASH), crates roll
+   the chip sits bottom-left above the cash, damage numbers are ~20% higher (POWER), kill cash 50% higher (CASH), crates roll
    higher (LUCKY). The summary's Gold and XP are unchanged.
 7. Tokens: debug `Down me` → SELF-REVIVE shows `1 TOKEN · YOU HAVE 3` and stands you up; `Set tkn` 0 then down →
    GET TOKENS → the sheet; buy → the button is armed. Solo: give up → bleed out → REVIVE EVERYBODY (1 token) inside the
@@ -891,13 +903,15 @@ mannequin in its idle; the output shows the load error).
    callouts; the VIP chip in BOOSTS; the GFT chip pays 200 Gold once a day; the VIP mask and poses in the Locker's OWNED; +10 tokens. Debug
    `+1 day` × 30 → a renewal charges R$ 399 and pays 10 tokens. CANCEL → perks gone, cosmetics stay, WELCOME BACK.
 10. Pass: PASS opens the stage; claim level 1 FREE; `+1,000 pass` levels up (the banner, the HUD ring); GET PREMIUM →
-    every reached PREMIUM slot (under the FREE one on each level card) pulses, CLAIM ALL claims them in a mini reveal; SKIP ×5; PREMIUM+ from PREMIUM costs the
-    difference; the hero at 10 / 20 / 30 shows on the mannequin or turning on the pedestal. Finish a run → the summary's
+    every reached PREMIUM tile (beside the FREE one under each LEVEL band) pulses, CLAIM ALL claims them in a mini reveal; SKIP ×5; PREMIUM+ from PREMIUM costs the
+    difference; the stage opens on the level 30 hero, the chase card shows all three heroes (tap one to see it in 3D)
+    and the track marks them HERO. Finish a run → the summary's
     PASS XP bar fills (40 a wave, 200 a boss) and CLAIM IN PASS opens the scene. Debug `+1 day` until the season ends →
     SEASON OVER on the next open and season 2 (COLD CASE).
 11. Jobs: JOBS / F at the board → the camera pushes onto the corkboard; the dailies show progress; play a run → JOB
     toasts at each quarter, the scoreboard footer, the summary ticks; a finished one gets the DONE stamp at the board,
-    CLAIM pays XP + Gold + pass XP. Debug `Reset jobs` draws a new board.
+    CLAIM pays XP + Gold + pass XP (big reward tiles); a claimed card offers NEW JOB · R$ 49 (the bounty NEW BOUNTY ·
+    R$ 99) for a fresh one; the header timers tick (`16:42:05`, `2D 16H 42M`). Debug `Reset jobs` draws a new board.
 12. Rejoin: balance, tokens, boosts with their time left, VIP, pass level and claims, Job progress, banked crate opens
     and pity are all where they were. Debug `Buy log` prints every purchase with totals.
 13. Mobile (device emulator, landscape): the store tab strip scrolls, every card and button taps, the crate scene is full
@@ -1284,6 +1298,17 @@ Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, 
   right-center. VIP items no longer get their own Locker row. Crate dupe mastery tier-ups pop after that item's reveal
   (the server defers them into the results). A level skip no longer errors (the check missed its product argument), and
   a purchase check that errors now logs and shows its error instead of "the server did not answer".
+
+- **Round 17c (5 Nov, feedback on brief 6)** — FEATURED is one wide bundle bar with its contents inline and BUY on it
+  (no detail sheet, no owned discount, `BundleOwnedDiscount` dropped) over six daily single items from crates and past
+  events (`DailyShop.lua`), both with `LEAVING IN hh:mm:ss`. Cards lose the empty pedestal bar, their art fills the well,
+  sub lines sit under the title at a readable size; GOLD drops the shelf and the per-100 line; the crate art grows into
+  the space under OPEN 1 / 3 / 10; REVIVE TOKENS · OWNED: N heads the token packs; LUCKY gets a 24 HR. VIP loses the
+  dealer's greeting. Pass: four levels a page, three equal tiles under a LEVEL band, no lane legend or status line, HERO
+  frames, the chase sell card, the stage opens on the level 30 hero. Jobs: reward icon tiles, a paid REFRESH on claimed
+  Jobs, framed ticking timers. Hub: the `+` boost chip hides while a boost runs; in a run the chips sit above the cash.
+  The crate's lid is a soft lootbox pop (a rising chime arpeggio and a sparkle) instead of a bang; the rattle, landing
+  thump, flash and shake are all quieter. The debug panel caps at the screen height and scrolls.
 
 ## Open design notes (not built)
 

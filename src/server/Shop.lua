@@ -8,6 +8,8 @@ local Shared = ReplicatedStorage.Shared
 local Remotes = require(Shared.Remotes)
 local Bundles = require(Shared.Bundles)
 local Rewards = require(Shared.Rewards)
+local DailyShop = require(Shared.DailyShop)
+local Clock = require(Shared.Clock)
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
 local Purchases = require(script.Parent.Purchases)
@@ -59,6 +61,29 @@ Purchases.register("bundle", {
 		end
 		local results = Grants.applyAll(player, list, { source = b.id, owned = "skip", wrapOn = target })
 		return { bundleId = b.id, results = results }
+	end,
+})
+
+------------------------------------------------------------------ FEATURED daily items (Round 17c)
+Purchases.register("item", {
+	check = function(_player, profile, product)
+		local r = { kind = product.itemKind or "", id = product.itemId }
+		if Rewards.owned(profile, r) then
+			return "Already owned"
+		end
+		local day = Clock.day(Clock.fake(os.time(), profile))
+		if not DailyShop.offeredOn(day, r.kind, r.id or "") then
+			return "That item has left the shop"
+		end
+		return nil
+	end,
+	grant = function(player, _profile, product)
+		local res = Grants.apply(
+			player,
+			{ kind = product.itemKind :: string, id = product.itemId },
+			{ source = product.id, owned = "skip" }
+		)
+		return { results = { res } }
 	end,
 })
 

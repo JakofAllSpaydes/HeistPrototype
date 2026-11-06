@@ -16,6 +16,9 @@ export type Job = {
 
 local JobPool = {}
 
+-- Round 17c: a claimed Job can be refreshed for a new one (the purchase sheet), R$ by board slot kind.
+JobPool.RefreshPrice = { daily = 49, bounty = 99 }
+
 JobPool.Daily = {
 	{
 		id = "d_runners",

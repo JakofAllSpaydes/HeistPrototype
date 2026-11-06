@@ -1,6 +1,6 @@
 --!strict
 -- Brief 6: the store card. Layered frames (rarity glow behind, dark body, 1px light edge, a rarity bar), the item
--- art on a pedestal with a slow idle bob, a price pill, tag ribbons (BEST VALUE, NEW, LIMITED, -30%) in the top
+-- art filling the well with a slow idle bob, a price pill, tag ribbons (BEST VALUE, NEW, LIMITED, -30%) in the top
 -- corner. States: hover lifts 4px and brightens the glow, press scales 0.96 and pulses, disabled dims to 40%,
 -- owned shows a check and OWNED across the price. Epic+ art sparkles, Legendary art has rays.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
@@ -134,21 +134,11 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	if rarity >= 5 then
 		Fx.rays(well, color, 8, math.floor(math.max(w, wellH) * 1.4), z + 2, 10)
 	end
-	local pedestal = UI.frame({
-		BackgroundColor3 = Color3.fromHex("0C0C10"),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.86),
-		Size = UDim2.fromScale(0.62, 0.14),
-		ZIndex = z + 3,
-		Parent = well,
-	})
-	UI.corner(pedestal, S(40))
-	UI.stroke(pedestal, color, S(1.5), 0.25)
 	if spec.art then
-		local artSize = math.floor(math.min(w - S(16), wellH) * (spec.artScale or 0.62))
+		local artSize = math.floor(math.min(w - S(16), wellH) * (spec.artScale or 0.8))
 		local art = ItemArt.draw(well, spec.art :: any, artSize, z + 4)
 		art.AnchorPoint = Vector2.new(0.5, 0.5)
-		art.Position = UDim2.fromScale(0.5, 0.46)
+		art.Position = UDim2.fromScale(0.5, 0.5)
 		Fx.bob(art, S(3), 2.6, if spec.hero then 3 else 1.5)
 	end
 	if rarity >= 4 or spec.hero then
@@ -161,12 +151,12 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		Name = "Title",
 		Text = spec.title,
 		Font = Theme.Fonts.display,
-		TextSize = S(if w < S(150) then 15 else 18),
+		TextSize = S(if w < S(150) then 17 else 21),
 		TextColor3 = Theme.Colors.white,
 		TextWrapped = true,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Position = UDim2.fromOffset(S(10), textTop),
-		Size = UDim2.new(1, -S(20), 0, S(22)),
+		Size = UDim2.new(1, -S(20), 0, S(26)),
 		ZIndex = z + 2,
 		Parent = body,
 	})
@@ -174,11 +164,11 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		Name = "Sub",
 		Text = spec.sub or "",
 		Font = Theme.Fonts.body,
-		TextSize = S(10),
-		TextColor3 = Theme.Colors.textDim,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.text,
 		TextWrapped = true,
-		Position = UDim2.fromOffset(S(10), textTop + S(22)),
-		Size = UDim2.new(1, -S(20), 0, S(26)),
+		Position = UDim2.fromOffset(S(12), textTop + S(28)),
+		Size = UDim2.new(1, -S(24), 0, if spec.sub then S(34) else 0),
 		TextYAlignment = Enum.TextYAlignment.Top,
 		ZIndex = z + 2,
 		Parent = body,
@@ -186,8 +176,13 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	local content = UI.frame({
 		Name = "Content",
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(8), textTop + S(48)),
-		Size = UDim2.new(1, -S(16), 1, -(textTop + S(48)) - (if spec.price or spec.priceText then S(48) else S(10))),
+		Position = UDim2.fromOffset(S(8), textTop + (if spec.sub then S(68) else S(32))),
+		Size = UDim2.new(
+			1,
+			-S(16),
+			1,
+			-(textTop + (if spec.sub then S(68) else S(32))) - (if spec.price or spec.priceText then S(48) else S(10))
+		),
 		ZIndex = z + 2,
 		Parent = body,
 	})

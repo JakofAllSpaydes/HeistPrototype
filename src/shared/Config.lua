@@ -845,9 +845,9 @@ local Config = {
 	PurchaseProcessingSec = 0.6, -- the sheet's processing spinner holds at least this long
 	PurchaseLogKeep = 200, -- purchase records kept on the profile for the readout
 	-- Fake clocks: every timer below runs on the player's fake clock (real UTC + the debug offset on the profile).
-	FeaturedRotationSec = 2 * 86400 + 14 * 3600, -- FEATURED rotates this often (ROTATES IN 2d 14h)
+	FeaturedRotationSec = 2 * 86400 + 14 * 3600, -- the featured bundle rotates this often (LEAVING IN hh:mm:ss)
+	DailyShopItems = 6, -- FEATURED's daily single items (DailyShop.lua), redrawn every fake UTC day
 	FeaturedEpochUtc = 1793318400, -- 2026-10-30 00:00 UTC: the rotation clock counts from here
-	BundleOwnedDiscount = true, -- items already owned are struck through and their list share comes off the price
 	BundleRevealStagger = 0.3, -- the stacked reveal cards each item in this far apart
 	-- Crates (Crates.lua): pity, dupes, the opening scene.
 	CratePity = 10, -- Epic or better is guaranteed on this open if the last CratePity - 1 were below Epic
@@ -883,7 +883,7 @@ local Config = {
 	PassPremiumPrice = 499, -- PREMIUM (tier 1)
 	PassPremiumPlusPrice = 999, -- PREMIUM+ (tier 2, includes PREMIUM; from PREMIUM it costs the difference)
 	PassSkipPrice = 149, -- R$ per level skipped
-	PassPageLevels = 8, -- BACK / NEXT page the track by this many levels
+	PassPageLevels = 4, -- levels shown on the track at once (three tiles each); BACK / NEXT page by this many
 	-- Jobs (Jobs.lua; pool in JobPool.lua): three dailies and a weekly bounty.
 	DailyXp = 300,
 	DailyGold = 150,

@@ -30,7 +30,6 @@ local PERKS = {
 	{ "GFT", string.format("A daily gift of %d Gold on the hub HUD", Config.VipDailyGold) },
 	{ "+", string.format("%d revive tokens every month", Config.VipMonthlyTokens) },
 	{ "MSK", "The VIP Gold Trim mask and two VIP poses: yours to keep" },
-	{ "DLR", "The dealer greets you by name" },
 }
 
 local function vipState(p: any): (boolean, boolean, number)

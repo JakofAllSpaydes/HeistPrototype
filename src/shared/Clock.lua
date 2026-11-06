@@ -64,4 +64,16 @@ function Clock.timer(sec: number): string
 	return string.format("%d:%02d", sec // 60, sec % 60)
 end
 
+-- "62:14:05": total hours, minutes, seconds (the LEAVING IN / NEW JOBS IN countdowns).
+function Clock.hms(sec: number): string
+	sec = math.max(0, math.floor(sec))
+	return string.format("%02d:%02d:%02d", sec // 3600, (sec % 3600) // 60, sec % 60)
+end
+
+-- "2D 16H 42M" (the weekly countdowns).
+function Clock.dhm(sec: number): string
+	sec = math.max(0, math.floor(sec))
+	return string.format("%dD %02dH %02dM", sec // 86400, (sec % 86400) // 3600, (sec % 3600) // 60)
+end
+
 return Clock

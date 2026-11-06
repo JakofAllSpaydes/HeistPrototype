@@ -1,8 +1,7 @@
 --!strict
 -- Brief 6: FEATURED set bundles. Each content row is a Rewards.Reward plus `value`, its list share in R$; the list
--- price is their sum and the -X% ribbon compares it with the bundle price. With Config.BundleOwnedDiscount, items
--- the player already owns are struck through and their list share comes off the price, in the same proportion.
-local Config = require(script.Parent.Config)
+-- price is their sum and the -X% ribbon compares it with the bundle price. The price is fixed (Round 17c: no owned
+-- discount); buying skips items already owned.
 local Rewards = require(script.Parent.Rewards)
 
 export type Content = { kind: string, id: string?, amount: number?, sec: number?, value: number }
@@ -98,20 +97,10 @@ end
 -- The price for this profile: the owned items' list share comes off (never below a tenth of the price).
 function Bundles.priceFor(b: Bundle, profile: any): (number, { boolean })
 	local owned: { boolean } = {}
-	local list = Bundles.listPrice(b)
-	local ownedValue = 0
 	for i, c in b.contents do
-		local o = Config.BundleOwnedDiscount and Rewards.owned(profile, c :: any)
-		owned[i] = o
-		if o then
-			ownedValue += c.value
-		end
+		owned[i] = Rewards.owned(profile, c :: any)
 	end
-	if ownedValue <= 0 or list <= 0 then
-		return b.price, owned
-	end
-	local price = math.max(math.ceil(b.price * 0.1), math.floor(b.price * (1 - ownedValue / list) + 0.5))
-	return price, owned
+	return b.price, owned
 end
 
 -- Every bundle a reward appears in (VIEW BUNDLE deep links).

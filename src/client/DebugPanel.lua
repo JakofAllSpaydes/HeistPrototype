@@ -70,21 +70,35 @@ local function build()
 	}) :: ScreenGui
 	gui = g
 
-	local panel = UI.frame({
+	-- Round 17c: the panel scrolls once it is taller than the screen (it grew past the bottom edge).
+	local panel = UI.new("ScrollingFrame", {
 		Name = "Panel",
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.05,
+		BorderSizePixel = 0,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -S(20), 0, S(72)),
-		Size = UDim2.fromOffset(S(230), 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+		Size = UDim2.fromOffset(S(240), S(300)),
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = S(5),
+		ScrollBarImageColor3 = Theme.Colors.gold,
+		VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
 		Active = true,
 		Parent = g,
-	})
+	}) :: ScrollingFrame
 	UI.corner(panel, S(10))
 	UI.stroke(panel, Theme.Colors.gold, S(1.5))
 	UI.pad(panel, S(8), S(8), S(8), S(8))
-	UI.list(panel, Enum.FillDirection.Vertical, S(4))
+	local layout = UI.list(panel, Enum.FillDirection.Vertical, S(4))
+	local function fit()
+		local vp = (workspace.CurrentCamera :: Camera).ViewportSize
+		local h = math.min(layout.AbsoluteContentSize.Y + S(16), vp.Y - S(72) - S(16))
+		panel.Size = UDim2.fromOffset(S(240), math.max(S(60), h))
+	end
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fit)
+	task.defer(fit)
 	UI.text({
 		Text = "DEBUG  (` to close)",
 		Font = Theme.Fonts.display,

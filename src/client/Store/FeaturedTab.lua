@@ -1,15 +1,17 @@
 --!strict
--- Brief 6 FEATURED tab: three hero bundle cards in a row (Bundles.lua) under a `ROTATES IN 2d 14h` timer (the fake
--- clock, Config.FeaturedRotationSec), each with a LIMITED ribbon and the -X% from list vs bundle price. Tapping a
--- card opens the detail sheet: every item with its art and rarity, owned ones struck through and their list share
--- taken off the price (Config.BundleOwnedDiscount). Buying grants everything in one write and plays the stacked
--- reveal before returning to the tab. Hovering / selecting a bundle previews its cosmetics on the mannequin.
+-- Brief 6 FEATURED section (Round 17c). One wide featured bundle (Bundles.lua, rotating every
+-- Config.FeaturedRotationSec on the fake clock) with every item it holds laid out on the bar, CLASS + WEAPON + ... ,
+-- the -X% against buying them apart and BUY right there: no detail sheet, no owned discount (owned items are marked
+-- and skipped). Under it the DAILY ITEMS: Config.DailyShopItems single items from crates and past events
+-- (DailyShop.lua), redrawn every fake UTC day and sold one by one. Both carry a LEAVING IN hh:mm:ss countdown.
 local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Bundles = require(Shared:WaitForChild("Bundles"))
 local Rewards = require(Shared:WaitForChild("Rewards"))
+local Rarity = require(Shared:WaitForChild("Rarity"))
 local Clock = require(Shared:WaitForChild("Clock"))
+local DailyShop = require(Shared:WaitForChild("DailyShop"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -24,270 +26,313 @@ local FeaturedTab = {}
 
 local timerConn: RBXScriptConnection? = nil
 
--- The rotation: the three bundles in an order that turns with each slot.
-local function rotation(): { Bundles.Bundle }
+-- The rotation's bundle, or the one a VIEW BUNDLE deep link asked for.
+local function featuredBundle(arg: any?): Bundles.Bundle
+	if typeof(arg) == "table" and arg.bundle and Bundles.ById[arg.bundle] then
+		return Bundles.ById[arg.bundle]
+	end
 	local slot = Clock.featuredSlot(ClientState.fakeNow())
-	local list = Bundles.List
-	local out = {}
-	for i = 1, #list do
-		out[i] = list[((i - 1 + slot) % #list) + 1]
-	end
-	return out
+	return Bundles.List[(slot % #Bundles.List) + 1]
 end
 
--- Show the bundle's cosmetics on the mannequin: a mask, a pose, the class idle.
-local function preview(ctx: any, b: Bundles.Bundle)
-	ctx.preview.reset()
-	for _, c in b.contents do
-		if c.kind == "mask" and c.id then
-			ctx.preview.mask(c.id)
-		elseif c.kind == "class" and c.id then
-			ctx.preview.idle(c.id)
-		elseif c.kind == "wrap" and c.id then
-			ctx.preview.wrap(c.id)
-		end
-	end
-	for _, c in b.contents do
-		if c.kind == "emote" and c.id then
-			ctx.preview.pose(c.id)
-			break
-		end
-	end
-end
-
-local function ownedCount(b: Bundles.Bundle, profile: any): number
-	local _, owned = Bundles.priceFor(b, profile)
-	local n = 0
-	for _, o in owned do
-		if o then
-			n += 1
-		end
-	end
-	return n
-end
-
------------------------------------------------------------------- Detail sheet
-local function detail(ctx: any, b: Bundles.Bundle)
+-- A framed countdown pill: `LEAVING IN 62:14:05`.
+local function timerPill(parent: Instance, position: UDim2, anchor: Vector2, color: Color3): TextLabel
 	local S = UI.S
-	local layer = ctx.overlay :: Frame
-	for _, c in layer:GetChildren() do
-		if c:IsA("GuiObject") then
-			c:Destroy()
-		end
-	end
-	preview(ctx, b)
-	local dim = UI.button({
+	local pill = UI.frame({
+		BackgroundColor3 = Fx.shade(color, -0.75),
+		AnchorPoint = anchor,
+		Position = position,
+		Size = UDim2.fromOffset(S(230), S(34)),
+		ZIndex = 8,
+		Parent = parent,
+	})
+	UI.corner(pill, S(17))
+	UI.stroke(pill, color, S(1.5), 0.1)
+	local l = UI.text({
 		Text = "",
-		AutoButtonColor = false,
-		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 1,
+		Font = Theme.Fonts.display,
+		TextSize = S(16),
+		TextColor3 = Fx.shade(color, 0.4),
 		Size = UDim2.fromScale(1, 1),
-		ZIndex = 31,
-		Parent = layer,
+		ZIndex = 9,
+		Parent = pill,
 	})
-	UI.tween(dim, { BackgroundTransparency = 0.45 }, 0.15)
-	local profile = ctx.profile()
-	local price, owned = Bundles.priceFor(b, profile)
-	local list = Bundles.listPrice(b)
-	local color = Color3.fromHex(b.color)
-	local w = math.min(S(560), math.floor(ctx.gui.AbsoluteSize.X * 0.62))
-	local sheet = UI.frame({
-		BackgroundColor3 = Color3.fromHex("15151A"),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.54),
-		Size = UDim2.fromOffset(w, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		Active = true,
-		ZIndex = 32,
-		Parent = layer,
-	})
-	UI.corner(sheet, S(14))
-	UI.stroke(sheet, color, S(2), 0.2)
-	UI.pad(sheet, S(18), S(16), S(18), S(18))
-	UI.list(sheet, Enum.FillDirection.Vertical, S(8))
-	Fx.slideIn(sheet, UDim2.fromOffset(0, S(40)), 0.25)
-	local head = UI.frame({
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(56)),
-		LayoutOrder = 0,
-		ZIndex = 33,
-		Parent = sheet,
-	})
+	return l
+end
+
+local function sectionTitle(parent: Instance, text: string, y: number, color: Color3)
+	local S = UI.S
 	UI.text({
-		Text = b.name,
+		Text = text,
 		Font = Theme.Fonts.display,
 		TextSize = S(28),
-		TextColor3 = Theme.Colors.white,
+		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, -S(50), 0, S(32)),
-		ZIndex = 34,
-		Parent = head,
+		Position = UDim2.fromOffset(0, y),
+		Size = UDim2.new(0.5, 0, 0, S(34)),
+		ZIndex = 7,
+		Parent = parent,
 	})
+end
+
+------------------------------------------------------------------ The bundle bar
+local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
+	local S = UI.S
+	local b = featuredBundle(ctx.arg)
+	local profile = ctx.profile()
+	local price, owned = Bundles.priceFor(b, profile)
+	local color = Color3.fromHex(b.color)
+	local allOwned = true
+	for i in b.contents do
+		if not owned[i] then
+			allOwned = false
+		end
+	end
+	local holder = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, y),
+		Size = UDim2.new(1, 0, 0, h),
+		ZIndex = 6,
+		Parent = parent,
+	})
+	local _g, setGlow = Fx.glow(holder, color, S(14), 6)
+	setGlow(1.3)
+	Fx.pulse(setGlow, function()
+		return holder.Parent ~= nil
+	end, 2.4, 1.0, 1.6)
+	local bar = UI.frame({
+		BackgroundColor3 = Color3.fromHex("141218"),
+		Size = UDim2.fromScale(1, 1),
+		ClipsDescendants = true,
+		ZIndex = 7,
+		Parent = holder,
+	})
+	UI.corner(bar, S(14))
+	UI.stroke(bar, color, S(2), 0.1)
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Fx.shade(color, -0.5), Color3.fromHex("0E0E12")),
+		Rotation = 0,
+		Parent = bar,
+	})
+	Fx.rays(bar, color, 10, math.floor(h * 2.4), 7, 6).Position = UDim2.fromScale(0.12, 0.5)
+	Fx.particles(bar, color, 4, 8)
+	-- Left: the name, the tagline, the discount.
+	local left = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(S(22), S(18)),
+		Size = UDim2.new(0.24, 0, 1, -S(36)),
+		ZIndex = 8,
+		Parent = bar,
+	})
+	local name = UI.text({
+		Text = b.name,
+		Font = Theme.Fonts.display,
+		TextSize = S(32),
+		TextColor3 = Theme.Colors.white,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Size = UDim2.new(1, 0, 0, S(80)),
+		ZIndex = 9,
+		Parent = left,
+	})
+	UI.stroke(name, Color3.new(0, 0, 0), S(2), 0.2)
 	UI.text({
 		Text = b.tagline,
 		Font = Theme.Fonts.body,
-		TextSize = S(11),
-		TextColor3 = color,
+		TextSize = S(13),
+		TextColor3 = Fx.shade(color, 0.45),
+		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(0, S(34)),
-		Size = UDim2.new(1, -S(50), 0, S(16)),
-		ZIndex = 34,
-		Parent = head,
+		Position = UDim2.fromOffset(0, S(84)),
+		Size = UDim2.new(1, 0, 0, S(36)),
+		ZIndex = 9,
+		Parent = left,
 	})
-	local x = UI.button({
-		Text = "X",
+	local off = UI.frame({
+		BackgroundColor3 = Color3.fromHex("FF6A3D"),
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.fromOffset(S(96), S(34)),
+		Rotation = -4,
+		ZIndex = 9,
+		Parent = left,
+	})
+	UI.corner(off, S(6))
+	UI.text({
+		Text = "-" .. Bundles.discountPct(b) .. "%",
 		Font = Theme.Fonts.display,
-		TextSize = S(16),
+		TextSize = S(22),
 		TextColor3 = Theme.Colors.white,
-		BackgroundColor3 = Color3.fromHex("2E3135"),
-		AnchorPoint = Vector2.new(1, 0),
-		Size = UDim2.fromOffset(S(34), S(34)),
-		Position = UDim2.new(1, 0, 0, 0),
-		ZIndex = 34,
-		Parent = head,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 10,
+		Parent = off,
 	})
-	UI.corner(x, S(17))
-	Fx.interactive(x)
-	local function close()
-		ctx.preview.reset()
-		for _, c in layer:GetChildren() do
-			if c:IsA("GuiObject") then
-				c:Destroy()
-			end
-		end
+	-- Middle: every item, joined by +.
+	local contents = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0.26, 0, 0.5, 0),
+		Size = UDim2.new(0.52, 0, 1, -S(28)),
+		ZIndex = 8,
+		Parent = bar,
+	})
+	UI.list(
+		contents,
+		Enum.FillDirection.Horizontal,
+		S(4),
+		Enum.HorizontalAlignment.Center,
+		Enum.VerticalAlignment.Center
+	)
+	local cw = contents.AbsoluteSize.X
+	if cw < 50 then
+		cw = S(520)
 	end
-	x.Activated:Connect(close)
-	dim.Activated:Connect(close)
-
-	local rows: { GuiObject } = {}
+	local n = #b.contents
+	local plusW = S(18)
+	local tileW = math.floor(math.min((cw - plusW * (n - 1) - S(4) * (2 * n)) / n, S(150)))
+	local tileH = math.min(h - S(40), math.floor(tileW * 1.35))
+	local tiles: { GuiObject } = {}
 	for i, c in b.contents do
-		local isOwned = owned[i] == true
 		local r = c :: any
 		local rarity = Rewards.rarity(r)
-		local rc = Fx.rarityColor(rarity)
-		local row = UI.frame({
-			BackgroundColor3 = Color3.fromHex("1E1E25"),
-			Size = UDim2.new(1, 0, 0, S(54)),
-			LayoutOrder = i,
-			ZIndex = 33,
-			Parent = sheet,
+		local rc = Rarity.color(rarity)
+		local tile = UI.frame({
+			BackgroundColor3 = Fx.shade(rc, -0.7),
+			Size = UDim2.fromOffset(tileW, tileH),
+			LayoutOrder = i * 2,
+			ZIndex = 9,
+			Parent = contents,
 		})
-		UI.corner(row, S(8))
-		UI.frame({
-			BackgroundColor3 = rc,
-			Size = UDim2.new(0, S(4), 1, -S(12)),
-			Position = UDim2.fromOffset(S(5), S(6)),
-			ZIndex = 34,
-			Parent = row,
-		})
-		local art = ItemArt.draw(row, r, S(44), 35)
-		art.AnchorPoint = Vector2.new(0, 0.5)
-		art.Position = UDim2.new(0, S(16), 0.5, 0)
-		local name = UI.text({
+		UI.corner(tile, S(10))
+		UI.stroke(tile, rc, S(1.5), if owned[i] then 0.7 else 0.05)
+		UI.new(
+			"UIGradient",
+			{ Color = ColorSequence.new(Fx.shade(rc, -0.35), Fx.shade(rc, -0.85)), Rotation = 90, Parent = tile }
+		)
+		local art = ItemArt.draw(tile, r, math.floor(math.min(tileW, tileH * 0.62) * 0.92), 10)
+		art.AnchorPoint = Vector2.new(0.5, 0.5)
+		art.Position = UDim2.fromScale(0.5, 0.38)
+		Fx.bob(art, S(2), 2.2 + i * 0.2)
+		UI.text({
 			Text = Rewards.name(r),
 			Font = Theme.Fonts.display,
-			TextSize = S(16),
-			TextColor3 = if isOwned then Theme.Colors.grey else Theme.Colors.white,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(S(70), S(6)),
-			Size = UDim2.new(1, -S(170), 0, S(22)),
-			ZIndex = 35,
-			Parent = row,
+			TextSize = S(13),
+			TextColor3 = Theme.Colors.white,
+			TextWrapped = true,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(20)),
+			Size = UDim2.new(1, -S(8), 0, S(30)),
+			ZIndex = 10,
+			Parent = tile,
 		})
 		UI.text({
-			Text = Rewards.kindLabel(r) .. " · " .. string.upper(require(Shared:WaitForChild("Rarity")).name(rarity)),
+			Text = if owned[i] then "OWNED" else Rewards.kindLabel(r),
 			Font = Theme.Fonts.body,
 			TextSize = S(10),
-			TextColor3 = if isOwned then Theme.Colors.grey else rc,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(S(70), S(29)),
-			Size = UDim2.new(1, -S(170), 0, S(16)),
-			ZIndex = 35,
-			Parent = row,
+			TextColor3 = if owned[i] then Theme.Colors.grey else rc,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(5)),
+			Size = UDim2.new(1, 0, 0, S(13)),
+			ZIndex = 10,
+			Parent = tile,
 		})
-		UI.text({
-			Text = if isOwned then "OWNED" else "R$ " .. UI.fmtInt(c.value),
-			Font = Theme.Fonts.display,
-			TextSize = S(13),
-			TextColor3 = if isOwned then Theme.Colors.grey else Theme.Colors.textDim,
-			TextXAlignment = Enum.TextXAlignment.Right,
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -S(12), 0.5, 0),
-			Size = UDim2.fromOffset(S(90), S(20)),
-			ZIndex = 35,
-			Parent = row,
-		})
-		if isOwned then
-			-- Struck through.
-			local strike = UI.frame({
-				BackgroundColor3 = Theme.Colors.grey,
-				AnchorPoint = Vector2.new(0, 0.5),
-				Position = UDim2.new(0, S(66), 0.5, 0),
-				Size = UDim2.new(1, -S(80), 0, S(2)),
-				ZIndex = 36,
-				Parent = row,
-			})
-			local _ = strike
-			row.BackgroundTransparency = 0.5
-			local _2 = name
+		if owned[i] then
+			tile.BackgroundTransparency = 0.5
 		end
-		table.insert(rows, row)
+		table.insert(tiles, tile)
+		if i < n then
+			UI.text({
+				Text = "+",
+				Font = Theme.Fonts.display,
+				TextSize = S(26),
+				TextColor3 = Fx.shade(color, 0.4),
+				Size = UDim2.fromOffset(plusW, S(30)),
+				LayoutOrder = i * 2 + 1,
+				ZIndex = 9,
+				Parent = contents,
+			})
+		end
 	end
-	Fx.cascade(rows, 0.03, 12)
-
-	-- Price line and BUY.
-	local priceRow = UI.frame({
+	if not ctx.quiet then
+		for i, t in tiles do
+			t.Visible = false
+			task.delay(0.1 + i * 0.06, function()
+				if t.Parent then
+					t.Visible = true
+					local sc = UI.new("UIScale", { Scale = 0.5, Parent = t })
+					UI.tween(sc, { Scale = 1 }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+				end
+			end)
+		end
+	end
+	-- Right: worth, price, BUY.
+	local right = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(34)),
-		LayoutOrder = 50,
-		ZIndex = 33,
-		Parent = sheet,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -S(20), 0.5, 0),
+		Size = UDim2.new(0.19, 0, 1, -S(36)),
+		ZIndex = 8,
+		Parent = bar,
 	})
-	UI.text({
-		Text = "R$ " .. UI.fmtInt(list),
+	local worth = UI.text({
+		Text = "WORTH R$ " .. UI.fmtInt(Bundles.listPrice(b)),
 		Font = Theme.Fonts.display,
-		TextSize = S(16),
+		TextSize = S(15),
 		TextColor3 = Theme.Colors.grey,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.fromOffset(S(110), S(34)),
-		ZIndex = 34,
-		Parent = priceRow,
+		Size = UDim2.new(1, 0, 0, S(20)),
+		ZIndex = 9,
+		Parent = right,
 	})
 	UI.frame({
 		BackgroundColor3 = Theme.Colors.grey,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 0, 0.5, 0),
-		Size = UDim2.fromOffset(S(80), S(2)),
-		ZIndex = 35,
-		Parent = priceRow,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(0.8, 0, 0, S(2)),
+		ZIndex = 10,
+		Parent = worth,
 	})
-	local nOwned = ownedCount(b, profile)
+	local priceRow = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, S(26)),
+		Size = UDim2.new(1, 0, 0, S(44)),
+		ZIndex = 9,
+		Parent = right,
+	})
+	UI.list(
+		priceRow,
+		Enum.FillDirection.Horizontal,
+		S(8),
+		Enum.HorizontalAlignment.Center,
+		Enum.VerticalAlignment.Center
+	)
+	Fx.robux(priceRow, S(28), 10)
 	UI.text({
-		Text = if nOwned > 0
-			then string.format("%d OWNED · PRICE REDUCED · -%d%%", nOwned, math.floor((1 - price / list) * 100 + 0.5))
-			else string.format("-%d%% VS BUYING SEPARATELY", Bundles.discountPct(b)),
+		Text = UI.fmtInt(price),
 		Font = Theme.Fonts.display,
-		TextSize = S(13),
-		TextColor3 = Color3.fromHex("FF8A5C"),
-		TextXAlignment = Enum.TextXAlignment.Right,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromScale(1, 0),
-		Size = UDim2.new(1, -S(110), 1, 0),
-		ZIndex = 34,
+		TextSize = S(38),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromOffset(0, S(44)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 2,
+		ZIndex = 10,
 		Parent = priceRow,
 	})
-	local allOwned = nOwned >= #b.contents
 	local buy, handle = Fx.button(
-		sheet,
-		if allOwned then "ALL OWNED" else "BUY · R$ " .. UI.fmtInt(price),
+		right,
+		if allOwned then "OWNED" else "BUY",
 		Color3.fromHex("2FB75A"),
 		Theme.Colors.white,
-		UDim2.new(1, 0, 0, S(52)),
-		34
+		UDim2.new(1, 0, 0, S(56)),
+		10
 	)
-	buy.TextSize = S(22)
-	buy.LayoutOrder = 51
+	buy.AnchorPoint = Vector2.new(0, 1)
+	buy.Position = UDim2.fromScale(0, 1)
+	buy.TextSize = S(26)
 	handle.setEnabled(not allOwned)
+	if not allOwned then
+		Fx.shine(buy, 2)
+	end
 	buy.Activated:Connect(function()
 		if allOwned then
 			return
@@ -295,70 +340,114 @@ local function detail(ctx: any, b: Bundles.Bundle)
 		ctx.buy(b.id, {
 			context = "store FEATURED " .. b.id,
 			onSuccess = function(data: any)
-				close()
 				local results = if typeof(data) == "table" and typeof(data.results) == "table" then data.results else {}
 				Reveal.stack(ctx.overlay, results, b.name .. " UNLOCKED", {
 					onDone = function()
 						ctx.refresh()
 					end,
 				})
-				local gotGold = false
 				for _, res in results do
 					if res.kind == "gold" and not res.skipped then
-						gotGold = true
+						task.delay(0.6, function()
+							ctx.goldBurst(nil)
+						end)
+						break
 					end
-				end
-				if gotGold then
-					task.delay(0.6, function()
-						ctx.goldBurst(nil)
-					end)
 				end
 			end,
 		})
 	end)
+	-- The leaving countdown, top-right of the bar.
+	return timerPill(bar, UDim2.new(1, -S(16), 0, S(12)), Vector2.new(1, 0), Color3.fromHex("FF6A3D"))
 end
 
------------------------------------------------------------------- The tab
+------------------------------------------------------------------ The daily items
+local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
+	local S = UI.S
+	local profile = ctx.profile()
+	local day = Clock.day(ClientState.fakeNow())
+	sectionTitle(parent, "DAILY ITEMS", y, Theme.Colors.text)
+	local pill = timerPill(parent, UDim2.new(1, 0, 0, y), Vector2.new(1, 0), Color3.fromHex("4D9FE8"))
+	local area = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, y + S(46)),
+		Size = UDim2.new(1, 0, 1, -(y + S(46))),
+		ZIndex = 6,
+		Parent = parent,
+	})
+	local aw, ah = area.AbsoluteSize.X, area.AbsoluteSize.Y
+	if aw < 50 then
+		aw, ah = S(1000), S(500)
+	end
+	local cols = 3
+	local gap = S(20)
+	local cardW = math.floor(math.min((aw - gap * (cols - 1)) / cols, S(300)) / UI.scale)
+	local cardH = math.floor(math.min((ah - gap) / 2, S(250)) / UI.scale)
+	local grid = UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 6, Parent = area })
+	UI.new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(S(cardW), S(cardH)),
+		CellPadding = UDim2.fromOffset(gap, gap),
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = grid,
+	})
+	local cards: { GuiObject } = {}
+	for i, e in DailyShop.forDay(day) do
+		local r = e :: any
+		local own = Rewards.owned(profile, r)
+		local rarity = Rewards.rarity(r)
+		local pid = DailyShop.productId(e)
+		local h = Card.new(grid, {
+			size = Vector2.new(cardW, cardH),
+			art = r,
+			artScale = 0.86,
+			wellShare = 0.56,
+			title = Rewards.name(r),
+			sub = string.upper(Rarity.name(rarity)) .. " " .. Rewards.kindLabel(r),
+			price = DailyShop.price(e),
+			owned = own,
+			ribbons = if rarity >= 5 then { "LIMITED" } else {},
+			layoutOrder = i,
+			z = 8,
+			onClick = function()
+				if own then
+					return
+				end
+				ctx.buy(pid, {
+					context = "store DAILY " .. pid,
+					onSuccess = function(data: any)
+						local results = if typeof(data) == "table" and typeof(data.results) == "table"
+							then data.results
+							else {}
+						Reveal.stack(ctx.overlay, results, "NEW ITEM", { mini = true })
+					end,
+				})
+			end,
+		})
+		table.insert(cards, h.holder)
+	end
+	if not ctx.quiet then
+		Fx.cascade(cards, 0.04)
+	end
+	return pill
+end
+
+------------------------------------------------------------------ The section
 function FeaturedTab.render(ctx: any)
 	local S = UI.S
 	local root = ctx.content :: Frame
-	local top = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, S(40)), ZIndex = 6, Parent = root })
-	UI.text({
-		Text = "FEATURED",
-		Font = Theme.Fonts.display,
-		TextSize = S(26),
-		TextColor3 = Theme.Colors.gold,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(0.5, 0, 1, 0),
-		ZIndex = 7,
-		Parent = top,
-	})
-	local timerPill = UI.frame({
-		BackgroundColor3 = Color3.fromHex("2A1A1A"),
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(S(200), S(30)),
-		ZIndex = 7,
-		Parent = top,
-	})
-	UI.corner(timerPill, S(15))
-	UI.stroke(timerPill, Theme.Colors.red, S(1.5), 0.2)
-	local timer = UI.text({
-		Text = "",
-		Font = Theme.Fonts.display,
-		TextSize = S(14),
-		TextColor3 = Color3.fromHex("FF9A8C"),
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 8,
-		Parent = timerPill,
-	})
+	sectionTitle(root, "FEATURED", 0, Theme.Colors.gold)
+	local barH = S(230)
+	local bundleTimer = bundleBar(ctx, root, S(44), barH)
+	local dailyTimer = dailyItems(ctx, root, S(44) + barH + S(28))
 	if timerConn then
 		timerConn:Disconnect()
 	end
 	local lastSlot = Clock.featuredSlot(ClientState.fakeNow())
-	local lastShown = ""
+	local lastDay = Clock.day(ClientState.fakeNow())
+	local lastSec = -1
 	timerConn = RunService.Heartbeat:Connect(function()
-		if not timer.Parent then
+		if not root.Parent then
 			if timerConn then
 				timerConn:Disconnect()
 				timerConn = nil
@@ -366,114 +455,18 @@ function FeaturedTab.render(ctx: any)
 			return
 		end
 		local now = ClientState.fakeNow()
-		local text = "ROTATES IN " .. Clock.span(Clock.featuredEndsAt(now) - now)
-		if text ~= lastShown then
-			lastShown = text
-			timer.Text = text
+		local sec = math.floor(now)
+		if sec == lastSec then
+			return
 		end
-		if Clock.featuredSlot(now) ~= lastSlot then
-			lastSlot = Clock.featuredSlot(now)
+		lastSec = sec
+		bundleTimer.Text = "LEAVING IN " .. Clock.hms(Clock.featuredEndsAt(now) - now)
+		dailyTimer.Text = "LEAVING IN " .. Clock.hms(Clock.nextDay(now) - now)
+		if Clock.featuredSlot(now) ~= lastSlot or Clock.day(now) ~= lastDay then
+			lastSlot, lastDay = Clock.featuredSlot(now), Clock.day(now)
 			ctx.refresh()
 		end
 	end)
-
-	local row = UI.frame({
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(0, S(52)),
-		Size = UDim2.new(1, 0, 1, -S(52)),
-		ZIndex = 6,
-		Parent = root,
-	})
-	UI.list(row, Enum.FillDirection.Horizontal, S(18), Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
-	local aw, ah = row.AbsoluteSize.X, row.AbsoluteSize.Y
-	if aw < 50 then
-		aw, ah = S(760), S(560)
-	end
-	local cardW = math.floor(math.min((aw - S(36)) / 3, S(250)) / UI.scale)
-	local cardH = math.floor(math.min(ah - S(16), S(440)) / UI.scale)
-	local profile = ctx.profile()
-	local cards: { GuiObject } = {}
-	for i, b in rotation() do
-		local price = Bundles.priceFor(b, profile)
-		local nOwned = ownedCount(b, profile)
-		local ribbons = { "LIMITED", "-" .. Bundles.discountPct(b) .. "%" }
-		local handle = Card.new(row, {
-			size = Vector2.new(cardW, cardH),
-			art = b.hero :: any,
-			artScale = 0.7,
-			rarity = math.max(4, Rewards.rarity(b.hero :: any)),
-			title = b.name,
-			sub = b.tagline,
-			price = price,
-			ribbons = ribbons,
-			owned = nOwned >= #b.contents,
-			hero = true,
-			layoutOrder = i,
-			z = 7,
-			onClick = function()
-				detail(ctx, b)
-			end,
-		})
-		-- The contents strip inside the card: every item small, owned ones dimmed; the list price struck.
-		local strip = UI.frame({
-			BackgroundTransparency = 1,
-			Size = UDim2.new(1, 0, 0, S(34)),
-			ZIndex = 9,
-			Parent = handle.content,
-		})
-		UI.list(strip, Enum.FillDirection.Horizontal, S(3), Enum.HorizontalAlignment.Center)
-		local _, ownedList = Bundles.priceFor(b, profile)
-		for j, c in b.contents do
-			local cell = UI.frame({
-				BackgroundColor3 = Fx.shade(Fx.rarityColor(Rewards.rarity(c :: any)), -0.6),
-				Size = UDim2.fromOffset(S(30), S(30)),
-				LayoutOrder = j,
-				ZIndex = 9,
-				Parent = strip,
-			})
-			UI.corner(cell, S(5))
-			local a = ItemArt.draw(cell, c :: any, S(26), 10)
-			a.AnchorPoint = Vector2.new(0.5, 0.5)
-			a.Position = UDim2.fromScale(0.5, 0.5)
-			if ownedList[j] then
-				cell.BackgroundTransparency = 0.7
-				for _, d in a:GetDescendants() do
-					if d:IsA("Frame") then
-						d.BackgroundTransparency = 0.6
-					end
-				end
-			end
-		end
-		UI.text({
-			Text = string.format(
-				"%d ITEMS · WORTH R$ %s%s",
-				#b.contents,
-				UI.fmtInt(Bundles.listPrice(b)),
-				if nOwned > 0 then string.format(" · %d OWNED", nOwned) else ""
-			),
-			Font = Theme.Fonts.body,
-			TextSize = S(10),
-			TextColor3 = if nOwned > 0 then Color3.fromHex("FF8A5C") else Theme.Colors.textDim,
-			Position = UDim2.fromOffset(0, S(38)),
-			Size = UDim2.new(1, 0, 0, S(14)),
-			ZIndex = 9,
-			Parent = handle.content,
-		})
-		handle.body.MouseEnter:Connect(function()
-			preview(ctx, b)
-		end)
-		table.insert(cards, handle.holder)
-	end
-	if not ctx.quiet then
-		Fx.cascade(cards, 0.04)
-	end
-	-- Deep link (VIEW BUNDLE): open that bundle's sheet.
-	local arg = ctx.arg
-	if typeof(arg) == "table" and arg.bundle and Bundles.ById[arg.bundle] and not ctx.quiet then
-		task.delay(0.3, function()
-			detail(ctx, Bundles.ById[arg.bundle])
-		end)
-	end
 end
 
 function FeaturedTab.leave(_ctx: any)
@@ -484,7 +477,6 @@ function FeaturedTab.leave(_ctx: any)
 end
 
 function FeaturedTab.onProfile(ctx: any)
-	-- Prices and owned marks follow the profile; an open detail sheet stays as it is.
 	local overlay = ctx.overlay :: Frame?
 	if overlay and #overlay:GetChildren() > 0 then
 		return
