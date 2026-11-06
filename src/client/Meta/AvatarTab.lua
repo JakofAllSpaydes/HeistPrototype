@@ -58,11 +58,10 @@ local function renderMasks(scene: any, panel: Frame)
 	local perRow = 4
 	local tileW = MetaUI.tileWidth(grid, perRow)
 
-	-- Brief 6: VIP-only cosmetics get their own row.
-	local ownedList, unownedList, vipList = {}, {}, {}
+	local ownedList, unownedList = {}, {}
 	for _, m in Masks.List do
 		local own = profile ~= nil and profile.masks.owned[m.id] == true
-		table.insert(if m.saleType == "VIP" then vipList elseif own then ownedList else unownedList, m)
+		table.insert(if own then ownedList else unownedList, m)
 	end
 	local function tilesFor(list: { Masks.Mask }, header: string, order: number)
 		MetaUI.header(grid, order, header)
@@ -99,9 +98,6 @@ local function renderMasks(scene: any, panel: Frame)
 				scene.refresh()
 			end)
 		end
-	end
-	if #vipList > 0 then
-		tilesFor(vipList, "VIP · MEMBERS ONLY", -10)
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
@@ -166,10 +162,10 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 	local perRow = 4
 	local tileW = MetaUI.tileWidth(grid, perRow)
 
-	local ownedList, unownedList, vipList = {}, {}, {}
+	local ownedList, unownedList = {}, {}
 	for _, e in Emotes.forSlot(slot) do
 		local own = profile ~= nil and profile.emotes ~= nil and profile.emotes.owned[e.id] == true
-		table.insert(if e.saleType == "VIP" then vipList elseif own then ownedList else unownedList, e)
+		table.insert(if own then ownedList else unownedList, e)
 	end
 	local function tilesFor(list: { Emotes.Emote }, header: string, order: number)
 		MetaUI.header(grid, order, header)
@@ -208,9 +204,6 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 				scene.refresh()
 			end)
 		end
-	end
-	if #vipList > 0 then
-		tilesFor(vipList, "VIP · MEMBERS ONLY", -10)
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)

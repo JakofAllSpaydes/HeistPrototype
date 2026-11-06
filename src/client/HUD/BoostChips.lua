@@ -25,6 +25,7 @@ export type Opts = {
 	hub: boolean, -- the hub corner: gift chip and the + tile
 	onPlus: (() -> ())?,
 	onGift: (() -> ())?,
+	onTokens: (() -> ())?, -- hub: the revive token chip (×N instead of a timer) opens the token packs
 }
 
 export type Handle = { frame: Frame, update: (any) -> () }
@@ -175,6 +176,26 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 			end
 		elseif not vipActive(p) and chips.vip then
 			remove("vip", nil)
+		end
+		-- Revive tokens (hub only): a chip with the count where a timer would be.
+		if opts.hub then
+			local n = if p and typeof(p.reviveTokens) == "number" then p.reviveTokens else 0
+			local c = chips.tokens
+			if not c then
+				c = makeChip("tokens", 50, "+", "TOKENS", Color3.fromHex("3FD47A"), opts.onTokens)
+				chips.tokens = c
+			end
+			local tl = c.timer
+			if tl then
+				local text = "×" .. tostring(n)
+				if tl.Text ~= text then
+					if tl.Text ~= "" then
+						UI.punch(c.chip, 1.2, 0.3)
+					end
+					tl.Text = text
+					tl.TextColor3 = if n > 0 then Color3.fromHex("8FE3A1") else Theme.Colors.red
+				end
+			end
 		end
 		-- The VIP daily gift (hub only).
 		if opts.hub then

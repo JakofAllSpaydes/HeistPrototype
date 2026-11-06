@@ -52,6 +52,70 @@ local camera = Workspace.CurrentCamera :: Camera
 local running = false
 local token = 0
 
+-- The scene's own camera and the world dim, held across OPEN AGAIN.
+local sceneUp = false
+local savedMode = "gameplay"
+local camFrom: CFrame? = nil
+local camTo: CFrame? = nil
+local camT0, camSec = 0, 0.8
+
+local function easeCamera(to: CFrame, from: CFrame, sec: number)
+	camFrom, camTo, camT0, camSec = from, to, os.clock(), sec
+end
+
+local function sceneOn()
+	if sceneUp then
+		return
+	end
+	sceneUp = true
+	StoreScene.setHidden(true)
+	Sets.dimWorld(true)
+	savedMode = ClientState.cameraMode
+	ClientState.cameraMode = "crate"
+	RunService:BindToRenderStep("GHSCrateCamera", Enum.RenderPriority.Camera.Value + 4, function()
+		local to = camTo
+		if not to then
+			return
+		end
+		camera.CameraType = Enum.CameraType.Scriptable
+		local s = math.clamp((os.clock() - camT0) / camSec, 0, 1)
+		local k = 1 - (1 - s) ^ 3
+		local cf = (camFrom or to):Lerp(to, k)
+		camera.CFrame = cf
+		camera.Focus = cf
+	end)
+end
+
+local function sceneOff()
+	if not sceneUp then
+		return
+	end
+	sceneUp = false
+	pcall(function()
+		RunService:UnbindFromRenderStep("GHSCrateCamera")
+	end)
+	camFrom, camTo = nil, nil
+	camera.CameraType = Enum.CameraType.Custom
+	ClientState.cameraMode = if savedMode == "crate" then "gameplay" else savedMode
+	Sets.dimWorld(false)
+	StoreScene.setHidden(false)
+end
+
+-- A quick dip to black around a cut.
+local function dip(fade: Frame, mid: () -> ())
+	fade.Visible = true
+	fade.BackgroundTransparency = 1
+	UI.tween(fade, { BackgroundTransparency = 0 }, 0.12)
+	task.wait(0.13)
+	mid()
+	UI.tween(fade, { BackgroundTransparency = 1 }, 0.35)
+	task.delay(0.36, function()
+		if fade.Parent then
+			fade.Visible = false
+		end
+	end)
+end
+
 local function alive(t: number): boolean
 	return running and token == t
 end
@@ -87,8 +151,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	local t = token
 	local S = UI.S
 	local mobile = ClientState.isMobile
-	local ctx = StoreScene.ctx()
-	ctx.hideChrome(true)
+	local top = Fx.topInset()
 
 	local gui = UI.new("ScreenGui", {
 		Name = "CrateScene",
@@ -98,6 +161,14 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = playerGui,
 	}) :: ScreenGui
+	local fade = UI.frame({
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Visible = false,
+		ZIndex = 100,
+		Parent = gui,
+	})
 	local flash = UI.frame({
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		BackgroundTransparency = 1,
@@ -129,7 +200,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(24), 0, S(20)),
+		Position = UDim2.new(1, -S(24), 0, top),
 		Size = UDim2.fromOffset(S(200), S(32)),
 		ZIndex = 10,
 		Parent = gui,
@@ -141,7 +212,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		TextSize = S(18),
 		TextColor3 = Color3.fromHex(crate.trim),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(24), S(24)),
+		Position = UDim2.fromOffset(S(24), top + S(4)),
 		Size = UDim2.fromOffset(S(300), S(24)),
 		ZIndex = 10,
 		Parent = gui,
@@ -175,6 +246,20 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	local rays: Frame? = nil
 	local advance = false
 	local skipped = false
+	local masteryFired: { [number]: boolean } = {}
+	local function fireMastery(i: number)
+		local r = results[i]
+		if masteryFired[i] or not r then
+			return
+		end
+		masteryFired[i] = true
+		local ups = (r :: any).masteryUps
+		if typeof(ups) == "table" then
+			for _, up in ups do
+				ClientState.Juice:Fire("MasteryUp", up)
+			end
+		end
+	end
 	-- Inside a reveal SKIP cuts straight to the summary.
 	local function go(): boolean
 		return alive(t) and not skipped
@@ -228,11 +313,11 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		running = false
 		token += 1
 		clearAll()
-		StoreScene.dip(function()
+		task.spawn(dip, fade, function()
+			sceneOff()
+			StoreScene.refreshTab("CRATES")
+			StoreScene.scrollTo("CRATES", true)
 			gui:Destroy()
-			ctx.hideChrome(false)
-			StoreScene.backToShowroom()
-			StoreScene.select("CRATES", { crate = crateId })
 		end)
 		if onDone then
 			onDone()
@@ -248,9 +333,11 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	end)
 
 	-- Into the room.
-	StoreScene.dip(function()
+	task.spawn(dip, fade, function()
+		sceneOn()
+		camera.CameraType = Enum.CameraType.Scriptable
 		camera.CFrame = set.pullback
-		StoreScene.easeCamera(set.shot, set.pullback, 0.8)
+		easeCamera(set.shot, set.pullback, 0.8)
 	end)
 	UI.sound(Fx.Sounds.whoosh, 0.8, 0.4)
 
@@ -493,11 +580,18 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		if tier >= 4 then
 			Fx.particles(card, color, 8, 10)
 		end
+		-- Mastery tier-ups this item earned play now, after its reveal.
+		task.delay(0.5, function()
+			fireMastery(i)
+		end)
 		return true
 	end
 
 	-- Summary grid (×N, or after SKIP).
 	local function summary()
+		for k = 1, #results do
+			fireMastery(k) -- skipped reveals still pay their tier-ups, in order
+		end
 		clearAll()
 		counter.Text = ""
 		skip.Visible = false

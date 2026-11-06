@@ -94,7 +94,7 @@ function PurchaseSheet.toast(text: string, color: Color3?, sound: boolean?)
 		Name = "Toast",
 		BackgroundColor3 = SHEET_BG,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, S(24)),
+		Position = UDim2.new(0, 0, 0, Fx.topInset()) + UDim2.fromScale(0.5, 0),
 		Size = UDim2.fromOffset(0, S(44)),
 		AutomaticSize = Enum.AutomaticSize.X,
 		ZIndex = 80,
@@ -119,7 +119,7 @@ function PurchaseSheet.toast(text: string, color: Color3?, sound: boolean?)
 	end
 	task.delay(0.05, function()
 		if pill.Parent then
-			Fx.burst(g :: any, UDim2.new(0.5, 0, 0, S(46)), color or GREEN, 14, 79)
+			Fx.burst(g :: any, UDim2.new(0.5, 0, 0, Fx.topInset() + S(22)), color or GREEN, 14, 79)
 		end
 	end)
 	task.delay(1.9, function()
@@ -508,6 +508,9 @@ confirm = function(product: any, opts: Opts)
 		12
 	)
 	btn.TextSize = S(19)
+	if not short then
+		Fx.shine(btn, 2)
+	end
 	btn.LayoutOrder = 4
 	handle.setEnabled(not short)
 	btn.Activated:Connect(function()

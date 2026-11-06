@@ -48,6 +48,7 @@ export type Roll = {
 	gold: number,
 	mastery: number,
 	pity: boolean, -- the pity rule forced this one
+	masteryUps: { any },
 	pityLeft: number, -- opens until the guarantee after this one
 }
 
@@ -78,7 +79,12 @@ function CrateOpen.open(player: Player, crateId: string, count: number, source: 
 		local pool = Crates.itemsAt(crate, rarity)
 		local id = pool[math.random(1, #pool)]
 		profile.cratePity[crateId] = if rarity >= Rarity.Epic then 0 else since + 1
-		local res = Grants.apply(player, { kind = crate.kind, id = id }, { source = "crate " .. crateId })
+		local ups = {}
+		local res = Grants.apply(
+			player,
+			{ kind = crate.kind, id = id },
+			{ source = "crate " .. crateId, deferMastery = ups }
+		)
 		table.insert(out, {
 			kind = crate.kind,
 			id = id,
@@ -90,6 +96,7 @@ function CrateOpen.open(player: Player, crateId: string, count: number, source: 
 			mastery = res.mastery,
 			pity = pity and not forced,
 			pityLeft = Config.CratePity - (profile.cratePity[crateId] or 0),
+			masteryUps = ups, -- the client plays these after this item's reveal
 		})
 	end
 	Profiles.markDirty(player)

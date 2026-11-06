@@ -70,7 +70,15 @@ function Purchases.buy(player: Player, productId: string, args: any): Response
 		return { ok = false, reason = "Not during a run", balance = profile.fakeRobux }
 	end
 	local check = h.check
-	local refusal = if check then check(player, profile, product, args) else nil
+	-- A check that errors is a bug, not a refusal: log it and decline with the error so it shows on the sheet.
+	local checked, refusal = true, nil :: string?
+	if check then
+		checked, refusal = pcall(check, player, profile, product, args)
+	end
+	if not checked then
+		warn(string.format("[GHS Purchase] %s check failed: %s", productId, tostring(refusal)))
+		return { ok = false, reason = "Server error: " .. tostring(refusal), balance = profile.fakeRobux }
+	end
 	if refusal then
 		return { ok = false, reason = refusal, balance = profile.fakeRobux }
 	end

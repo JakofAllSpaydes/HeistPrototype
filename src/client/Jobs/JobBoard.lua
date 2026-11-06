@@ -2,8 +2,8 @@
 -- Brief 6: the JOBS board. Opens from the hub HUD JOBS button, F at MARLOW's corkboard in the yard, or a finished
 -- Job on the summary; the camera pushes onto the corkboard and the HUD hides.
 --   header   JOBS · NEW JOBS IN 6h 12m · BOUNTY RESETS IN 3d
---   dailies  three pinned paper cards, slightly rotated: title, MARLOW's line, progress, the reward row, CLAIM when
---            done, REROLL on one card per day (it tears off and a new one pins in)
+--   dailies  three pinned paper cards filling the board, slightly rotated: title, MARLOW's line, progress, the
+--            reward row, CLAIM when done
 --   bounty   a WANTED poster: title, MARLOW's portrait, progress, the reward row, CLAIM
 --   footer   CLAIM ALL when more than one is done, BACK
 -- States: in progress (paper, pin), complete (a red DONE stamp slams on, the card lifts and glows), claimed (a stub
@@ -147,15 +147,15 @@ local function progressBar(parent: Instance, progress: number, target: number, z
 	local S = UI.S
 	local row = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(20)),
+		Size = UDim2.new(1, 0, 0, S(26)),
 		LayoutOrder = order,
 		ZIndex = z,
 		Parent = parent,
 	})
 	local bar = UI.frame({
 		BackgroundColor3 = Color3.fromHex("CDBF9E"),
-		Size = UDim2.new(1, -S(78), 0, S(12)),
-		Position = UDim2.fromOffset(0, S(4)),
+		Size = UDim2.new(1, -S(100), 0, S(16)),
+		Position = UDim2.fromOffset(0, S(5)),
 		ZIndex = z,
 		Parent = row,
 	})
@@ -171,12 +171,12 @@ local function progressBar(parent: Instance, progress: number, target: number, z
 	UI.text({
 		Text = string.format("%s / %s", UI.fmtInt(progress), UI.fmtInt(target)),
 		Font = Theme.Fonts.display,
-		TextSize = S(13),
+		TextSize = S(18),
 		TextColor3 = INK,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.fromScale(1, 0),
-		Size = UDim2.fromOffset(S(74), S(20)),
+		Size = UDim2.fromOffset(S(96), S(26)),
 		ZIndex = z,
 		Parent = row,
 	})
@@ -194,8 +194,8 @@ local function claimWith(res: any, title: string)
 	end
 end
 
--- One daily card. `slot` 1..3; `canReroll` while today's reroll is unused.
-local function dailyCard(parent: Frame, slot: number, e: any, canReroll: boolean, order: number)
+-- One daily card, a third of the board's width and its full height.
+local function dailyCard(parent: Frame, slot: number, e: any, order: number)
 	local S = UI.S
 	local def = JobPool.ById[e.id]
 	if not def then
@@ -206,7 +206,7 @@ local function dailyCard(parent: Frame, slot: number, e: any, canReroll: boolean
 	local claimed = e.claimed == true
 	local holder = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(S(230), S(250)),
+		Size = UDim2.new(1 / 3, -S(16), 1, 0),
 		LayoutOrder = order,
 		ZIndex = 5,
 		Parent = parent,
@@ -216,35 +216,50 @@ local function dailyCard(parent: Frame, slot: number, e: any, canReroll: boolean
 		BackgroundColor3 = PAPER,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.new(1, 0, if claimed then 0 else 1, if claimed then S(84) else 0),
-		Rotation = ({ -3, 2, -1.5 })[slot] or 0,
+		Size = if claimed then UDim2.new(1, 0, 0, S(130)) else UDim2.fromScale(1, 1),
+		Rotation = ({ -2, 1.5, -1 })[slot] or 0,
 		ZIndex = 6,
 		Parent = holder,
 	})
-	UI.corner(card, S(4))
-	UI.stroke(card, Color3.fromHex("B8A57E"), S(1), 0.3)
-	-- A soft shadow under the paper.
+	UI.corner(card, S(6))
+	UI.stroke(card, Color3.fromHex("B8A57E"), S(1.5), 0.2)
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Color3.fromHex("FBF3DE"), Color3.fromHex("E6D7B2")),
+		Rotation = 90,
+		Parent = card,
+	})
 	local shadow = UI.frame({
 		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 0.7,
-		Position = UDim2.fromOffset(S(5), S(6)),
+		BackgroundTransparency = 0.65,
+		Position = UDim2.fromOffset(S(7), S(9)),
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 5,
 		Parent = card,
 	})
-	UI.corner(shadow, S(4))
+	UI.corner(shadow, S(6))
 	pin(card, 9)
 	local inner = UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 7, Parent = card })
-	UI.pad(inner, S(14), S(20), S(14), S(12))
-	UI.list(inner, Enum.FillDirection.Vertical, S(6))
+	UI.pad(inner, S(22), S(30), S(22), S(20))
+	UI.list(inner, Enum.FillDirection.Vertical, S(12))
+	UI.text({
+		Text = "DAILY JOB",
+		Font = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = Color3.fromHex("9A6A1A"),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Size = UDim2.new(1, 0, 0, S(14)),
+		LayoutOrder = 0,
+		ZIndex = 8,
+		Parent = inner,
+	})
 	UI.text({
 		Text = def.title,
 		Font = Theme.Fonts.display,
-		TextSize = S(19),
+		TextSize = S(30),
 		TextColor3 = INK,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(44)),
+		Size = UDim2.new(1, 0, 0, S(70)),
 		LayoutOrder = 1,
 		ZIndex = 8,
 		Parent = inner,
@@ -253,42 +268,31 @@ local function dailyCard(parent: Frame, slot: number, e: any, canReroll: boolean
 		local c = UI.frame({
 			BackgroundColor3 = Color3.fromHex("3FA85C"),
 			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -S(12), 0.6, 0),
-			Size = UDim2.fromOffset(S(26), S(26)),
+			Position = UDim2.new(1, -S(16), 0.62, 0),
+			Size = UDim2.fromOffset(S(34), S(34)),
 			ZIndex = 9,
 			Parent = card,
 		})
-		UI.corner(c, S(13))
+		UI.corner(c, S(17))
 		UI.text({
 			Text = "✓",
 			Font = Theme.Fonts.body,
-			TextSize = S(18),
+			TextSize = S(24),
 			TextColor3 = Theme.Colors.white,
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 10,
 			Parent = c,
-		})
-		UI.text({
-			Text = "CLAIMED",
-			Font = Theme.Fonts.display,
-			TextSize = S(12),
-			TextColor3 = Color3.fromHex("3FA85C"),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Size = UDim2.new(1, 0, 0, S(14)),
-			LayoutOrder = 2,
-			ZIndex = 8,
-			Parent = inner,
 		})
 		return
 	end
 	UI.text({
 		Text = '"' .. def.flavor .. '" — MARLOW',
 		Font = Enum.Font.GothamMedium,
-		TextSize = S(11),
+		TextSize = S(15),
 		TextColor3 = Color3.fromHex("6A5A40"),
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(30)),
+		Size = UDim2.new(1, 0, 0, S(44)),
 		LayoutOrder = 2,
 		ZIndex = 8,
 		Parent = inner,
@@ -297,25 +301,23 @@ local function dailyCard(parent: Frame, slot: number, e: any, canReroll: boolean
 	UI.text({
 		Text = rewardText(false),
 		Font = Theme.Fonts.display,
-		TextSize = S(11),
+		TextSize = S(15),
 		TextColor3 = Color3.fromHex("9A6A1A"),
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(28)),
+		Size = UDim2.new(1, 0, 0, S(40)),
 		LayoutOrder = 4,
 		ZIndex = 8,
 		Parent = inner,
 	})
-	local actions = UI.frame({
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(38)),
-		LayoutOrder = 5,
-		ZIndex = 8,
-		Parent = inner,
-	})
-	UI.list(actions, Enum.FillDirection.Horizontal, S(6))
 	if done then
-		local b, _ = Fx.button(actions, "CLAIM", Color3.fromHex("2FB75A"), Theme.Colors.white, UDim2.new(1, 0, 1, 0), 9)
+		-- CLAIM along the bottom of the paper.
+		local b, _ =
+			Fx.button(card, "CLAIM", Color3.fromHex("2FB75A"), Theme.Colors.white, UDim2.new(1, -S(44), 0, S(58)), 9)
+		b.AnchorPoint = Vector2.new(0.5, 1)
+		b.Position = UDim2.new(0.5, 0, 1, -S(20))
+		b.TextSize = S(26)
+		Fx.particles(b, Color3.fromHex("FFE08A"), 4, 11)
 		b.Activated:Connect(function()
 			claimWith(shop("jobClaim", { key = "d" .. slot }), def.title)
 		end)
@@ -324,37 +326,22 @@ local function dailyCard(parent: Frame, slot: number, e: any, canReroll: boolean
 		seenDone[e.id] = true
 		stamp(card, "DONE", 12, first)
 		local sc = UI.new("UIScale", { Scale = 1, Parent = holder })
-		UI.tween(sc, { Scale = 1.04 }, 0.3, Enum.EasingStyle.Back)
+		UI.tween(sc, { Scale = 1.03 }, 0.3, Enum.EasingStyle.Back)
 		local _g, setGlow = Fx.glow(card, Color3.fromHex("FFE08A"), S(6), 4)
 		setGlow(1.2)
-	elseif canReroll then
-		local r, _ = Fx.button(actions, "REROLL", Color3.fromHex("5A4A30"), PAPER, UDim2.new(1, 0, 1, 0), 9)
-		r.TextSize = S(15)
-		r.Activated:Connect(function()
-			-- Tear-off: the card swings off the pin and drops; the new one pins in.
-			UI.sound(Fx.Sounds.tear, 0.8, 0.6)
-			UI.tween(
-				card,
-				{ Rotation = 28, Position = UDim2.new(0.5, S(40), 0, S(260)) },
-				0.4,
-				Enum.EasingStyle.Quad,
-				Enum.EasingDirection.In
-			)
-			task.delay(0.42, function()
-				local res = shop("jobReroll", { slot = slot })
-				if not res.ok then
-					PurchaseSheet.toast(tostring(res.reason), Theme.Colors.malus, false)
-				end
-				render()
-				UI.sound(Fx.Sounds.thump, 1.4, 0.4)
-			end)
-		end)
-	end
-	if not seenDone[e.id] or not done then
-		-- New cards drop in onto their pin.
-		local to = card.Position
-		card.Position = to - UDim2.fromOffset(0, S(30))
-		UI.tween(card, { Position = to }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	else
+		-- Still in progress: what is left, along the bottom.
+		UI.text({
+			Text = string.format("%s TO GO", UI.fmtInt(def.target - progress)),
+			Font = Theme.Fonts.display,
+			TextSize = S(18),
+			TextColor3 = Color3.fromHex("8A7A5A"),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(26)),
+			Size = UDim2.new(1, -S(40), 0, S(24)),
+			ZIndex = 8,
+			Parent = card,
+		})
 	end
 end
 
@@ -560,15 +547,14 @@ render = function()
 	local dailies = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, S(72)),
-		Size = UDim2.new(if mobile then 0.66 else 0.68, 0, 1, -S(140)),
+		Size = UDim2.new(if mobile then 0.66 else 0.69, 0, 1, -S(150)),
 		ZIndex = 5,
 		Parent = b,
 	})
-	UI.list(dailies, Enum.FillDirection.Horizontal, S(18), Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
-	local canReroll = (tonumber(jobs.rerollUsed) or 0) < Config.JobRerollsPerDay
+	UI.list(dailies, Enum.FillDirection.Horizontal, S(22), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top)
 	local doneCount = 0
 	for i, e in jobs.daily do
-		dailyCard(dailies, i, e, canReroll, i)
+		dailyCard(dailies, i, e, i)
 		local def = JobPool.ById[e.id]
 		if def and (tonumber(e.progress) or 0) >= def.target and not e.claimed then
 			doneCount += 1
@@ -674,8 +660,8 @@ function JobBoard.open()
 	})
 	body = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(30), S(20)),
-		Size = UDim2.new(1, -S(60), 1, -S(40)),
+		Position = UDim2.fromOffset(S(30), Fx.topInset()),
+		Size = UDim2.new(1, -S(60), 1, -Fx.topInset() - S(16)),
 		ZIndex = 5,
 		Parent = g,
 	})

@@ -93,8 +93,8 @@ local function detail(ctx: any, b: Bundles.Bundle)
 	local w = math.min(S(560), math.floor(ctx.gui.AbsoluteSize.X * 0.62))
 	local sheet = UI.frame({
 		BackgroundColor3 = Color3.fromHex("15151A"),
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -S(30), 0.54, 0),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.54),
 		Size = UDim2.fromOffset(w, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Active = true,
@@ -105,7 +105,7 @@ local function detail(ctx: any, b: Bundles.Bundle)
 	UI.stroke(sheet, color, S(2), 0.2)
 	UI.pad(sheet, S(18), S(16), S(18), S(18))
 	UI.list(sheet, Enum.FillDirection.Vertical, S(8))
-	Fx.slideIn(sheet, UDim2.fromOffset(S(80), 0), 0.25)
+	Fx.slideIn(sheet, UDim2.fromOffset(0, S(40)), 0.25)
 	local head = UI.frame({
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, S(56)),

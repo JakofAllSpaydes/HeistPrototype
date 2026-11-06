@@ -39,6 +39,7 @@ export type Opts = {
 	source: string, -- for the log ("bundle_starter", "pass L7", "crate arms")
 	owned: string?, -- "skip" (bundles) | "convert" (default)
 	wrapOn: string?, -- a wrap goes straight onto this weapon when it is owned
+	deferMastery: { any }?, -- mastery tier-up cards collect here instead of firing (crates play them after the reveal)
 }
 
 local Grants = {}
@@ -105,9 +106,9 @@ function Grants.apply(player: Player, r: Rewards.Reward, opts: Opts): Result
 				res.mastery = Config.DupeMasteryByTier[tier] or 0
 				profile.gold += res.gold
 				if r.kind == "weapon" and r.id then
-					Mastery.grant(player, "weapon", r.id, res.mastery)
+					Mastery.grant(player, "weapon", r.id, res.mastery, opts.deferMastery)
 				else
-					Mastery.grant(player, "class", profile.classes.equipped, res.mastery)
+					Mastery.grant(player, "class", profile.classes.equipped, res.mastery, opts.deferMastery)
 				end
 			end
 		else

@@ -219,7 +219,7 @@ Purchases.register("pass", {
 })
 
 Purchases.register("pass_skip", {
-	check = function(player, profile)
+	check = function(player, profile, product)
 		Pass.normalize(player)
 		if profile.pass.level >= Config.PassLevels then
 			return "Already at the last level"

@@ -76,7 +76,9 @@ local function applyClassTier(state: PlayerState.State, classId: string, tier: n
 end
 
 -- Add XP to one weapon or class: the profile at once, the run tally, and the tier-up card for every tier crossed.
-local function add(player: Player, kind: string, id: string, xp: number, countForRun: boolean)
+-- `deferred` (brief 6 crates): the tier-up cards are collected there instead of fired, so the client can play them
+-- after the reveal that earned them.
+local function add(player: Player, kind: string, id: string, xp: number, countForRun: boolean, deferred: { any }?)
 	local profile = Profiles.get(player)
 	if not profile or xp <= 0 then
 		return
@@ -108,7 +110,7 @@ local function add(player: Player, kind: string, id: string, xp: number, countFo
 		end
 		local text = string.format("%s MASTERY %s · %s", nameOf(kind, id), MasteryCopy.Roman[t] or "", rewardName)
 		table.insert(g.tierUps, { kind = kind, id = id, tier = t, text = text })
-		Remotes.Juice:FireClient(player, "MasteryUp", {
+		local payload = {
 			kind = kind,
 			id = id,
 			name = nameOf(kind, id),
@@ -118,7 +120,12 @@ local function add(player: Player, kind: string, id: string, xp: number, countFo
 			reward = rewardName,
 			line = rewardLine,
 			wrap = if kind == "weapon" then Config.MasteryWrapIds[t] else nil,
-		})
+		}
+		if deferred then
+			table.insert(deferred, payload)
+		else
+			Remotes.Juice:FireClient(player, "MasteryUp", payload)
+		end
 		Log.event("Mastery", "%s: %s", player.Name, text)
 		if World.inRun() then
 			AllyCallout.send(player, "masteryUp", nameOf(kind, id), MasteryCopy.Roman[t] or tostring(t))
@@ -234,8 +241,8 @@ function Mastery.award(player: Player): Award
 end
 
 -- Brief 6: mastery XP from a grant (crate dupes, the pass): straight into the profile, tier-ups pop as usual.
-function Mastery.grant(player: Player, kind: string, id: string, xp: number)
-	add(player, kind, id, xp, false)
+function Mastery.grant(player: Player, kind: string, id: string, xp: number, deferred: { any }?)
+	add(player, kind, id, xp, false, deferred)
 end
 
 -- Debug: +amount mastery on the held (or stowed) gun and the equipped class. Tier-ups pop and apply like real ones.

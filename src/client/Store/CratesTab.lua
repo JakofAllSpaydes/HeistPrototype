@@ -53,7 +53,7 @@ local function oddsPanel(ctx: any, crate: Crates.Crate)
 	local panel = UI.frame({
 		BackgroundColor3 = Color3.fromHex("15151A"),
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.62, 0.55),
+		Position = UDim2.fromScale(0.5, 0.55),
 		Size = UDim2.fromOffset(S(520), 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Active = true,
@@ -386,6 +386,9 @@ function CratesTab.render(ctx: any)
 				ZIndex = 12,
 				Parent = b,
 			})
+			if n == 10 then
+				Fx.shine(b)
+			end
 			b.Activated:Connect(function()
 				openWith(ctx, crate, n)
 			end)

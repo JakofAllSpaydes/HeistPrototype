@@ -339,8 +339,10 @@ export type Interactive = {
 	setGlow: ((number) -> ())?,
 }
 
--- Hover lifts 4px and brightens the glow, press scales 0.96 and pulses, disabled dims to 40%. `lift` is the frame
--- that moves (defaults to the button itself); SFX on hover and press; haptic on press (mobile).
+-- Hover lifts 4px and brightens the glow, press scales 0.96 and pulses, disabled dims to 40%. `lift` is a frame that
+-- moves inside its holder (a card's inner Lift frame, whose rest position never changes); a plain button never
+-- moves (its Position belongs to whoever placed it) and grows 4% on hover instead. SFX on hover and press; haptic on
+-- press (mobile).
 function Fx.interactive(
 	btn: GuiButton,
 	opts: { lift: GuiObject?, glow: ((number) -> ())?, silent: boolean? }?
@@ -348,6 +350,7 @@ function Fx.interactive(
 	local S = UI.S
 	local o = opts or {}
 	local lift = o.lift or btn
+	local moves = o.lift ~= nil and o.lift ~= btn
 	local base = lift.Position
 	-- The press scale lives on the button (one UIScale per object: the lift frame may carry the cascade's).
 	local scale = btn:FindFirstChild("PressScale") :: UIScale?
@@ -362,7 +365,11 @@ function Fx.interactive(
 			return
 		end
 		hovering = true
-		UI.tween(lift, { Position = base - UDim2.fromOffset(0, S(4)) }, 0.12)
+		if moves then
+			UI.tween(lift, { Position = base - UDim2.fromOffset(0, S(4)) }, 0.12)
+		else
+			UI.tween(sc, { Scale = 1.04 }, 0.12)
+		end
 		if o.glow then
 			o.glow(1.6)
 		end
@@ -372,7 +379,11 @@ function Fx.interactive(
 	end)
 	btn.MouseLeave:Connect(function()
 		hovering = false
-		UI.tween(lift, { Position = base }, 0.12)
+		if moves then
+			UI.tween(lift, { Position = base }, 0.12)
+		else
+			UI.tween(sc, { Scale = 1 }, 0.12)
+		end
 		if o.glow then
 			o.glow(1)
 		end
@@ -384,7 +395,7 @@ function Fx.interactive(
 		UI.tween(sc, { Scale = 0.96 }, 0.06)
 	end)
 	btn.MouseButton1Up:Connect(function()
-		UI.tween(sc, { Scale = 1 }, 0.18, Enum.EasingStyle.Back)
+		UI.tween(sc, { Scale = if hovering and not moves then 1.04 else 1 }, 0.18, Enum.EasingStyle.Back)
 	end)
 	btn.Activated:Connect(function()
 		if not enabled then
@@ -393,7 +404,7 @@ function Fx.interactive(
 			return
 		end
 		sc.Scale = 0.96
-		UI.tween(sc, { Scale = 1 }, 0.25, Enum.EasingStyle.Back)
+		UI.tween(sc, { Scale = if hovering and not moves then 1.04 else 1 }, 0.25, Enum.EasingStyle.Back)
 		if o.glow then
 			o.glow(2)
 			task.delay(0.15, function()
@@ -481,6 +492,46 @@ function Fx.robux(parent: Instance, height: number, z: number?): Frame
 		Parent = plate,
 	})
 	return plate
+end
+
+-- The Roblox top bar (menu, chat, voice buttons) owns the top strip of the screen: every premium screen keeps out of
+-- it. Returns the px to start below (the bar's height plus a margin).
+function Fx.topInset(): number
+	local GuiService = game:GetService("GuiService")
+	local h = 0
+	pcall(function()
+		h = math.max(h, (GuiService :: any).TopbarInset.Max.Y)
+	end)
+	pcall(function()
+		h = math.max(h, GuiService:GetGuiInset().Y)
+	end)
+	if h <= 0 then
+		h = 58
+	end
+	return h + 8
+end
+
+-- A light sweep across a call-to-action every `period` seconds (BUY, OPEN 10, SUBSCRIBE, CLAIM).
+function Fx.shine(btn: GuiObject, period: number?)
+	btn.ClipsDescendants = true
+	local shine = UI.frame({
+		Name = "Shine",
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.72,
+		Position = UDim2.new(-0.4, 0, -0.2, 0),
+		Size = UDim2.new(0.18, 0, 1.4, 0),
+		Rotation = 18,
+		ZIndex = (btn.ZIndex or 1) + 3,
+		Parent = btn,
+	})
+	task.spawn(function()
+		task.wait(math.random() * 0.8)
+		while shine.Parent do
+			shine.Position = UDim2.new(-0.4, 0, -0.2, 0)
+			UI.tween(shine, { Position = UDim2.new(1.3, 0, -0.2, 0) }, 0.55, Enum.EasingStyle.Quad)
+			task.wait(period or 2.4)
+		end
+	end)
 end
 
 function Fx.fmtRobux(n: number): string

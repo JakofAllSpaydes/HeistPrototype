@@ -4,8 +4,7 @@
 -- Three dailies are drawn per fake UTC day from JobPool.Daily with no two of the same kind (a class Job only for a
 -- class the player owns), one bounty per fake UTC week (Monday). Progress comes from the run event bus
 -- (RunEvents) and persists across runs until the reset; a quarter crossed in a run toasts. CLAIM pays
--- DailyXp / DailyGold / DailyPassXp (the bounty WeeklyXp / WeeklyGold / WeeklyPassXp / WeeklyTokens); one free
--- REROLL per day. On the first hub entry after a reset MARLOW announces the new board.
+-- DailyXp / DailyGold / DailyPassXp (the bounty WeeklyXp / WeeklyGold / WeeklyPassXp / WeeklyTokens). On the first hub entry after a reset MARLOW announces the new board.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -229,36 +228,6 @@ Shop.register("jobClaimAll", function(player, profile)
 		return { ok = false, reason = "Nothing to claim" }
 	end
 	return { ok = true, data = { results = all } }
-end)
-
--- One free REROLL per day on one daily: a new Job of a kind the board does not have.
-Shop.register("jobReroll", function(player, profile, args)
-	Jobs.normalize(player)
-	local j = profile.jobs
-	if j.rerollUsed >= Config.JobRerollsPerDay then
-		return { ok = false, reason = "Reroll used today" }
-	end
-	local slot = if typeof(args) == "table" then math.floor(tonumber(args.slot) or 0) else 0
-	local e = j.daily[slot]
-	if not e or e.claimed then
-		return { ok = false, reason = "Cannot reroll that card" }
-	end
-	local exclude: { [string]: boolean } = {}
-	for i, other in j.daily do
-		local def = JobPool.ById[other.id]
-		if def then
-			exclude[def.kind] = true
-		end
-		local _ = i
-	end
-	local fresh = draw(profile, JobPool.Daily, 1, exclude)
-	if #fresh == 0 then
-		return { ok = false, reason = "No other Jobs today" }
-	end
-	j.daily[slot] = fresh[1]
-	j.rerollUsed += 1
-	Log.event("Jobs", "%s rerolled %s -> %s", player.Name, e.id, fresh[1].id)
-	return { ok = true, data = { slot = slot, id = fresh[1].id } }
 end)
 
 ------------------------------------------------------------------ Runs and the hub

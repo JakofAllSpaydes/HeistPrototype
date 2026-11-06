@@ -195,6 +195,8 @@ end
 
 ------------------------------------------------------------------ UI pieces
 local render: () -> ()
+local renderTrack: (any) -> ()
+local renderSelected: (any) -> ()
 
 local function clearLayer(name: string): Frame
 	local f = layers[name]
@@ -574,7 +576,7 @@ local function renderSell(p: any)
 end
 
 -- Right of the 3D preview: the selected reward's card.
-local function renderSelected(p: any)
+renderSelected = function(p: any)
 	local S = UI.S
 	local f = clearLayer("selected")
 	local s = seasonNow(p)
@@ -688,8 +690,164 @@ local function renderSelected(p: any)
 	end
 end
 
--- The bottom track: diamonds, three cells per level, paging, CLAIM ALL.
-local function renderTrack(p: any)
+-- The bottom track (Round 17b): one row of level cards. Each level is one card: its FREE reward large on top, the
+-- PREMIUM and PREMIUM+ rewards side by side under it, so a free player sees what each upgrade adds at a glance.
+-- Diamonds above the cards are lit through the current level; BACK / NEXT page by Config.PassPageLevels.
+local LANE_COLOR =
+	{ free = Color3.fromHex("9BA0A8"), p1 = ORANGE, p2 = Color3.fromHex("B46CFF") } :: { [string]: Color3 }
+
+local function slotButton(
+	parent: Instance,
+	p: any,
+	s: PassSeason.Season,
+	level: number,
+	lane: string,
+	pos: UDim2,
+	size: UDim2,
+	artPx: number,
+	z: number
+)
+	local S = UI.S
+	local cell = PassSeason.cell(s, level, lane)
+	if not cell then
+		return
+	end
+	local rarity = Rewards.rarity(cell)
+	local rc = Rarity.color(rarity)
+	local isClaimed = claimed(p, level, lane)
+	local owned = laneOwned(p, lane)
+	local lit = reached(p, level)
+	local can = cellClaimable(p, level, lane)
+	local selected = level == selLevel and lane == selLane
+	local b = UI.button({
+		BackgroundColor3 = Color3.fromHex("16161C"),
+		Position = pos,
+		Size = size,
+		ClipsDescendants = true,
+		ZIndex = z,
+		Parent = parent,
+	})
+	UI.corner(b, S(8))
+	local stroke = UI.stroke(
+		b,
+		if selected then Theme.Colors.white else rc,
+		S(if selected then 2.5 else 1),
+		if selected then 0 else 0.5
+	)
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Fx.shade(rc, -0.45), Color3.fromHex("111116")),
+		Rotation = 90,
+		Parent = b,
+	})
+	-- The lane color along the bottom.
+	UI.frame({
+		BackgroundColor3 = LANE_COLOR[lane],
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, S(3)),
+		ZIndex = z + 1,
+		Parent = b,
+	})
+	if rarity >= 5 then
+		Fx.rays(b, rc, 6, artPx * 2, z, 10)
+	end
+	local art = ItemArt.draw(b, cell, artPx, z + 2)
+	art.AnchorPoint = Vector2.new(0.5, 0.5)
+	art.Position = UDim2.new(0.5, 0, 0.46, 0)
+	local amount = if cell.kind == "gold"
+			or cell.kind == "tokens"
+			or cell.kind == "mastery"
+		then UI.fmtInt(cell.amount or 0)
+		elseif cell.kind == "crate" then "×" .. (cell.amount or 1)
+		elseif cell.kind == "boost" then Rewards.duration(cell.sec or 0)
+		else nil
+	if amount then
+		local a = UI.text({
+			Text = amount,
+			Font = Theme.Fonts.display,
+			TextSize = if lane == "free" then S(13) else S(11),
+			TextColor3 = Theme.Colors.white,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -S(5), 1, -S(5)),
+			Size = UDim2.fromOffset(S(60), S(14)),
+			ZIndex = z + 4,
+			Parent = b,
+		})
+		UI.stroke(a, Color3.new(0, 0, 0), S(1.5), 0.2)
+	end
+	if lane ~= "free" then
+		local tag = UI.text({
+			Text = if lane == "p1" then "P" else "P+",
+			Font = Theme.Fonts.display,
+			TextSize = S(10),
+			TextColor3 = LANE_COLOR[lane],
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.fromOffset(S(5), S(3)),
+			Size = UDim2.fromOffset(S(24), S(12)),
+			ZIndex = z + 4,
+			Parent = b,
+		})
+		UI.stroke(tag, Color3.new(0, 0, 0), S(1), 0.3)
+	end
+	if isClaimed then
+		check(b, S(if lane == "free" then 18 else 14), z + 5)
+		for _, d in art:GetDescendants() do
+			if d:IsA("Frame") then
+				d.BackgroundTransparency = math.max(d.BackgroundTransparency, 0.5)
+			end
+		end
+	elseif not owned then
+		local veil = UI.frame({
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.5,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = z + 5,
+			Parent = b,
+		})
+		padlock(veil, S(if lane == "free" then 20 else 15), z + 6)
+	elseif not lit then
+		for _, d in art:GetDescendants() do
+			if d:IsA("Frame") then
+				d.BackgroundTransparency = math.max(d.BackgroundTransparency, 0.35)
+			end
+		end
+	end
+	if can then
+		-- Claimable: the edge breathes green and a spark or two rises.
+		Fx.particles(b, Color3.fromHex("8FE3A1"), 2, z + 4)
+		task.spawn(function()
+			local t0 = os.clock()
+			while b.Parent do
+				local k = (math.sin((os.clock() - t0) * 5) + 1) / 2
+				stroke.Color = Color3.fromHex("3FD47A"):Lerp(Theme.Colors.white, k * 0.5)
+				stroke.Thickness = S(1.5 + k * 1.5)
+				stroke.Transparency = 0
+				task.wait(0.04)
+			end
+		end)
+	end
+	local sc = UI.new("UIScale", { Parent = b })
+	b.MouseEnter:Connect(function()
+		UI.tween(sc, { Scale = 1.05 }, 0.1)
+		UI.sound(Fx.Sounds.hover, 1.8, 0.08)
+	end)
+	b.MouseLeave:Connect(function()
+		UI.tween(sc, { Scale = 1 }, 0.1)
+	end)
+	b.Activated:Connect(function()
+		selLevel, selLane = level, lane
+		UI.sound(Fx.Sounds.press, 1.3, 0.25)
+		if can then
+			claimResults(shop("passClaim", { level = level, lane = lane }), "LEVEL " .. level)
+		else
+			renderSelected(p)
+			renderTrack(p)
+		end
+	end)
+end
+
+renderTrack = function(p: any)
 	local S = UI.S
 	local f = clearLayer("track")
 	local s = seasonNow(p)
@@ -698,44 +856,23 @@ local function renderTrack(p: any)
 	page = math.clamp(page, 1, math.max(1, Config.PassLevels - per + 1))
 	local bg = UI.frame({
 		BackgroundColor3 = Color3.fromHex("0C0C10"),
-		BackgroundTransparency = 0.1,
+		BackgroundTransparency = 0.12,
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 5,
 		Parent = f,
 	})
 	UI.corner(bg, S(14))
 	UI.stroke(bg, Color3.new(1, 1, 1), S(1), 0.86)
-	local labelW = S(84)
-	local arrowW = S(40)
+	local arrowW = S(44)
 	local markerH = S(34)
-	local fw = f.AbsoluteSize.X
-	local fh = f.AbsoluteSize.Y
+	local fw, fh = f.AbsoluteSize.X, f.AbsoluteSize.Y
 	if fw < 50 then
-		fw, fh = S(1100), S(300)
+		fw, fh = S(1100), S(214)
 	end
-	local gridW = fw - labelW - arrowW * 2 - S(24)
+	local gridW = fw - arrowW * 2 - S(28)
 	local colW = math.floor(gridW / per)
-	local cellH = math.floor((fh - markerH - S(24)) / 3)
-	local gridX = labelW + arrowW + S(12)
-	-- Lane labels on the left.
-	for li, lane in PassSeason.Lanes do
-		local owned = laneOwned(p, lane)
-		UI.text({
-			Text = PassSeason.LaneName[lane],
-			Font = Theme.Fonts.display,
-			TextSize = S(13),
-			TextColor3 = if lane == "free"
-				then Theme.Colors.text
-				elseif lane == "p1" then ORANGE
-				else Color3.fromHex("C18CFF"),
-			TextTransparency = if owned then 0 else 0.4,
-			TextXAlignment = Enum.TextXAlignment.Right,
-			Position = UDim2.fromOffset(S(6), markerH + S(10) + (li - 1) * cellH),
-			Size = UDim2.fromOffset(labelW - S(8), cellH),
-			ZIndex = 6,
-			Parent = bg,
-		})
-	end
+	local cardH = fh - markerH - S(16)
+	local gridX = arrowW + S(14)
 	-- BACK / NEXT.
 	local function arrow(side: number)
 		local b, h = Fx.button(
@@ -743,12 +880,12 @@ local function renderTrack(p: any)
 			if side < 0 then "<" else ">",
 			Color3.fromHex("2A2A33"),
 			Theme.Colors.white,
-			UDim2.fromOffset(arrowW - S(6), fh - S(24)),
+			UDim2.fromOffset(arrowW - S(8), fh - S(24)),
 			7
 		)
 		b.AnchorPoint = Vector2.new(if side < 0 then 0 else 1, 0.5)
-		b.Position = if side < 0 then UDim2.new(0, labelW + S(6), 0.5, 0) else UDim2.new(1, -S(6), 0.5, 0)
-		b.TextSize = S(24)
+		b.Position = if side < 0 then UDim2.new(0, S(8), 0.5, 0) else UDim2.new(1, -S(8), 0.5, 0)
+		b.TextSize = S(26)
 		local can = if side < 0 then page > 1 else page + per <= Config.PassLevels
 		h.setEnabled(can)
 		b.Activated:Connect(function()
@@ -761,29 +898,27 @@ local function renderTrack(p: any)
 	end
 	arrow(-1)
 	arrow(1)
-	local cols: { GuiObject } = {}
 	for i = 0, per - 1 do
 		local level = page + i
 		if level > Config.PassLevels then
 			break
 		end
-		local x = gridX + i * colW
 		local lit = level <= pass.level
 		local current = level == pass.level
 		local col = UI.frame({
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(x, S(6)),
-			Size = UDim2.fromOffset(colW - S(6), fh - S(12)),
+			Position = UDim2.fromOffset(gridX + i * colW, S(6)),
+			Size = UDim2.fromOffset(colW - S(8), fh - S(12)),
 			ZIndex = 6,
 			Parent = bg,
 		})
-		-- The level marker: a diamond, lit through the current level, the ribbon between them.
+		-- The ribbon between diamonds, lit through the current level.
 		if i < per - 1 and level < Config.PassLevels then
 			UI.frame({
 				BackgroundColor3 = if level < pass.level then ORANGE else Color3.fromHex("2A2A33"),
 				AnchorPoint = Vector2.new(0, 0.5),
 				Position = UDim2.new(0.5, 0, 0, markerH / 2),
-				Size = UDim2.new(1, S(6), 0, S(4)),
+				Size = UDim2.new(1, S(8), 0, S(4)),
 				ZIndex = 6,
 				Parent = col,
 			})
@@ -815,149 +950,109 @@ local function renderTrack(p: any)
 			ZIndex = 8,
 			Parent = col,
 		})
-		if current then
-			-- The current level's column is framed.
-			local frame = UI.frame({
-				BackgroundTransparency = 1,
-				Position = UDim2.fromOffset(-S(2), markerH + S(2)),
-				Size = UDim2.new(1, S(4), 0, cellH * 3 + S(6)),
-				ZIndex = 9,
-				Parent = col,
-			})
-			UI.corner(frame, S(10))
-			UI.stroke(frame, Theme.Colors.white, S(2), 0.1)
-		end
-		for li, lane in PassSeason.Lanes do
-			local cell = PassSeason.cell(s, level, lane)
-			if not cell then
-				continue
-			end
-			local rarity = Rewards.rarity(cell)
-			local rc = Rarity.color(rarity)
-			local isClaimed = claimed(p, level, lane)
-			local owned = laneOwned(p, lane)
-			local can = cellClaimable(p, level, lane)
-			local selected = level == selLevel and lane == selLane
-			local b = UI.button({
-				BackgroundColor3 = Color3.fromHex("18181E"),
-				Position = UDim2.fromOffset(0, markerH + S(4) + (li - 1) * cellH),
-				Size = UDim2.new(1, 0, 0, cellH - S(6)),
-				ZIndex = 7,
-				Parent = col,
-			})
-			UI.corner(b, S(8))
-			UI.stroke(
-				b,
-				if selected then Theme.Colors.white else rc,
-				S(if selected then 2.5 else 1),
-				if selected then 0 else 0.45
-			)
-			UI.new(
-				"UIGradient",
-				{ Color = ColorSequence.new(Fx.shade(rc, -0.55), Color3.fromHex("121216")), Rotation = 90, Parent = b }
-			)
-			-- The rarity color bar along the bottom and the lane label.
-			UI.frame({
-				BackgroundColor3 = rc,
-				AnchorPoint = Vector2.new(0, 1),
-				Position = UDim2.new(0, S(6), 1, -S(3)),
-				Size = UDim2.new(1, -S(12), 0, S(3)),
-				ZIndex = 8,
-				Parent = b,
-			})
-			local art = ItemArt.draw(b, cell, math.floor(math.min(colW - S(16), cellH - S(22)) * 0.86), 8)
-			art.AnchorPoint = Vector2.new(0.5, 0.5)
-			art.Position = UDim2.new(0.5, 0, 0.45, 0)
-			local amount = if cell.kind == "gold"
-					or cell.kind == "tokens"
-					or cell.kind == "mastery"
-				then UI.fmtInt(cell.amount or 0)
-				elseif cell.kind == "crate" then "×" .. (cell.amount or 1)
-				elseif cell.kind == "boost" then Rewards.duration(cell.sec or 0)
-				else nil
-			if amount then
-				local a = UI.text({
-					Text = amount,
-					Font = Theme.Fonts.display,
-					TextSize = S(11),
-					TextColor3 = Theme.Colors.white,
-					AnchorPoint = Vector2.new(1, 1),
-					Position = UDim2.new(1, -S(4), 1, -S(6)),
-					Size = UDim2.fromOffset(S(60), S(14)),
-					TextXAlignment = Enum.TextXAlignment.Right,
-					ZIndex = 10,
-					Parent = b,
-				})
-				UI.stroke(a, Color3.new(0, 0, 0), S(1.5), 0.2)
-			end
-			if isClaimed then
-				check(b, S(16), 11)
-				b.BackgroundTransparency = 0.4
-				art.Visible = true
-				for _, dd in art:GetDescendants() do
-					if dd:IsA("Frame") then
-						dd.BackgroundTransparency = math.max(dd.BackgroundTransparency, 0.5)
-					end
-				end
-			elseif not owned then
-				local veil = UI.frame({
-					BackgroundColor3 = Color3.new(0, 0, 0),
-					BackgroundTransparency = 0.45,
-					Size = UDim2.fromScale(1, 1),
-					ZIndex = 10,
-					Parent = b,
-				})
-				UI.corner(veil, S(8))
-				padlock(veil, S(18), 11)
-			elseif not lit then
-				art.Visible = true
-				for _, dd in art:GetDescendants() do
-					if dd:IsA("Frame") then
-						dd.BackgroundTransparency = math.max(dd.BackgroundTransparency, 0.35)
-					end
-				end
-			end
-			if can then
-				-- Claimable cells pulse.
-				local stroke = b:FindFirstChildOfClass("UIStroke")
-				task.spawn(function()
-					local t0 = os.clock()
-					while b.Parent and stroke do
-						local k = (math.sin((os.clock() - t0) * 5) + 1) / 2
-						stroke.Color = Color3.fromHex("3FD47A"):Lerp(Theme.Colors.white, k * 0.5)
-						stroke.Thickness = S(1.5 + k * 1.5)
-						stroke.Transparency = 0
-						task.wait(0.04)
-					end
-				end)
-			end
-			b.MouseEnter:Connect(function()
-				UI.sound(Fx.Sounds.hover, 1.8, 0.08)
-			end)
-			b.Activated:Connect(function()
-				selLevel, selLane = level, lane
-				UI.sound(Fx.Sounds.press, 1.3, 0.25)
-				if can then
-					claimResults(shop("passClaim", { level = level, lane = lane }), "LEVEL " .. level)
-				else
-					renderSelected(p)
-					renderTrack(p)
-				end
-			end)
-		end
-		table.insert(cols, col)
+		-- The level card: FREE on top, PREMIUM and PREMIUM+ under it.
+		local card = UI.frame({
+			BackgroundColor3 = if lit then Color3.fromHex("1A1612") else Color3.fromHex("121216"),
+			Position = UDim2.fromOffset(0, markerH + S(4)),
+			Size = UDim2.new(1, 0, 0, cardH),
+			ZIndex = 6,
+			Parent = col,
+		})
+		UI.corner(card, S(10))
+		UI.stroke(
+			card,
+			if current then Theme.Colors.white elseif lit then ORANGE else Color3.fromHex("2A2A33"),
+			S(if current then 2 else 1),
+			if current then 0 else 0.4
+		)
+		local pad = S(5)
+		local freeH = math.floor((cardH - pad * 3) * 0.58)
+		local subH = cardH - pad * 3 - freeH
+		local innerW = colW - S(8) - pad * 2
+		slotButton(
+			card,
+			p,
+			s,
+			level,
+			"free",
+			UDim2.fromOffset(pad, pad),
+			UDim2.fromOffset(innerW, freeH),
+			math.floor(math.min(innerW, freeH) * 0.78),
+			7
+		)
+		local half = math.floor((innerW - pad) / 2)
+		slotButton(
+			card,
+			p,
+			s,
+			level,
+			"p1",
+			UDim2.fromOffset(pad, pad * 2 + freeH),
+			UDim2.fromOffset(half, subH),
+			math.floor(math.min(half, subH) * 0.78),
+			7
+		)
+		slotButton(
+			card,
+			p,
+			s,
+			level,
+			"p2",
+			UDim2.fromOffset(pad * 2 + half, pad * 2 + freeH),
+			UDim2.fromOffset(innerW - half - pad, subH),
+			math.floor(math.min(half, subH) * 0.78),
+			7
+		)
 	end
 	if not open then
 		return
 	end
-	-- GO TO CURRENT LEVEL above the track; CLAIM ALL bottom-right.
+	-- GO TO CURRENT LEVEL above the track, CLAIM ALL bottom-right, the lane key on the left.
 	local controls = clearLayer("controls")
+	local key = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.fromOffset(S(380), S(30)),
+		ZIndex = 6,
+		Parent = controls,
+	})
+	UI.list(key, Enum.FillDirection.Horizontal, S(14), nil, Enum.VerticalAlignment.Center)
+	for i, lane in PassSeason.Lanes do
+		local item = UI.frame({
+			BackgroundTransparency = 1,
+			Size = UDim2.fromOffset(S(116), S(24)),
+			LayoutOrder = i,
+			ZIndex = 6,
+			Parent = key,
+		})
+		UI.frame({
+			BackgroundColor3 = LANE_COLOR[lane],
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.fromScale(0, 0.5),
+			Size = UDim2.fromOffset(S(14), S(4)),
+			ZIndex = 7,
+			Parent = item,
+		})
+		local l = UI.text({
+			Text = PassSeason.LaneName[lane] .. (if laneOwned(p, lane) then " ✓" else ""),
+			Font = Theme.Fonts.display,
+			TextSize = S(12),
+			TextColor3 = LANE_COLOR[lane],
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Position = UDim2.fromOffset(S(20), 0),
+			Size = UDim2.new(1, -S(20), 1, 0),
+			ZIndex = 7,
+			Parent = item,
+		})
+		UI.stroke(l, Color3.new(0, 0, 0), S(1), 0.3)
+	end
 	local gotoBtn, _g = Fx.button(
 		controls,
 		"GO TO CURRENT LEVEL",
 		Color3.fromHex("2A2A33"),
 		Theme.Colors.white,
-		UDim2.fromOffset(S(220), S(36)),
+		UDim2.fromOffset(S(220), S(38)),
 		6
 	)
 	gotoBtn.AnchorPoint = Vector2.new(0.5, 1)
@@ -974,7 +1069,7 @@ local function renderTrack(p: any)
 		if waiting > 0 then string.format("CLAIM ALL (%d)", waiting) else "CLAIM ALL",
 		GREEN,
 		Theme.Colors.white,
-		UDim2.fromOffset(S(230), S(52)),
+		UDim2.fromOffset(S(230), S(50)),
 		6
 	)
 	all.AnchorPoint = Vector2.new(1, 1)
@@ -982,11 +1077,23 @@ local function renderTrack(p: any)
 	all.TextSize = S(20)
 	ah.setEnabled(waiting > 0)
 	if waiting > 0 then
+		all.ClipsDescendants = true
 		Fx.particles(all, Color3.fromHex("FFE08A"), 6, 8)
+		-- A shine sweeps across while something waits.
+		local shine = UI.frame({
+			BackgroundColor3 = Color3.new(1, 1, 1),
+			BackgroundTransparency = 0.7,
+			Position = UDim2.new(-0.3, 0, 0, 0),
+			Size = UDim2.new(0.2, 0, 1, 0),
+			Rotation = 15,
+			ZIndex = 9,
+			Parent = all,
+		})
 		task.spawn(function()
 			while all.Parent do
-				UI.punch(all, 1.05, 0.4)
-				task.wait(1.2)
+				shine.Position = UDim2.new(-0.3, 0, 0, 0)
+				UI.tween(shine, { Position = UDim2.new(1.2, 0, 0, 0) }, 0.6, Enum.EasingStyle.Quad)
+				task.wait(1.6)
 			end
 		end)
 	end
@@ -1108,16 +1215,18 @@ local function build()
 		layers[name] = f
 		return f
 	end
-	local trackH = if mobile then S(250) else S(290)
-	layer("banner", { Position = UDim2.fromOffset(S(20), S(16)), Size = UDim2.fromOffset(S(440), S(130)), ZIndex = 5 })
+	-- Everything keeps clear of the Roblox top bar.
+	local top = Fx.topInset()
+	local trackH = if mobile then S(180) else S(214)
+	layer("banner", { Position = UDim2.fromOffset(S(20), top), Size = UDim2.fromOffset(S(440), S(130)), ZIndex = 5 })
 	layer("sell", {
-		Position = UDim2.fromOffset(S(20), S(158)),
-		Size = UDim2.new(0, S(if mobile then 220 else 280), 1, -(S(158) + trackH + S(80))),
+		Position = UDim2.fromOffset(S(20), top + S(142)),
+		Size = UDim2.new(0, S(if mobile then 220 else 280), 1, -(top + S(142) + trackH + S(84))),
 		ZIndex = 5,
 	})
 	layer("selected", {
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(20), 0, S(84)),
+		Position = UDim2.new(1, -S(20), 0, top + S(66)),
 		Size = UDim2.fromOffset(S(if mobile then 260 else 330), S(100)),
 		ZIndex = 5,
 	})
@@ -1144,7 +1253,7 @@ local function build()
 		20
 	)
 	leave.AnchorPoint = Vector2.new(1, 0)
-	leave.Position = UDim2.new(1, -S(20), 0, S(20))
+	leave.Position = UDim2.new(1, -S(20), 0, top)
 	leave.Activated:Connect(function()
 		PassScene.close()
 	end)

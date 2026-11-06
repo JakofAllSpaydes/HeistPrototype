@@ -892,7 +892,6 @@ local Config = {
 	WeeklyGold = 800,
 	WeeklyPassXp = 2000,
 	WeeklyTokens = 5,
-	JobRerollsPerDay = 1,
 	JobBoardPosition = Vector3.new(-30, 0, 136), -- MARLOW's corkboard in the yard (floor point; faces +Z toward the spawn)
 	JobAnnounceLine = "New jobs on the board. Pick your poison.",
 	-- Upsells (each a one-line nudge, never a blocking popup).

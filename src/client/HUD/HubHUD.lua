@@ -274,50 +274,6 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			component.showPlaceholder("Gold")
 		end
 	end)
-	-- Brief 6: revive tokens beside the Gold pill; tap for the token packs.
-	local tokenChip = UI.button({
-		Name = "Tokens",
-		Text = "",
-		BackgroundColor3 = Theme.Colors.panel,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, S(20) + goldW + S(8), 1, -S(62)),
-		Size = UDim2.fromOffset(S(70), S(38)),
-		Parent = root,
-	})
-	UI.corner(tokenChip, S(8))
-	UI.stroke(tokenChip, Color3.fromHex("3FD47A"), S(1.5), 0.2)
-	local tokenDot = UI.frame({
-		BackgroundColor3 = Color3.fromHex("3FD47A"),
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, S(7), 0.5, 0),
-		Size = UDim2.fromOffset(S(22), S(22)),
-		Parent = tokenChip,
-	})
-	UI.corner(tokenDot, S(11))
-	UI.text({
-		Text = "+",
-		Font = Theme.Fonts.display,
-		TextSize = S(18),
-		TextColor3 = Theme.Colors.white,
-		Size = UDim2.fromScale(1, 1),
-		Parent = tokenDot,
-	})
-	local tokenLabel = UI.text({
-		Text = "0",
-		Font = Theme.Fonts.display,
-		TextSize = S(20),
-		TextColor3 = Theme.Colors.white,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(34), 0),
-		Size = UDim2.new(1, -S(36), 1, 0),
-		Parent = tokenChip,
-	})
-	tokenChip.Activated:Connect(function()
-		UI.punch(tokenChip, 0.9, 0.15)
-		local sheet = require(Client:WaitForChild("PurchaseSheet") :: ModuleScript) :: any
-		sheet.choose("Revive tokens", { "tokens_5", "tokens_25", "tokens_100" }, { context = "hub token chip" })
-	end)
-
 	local invite = UI.button({
 		Name = "Invite",
 		Text = if mobile then "+👥" else "INVITE FRIENDS",
@@ -375,7 +331,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -S(20), 1, -S(16)),
-		Size = UDim2.fromOffset(chipSize * 5 + S(40), chipSize + S(34)),
+		Size = UDim2.fromOffset(chipSize * 6 + S(50), chipSize + S(34)),
 		Parent = root,
 	})
 	UI.text({
@@ -407,23 +363,33 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				component.onVipGift()
 			end
 		end,
+		onTokens = function()
+			local sheet = require(Client:WaitForChild("PurchaseSheet") :: ModuleScript) :: any
+			sheet.choose("Revive tokens", { "tokens_5", "tokens_25", "tokens_100" }, { context = "hub token chip" })
+		end,
 	}, track)
 	chipRow.frame.AnchorPoint = Vector2.new(1, 0)
 	chipRow.frame.Position = UDim2.fromScale(1, 0)
 
-	-- Brief 6: PASS and JOBS, top-right (top-left stays free for chat). PASS: the season emblem with the level, a
+	-- Brief 6: PASS and JOBS on the right-center, mirroring the SHOP tile on the left. PASS: the season emblem with the level, a
 	-- ring of dots for the progress to the next level, a red dot when a cell is claimable. JOBS: the clipboard,
 	-- the dailies done count, a red dot when a Job is ready to claim.
-	local topSize = if mobile then S(54) else S(68)
+	local topSize = if mobile then S(52) else S(64) -- the SHOP tile's size
 	local topRight = UI.frame({
 		Name = "TopButtons",
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(20), 0, S(16)),
-		Size = UDim2.fromOffset(topSize * 2 + S(14), topSize + S(18)),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -S(20), 0.5, 0),
+		Size = UDim2.fromOffset(topSize, topSize * 2 + S(36) + S(14)),
 		Parent = root,
 	})
-	UI.list(topRight, Enum.FillDirection.Horizontal, S(14), Enum.HorizontalAlignment.Right)
+	UI.list(
+		topRight,
+		Enum.FillDirection.Vertical,
+		S(14),
+		Enum.HorizontalAlignment.Center,
+		Enum.VerticalAlignment.Center
+	)
 	local function topTile(order: number, label: string, color: Color3): (TextButton, Frame, TextLabel)
 		local holder = UI.frame({
 			BackgroundTransparency = 1,
@@ -588,6 +554,17 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		jobsDot.Visible = ready or not fresh
 	end
 	component.paintTop = paintTop
+	local passStroke = passBtn:FindFirstChildOfClass("UIStroke")
+	local jobsStroke = jobsBtn:FindFirstChildOfClass("UIStroke")
+	component.pulseTop = function(t: number)
+		local k = (math.sin(t * 4) + 1) / 2
+		if passStroke then
+			passStroke.Thickness = if passDot.Visible then S(2 + k * 2) else S(2)
+		end
+		if jobsStroke then
+			jobsStroke.Thickness = if jobsDot.Visible then S(2 + k * 2) else S(2)
+		end
+	end
 
 	component.frame = root
 	component.queueSlot = queueSlot
@@ -597,20 +574,11 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.onDock = nil :: ((string) -> ())?
 
 	local shown = -1
-	local shownTokens = -1
 	local shownLevel, shownXp = -1, -1
 	function component.update(sync: any)
 		chipRow.update(sync)
 		paintTop(sync.profile)
 		local profile = sync.profile
-		local tokens = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
-		if tokens ~= shownTokens then
-			if shownTokens >= 0 then
-				UI.punch(tokenChip, if tokens > shownTokens then 1.2 else 0.95, 0.3)
-			end
-			shownTokens = tokens
-			tokenLabel.Text = tostring(tokens)
-		end
 		local gold = if profile and typeof(profile.gold) == "number" then profile.gold else 0
 		if gold ~= shown then
 			if shown >= 0 then
@@ -643,6 +611,11 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local stroke = play:FindFirstChildOfClass("UIStroke")
 		if stroke then
 			stroke.Transparency = 0.3 + 0.2 * math.sin(t * 2)
+		end
+		-- Brief 6: PASS / JOBS breathe while something waits on them.
+		local pulse = component.pulseTop
+		if pulse then
+			pulse(t)
 		end
 	end))
 

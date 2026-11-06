@@ -66,6 +66,7 @@ function VipTab.render(ctx: any)
 	local card = UI.frame({
 		BackgroundColor3 = Color3.fromHex("141216"),
 		Size = UDim2.fromScale(1, 1),
+		ClipsDescendants = true, -- the rays stay inside the card on the scrolling page
 		ZIndex = 6,
 		Parent = root,
 	})
@@ -238,6 +239,7 @@ function VipTab.render(ctx: any)
 			9
 		)
 		sub.TextSize = S(20)
+		Fx.shine(sub)
 		sub.Activated:Connect(function()
 			ctx.buy("vip", {
 				context = "store VIP",
