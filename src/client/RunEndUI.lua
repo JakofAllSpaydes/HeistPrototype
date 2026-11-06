@@ -386,6 +386,14 @@ local function showSummary(d: any)
 		end
 	end
 
+	-- Brief 6: the PASS XP bar under the panel, after the account XP bar has filled (CLAIM IN PASS opens the scene).
+	local passAward = myRow and myRow.passXp
+	if passAward then
+		local PassSummary = require(script.Parent:WaitForChild("Pass"):WaitForChild("PassSummary")) :: any
+		local delay = math.max(d.countUpSec or 1, 0.05) + 0.15 + (tonumber(d.xpFillSec) or 1.2) + 0.4
+		PassSummary.show(g, W, UDim2.new(0.5, 0, 0.5, H / 2 + S(12)), passAward, delay)
+	end
+
 	-- Table.
 	local cols = {
 		{ title = "CREW", w = 0.34, align = Enum.TextXAlignment.Left },

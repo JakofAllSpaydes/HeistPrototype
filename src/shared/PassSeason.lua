@@ -194,6 +194,24 @@ function PassSeason.levelOf(kind: string, id: string): (number?, number?, string
 	return nil, nil, nil
 end
 
+-- Cells claimable right now for a profile.pass table (reached levels, owned lanes, not yet claimed).
+function PassSeason.claimableCount(pass: any): number
+	if not pass then
+		return 0
+	end
+	local n = 0
+	local tier = tonumber(pass.tier) or 0
+	for level = 1, math.min(tonumber(pass.level) or 1, Config.PassLevels) do
+		local c = pass.claimed and pass.claimed["L" .. level]
+		for _, lane in PassSeason.Lanes do
+			if (PassSeason.LaneTier[lane] or 9) <= tier and not (c and c[lane]) then
+				n += 1
+			end
+		end
+	end
+	return n
+end
+
 function PassSeason.skipProductId(count: number): string
 	return "pass_skip_" .. count
 end

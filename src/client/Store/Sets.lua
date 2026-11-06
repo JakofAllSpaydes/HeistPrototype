@@ -297,7 +297,7 @@ local function buildPassStage(): Set
 	key.Transparency = 1
 	fill.Transparency = 1
 	-- The hero sits center-frame, a little high (the track takes the bottom of the screen).
-	local shot = CFrame.lookAt((origin * CFrame.new(0, 3.4, 10)).Position, (origin * CFrame.new(0, 2.2, 0)).Position)
+	local shot = CFrame.lookAt((origin * CFrame.new(0, 2.2, 10)).Position, (origin * CFrame.new(0, 1.0, 0)).Position)
 	return {
 		name = "PassStage",
 		model = m,

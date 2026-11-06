@@ -20,6 +20,7 @@ local Squad = require(script.Parent.Squad)
 local Profiles = require(script.Parent.Profiles)
 local Progression = require(script.Parent.Progression)
 local Mastery = require(script.Parent.Mastery)
+local Pass = require(script.Parent.Pass)
 
 local RunEnd = {}
 
@@ -319,6 +320,8 @@ function RunEnd.play(): string
 			level = Progression.level(p),
 			xp = award,
 			mastery = Mastery.award(p),
+			-- Brief 6: pass XP for the run (PassXpPerWave x waves cleared + PassXpPerBoss x boss kills).
+			passXp = Pass.addXp(p, Pass.runXp(World.wavesCleared, World.bossKills), "run"),
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}

@@ -599,8 +599,9 @@ function StoreScene.open(tab: string?, arg: any?)
 		StoreScene.select(t, arg)
 		return
 	end
-	-- One premium scene at a time: the customization scene closes first.
+	-- One premium scene at a time: the customization scene and the pass close first.
 	ClientState.Juice:Fire("CloseMeta", {})
+	ClientState.Juice:Fire("ClosePass", {})
 	open = true
 	build()
 	ClientState.setAds(false)
