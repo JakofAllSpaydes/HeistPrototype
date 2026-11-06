@@ -680,9 +680,18 @@ end
 
 function PurchaseSheet.init()
 	-- A dead character or a hub return never leaves the sheet's block behind.
-	ClientState.Juice:Connect(function(name: string)
+	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "HubEnter" and openNow and not busy then
 			PurchaseSheet.close()
+		elseif name == "CashPack" and typeof(data) == "table" then
+			-- The cash lands in the HUD's cash row (it counts up); a quick burst marks it.
+			UI.sound(Fx.Sounds.chime, 1.5, 0.3)
+			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.12 })
+		elseif name == "VipRenewed" and typeof(data) == "table" then
+			PurchaseSheet.toast(
+				string.format("VIP RENEWED · +%d TOKENS", tonumber(data.tokens) or 0),
+				Color3.fromHex("F2C14E")
+			)
 		end
 	end)
 end

@@ -439,9 +439,11 @@ local function renderBanner(p: any)
 			ZIndex = 9,
 			Parent = b,
 		})
-		h.setEnabled(not maxed)
+		-- A skip never runs past the last level (it would charge for levels it cannot give).
+		local fits = pass.level + n <= Config.PassLevels
+		h.setEnabled(fits)
 		b.Activated:Connect(function()
-			if maxed then
+			if not fits then
 				return
 			end
 			PurchaseSheet.open(PassSeason.skipProductId(n), { context = "pass skip" })
@@ -1273,6 +1275,23 @@ function PassScene.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "OpenPass" then
 			PassScene.open({ level = data and tonumber(data.level) })
+		elseif name == "PassXp" and typeof(data) == "table" and not open then
+			-- Pass XP outside the summary (Job claims, debug, skips): a toast, louder on a level-up.
+			local ups = if typeof(data.levelUps) == "table" then #data.levelUps else 0
+			if data.skip then
+				PurchaseSheet.toast(string.format("PASS LV %d", tonumber(data.toLevel) or 1), ORANGE, false)
+			elseif ups > 0 then
+				PurchaseSheet.toast(
+					string.format(
+						"+%s PASS XP · PASS LV %d",
+						UI.fmtInt(tonumber(data.gained) or 0),
+						tonumber(data.toLevel) or 1
+					),
+					ORANGE
+				)
+			elseif (tonumber(data.gained) or 0) > 0 and ClientState.inHub() then
+				PurchaseSheet.toast("+" .. UI.fmtInt(tonumber(data.gained) or 0) .. " PASS XP", ORANGE, false)
+			end
 		elseif name == "ClosePass" or name == "RunStartBegin" or name == "Downed" then
 			PassScene.close()
 		elseif name == "HubEnter" and open then

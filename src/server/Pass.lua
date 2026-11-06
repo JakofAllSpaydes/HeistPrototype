@@ -224,6 +224,9 @@ Purchases.register("pass_skip", {
 		if profile.pass.level >= Config.PassLevels then
 			return "Already at the last level"
 		end
+		if profile.pass.level + (product.count or 1) > Config.PassLevels then
+			return string.format("Only %d levels left", Config.PassLevels - profile.pass.level)
+		end
 		return nil
 	end,
 	grant = function(player, profile, product)

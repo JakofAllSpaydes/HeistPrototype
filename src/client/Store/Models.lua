@@ -123,9 +123,10 @@ function Models.crate(crateId: string, at: CFrame): CrateModel
 	glow.Brightness = 0
 	glow.Color = trim
 	glow.Parent = body
+	-- The pivot is the bottom center (the PrimaryPart's PivotOffset, which a PrimaryPart pivot honours), so PivotTo
+	-- stands the crate on whatever it is given.
+	body.PivotOffset = CFrame.new(0, -h / 2, 0)
 	m.PrimaryPart = body
-	-- The pivot is the bottom center, so PivotTo stands the crate on whatever it is given.
-	m.WorldPivot = at
 	return {
 		model = m,
 		body = body,

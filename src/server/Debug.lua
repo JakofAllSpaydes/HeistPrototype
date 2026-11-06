@@ -156,7 +156,15 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			row.n += 1
 			row.spent += e.price
 			byId[e.id] = row
-			print(string.format("  %s  %-22s R$%d", os.date("!%Y-%m-%d %H:%M", e.at), e.id, e.price))
+			print(string.format(
+				"  %s  %-22s R$%d",
+				(function()
+					local t = os.date("!*t", e.at) :: any
+					return string.format("%04d-%02d-%02d %02d:%02d", t.year, t.month, t.day, t.hour, t.min)
+				end)(),
+				e.id,
+				e.price
+			))
 		end
 		for id, row in byId do
 			print(string.format("  total %-22s x%d  R$%d", id, row.n, row.spent))
