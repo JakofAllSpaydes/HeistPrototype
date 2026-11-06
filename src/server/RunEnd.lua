@@ -21,6 +21,8 @@ local Profiles = require(script.Parent.Profiles)
 local Progression = require(script.Parent.Progression)
 local Mastery = require(script.Parent.Mastery)
 local Pass = require(script.Parent.Pass)
+local Jobs = require(script.Parent.Jobs)
+local RunEvents = require(script.Parent.RunEvents)
 
 local RunEnd = {}
 
@@ -287,6 +289,7 @@ function RunEnd.play(): string
 	for i, p in players do
 		local s = PlayerState.get(p)
 		local earned, newBest, newBestBanked = payout(p, s, base, banked)
+		RunEvents.emit(p, "class", 1, PlayerState.classOf(s)) -- brief 6 Jobs: a heist finished as this class
 		-- XP lands on the same write; the summary bar replays the breakdown.
 		local award = Progression.award(p, {
 			wavesCleared = World.wavesCleared,
@@ -322,6 +325,7 @@ function RunEnd.play(): string
 			mastery = Mastery.award(p),
 			-- Brief 6: pass XP for the run (PassXpPerWave x waves cleared + PassXpPerBoss x boss kills).
 			passXp = Pass.addXp(p, Pass.runXp(World.wavesCleared, World.bossKills), "run"),
+			jobTicks = Jobs.runSummary(p), -- brief 6: the Jobs that moved this run
 			score = RunEnd.mvpScore(s.kills, s.cashCollected, s.revives),
 			lineIndex = i,
 		}

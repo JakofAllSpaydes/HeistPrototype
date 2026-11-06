@@ -16,6 +16,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local RunEvents = require(script.Parent.RunEvents)
 
 export type Bag = {
 	id: number,
@@ -355,9 +356,13 @@ function Bags.collect(player: Player, b: Bag)
 	remove(b, true)
 	state.bags += 1
 	state.dirty = true
+	RunEvents.emit(player, "bag", 1) -- brief 6 Jobs
 	local toast: string
 	if b.kind == "gold" then
 		World.banked += b.value
+		for _, p in World.runAudience() do
+			RunEvents.emit(p, "goldBanked", b.value) -- the team's banked total counts for everyone
+		end
 		PlayerState.markAllDirty()
 		toast = string.format(Lines.bagBanked, string.upper(player.Name), b.value)
 	else

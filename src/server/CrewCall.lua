@@ -17,6 +17,7 @@ local Room = require(script.Parent.Room)
 local BigCrate = require(script.Parent.BigCrate)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local RunEvents = require(script.Parent.RunEvents)
 local Minigames = require(script.Parent.Minigames)
 local Heat = require(script.Parent.Heat)
 local VaultJob = require(script.Parent.VaultJob)
@@ -373,6 +374,10 @@ function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 			Economy.addEarned(state, Config.SideJobReward) -- x CASH GAIN
 			state.gold += Config.SideJobGold
 			state.jobsDone += 1
+			RunEvents.emit(p, "sidejob", 1) -- brief 6 Jobs
+			if j.kind == "vault" then
+				RunEvents.emit(p, "vault", 1)
+			end
 		end
 		World.addObjective()
 		-- The vault's reward is the room itself: no crate for that kind.

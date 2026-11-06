@@ -51,6 +51,8 @@ local Shop = require(script.Parent.Shop)
 local CrateOpen = require(script.Parent.CrateOpen)
 local Vip = require(script.Parent.Vip)
 local Pass = require(script.Parent.Pass)
+local RunEvents = require(script.Parent.RunEvents)
+local Jobs = require(script.Parent.Jobs)
 
 Profiles.init()
 PlayerState.init()
@@ -64,6 +66,18 @@ end
 Enemy.onDeath = function(d, attacker)
 	Heat.onEnemyDead(d.wave)
 	Mastery.onKill(d.model, attacker)
+	-- Brief 6 Jobs: kills by archetype and elites for the killer, boss kills for the whole party.
+	if attacker then
+		RunEvents.emit(attacker, "kill", 1, d.row.id)
+		if d.elite then
+			RunEvents.emit(attacker, "elite", 1)
+		end
+	end
+	if d.row.boss then
+		for _, p in World.partyPlayers() do
+			RunEvents.emit(p, "boss", 1)
+		end
+	end
 	-- The boss's last hit: the crew hears who landed it.
 	if d.row.boss and attacker then
 		AllyCallout.send(attacker, "bossKill", d.row.name)
@@ -87,6 +101,7 @@ Shop.init()
 local _ = CrateOpen -- registers the crate purchase kind and the free-open action
 Vip.init()
 Pass.init()
+Jobs.init()
 Elements.init()
 Combat.init()
 UpgradeShop.init()
@@ -173,6 +188,9 @@ local function runWaves()
 		end
 
 		BigCrate.onWaveEnd()
+		for _, p in World.partyPlayers() do
+			RunEvents.emit(p, "wave", wave) -- brief 6 Jobs: the best wave reached
+		end
 		Economy.logWave(wave, World.partyPlayers())
 		Mastery.onWaveEnd(wave, World.partyPlayers())
 		if advanced then
@@ -241,6 +259,10 @@ task.spawn(function()
 		Pause.reset()
 		Queue.onRunEnded(choice)
 		Hub.enter(lastParty)
+		-- Brief 6: back in the hub after a reset, MARLOW announces the new Jobs.
+		for _, p in lastParty do
+			task.delay(2.5, Jobs.announce, p)
+		end
 		World.fireRun("HubEnter", {})
 		World.party = {}
 		PlayerState.markAllDirty()
@@ -270,6 +292,7 @@ task.spawn(function()
 		Hub.beginRun()
 		Economy.resetRun(World.partyPlayers())
 		Mastery.beginRun(World.partyPlayers())
+		Jobs.beginRun(World.partyPlayers())
 		setState("Intro")
 		Log.event(
 			"Run",

@@ -11,6 +11,7 @@ local Weapons = require(Shared.Weapons)
 local Remotes = require(Shared.Remotes)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
+local RunEvents = require(script.Parent.RunEvents)
 local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local Elements = require(script.Parent.Elements)
@@ -86,8 +87,12 @@ local function dealDamage(
 		blast = info.blast == true,
 		blastT = info.blastT,
 	})
+	if info.headshot == true then
+		RunEvents.emit(shooter.player, "headshot", 1) -- brief 6 Jobs
+	end
 	local cash = 0
 	if killed then
+		RunEvents.emit(shooter.player, "weapon", 1, shooter.weapon.archetype)
 		-- The archetype's cash (x wave, x elite, x heat) x CASH GAIN.
 		cash = math.round(killCash * shooter.stats.cashGain)
 		Economy.addCash(shooter.state, cash)

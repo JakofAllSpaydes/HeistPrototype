@@ -135,7 +135,7 @@ function Progression.addXp(player: Player, amount: number)
 		grant(player, profile, profile.level)
 	end
 	Profiles.markDirty(player)
-	Log.event("XP", "%s +%d XP (debug): LV %d (%d)", player.Name, amount, profile.level, profile.xp)
+	Log.event("XP", "%s +%d XP (debug / Job): LV %d (%d)", player.Name, amount, profile.level, profile.xp)
 end
 
 function Progression.setLevel(player: Player, level: number)

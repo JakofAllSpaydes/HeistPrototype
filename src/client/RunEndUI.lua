@@ -393,6 +393,14 @@ local function showSummary(d: any)
 		local delay = math.max(d.countUpSec or 1, 0.05) + 0.15 + (tonumber(d.xpFillSec) or 1.2) + 0.4
 		PassSummary.show(g, W, UDim2.new(0.5, 0, 0.5, H / 2 + S(12)), passAward, delay)
 	end
+	-- Brief 6: the Job ticks after the XP bars.
+	local ticks = myRow and myRow.jobTicks
+	if typeof(ticks) == "table" and #ticks > 0 then
+		local JobSummary = require(script.Parent:WaitForChild("Jobs"):WaitForChild("JobSummary")) :: any
+		local delay = math.max(d.countUpSec or 1, 0.05) + 0.15 + (tonumber(d.xpFillSec) or 1.2) + 1.6
+		local y = H / 2 + S(12) + (if passAward then S(66) else 0)
+		JobSummary.show(g, W, UDim2.new(0.5, 0, 0.5, y), ticks, delay)
+	end
 
 	-- Table.
 	local cols = {

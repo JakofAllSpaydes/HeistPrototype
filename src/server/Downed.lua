@@ -20,6 +20,7 @@ local Heat = require(script.Parent.Heat)
 local AllyCallout = require(script.Parent.AllyCallout)
 local Pause = require(script.Parent.Pause)
 local Profiles = require(script.Parent.Profiles)
+local RunEvents = require(script.Parent.RunEvents)
 
 local Downed = {}
 
@@ -454,6 +455,7 @@ function Downed.init()
 					ts.reviver = nil
 					local rs = PlayerState.get(reviver)
 					rs.revives += 1
+					RunEvents.emit(reviver, "revive", 1) -- brief 6 Jobs
 					rs.dirty = true
 					Downed.standUp(player, Config.ReviveHPPct, reviver.Name)
 				end

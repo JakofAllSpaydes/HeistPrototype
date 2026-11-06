@@ -12,6 +12,7 @@ local Remotes = require(Shared.Remotes)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local RunEvents = require(script.Parent.RunEvents)
 local PlayerState = require(script.Parent.PlayerState)
 
 type Session = {
@@ -122,6 +123,7 @@ local function onResult(player: Player, token: any, outcome: any, misses: any)
 		local state = PlayerState.get(player)
 		state.minigamesDone += 1
 		state.dirty = true
+		RunEvents.emit(player, "minigame", 1) -- brief 6 Jobs
 		Remotes.Juice:FireClient(player, "MinigameDone", { name = s.name, tier = s.tier })
 		if s.onDone then
 			s.onDone(player)

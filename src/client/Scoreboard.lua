@@ -11,6 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Classes = require(Shared:WaitForChild("Classes"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local JobPool = require(Shared:WaitForChild("JobPool"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
@@ -261,7 +262,46 @@ local function paint()
 			x += math.floor(tableW * col.w)
 		end
 	end
-	p.Size = UDim2.fromOffset(p.Size.X.Offset, S(58) + rowH * math.max(#rows, 1) + S(18))
+	-- Brief 6: the footer lists your three daily Jobs with progress (no separate in-run panel).
+	local footerY = S(58) + rowH * math.max(#rows, 1) + S(6)
+	local old = p:FindFirstChild("JobsFooter")
+	if old then
+		old:Destroy()
+	end
+	local prof = sync.profile
+	local daily = prof and prof.jobs and prof.jobs.daily
+	local footerH = 0
+	if typeof(daily) == "table" and #daily > 0 then
+		footerH = S(22)
+		local footer = UI.frame({
+			Name = "JobsFooter",
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(S(16), footerY),
+			Size = UDim2.new(1, -S(32), 0, footerH),
+			Parent = p,
+		})
+		local parts = {}
+		for _, e in daily do
+			local def = JobPool.ById[e.id]
+			if def then
+				local pr = math.min(tonumber(e.progress) or 0, def.target)
+				table.insert(
+					parts,
+					string.format("%s %d/%d%s", def.title, pr, def.target, if pr >= def.target then " ✓" else "")
+				)
+			end
+		end
+		UI.text({
+			Text = "JOBS  ·  " .. table.concat(parts, "  ·  "),
+			Font = Theme.Fonts.display,
+			TextSize = S(10),
+			TextColor3 = Theme.Colors.gold,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Size = UDim2.fromScale(1, 1),
+			Parent = footer,
+		})
+	end
+	p.Size = UDim2.fromOffset(p.Size.X.Offset, S(58) + rowH * math.max(#rows, 1) + S(18) + footerH)
 end
 
 function Scoreboard.setOpen(on: boolean)
