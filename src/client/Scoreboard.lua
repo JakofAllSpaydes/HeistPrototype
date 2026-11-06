@@ -223,7 +223,11 @@ local function paint()
 			Parent = circle,
 		})
 		UI.text({
-			Text = string.format("LV %d  %s", tonumber(row.level) or 1, string.upper(tostring(row.name))),
+			Text = UI.vipName(
+				string.format("LV %d  %s", tonumber(row.level) or 1, string.upper(tostring(row.name))),
+				row.vip
+			),
+			RichText = true,
 			Font = Theme.Fonts.display,
 			TextSize = S(12),
 			TextColor3 = if mine then Theme.Colors.gold else Theme.Colors.text,

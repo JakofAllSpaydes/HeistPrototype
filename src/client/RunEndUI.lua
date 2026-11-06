@@ -458,6 +458,19 @@ local function showSummary(d: any)
 		if row.newBest then
 			nameCell.Text = nameCell.Text .. "  ★ NEW BEST"
 		end
+		-- Brief 6: VIP's gold tag before the name and a softly pulsing gold frame on the row.
+		if row.vip then
+			nameCell.RichText = true
+			nameCell.Text = UI.vipName(nameCell.Text, true)
+			local frame = UI.stroke(rowFrame, Color3.fromHex("F2C14E"), S(2), 0)
+			task.spawn(function()
+				local t0 = os.clock()
+				while rowFrame.Parent do
+					frame.Transparency = 0.15 + 0.35 * (math.sin((os.clock() - t0) * 3) + 1) / 2
+					task.wait(0.05)
+				end
+			end)
+		end
 		if isMvp then
 			local tag, tagLabel = UI.pill(rowFrame, "MVP", Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
 			tag.AnchorPoint = Vector2.new(1, 0.5)

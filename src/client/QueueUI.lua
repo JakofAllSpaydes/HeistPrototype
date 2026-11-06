@@ -504,13 +504,14 @@ local function paintParty(v: any)
 	end
 	local names = {}
 	for _, m in members do
-		local n = string.format("LV %d %s", tonumber(m.level) or 1, string.upper(tostring(m.name)))
+		local n = UI.vipName(string.format("LV %d %s", tonumber(m.level) or 1, string.upper(tostring(m.name))), m.vip)
 		if m.userId == v.owner then
 			n ..= " ★"
 		end
 		table.insert(names, n)
 	end
 	if partyNames then
+		partyNames.RichText = true
 		partyNames.Text = table.concat(names, " · ")
 	end
 	if partyCountdown then

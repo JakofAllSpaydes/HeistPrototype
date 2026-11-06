@@ -42,6 +42,7 @@ function Roster.build(): View?
 		table.insert(rows, {
 			userId = player.UserId,
 			name = player.Name,
+			vip = profile ~= nil and profile.vip.active == true, -- brief 6: the VIP tag
 			level = if profile then profile.level else 1,
 			classId = PlayerState.classOf(s),
 			state = state,

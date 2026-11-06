@@ -27,6 +27,8 @@ local BigCrate = require(script.Parent.BigCrate)
 local Pause = require(script.Parent.Pause)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Purchases = require(script.Parent.Purchases)
+local Profiles = require(script.Parent.Profiles)
 
 local Dealer = {}
 
@@ -461,6 +463,23 @@ local function buy(player: Player, slot: any)
 	sendStock(player)
 end
 
+-- Brief 6: RESTOCK for fake Robux (the purchase sheet): your eight stands again, no match cash, no doubling.
+Purchases.register("dealer_restock", {
+	check = function(player)
+		if not active or not stock[player] then
+			return "The dealer is not open"
+		end
+		return nil
+	end,
+	grant = function(player)
+		local s = stock[player]
+		restock(player, s.rerolls)
+		sendStock(player)
+		Log.event("Dealer", "%s restocked for Robux (fake)", player.Name)
+		return { ok = true }
+	end,
+})
+
 local function skipNeeded(): number
 	return #World.runAudience()
 end
@@ -545,13 +564,22 @@ function Dealer.run(wave: number)
 	end
 	World.fireRun("DealerStart", { endsAt = endsAt, position = origin(), sec = Config.DealerSec })
 	-- The DEALER phones in (the crew-call card), then the client's dealer card takes its place in the stack.
-	World.fireRun("CrewLine", {
-		kind = "door",
-		crewLead = "DEALER",
-		typeLabel = "SHOP OPEN",
-		text = { Config.DealerLine },
-		hold = Config.CallHoldSec,
-	})
+	-- Brief 6: VIPs get greeted by name.
+	for _, p in World.runAudience() do
+		local prof = Profiles.get(p)
+		local vip = prof ~= nil and prof.vip.active == true
+		Remotes.Juice:FireClient(p, "CrewLine", {
+			kind = "door",
+			crewLead = "DEALER",
+			typeLabel = if vip then "VIP · SHOP OPEN" else "SHOP OPEN",
+			text = {
+				if vip
+					then string.format("Well, if it isn't %s. Best stock's yours. ", p.DisplayName) .. Config.DealerLine
+					else Config.DealerLine,
+			},
+			hold = Config.CallHoldSec,
+		})
+	end
 	Log.event("Dealer", "break after wave %d: %ds, stall at (%d, %d)", wave, Config.DealerSec, origin().X, origin().Z)
 	while active and not skipped and not World.runOver and Workspace:GetServerTimeNow() < endsAt do
 		task.wait(0.1)

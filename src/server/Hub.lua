@@ -141,6 +141,39 @@ function Hub.refreshTag(player: Player)
 	label.TextColor3 = GOLD
 	label.TextStrokeTransparency = 0.4
 	label.Parent = gui
+	-- Brief 6: the VIP gold tag, a small pill over the name line.
+	if profile and profile.vip.active then
+		local pill = Instance.new("Frame")
+		pill.Name = "VipTag"
+		pill.BackgroundColor3 = Color3.fromHex("F2C14E")
+		pill.BorderSizePixel = 0
+		pill.Position = UDim2.fromScale(0.26, -0.62)
+		pill.Size = UDim2.fromScale(0.2, 0.55)
+		pill.Parent = gui
+		local pc = Instance.new("UICorner")
+		pc.CornerRadius = UDim.new(0.3, 0)
+		pc.Parent = pill
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromHex("FFF1C4")
+		stroke.Thickness = 1.5
+		stroke.Parent = pill
+		local vt = Instance.new("TextLabel")
+		vt.BackgroundTransparency = 1
+		vt.Size = UDim2.fromScale(1, 1)
+		vt.Font = Enum.Font.LuckiestGuy
+		vt.TextScaled = true
+		vt.Text = "VIP"
+		vt.TextColor3 = DARK
+		vt.Parent = pill
+		gui.Size = UDim2.fromScale(5, 1.9)
+		gui.StudsOffset = Vector3.new(0, 2.9, 0)
+		circle.Size = UDim2.fromScale(0.22, 0.58)
+		circle.Position = UDim2.fromScale(0.02, 0.36)
+		label.Size = UDim2.fromScale(0.74, 0.68)
+		label.Position = UDim2.fromScale(0.26, 0.32)
+		pill.Position = UDim2.fromScale(0.26, 0)
+		pill.Size = UDim2.fromScale(0.2, 0.3)
+	end
 end
 
 function Hub.refreshAllTags()

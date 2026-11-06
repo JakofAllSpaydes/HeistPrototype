@@ -492,6 +492,19 @@ local function onResult(data: any)
 		UI.punch(p.price, 1.3, 0.25)
 		if data.reason == "cash" then
 			ClientState.Juice:Fire("Toast", { text = "NOT ENOUGH CASH" })
+			-- Brief 6: short of match cash funnels to the purchase sheet (RESTOCK for Robux, or a cash pack).
+			local sheet = require(script.Parent:WaitForChild("PurchaseSheet") :: ModuleScript) :: any
+			if not sheet.isOpen() then
+				if data.slot == "reroll" then
+					sheet.open("dealer_restock", { context = "dealer RESTOCK short of cash" })
+				else
+					sheet.choose(
+						"Match cash",
+						{ "cash_5k", "cash_20k", "cash_100k" },
+						{ context = "dealer short of cash" }
+					)
+				end
+			end
 		end
 	end
 end

@@ -282,6 +282,13 @@ function UI.fmtCash(n: number): string
 	return (if n < 0 then "-$" else "$") .. out
 end
 
+-- Brief 6: the VIP gold tag before a name (labels that show it set RichText = true).
+UI.VipTag = '<font color="#F2C14E">VIP</font> '
+
+function UI.vipName(name: string, vip: any): string
+	return if vip == true then UI.VipTag .. name else name
+end
+
 -- Comma-grouped integer: 3110 -> "3,110".
 function UI.fmtInt(n: number): string
 	return string.sub(UI.fmtCash(math.floor(math.abs(n))), 2)

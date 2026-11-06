@@ -224,7 +224,12 @@ local function viewFor(player: Player): any
 	local names = {}
 	for _, m in zone.members do
 		local mp = PlayerState.get(m).profile
-		table.insert(names, { userId = m.UserId, name = m.Name, level = if mp then mp.level else 1 })
+		table.insert(names, {
+			userId = m.UserId,
+			name = m.Name,
+			level = if mp then mp.level else 1,
+			vip = mp ~= nil and mp.vip.active == true, -- brief 6
+		})
 	end
 	local card: string? = nil
 	if zone.phase == "creating" and zone.creator == player then

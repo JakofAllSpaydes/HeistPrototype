@@ -297,6 +297,7 @@ function RunEnd.play(): string
 		rows[i] = {
 			userId = p.UserId,
 			name = p.Name,
+			vip = s.profile ~= nil and s.profile.vip.active == true, -- brief 6: VIP tag and the gold row frame
 			pose = s.pose,
 			poseAnim = PlayerState.squadEmote(s).animationId,
 			poseHold = PlayerState.squadEmote(s).holdSec,

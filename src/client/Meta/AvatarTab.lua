@@ -58,10 +58,11 @@ local function renderMasks(scene: any, panel: Frame)
 	local perRow = 4
 	local tileW = MetaUI.tileWidth(grid, perRow)
 
-	local ownedList, unownedList = {}, {}
+	-- Brief 6: VIP-only cosmetics get their own row.
+	local ownedList, unownedList, vipList = {}, {}, {}
 	for _, m in Masks.List do
 		local own = profile ~= nil and profile.masks.owned[m.id] == true
-		table.insert(if own then ownedList else unownedList, m)
+		table.insert(if m.saleType == "VIP" then vipList elseif own then ownedList else unownedList, m)
 	end
 	local function tilesFor(list: { Masks.Mask }, header: string, order: number)
 		MetaUI.header(grid, order, header)
@@ -86,7 +87,7 @@ local function renderMasks(scene: any, panel: Frame)
 				owned = own,
 				selected = selectedMask == m.id,
 				tag = if own and m.saleType ~= "Direct" then string.upper(m.saleType) else nil,
-				tagColor = Theme.Colors.blue,
+				tagColor = MetaUI.SourceColors[m.saleType] or Theme.Colors.blue,
 				icon = "mask",
 				iconColor = Color3.fromHex(m.color),
 				size = tileW,
@@ -98,6 +99,9 @@ local function renderMasks(scene: any, panel: Frame)
 				scene.refresh()
 			end)
 		end
+	end
+	if #vipList > 0 then
+		tilesFor(vipList, "VIP · MEMBERS ONLY", -10)
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
@@ -162,10 +166,10 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 	local perRow = 4
 	local tileW = MetaUI.tileWidth(grid, perRow)
 
-	local ownedList, unownedList = {}, {}
+	local ownedList, unownedList, vipList = {}, {}, {}
 	for _, e in Emotes.forSlot(slot) do
 		local own = profile ~= nil and profile.emotes ~= nil and profile.emotes.owned[e.id] == true
-		table.insert(if own then ownedList else unownedList, e)
+		table.insert(if e.saleType == "VIP" then vipList elseif own then ownedList else unownedList, e)
 	end
 	local function tilesFor(list: { Emotes.Emote }, header: string, order: number)
 		MetaUI.header(grid, order, header)
@@ -190,7 +194,7 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 				owned = own,
 				selected = sel == e.id,
 				tag = if own and e.saleType ~= "Direct" then string.upper(e.saleType) else nil,
-				tagColor = Theme.Colors.blue,
+				tagColor = MetaUI.SourceColors[e.saleType] or Theme.Colors.blue,
 				icon = "class",
 				iconColor = Theme.Colors.white,
 				glyph = "▶",
@@ -204,6 +208,9 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 				scene.refresh()
 			end)
 		end
+	end
+	if #vipList > 0 then
+		tilesFor(vipList, "VIP · MEMBERS ONLY", -10)
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)

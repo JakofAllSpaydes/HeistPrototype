@@ -657,7 +657,7 @@ local function showCallout(data: any)
 	local color = if data.gold then Theme.Colors.gold else Theme.Colors.red
 	buildCard(inner, {
 		kind = "ally",
-		crewLead = string.upper(tostring(data.name or "")),
+		crewLead = (if data.vip then "VIP " else "") .. string.upper(tostring(data.name or "")),
 		label = "",
 		labelColor = color,
 		text = { tostring(data.line or "") },

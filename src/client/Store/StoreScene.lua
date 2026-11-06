@@ -857,6 +857,23 @@ function StoreScene.init()
 			hub.onGoldPlus = function()
 				StoreScene.open("GOLD")
 			end
+			hub.onStoreTab = function(tab: string)
+				StoreScene.open(tab)
+			end
+			-- The VIP daily gift chip on the hub HUD.
+			hub.onVipGift = function()
+				local ok, res = pcall(function()
+					return Remotes.Shop:InvokeServer("vipGift", {})
+				end)
+				if ok and typeof(res) == "table" and res.ok then
+					PurchaseSheet.toast(
+						string.format("+%d GOLD · VIP DAILY GIFT", Config.VipDailyGold),
+						Color3.fromHex("F2C14E")
+					)
+				elseif ok and typeof(res) == "table" then
+					PurchaseSheet.toast(tostring(res.reason), Theme.Colors.malus, false)
+				end
+			end
 		end
 	end
 	bindHub()

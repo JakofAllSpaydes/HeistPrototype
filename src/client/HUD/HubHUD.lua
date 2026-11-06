@@ -17,11 +17,11 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 local LevelCard = require(script.Parent.LevelCard)
+local BoostChips = require(script.Parent.BoostChips)
 
 local HubHUD = {}
 
 local GREEN = Color3.fromHex("2FD46A")
-local boostStartedAt = os.clock() -- the stub boost's countdown runs from the first HUD build
 
 -- Icon tile with a label under it. Returns the button.
 local function iconTile(
@@ -366,14 +366,14 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		tiles[tab] = b
 	end
 
-	-- BOOSTS, bottom-right: icon chips; the first is a stub +50% GOLD with a countdown, the others empty.
+	-- BOOSTS, bottom-right (brief 6): the live boost chips, VIP's CASH chip and daily gift, and a + into the store.
 	local chipSize = if mobile then S(44) else S(56)
 	local boosts = UI.frame({
 		Name = "Boosts",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -S(20), 1, -S(16)),
-		Size = UDim2.fromOffset(chipSize * 3 + S(20), chipSize + S(34)),
+		Size = UDim2.fromOffset(chipSize * 5 + S(40), chipSize + S(34)),
 		Parent = root,
 	})
 	UI.text({
@@ -385,70 +385,29 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Size = UDim2.new(1, 0, 0, S(14)),
 		Parent = boosts,
 	})
-	local chips = UI.frame({
+	local chipHolder = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, S(18)),
 		Size = UDim2.new(1, 0, 0, chipSize + S(16)),
 		Parent = boosts,
 	})
-	UI.list(chips, Enum.FillDirection.Horizontal, S(10), Enum.HorizontalAlignment.Right)
-	local timerLabel: TextLabel? = nil
-	for i = 1, 3 do
-		local filled = i == 1
-		local holder = UI.frame({
-			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(chipSize, chipSize + S(16)),
-			LayoutOrder = i,
-			Parent = chips,
-		})
-		local chip = UI.frame({
-			BackgroundColor3 = if filled then Theme.Colors.panel else Theme.Colors.bg,
-			BackgroundTransparency = if filled then 0 else 0.6,
-			Size = UDim2.fromOffset(chipSize, chipSize),
-			Parent = holder,
-		})
-		UI.corner(chip, S(10))
-		UI.stroke(chip, if filled then Theme.Colors.gold else Theme.Colors.grey, S(1.5), if filled then 0 else 0.5)
-		if filled then
-			UI.text({
-				Text = "◆",
-				Font = Theme.Fonts.display,
-				TextSize = math.floor(chipSize * 0.42),
-				TextColor3 = Theme.Colors.gold,
-				Position = UDim2.fromOffset(0, S(2)),
-				Size = UDim2.new(1, 0, 0.6, 0),
-				Parent = chip,
-			})
-			UI.text({
-				Text = "+50%",
-				Font = Theme.Fonts.display,
-				TextSize = S(11),
-				TextColor3 = Theme.Colors.gold,
-				Position = UDim2.fromScale(0, 0.6),
-				Size = UDim2.new(1, 0, 0.4, 0),
-				Parent = chip,
-			})
-			timerLabel = UI.text({
-				Text = "",
-				Font = Theme.Fonts.display,
-				TextSize = S(11),
-				TextColor3 = Theme.Colors.text,
-				Position = UDim2.fromOffset(0, chipSize + S(1)),
-				Size = UDim2.new(1, 0, 0, S(14)),
-				Parent = holder,
-			})
-			UI.stroke(timerLabel :: TextLabel, Theme.Colors.black, S(1.5), 0.3)
-		else
-			UI.text({
-				Text = "+",
-				Font = Theme.Fonts.display,
-				TextSize = math.floor(chipSize * 0.4),
-				TextColor3 = Theme.Colors.grey,
-				Size = UDim2.fromScale(1, 1),
-				Parent = chip,
-			})
-		end
-	end
+	local chipRow = BoostChips.new(chipHolder, {
+		size = chipSize,
+		align = Enum.HorizontalAlignment.Right,
+		hub = true,
+		onPlus = function()
+			if component.onStoreTab then
+				component.onStoreTab("BOOSTS")
+			end
+		end,
+		onGift = function()
+			if component.onVipGift then
+				component.onVipGift()
+			end
+		end,
+	}, track)
+	chipRow.frame.AnchorPoint = Vector2.new(1, 0)
+	chipRow.frame.Position = UDim2.fromScale(1, 0)
 
 	component.frame = root
 	component.queueSlot = queueSlot
@@ -461,6 +420,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local shownTokens = -1
 	local shownLevel, shownXp = -1, -1
 	function component.update(sync: any)
+		chipRow.update(sync)
 		local profile = sync.profile
 		local tokens = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
 		if tokens ~= shownTokens then
@@ -492,9 +452,8 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end
 
-	-- The stub boost ticks down; PLAY breathes.
+	-- PLAY breathes.
 	local t = 0
-	local lastSec = -1
 	track(RunService.Heartbeat:Connect(function(dt)
 		if not root.Visible then
 			return
@@ -503,15 +462,6 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local stroke = play:FindFirstChildOfClass("UIStroke")
 		if stroke then
 			stroke.Transparency = 0.3 + 0.2 * math.sin(t * 2)
-		end
-		local label = timerLabel
-		if label then
-			local left = math.max(0, Config.StubBoostSec - (os.clock() - boostStartedAt))
-			local sec = math.ceil(left)
-			if sec ~= lastSec then
-				lastSec = sec
-				label.Text = string.format("%d:%02d", sec // 60, sec % 60)
-			end
 		end
 	end))
 

@@ -10,6 +10,7 @@ local Remotes = require(Shared.Remotes)
 local Callouts = require(Shared.Callouts)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Profiles = require(script.Parent.Profiles)
 
 local AllyCallout = {}
 
@@ -35,7 +36,15 @@ function AllyCallout.send(speaker: Player, event: string, ...: any)
 	end
 	local gold = Callouts.Gold[event] == true
 	local everyone = Callouts.Everyone[event] == true
-	local payload = { userId = speaker.UserId, name = speaker.Name, event = event, line = line, gold = gold }
+	local sp = Profiles.get(speaker)
+	local payload = {
+		userId = speaker.UserId,
+		name = speaker.Name,
+		vip = sp ~= nil and sp.vip.active == true, -- brief 6: the VIP tag on crew callouts
+		event = event,
+		line = line,
+		gold = gold,
+	}
 	for _, p in World.runAudience() do
 		if everyone or p ~= speaker then
 			Remotes.Juice:FireClient(p, "AllyCallout", payload)

@@ -24,6 +24,7 @@ local Toast = require(script.Toast)
 local MobileControls = require(script.MobileControls)
 local HubHUD = require(script.HubHUD)
 local BossBar = require(script.BossBar)
+local BoostChips = require(script.BoostChips)
 
 export type Component = { update: ((any) -> ())?, onJuice: ((string, any) -> ())?, [string]: any }
 
@@ -51,6 +52,7 @@ local MANAGED = {
 	"ADSButton",
 	"ReloadButton",
 	"HubHUD",
+	"BoostChips",
 }
 -- The boss bar shows itself (only while a boss is live); modes may hide it but never force it on.
 local SELF_MANAGED = { Toast = true, Combo = true, BossBar = true }
@@ -187,6 +189,7 @@ function HUD.build()
 		mobile = MobileControls.build(gui, track),
 		hub = HubHUD.build(gui, track),
 		bossBar = BossBar.build(gui, track),
+		boostChips = BoostChips.build(gui, track),
 	}
 	if ClientState.sync then
 		HUD.update(ClientState.sync)

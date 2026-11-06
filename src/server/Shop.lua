@@ -12,6 +12,7 @@ local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
 local Purchases = require(script.Parent.Purchases)
 local Grants = require(script.Parent.Grants)
+local Boosts = require(script.Parent.Boosts)
 local Log = require(script.Parent.Log)
 
 export type Result = { ok: boolean, reason: string?, data: any? }
@@ -58,6 +59,15 @@ Purchases.register("bundle", {
 		end
 		local results = Grants.applyAll(player, list, { source = b.id, owned = "skip", wrapOn = target })
 		return { bundleId = b.id, results = results }
+	end,
+})
+
+------------------------------------------------------------------ Boosts
+-- Timed: buying an active boost extends it.
+Purchases.register("boost", {
+	grant = function(player, _profile, product)
+		local expiresAt = Boosts.extend(player, product.boostId :: string, product.sec or 0)
+		return { boostId = product.boostId, expiresAt = expiresAt }
 	end,
 })
 
