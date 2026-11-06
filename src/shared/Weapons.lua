@@ -21,11 +21,24 @@ export type Weapon = {
 	burst: number, -- shots per trigger pull (1 = normal); fireRate is the rate inside the burst
 	burstDelay: number, -- seconds between bursts
 	pierceByRarity: { number }?, -- built-in pierce per rarity tier (snipers)
+	-- Brief 6: the gun's own silhouette and accent color (held model and icon). nil = the generic block.
+	look: Look?,
 	-- Meta (Armory): how the gun is acquired and what its levels cost. Prices.lua holds the numbers.
 	saleType: string, -- Direct | Crate | Event
 	unlockCost: number?, -- nil = Prices.weaponUnlock
 	upgBaseCost: number?, -- nil = Prices.weaponUpgrade
 	rarity: number, -- Armory rarity 1..5 (Weapons.ArmoryRarity): the collection tile color, not the drop roll
+}
+
+-- Silhouette of a gun (brief 6 guns): body length, barrel length, stock, mag kind and scope, plus its own accent
+-- color. The held model and UI.gunIcon both draw from it, so each new gun reads differently at a glance.
+export type Look = {
+	color: string, -- hex accent (barrel, stock, mag)
+	body: number, -- body length, studs (the generic gun is 1.6)
+	barrel: number, -- barrel past the body, studs
+	stock: boolean,
+	mag: string, -- box | drum | tube | none
+	scope: boolean,
 }
 
 local Config = require(script.Parent.Config)
@@ -225,6 +238,111 @@ Weapons.List = {
 		spread = 2.4,
 		auto = true,
 	}),
+	-- Brief 6: the ARMS CRATE pool (Crates.lua). Common-level paper DPS like the rest, each with its own look;
+	-- never Gold-priced (saleType Crate). The FAL and the Mosin also come in bundles.
+	def({
+		id = "MAC10",
+		displayName = "MAC-10",
+		archetype = "SMG",
+		baseDmg = 11,
+		fireRate = 16,
+		magSize = 30,
+		reloadTime = 1.5,
+		spread = 3.8,
+		auto = true,
+		saleType = "Crate",
+		look = { color = "2B2B30", body = 0.9, barrel = 0.25, stock = false, mag = "box", scope = false },
+	}),
+	def({
+		id = "Skorpion",
+		displayName = "Skorpion",
+		archetype = "SMG",
+		baseDmg = 13,
+		fireRate = 13,
+		magSize = 20,
+		reloadTime = 1.4,
+		spread = 2.8,
+		auto = true,
+		saleType = "Crate",
+		look = { color = "6E5A3A", body = 1.0, barrel = 0.35, stock = true, mag = "box", scope = false },
+	}),
+	def({
+		id = "AUG",
+		displayName = "AUG",
+		archetype = "Rifle",
+		baseDmg = 17,
+		fireRate = 9.5,
+		magSize = 30,
+		reloadTime = 2.0,
+		spread = 1.3,
+		auto = true,
+		saleType = "Crate",
+		look = { color = "5C7A52", body = 1.4, barrel = 0.35, stock = false, mag = "box", scope = true },
+	}),
+	def({
+		id = "PS90",
+		displayName = "PS90",
+		archetype = "SMG",
+		baseDmg = 10,
+		fireRate = 16,
+		magSize = 50,
+		reloadTime = 2.1,
+		spread = 3.0,
+		auto = true,
+		saleType = "Crate",
+		look = { color = "C9B98F", body = 1.3, barrel = 0.2, stock = false, mag = "none", scope = true },
+	}),
+	def({
+		id = "FAL",
+		displayName = "FAL",
+		archetype = "Rifle",
+		baseDmg = 34,
+		fireRate = 4.8,
+		magSize = 20,
+		reloadTime = 2.2,
+		spread = 1.1,
+		saleType = "Crate",
+		look = { color = "7A4E2D", body = 1.7, barrel = 0.55, stock = true, mag = "box", scope = false },
+	}),
+	def({
+		id = "Model1887",
+		displayName = "Model 1887",
+		archetype = "Shotgun",
+		baseDmg = 16,
+		fireRate = 1.5,
+		magSize = 6,
+		reloadTime = 0.5, -- per shell (lever-action tube)
+		spread = 6.5,
+		pellets = 7,
+		shellReload = true,
+		saleType = "Crate",
+		look = { color = "8A5A2B", body = 1.5, barrel = 0.7, stock = true, mag = "tube", scope = false },
+	}),
+	def({
+		id = "Mosin",
+		displayName = "Mosin",
+		archetype = "Sniper",
+		baseDmg = 160,
+		fireRate = 0.85,
+		magSize = 5,
+		reloadTime = 2.8,
+		spread = 0.2,
+		pierceByRarity = { 1, 1, 2, 3, 4 },
+		saleType = "Crate",
+		look = { color = "5A3A22", body = 1.9, barrel = 0.9, stock = true, mag = "none", scope = true },
+	}),
+	def({
+		id = "Gold1911",
+		displayName = "1911 Gold",
+		archetype = "Pistol",
+		baseDmg = 36,
+		fireRate = 3.8,
+		magSize = 8,
+		reloadTime = 1.1,
+		spread = 1.0,
+		saleType = "Crate",
+		look = { color = "E8B64C", body = 0.85, barrel = 0.2, stock = false, mag = "box", scope = false },
+	}),
 } :: { Weapon }
 
 -- Armory rarity: the tile and detail color on the Weapons tab (Rarity.Colors). The in-run drop rarity is still
@@ -245,6 +363,15 @@ Weapons.ArmoryRarity = {
 	M82 = 4,
 	M249 = 2,
 	RPK = 3,
+	-- Brief 6 crate guns: the rarity is also the crate tier they drop at.
+	MAC10 = 1,
+	Skorpion = 1,
+	AUG = 2,
+	PS90 = 2,
+	FAL = 3,
+	Model1887 = 3,
+	Mosin = 4,
+	Gold1911 = 5,
 } :: { [string]: number }
 
 Weapons.ById = {} :: { [string]: Weapon }

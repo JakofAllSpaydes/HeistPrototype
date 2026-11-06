@@ -13,6 +13,10 @@ local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 
+local function sheet(): any
+	return require(script.Parent:WaitForChild("PurchaseSheet") :: ModuleScript)
+end
+
 local Spectate = {}
 
 local player = Players.LocalPlayer
@@ -25,6 +29,34 @@ local gui: ScreenGui? = nil
 local nameLabel: TextLabel? = nil
 local reviveHint: TextLabel? = nil
 local windowEndsAt = -1 -- os.clock when the run-over revive window shuts
+local windowHeld = false -- brief 6: a party member's purchase sheet holds the window
+local windowLeft = 0
+local reviveBtn: TextButton? = nil
+local reviveCostLabel: TextLabel? = nil
+
+-- Brief 6: REVIVE EVERYBODY spends ReviveAllTokensPerPlayer x the party size on the press.
+local function tokenState(): (number, number)
+	local sync = ClientState.sync
+	local p = sync and sync.profile
+	local have = if p and typeof(p.reviveTokens) == "number" then p.reviveTokens else 0
+	local cost = if sync and sync.revive and typeof(sync.revive.allCost) == "number" then sync.revive.allCost else 1
+	return have, cost
+end
+
+local function paintRevive()
+	local b, l = reviveBtn, reviveCostLabel
+	if not b or not l then
+		return
+	end
+	local have, cost = tokenState()
+	if have < cost then
+		b.Text = "GET TOKENS"
+		l.Text = string.format("REVIVE EVERYBODY NEEDS %d · YOU HAVE %d", cost, have)
+	else
+		b.Text = "REVIVE EVERYBODY"
+		l.Text = string.format("%d TOKEN%s · YOU HAVE %d", cost, if cost == 1 then "" else "S", have)
+	end
+end
 local angle = 0
 local lastCF: CFrame? = nil
 
@@ -141,8 +173,21 @@ local function build()
 	})
 	UI.corner(revive, S(14))
 	UI.stroke(revive, Theme.Colors.black, S(2), 0.4)
+	reviveBtn = revive
+	revive.TextYAlignment = Enum.TextYAlignment.Top
+	UI.pad(revive, 0, S(6), 0, 0)
+	reviveCostLabel = UI.text({
+		Text = "",
+		Font = Theme.Fonts.display,
+		TextSize = S(11),
+		TextColor3 = Theme.Colors.bg,
+		Position = UDim2.new(0, 0, 1, -S(30)),
+		Size = UDim2.new(1, 0, 0, S(13)),
+		Parent = revive,
+	})
+	paintRevive()
 	reviveHint = UI.text({
-		Text = "FREE IN THE PROTOTYPE · STANDS THE WHOLE CREW UP",
+		Text = "STANDS THE WHOLE CREW UP",
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.bg,
 		Position = UDim2.new(0, 0, 1, -S(15)),
@@ -152,6 +197,16 @@ local function build()
 	revive.Activated:Connect(function()
 		UI.punch(revive, 0.9, 0.2)
 		UI.sound(Theme.Sounds.toast, 1.3, 0.5)
+		local have, cost = tokenState()
+		if have < cost then
+			sheet().open("tokens_5", {
+				context = "spectate GET TOKENS",
+				note = if windowEndsAt >= 0
+					then "The SECOND CHANCE window holds while this is open."
+					else "REVIVE EVERYBODY needs " .. cost .. " tokens.",
+			})
+			return
+		end
 		Remotes.ReviveEverybody:FireServer()
 	end)
 	UI.punch(revive, 1.2, 0.5)
@@ -161,6 +216,9 @@ local function step(dt: number)
 	-- Run over: the button counts down the window in which it still saves the run.
 	local hint = reviveHint
 	if hint and windowEndsAt >= 0 then
+		if windowHeld then
+			windowEndsAt = os.clock() + windowLeft
+		end
 		local left = windowEndsAt - os.clock()
 		if left > 0 then
 			hint.Text = string.format("%d s TO SAVE THE RUN", math.ceil(left))
@@ -253,7 +311,20 @@ function Spectate.init()
 			Spectate.exit()
 		elseif name == "HubEnter" then
 			Spectate.exit()
+		elseif name == "RunOverHold" and active then
+			windowHeld = data.on == true
+			windowLeft = tonumber(data.left) or 0
+			windowEndsAt = os.clock() + windowLeft
+		elseif name == "OfferTokens" and active then
+			-- All down with no tokens: the token sheet opens for the first bled-out player.
+			if not sheet().isOpen() then
+				sheet().open("tokens_5", {
+					context = "run over OfferTokens",
+					note = "The crew is down. The SECOND CHANCE window holds while this is open.",
+				})
+			end
 		elseif name == "RunOver" and active then
+			windowHeld = false
 			windowEndsAt = os.clock() + (tonumber(data.reviveWindowSec) or 0)
 			local hint = reviveHint
 			if hint then
@@ -274,6 +345,11 @@ function Spectate.init()
 	HUD.Rebuilt:Connect(function()
 		if active then
 			build()
+		end
+	end)
+	ClientState.Changed:Connect(function()
+		if active then
+			paintRevive()
 		end
 	end)
 end

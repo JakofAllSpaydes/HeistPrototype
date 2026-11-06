@@ -195,7 +195,29 @@ function ClientState.cursorAim(char: Model): (Vector3, Vector3, Instance?)
 	return ray.Origin + ray.Direction * Config.MaxShotRange, ray.Origin, nil
 end
 
+-- Brief 6: the server's os.time (boost expiries, the fake clocks) as of now, from the last sync's stamp.
+local osOffset: number? = nil
+function ClientState.osNow(): number
+	return if osOffset then os.clock() + osOffset else os.time()
+end
+
+-- The player's fake clock (real UTC + the profile's debug offset): seasons, rotations, VIP renewals, Job resets.
+function ClientState.fakeNow(): number
+	local sync = ClientState.sync
+	local p = sync and sync.profile
+	local off = if p and typeof(p.clockOffset) == "number" then p.clockOffset else 0
+	return ClientState.osNow() + off
+end
+
 Remotes.StateSync.OnClientEvent:Connect(function(data: Types.Sync)
+	local stamp = (data :: any).osTime
+	if typeof(stamp) == "number" then
+		local fresh = stamp - os.clock()
+		-- os.time is whole seconds: keep the offset that reads latest so the clock never steps back.
+		if not osOffset or fresh > (osOffset :: number) or (osOffset :: number) - fresh > 2 then
+			osOffset = fresh
+		end
+	end
 	ClientState.sync = data
 	ClientState.Changed:Fire(data)
 end)

@@ -52,6 +52,33 @@ export type Profile = {
 	pendingPayout: number, -- Gold granted this session that has not reached the store yet
 	-- Round 16: per-account client options (Profiles.OPTIONS lists the keys), e.g. hotwireSymbols (colorblind).
 	options: { [string]: boolean },
+	-- Brief 6 (v3): the fake monetization layer.
+	fakeRobux: number, -- the fake R$ balance every purchase debits (Purchases.lua)
+	reviveTokens: number, -- SELF-REVIVE / REVIVE EVERYBODY spend these
+	boosts: { [string]: { expiresAt: number } }, -- boost id -> os.time it runs out (real clock)
+	vip: { active: boolean, since: number, renewsAt: number, ever: boolean }, -- fake clock
+	vipGiftDay: number, -- the fake UTC day the VIP daily Gold was last claimed
+	pass: {
+		season: number,
+		level: number,
+		xp: number, -- into the current level (past the last level: toward the next overflow Gold)
+		tier: number, -- 0 free, 1 PREMIUM, 2 PREMIUM+
+		claimed: { [string]: { free: boolean?, p1: boolean?, p2: boolean? } }, -- "L7" -> lanes claimed
+		seasonOver: any?, -- { season, name, autoClaimed } waiting for the SEASON OVER sheet
+	},
+	jobs: {
+		dailyResetDay: number,
+		weeklyResetWeek: number,
+		daily: { any },
+		bounty: { any },
+		rerollUsed: number, -- rerolls spent on dailyResetDay
+		announcedDay: number, -- MARLOW announced this day's jobs
+		boardSeenDay: number, -- the board was opened on this day (the beacon stops pulsing)
+	},
+	cratePity: { [string]: number }, -- crate id -> opens since the last Epic+
+	crateOpens: { [string]: number }, -- crate id -> banked free opens (bundles, the pass)
+	purchases: { { id: string, price: number, at: number } }, -- the readout log (last Config.PurchaseLogKeep)
+	clockOffset: number, -- seconds added to UTC for this player's fake clock (debug advance day)
 	version: number,
 }
 
@@ -72,7 +99,8 @@ local STORE_NAME = "GHS_Profiles_v1"
 -- 2 (brief 5): the claymore moved SHARPSHOOTER -> INITIATE and turret / barricade INITIATE -> ENGINEER. Levels are
 -- keyed by ability id, so they move with the ability; the migration only logs it. Eagle Eye, Frag and Overclock
 -- start at level 0 (absent).
-local VERSION = 2
+-- 3 (brief 6): fake Robux, revive tokens, boosts, VIP, the pass, Jobs, crate pity / opens, the purchase log.
+local VERSION = 3
 local RETRY_BACKOFF = { 1, 2, 4 }
 
 local Profiles = {}
@@ -148,8 +176,31 @@ function Profiles.fresh(): Profile
 		},
 		pendingPayout = 0,
 		options = table.clone(OPTIONS),
+		fakeRobux = Config.FakeRobuxStart,
+		reviveTokens = Config.ReviveTokensStart,
+		boosts = {},
+		vip = { active = false, since = 0, renewsAt = 0, ever = false },
+		vipGiftDay = 0,
+		pass = { season = 0, level = 1, xp = 0, tier = 0, claimed = {}, seasonOver = nil },
+		jobs = {
+			dailyResetDay = 0,
+			weeklyResetWeek = 0,
+			daily = {},
+			bounty = {},
+			rerollUsed = 0,
+			announcedDay = 0,
+			boardSeenDay = 0,
+		},
+		cratePity = {},
+		crateOpens = {},
+		purchases = {},
+		clockOffset = 0,
 		version = VERSION,
 	}
+end
+
+local function num(v: any, default: number): number
+	return if typeof(v) == "number" and v == v then v else default
 end
 
 -- Fill anything a stored profile is missing (older versions, hand edits) so the rest of the server never nil-checks.
@@ -298,9 +349,99 @@ local function migrate(raw: any): Profile
 			end
 		end
 	end
+	-- Brief 6 (v3). A v2 store has none of these: the fresh defaults stand (100,000 fake R$, 3 tokens).
+	if typeof(raw.fakeRobux) == "number" then
+		p.fakeRobux = math.max(0, math.floor(raw.fakeRobux))
+	end
+	if typeof(raw.reviveTokens) == "number" then
+		p.reviveTokens = math.max(0, math.floor(raw.reviveTokens))
+	end
+	if typeof(raw.boosts) == "table" then
+		for id, b in raw.boosts do
+			if typeof(id) == "string" and typeof(b) == "table" and typeof(b.expiresAt) == "number" then
+				p.boosts[id] = { expiresAt = b.expiresAt }
+			end
+		end
+	end
+	if typeof(raw.vip) == "table" then
+		p.vip.active = raw.vip.active == true
+		p.vip.since = num(raw.vip.since, 0)
+		p.vip.renewsAt = num(raw.vip.renewsAt, 0)
+		p.vip.ever = raw.vip.ever == true or p.vip.active
+	end
+	p.vipGiftDay = num(raw.vipGiftDay, 0)
+	if typeof(raw.pass) == "table" then
+		local rp = raw.pass
+		p.pass.season = math.floor(num(rp.season, 0))
+		p.pass.level = math.max(1, math.floor(num(rp.level, 1)))
+		p.pass.xp = math.max(0, math.floor(num(rp.xp, 0)))
+		p.pass.tier = math.clamp(math.floor(num(rp.tier, 0)), 0, 2)
+		if typeof(rp.claimed) == "table" then
+			for k, lanes in rp.claimed do
+				if typeof(k) == "string" and typeof(lanes) == "table" then
+					p.pass.claimed[k] =
+						{ free = lanes.free == true or nil, p1 = lanes.p1 == true or nil, p2 = lanes.p2 == true or nil }
+				end
+			end
+		end
+		if typeof(rp.seasonOver) == "table" then
+			p.pass.seasonOver = rp.seasonOver
+		end
+	end
+	if typeof(raw.jobs) == "table" then
+		local rj = raw.jobs
+		p.jobs.dailyResetDay = math.floor(num(rj.dailyResetDay, 0))
+		p.jobs.weeklyResetWeek = math.floor(num(rj.weeklyResetWeek, 0))
+		p.jobs.rerollUsed = math.floor(num(rj.rerollUsed, 0))
+		p.jobs.announcedDay = math.floor(num(rj.announcedDay, 0))
+		p.jobs.boardSeenDay = math.floor(num(rj.boardSeenDay, 0))
+		for _, key in { "daily", "bounty" } do
+			local list = rj[key]
+			if typeof(list) == "table" then
+				local out = {}
+				for _, e in list do
+					if typeof(e) == "table" and typeof(e.id) == "string" then
+						table.insert(out, {
+							id = e.id,
+							progress = math.max(0, math.floor(num(e.progress, 0))),
+							claimed = e.claimed == true,
+						})
+					end
+				end
+				(p.jobs :: any)[key] = out
+			end
+		end
+	end
+	for _, key in { "cratePity", "crateOpens" } do
+		local src = raw[key]
+		if typeof(src) == "table" then
+			for id, n in src do
+				if typeof(id) == "string" and typeof(n) == "number" then
+					(p :: any)[key][id] = math.max(0, math.floor(n))
+				end
+			end
+		end
+	end
+	if typeof(raw.purchases) == "table" then
+		for _, e in raw.purchases do
+			if typeof(e) == "table" and typeof(e.id) == "string" then
+				table.insert(p.purchases, { id = e.id, price = num(e.price, 0), at = num(e.at, 0) })
+			end
+		end
+	end
+	p.clockOffset = num(raw.clockOffset, 0)
 	local fromVersion = tonumber(raw.version) or 1
 	if fromVersion < 2 and p.classes.owned.SHARPSHOOTER and (p.abilities.claymore or 0) > 0 then
 		Log.event("Profile", "v1 -> v2: claymore LV %d now on INITIATE's Z", p.abilities.claymore)
+	end
+	if raw ~= nil and fromVersion < 3 then
+		Log.event(
+			"Profile",
+			"v%d -> v3: R$ %d fake balance, %d revive tokens",
+			fromVersion,
+			p.fakeRobux,
+			p.reviveTokens
+		)
 	end
 	return p
 end

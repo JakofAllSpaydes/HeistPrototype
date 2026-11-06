@@ -13,6 +13,7 @@ local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.PlayerState)
 local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Log)
+local Boosts = require(script.Parent.Boosts)
 
 -- Round 16: a floor gun is only a weapon id + rarity. Its numbers belong to whoever picks it up (their own Armory
 -- level for that id and their own upgrades), so no level or damage rides on the Part; each client draws its tag
@@ -240,7 +241,7 @@ function WeaponRoll.rollRarity(
 			floor = state.held.rarity
 			note = string.format("pity floor %s", Rarity.name(floor))
 		end
-		rarity = Rarity.roll(wave, floor, weights)
+		rarity = Rarity.roll(wave, floor, weights, Boosts.luckyShift(state.player)) -- LUCKY (brief 6)
 		if pity then
 			state.pityStreak = 0
 			return rarity, note

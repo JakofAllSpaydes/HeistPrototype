@@ -16,6 +16,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Boosts = require(script.Parent.Boosts)
 
 local UpgradeShop = {}
 
@@ -84,7 +85,7 @@ function UpgradeShop.generate(state: PlayerState.State, wave: number, count: num
 	local forcedIndex = if state.forceTradeoff then math.random(1, n) else nil
 	local elementIndex = if state.forceElement then math.random(1, n) else nil
 	for i = 1, n do
-		local tier = Rarity.roll(wave)
+		local tier = Rarity.roll(wave, nil, nil, Boosts.luckyShift(state.player)) -- LUCKY (brief 6)
 		local statId = randomStat(used, if elementIndex == i then "element" else nil)
 		used[statId] = true
 		local element = Upgrades.isElement(statId)

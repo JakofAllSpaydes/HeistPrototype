@@ -16,6 +16,7 @@ local Types = require(Shared.Types)
 local Masks = require(Shared.Masks)
 local Emotes = require(Shared.Emotes)
 local Wraps = require(Shared.Wraps)
+local MaskShapes = require(Shared.MaskShapes)
 local Classes = require(Shared.Classes)
 local AbilityGrowth = require(Shared.AbilityGrowth)
 local Stats = require(script.Parent.Stats)
@@ -23,6 +24,7 @@ local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Profiles = require(script.Parent.Profiles)
 local Pause = require(script.Parent.Pause)
+local Boosts = require(script.Parent.Boosts)
 
 export type State = {
 	player: Player,
@@ -311,6 +313,9 @@ function PlayerState.computed(state: State): Types.Computed
 	if state.fieldHospitalUntil > Workspace:GetServerTimeNow() then
 		st.damage *= 1 + Config.FieldHospitalDmgPct
 	end
+	-- Brief 6 boosts: POWER on weapon damage, CASH (and VIP's +25%) on CASH GAIN.
+	st.damage *= Boosts.damageMult(state.player)
+	st.cashGain *= Boosts.cashMult(state.player)
 	return st
 end
 
@@ -339,24 +344,86 @@ function PlayerState.refreshHeldVisual(state: State)
 	if not hand then
 		return
 	end
+	-- Brief 6 guns carry their own silhouette (Weapons.Look): body length, barrel, stock, mag, scope, accent color.
+	local w = Weapons.ById[state.held.weaponId]
+	local look = w and w.look
+	local bodyLen = if look then look.body else 1.6
 	local gun = Instance.new("Part")
 	gun.Name = "HeldGun"
-	gun.Size = Vector3.new(0.35, 0.5, 1.6)
+	gun.Size = Vector3.new(0.35, 0.5, bodyLen)
 	gun.Color = Rarity.color(state.held.rarity)
 	gun.Material = Enum.Material.Metal
 	gun.CanCollide = false
 	gun.CanQuery = false
 	gun.CanTouch = false
 	gun.Massless = true
-	gun.CFrame = hand.CFrame * CFrame.new(0, -0.25, -0.9)
+	gun.CFrame = hand.CFrame * CFrame.new(0, -0.25, -0.1 - bodyLen / 2)
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = hand
 	weld.Part1 = gun
 	weld.Parent = gun
 	local muzzle = Instance.new("Attachment")
 	muzzle.Name = "Muzzle"
-	muzzle.Position = Vector3.new(0, 0, -0.8)
+	muzzle.Position = Vector3.new(0, 0, -bodyLen / 2 - (if look then look.barrel else 0))
 	muzzle.Parent = gun
+	if look then
+		local accent = Color3.fromHex(look.color)
+		local function bit(name: string, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material)
+			local p = Instance.new("Part")
+			p.Name = name
+			p.Size = size
+			p.Color = color
+			p.Material = material
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p.Massless = true
+			p.CFrame = gun.CFrame * offset
+			local wc = Instance.new("WeldConstraint")
+			wc.Part0 = gun
+			wc.Part1 = p
+			wc.Parent = p
+			p.Parent = gun
+		end
+		if look.barrel > 0 then
+			bit(
+				"Barrel",
+				Vector3.new(0.14, 0.14, look.barrel),
+				CFrame.new(0, 0.08, -bodyLen / 2 - look.barrel / 2),
+				accent,
+				Enum.Material.Metal
+			)
+		end
+		if look.stock then
+			bit(
+				"Stock",
+				Vector3.new(0.26, 0.4, 0.5),
+				CFrame.new(0, -0.05, bodyLen / 2 + 0.25),
+				accent,
+				Enum.Material.Wood
+			)
+		end
+		if look.scope then
+			bit(
+				"Scope",
+				Vector3.new(0.16, 0.16, bodyLen * 0.45),
+				CFrame.new(0, 0.33, -0.05),
+				Color3.fromRGB(26, 26, 32),
+				Enum.Material.Metal
+			)
+		end
+		if look.mag == "box" then
+			bit("Mag", Vector3.new(0.18, 0.42, 0.22), CFrame.new(0, -0.42, -bodyLen * 0.1), accent, Enum.Material.Metal)
+		elseif look.mag == "tube" then
+			bit(
+				"Tube",
+				Vector3.new(0.12, 0.12, bodyLen * 0.8),
+				CFrame.new(0, -0.12, -0.15),
+				accent,
+				Enum.Material.Metal
+			)
+		end
+	end
 	gun.Parent = char
 	-- Wrappable part: the grip / stock band under the body.
 	local wrapId = PlayerState.wrapOf(state, state.held.weaponId)
@@ -365,7 +432,7 @@ function PlayerState.refreshHeldVisual(state: State)
 	grip.Name = "HeldGunWrap"
 	grip.Size = Vector3.new(0.38, 0.22, 0.7)
 	grip.Color = if wrap then Color3.fromHex(wrap.color) else Color3.fromRGB(40, 40, 46)
-	grip.Material = if wrap then Enum.Material.SmoothPlastic else Enum.Material.Metal
+	grip.Material = if wrap then Wraps.material(wrap) else Enum.Material.Metal
 	grip.CanCollide = false
 	grip.CanQuery = false
 	grip.CanTouch = false
@@ -392,30 +459,21 @@ function PlayerState.applyMask(state: State)
 	if old then
 		old:Destroy()
 	end
-	if mask.shape == "none" then
-		return
+	-- Brief 6: every shape (the new crate / VIP / pass masks too) comes from the shared builder.
+	local part = MaskShapes.build(head, mask, "MaskPart", char)
+	-- The VIP mask gets the Epic+ sparkle treatment in the hub.
+	if part and mask.rarity >= 4 and not World.inRun() then
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Name = "MaskSparkle"
+		sparkle.Color = ColorSequence.new(Color3.fromHex(mask.accent or mask.color))
+		sparkle.LightEmission = 1
+		sparkle.Size = NumberSequence.new(0.12, 0)
+		sparkle.Lifetime = NumberRange.new(0.6, 1.1)
+		sparkle.Rate = if mask.saleType == "VIP" then 14 else 6
+		sparkle.Speed = NumberRange.new(0.6, 1.4)
+		sparkle.SpreadAngle = Vector2.new(180, 180)
+		sparkle.Parent = part
 	end
-	local part = Instance.new("Part")
-	part.Name = "MaskPart"
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.Massless = true
-	part.Color = Color3.fromHex(mask.color)
-	if mask.shape == "visor" then
-		part.Size = Vector3.new(1.3, 0.35, 0.3)
-		part.Material = Enum.Material.Neon
-		part.CFrame = head.CFrame * CFrame.new(0, 0.1, -0.55)
-	else
-		part.Size = Vector3.new(1.25, 0.5, 1.25)
-		part.Material = Enum.Material.Fabric
-		part.CFrame = head.CFrame * CFrame.new(0, -0.25, 0)
-	end
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = head
-	weld.Part1 = part
-	weld.Parent = part
-	part.Parent = char
 end
 
 -- Hats, hair and face accessories go on join so the mask reads; everything else stays.

@@ -32,6 +32,10 @@ local DEFS: { [string]: string } = {
 	PauseAction = "RemoteEvent", -- client -> server: "vote" | "unvote" (to pause) | "extend" | "resume" (votes while paused)
 	-- Round 16
 	SetOption = "RemoteEvent", -- client -> server: key (Profiles.OPTIONS), value (boolean); saved to the profile
+	-- Brief 6: the fake purchase flow and the shop actions
+	Purchase = "RemoteFunction", -- client -> server: productId, args; returns { ok, reason?, balance, data? } (Purchases.lua)
+	SheetState = "RemoteEvent", -- client -> server: open (boolean): the purchase sheet is up (the SECOND CHANCE window holds)
+	Shop = "RemoteFunction", -- client -> server: action, args; returns { ok, reason?, data? } (claims, rerolls, VIP gift, crate credits)
 }
 
 local folder: Instance

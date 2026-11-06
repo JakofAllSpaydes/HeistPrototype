@@ -23,6 +23,7 @@ task.spawn(function()
 end)
 
 HUD.init()
+require(script.Parent:WaitForChild("PurchaseSheet")).init()
 require(script.Parent:WaitForChild("UpgradeOverlay")).init()
 require(script.Parent:WaitForChild("CrateReelUI")).init()
 require(script.Parent:WaitForChild("StatusFx")).init()

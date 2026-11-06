@@ -8,10 +8,12 @@ export type Emote = {
 	slot: string, -- squad | mvp
 	animationId: string,
 	holdSec: number, -- how long the pose plays in the line-ups
-	saleType: string, -- Direct | Crate | Event
+	saleType: string, -- Direct | Crate | Event | Bundle | VIP | Pass
 	price: number?, -- nil = Prices.emote
 	rarity: number, -- 1..5 (Emotes.Rarity): the tile color on the Avatar tab
 }
+
+local Poses = require(script.Parent.Poses)
 
 local Emotes = {}
 
@@ -90,6 +92,51 @@ Emotes.List = {
 		holdSec = 3,
 		saleType = "Event",
 	},
+	-- Brief 6: the MARKSMAN SET pose, the two VIP poses and the battle pass poses (ids in Poses.lua).
+	{
+		id = "b_salute",
+		name = "Salute",
+		slot = "squad",
+		animationId = Poses.Salute,
+		holdSec = 1.6,
+		saleType = "Bundle",
+	},
+	{
+		id = "vip_stadium",
+		name = "Stadium",
+		slot = "squad",
+		animationId = Poses.Stadium,
+		holdSec = 1.8,
+		saleType = "VIP",
+	},
+	{ id = "vip_tilt", name = "Big Tilt", slot = "mvp", animationId = Poses.Tilt, holdSec = 3, saleType = "VIP" },
+	{ id = "p_shrug", name = "Shrug", slot = "squad", animationId = Poses.Shrug, holdSec = 1.4, saleType = "Pass" },
+	{ id = "p_hello", name = "Hello", slot = "squad", animationId = Poses.Hello, holdSec = 1.6, saleType = "Pass" },
+	{
+		id = "p_callout",
+		name = "Call Out",
+		slot = "squad",
+		animationId = Poses.CallOut,
+		holdSec = 1.6,
+		saleType = "Pass",
+	},
+	{ id = "p_godlike", name = "Godlike", slot = "mvp", animationId = Poses.Godlike, holdSec = 3, saleType = "Pass" },
+	{
+		id = "p_celebrate",
+		name = "Celebrate",
+		slot = "mvp",
+		animationId = Poses.Celebrate,
+		holdSec = 3,
+		saleType = "Pass",
+	},
+	{
+		id = "p_herolanding",
+		name = "Hero Landing",
+		slot = "mvp",
+		animationId = Poses.HeroLanding,
+		holdSec = 3,
+		saleType = "Pass",
+	},
 } :: { Emote }
 
 -- Rarity per emote (Rarity.Colors on the tiles and the detail row).
@@ -103,6 +150,15 @@ Emotes.Rarity = {
 	dance2 = 2,
 	dance3 = 3,
 	victory = 5,
+	b_salute = 3,
+	vip_stadium = 4,
+	vip_tilt = 4,
+	p_shrug = 2,
+	p_hello = 3,
+	p_callout = 3,
+	p_godlike = 5,
+	p_celebrate = 4,
+	p_herolanding = 5,
 } :: { [string]: number }
 
 Emotes.ById = {} :: { [string]: Emote }

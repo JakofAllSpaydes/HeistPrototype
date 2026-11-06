@@ -836,6 +836,68 @@ local Config = {
 	MvpReviveWeight = 40,
 	SummaryAutoLobbySec = 30, -- TO LOBBY fires on its own after this
 	SummaryCountUpSec = 1, -- GOLD EARNED count-up length
+
+	------------------------------------------------------------------ Monetization (brief 6; every purchase is fake)
+	-- Robux prices live in the data files (Products, Bundles, GoldPacks, Crates, BoostDefs, CashPacks,
+	-- ReviveTokenPacks, PassSeason); the keys here are the ones the brief names. Purchases.lua (server) and
+	-- PurchaseSheet.lua (client) are the whole integration a real MarketplaceService flow replaces.
+	FakeRobuxStart = 100000, -- a fresh profile's fake balance
+	FakeRobuxTopUp = 10000, -- GET ROBUX (the + by the balance, or a short sheet) adds this, so a tester never sticks
+	PurchaseProcessingSec = 0.6, -- the sheet's processing spinner holds at least this long
+	PurchaseLogKeep = 200, -- purchase records kept on the profile for the readout
+	-- Fake clocks: every timer below runs on the player's fake clock (real UTC + the debug offset on the profile).
+	FeaturedRotationSec = 2 * 86400 + 14 * 3600, -- FEATURED rotates this often (ROTATES IN 2d 14h)
+	FeaturedEpochUtc = 1793318400, -- 2026-10-30 00:00 UTC: the rotation clock counts from here
+	BundleOwnedDiscount = true, -- items already owned are struck through and their list share comes off the price
+	BundleRevealStagger = 0.3, -- the stacked reveal cards each item in this far apart
+	-- Crates (Crates.lua): pity, dupes, the opening scene.
+	CratePity = 10, -- Epic or better is guaranteed on this open if the last CratePity - 1 were below Epic
+	CrateAutoNextSec = 2.5, -- xN: the next crate opens by itself this long after a reveal (NEXT skips the wait)
+	CrateOpenSec = 1.4, -- rattle, seams glowing in the rolled rarity, then the lid
+	CrateLegendarySlowSec = 0.5, -- Legendary: the reveal runs in slow motion this long
+	DupeGoldByTier = { 40, 80, 160, 320, 800 }, -- an owned item converts to this much Gold by rarity...
+	DupeMasteryByTier = { 20, 40, 80, 160, 400 }, -- ...plus this mastery XP for that item (weapons; masks bank it)
+	-- Boosts (BoostDefs.lua): run-only effects on a real-time clock from purchase.
+	PowerBoostPct = 0.2, -- POWER: weapon and ability damage
+	CashBoostPct = 0.5, -- CASH: match cash from kills, cash bags and job payouts (Gold untouched)
+	LuckyWeightShift = 1, -- LUCKY: in-run rarity rolls (crates, upgrade card tiers) use the wave bracket this many rows up
+	BoostChipWarnSec = 60, -- a boost chip pulses in its last minute
+	-- Revive tokens (ReviveTokenPacks.lua).
+	ReviveTokensStart = 3, -- a fresh profile's tokens
+	SelfReviveTokens = 1, -- SELF-REVIVE spends this many
+	ReviveAllTokensPerPlayer = 1, -- REVIVE EVERYBODY spends this x the party size
+	TokenNudgeSec = 10, -- downed with no tokens and this little bleed left: GET TOKENS pulses
+	-- VIP (Vip.lua): a fake monthly subscription.
+	VipPrice = 399, -- R$ / month
+	VipPeriodDays = 30, -- the fake renewal clock
+	VipCashPct = 0.25, -- a permanent CASH boost while active (in-run only, stacks with the CASH boost)
+	VipMonthlyTokens = 10, -- revive tokens on subscribe and on every renewal
+	VipDailyGold = 200, -- the daily gift chip on the hub HUD, once per UTC day
+	-- Battle pass (Pass.lua; the grid and the seasons live in PassSeason.lua).
+	SeasonEpochUtc = 1793232000, -- 2026-10-29 00:00 UTC: season 1 starts here, each season SeasonLengthDays long
+	SeasonLengthDays = 30,
+	PassLevels = 30,
+	PassXpPerLevel = 1000,
+	PassXpPerWave = 40, -- pass XP per wave cleared...
+	PassXpPerBoss = 200, -- ...and per boss kill (plus Job rewards)
+	PassOverflowGold = 100, -- after level 30, every PassXpPerLevel more grants this Gold
+	PassPremiumPrice = 499, -- PREMIUM (tier 1)
+	PassPremiumPlusPrice = 999, -- PREMIUM+ (tier 2, includes PREMIUM; from PREMIUM it costs the difference)
+	PassSkipPrice = 149, -- R$ per level skipped
+	PassPageLevels = 8, -- BACK / NEXT page the track by this many levels
+	-- Jobs (Jobs.lua; pool in JobPool.lua): three dailies and a weekly bounty.
+	DailyXp = 300,
+	DailyGold = 150,
+	DailyPassXp = 400,
+	WeeklyXp = 1500,
+	WeeklyGold = 800,
+	WeeklyPassXp = 2000,
+	WeeklyTokens = 5,
+	JobRerollsPerDay = 1,
+	JobBoardPosition = Vector3.new(-30, 0, 136), -- MARLOW's corkboard in the yard (floor point; faces +Z toward the spawn)
+	JobAnnounceLine = "New jobs on the board. Pick your poison.",
+	-- Upsells (each a one-line nudge, never a blocking popup).
+	CashGlintMinCash = 400, -- the cash + glints when cash is under the next upgrade's price by less than this
 }
 
 return Config

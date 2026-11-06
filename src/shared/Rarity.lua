@@ -29,13 +29,16 @@ function Rarity.bracketIndex(wave: number): number
 	return #Config.RarityOddsByWaveBracket
 end
 
-function Rarity.odds(wave: number): { number }
-	return Config.RarityOddsByWaveBracket[Rarity.bracketIndex(wave)].odds
+-- `shift` (brief 6 LUCKY boost) reads the bracket that many rows further up the table.
+function Rarity.odds(wave: number, shift: number?): { number }
+	local list = Config.RarityOddsByWaveBracket
+	return list[math.clamp(Rarity.bracketIndex(wave) + (shift or 0), 1, #list)].odds
 end
 
 -- Weighted roll for the wave bracket. `floor` forces at least that rarity, `weights` multiplies per rarity.
-function Rarity.roll(wave: number, floor: number?, weights: { number }?): number
-	local odds = Rarity.odds(wave)
+-- `shift` moves up the bracket table (the LUCKY boost).
+function Rarity.roll(wave: number, floor: number?, weights: { number }?, shift: number?): number
+	local odds = Rarity.odds(wave, shift)
 	local minRarity = floor or 1
 	local total = 0
 	local w: { number } = {}

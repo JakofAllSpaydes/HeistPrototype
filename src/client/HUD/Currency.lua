@@ -60,8 +60,11 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	UI.corner(plus, S(7))
 	UI.stroke(plus, Theme.Colors.gold, S(1.5))
+	-- Brief 6: the cash-pack sheet (fake Robux; the game keeps running behind it).
 	plus.Activated:Connect(function()
-		UI.punch(plus, 0.9, 0.15) -- Robux products are out of scope
+		UI.punch(plus, 0.9, 0.15)
+		local sheet = require(Client:WaitForChild("PurchaseSheet") :: ModuleScript) :: any
+		sheet.choose("Match cash", { "cash_5k", "cash_20k", "cash_100k" }, { context = "cash +" })
 	end)
 
 	-- Banked row: the team's gold bag total, ticks on every bank.

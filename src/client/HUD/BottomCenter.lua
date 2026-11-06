@@ -16,6 +16,11 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 
+-- Brief 6: GET TOKENS opens the purchase sheet (required lazily: PurchaseSheet loads the store kit).
+local function sheet(): any
+	return require(Client:WaitForChild("PurchaseSheet") :: ModuleScript)
+end
+
 local BottomCenter = {}
 
 function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
@@ -60,7 +65,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 
 	-- While downed: GIVE UP and SELF-REVIVE sit side by side above the bar.
-	local btnH = hh + S(12)
+	local btnH = hh + S(20) -- brief 6: room for the token line under the label
 	local function downedButton(name: string, text: string, bg: Color3, anchorX: number, x: number): TextButton
 		local b = UI.button({
 			Name = name,
@@ -87,10 +92,70 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Remotes.GiveUp:FireServer()
 	end)
 	local selfBtn = downedButton("SelfRevive", "SELF-REVIVE", Theme.Colors.cash, 0, S(5))
+	-- Brief 6: SELF-REVIVE spends revive tokens on the press; the sub line shows the cost and the count, and at
+	-- zero the button reads GET TOKENS and opens the purchase sheet on the 5-pack (the bleed keeps running).
+	selfBtn.TextYAlignment = Enum.TextYAlignment.Top
+	UI.pad(selfBtn, 0, S(4), 0, 0)
+	local selfSub = UI.text({
+		Text = "",
+		Font = Theme.Fonts.body,
+		TextSize = S(9),
+		TextColor3 = Theme.Colors.bg,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, -S(2)),
+		Size = UDim2.new(1, 0, 0, S(11)),
+		ZIndex = 4,
+		Parent = selfBtn,
+	})
+	local tokens, selfCost = 0, 1
 	selfBtn.Activated:Connect(function()
 		UI.punch(selfBtn, 0.9, 0.15)
+		if tokens < selfCost then
+			sheet().open("tokens_5", {
+				context = "downed GET TOKENS",
+				note = "Out of revive tokens. The bleed keeps running.",
+			})
+			return
+		end
 		Remotes.SelfRevive:FireServer()
 	end)
+	-- The token chip beside the health bar (match HUD).
+	local tokenChip = UI.frame({
+		Name = "Tokens",
+		BackgroundColor3 = Theme.Colors.panel,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0.5, hw / 2 + S(8), 0, hh / 2),
+		Size = UDim2.fromOffset(S(46), math.max(S(18), hh + S(4))),
+		Parent = root,
+	})
+	UI.corner(tokenChip, S(6))
+	UI.stroke(tokenChip, Color3.fromHex("3FD47A"), S(1.5), 0.2)
+	local tokenDot = UI.frame({
+		BackgroundColor3 = Color3.fromHex("3FD47A"),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, S(4), 0.5, 0),
+		Size = UDim2.fromOffset(S(14), S(14)),
+		Parent = tokenChip,
+	})
+	UI.corner(tokenDot, S(7))
+	UI.text({
+		Text = "+",
+		Font = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromScale(1, 1),
+		Parent = tokenDot,
+	})
+	local tokenLabel = UI.text({
+		Text = "0",
+		Font = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(22), 0),
+		Size = UDim2.new(1, -S(24), 1, 0),
+		Parent = tokenChip,
+	})
 
 	-- Brief 5: while a teammate holds the revive, a green second fill grows over the red bleed fill, mirroring
 	-- their progress, and the bar reads `<NAME> IS REVIVING YOU`.
@@ -206,11 +271,17 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end
 
 	-- Bleed countdown.
+	local nudgeAt = 0
 	track(RunService.Heartbeat:Connect(function()
 		if not bleeding then
 			return
 		end
 		local remaining = math.max(0, bleedEndsAt - ClientState.serverNow())
+		-- Upsell nudge: downed with no tokens and little bleed left, GET TOKENS pulses (never a popup).
+		if tokens < selfCost and remaining <= Config.TokenNudgeSec and os.clock() >= nudgeAt then
+			nudgeAt = os.clock() + 0.9
+			UI.punch(selfBtn, 1.15, 0.45)
+		end
 		fill.Size = UDim2.fromScale(math.clamp(remaining / math.max(Config.BleedOutSec, 0.1), 0, 1), 1)
 		local shown = math.ceil(remaining)
 		local by = reviveBy
@@ -230,7 +301,17 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	local selfRevives = 0
 	local function paintSelf()
-		selfBtn.Text = if selfRevives > 0 then string.format("SELF-REVIVE (%d used)", selfRevives) else "SELF-REVIVE"
+		if tokens < selfCost then
+			selfBtn.Text = "GET TOKENS"
+			selfBtn.BackgroundColor3 = Theme.Colors.gold
+			selfSub.Text = string.format("%d TOKENS · TAP TO BUY", tokens)
+		else
+			selfBtn.Text = "SELF-REVIVE"
+			selfBtn.BackgroundColor3 = Theme.Colors.cash
+			selfSub.Text =
+				string.format("%d TOKEN%s · YOU HAVE %d", selfCost, if selfCost == 1 then "" else "S", tokens)
+		end
+		local _ = selfRevives
 	end
 
 	function component.setDowned(endsAt: number, used: number?)
@@ -365,8 +446,23 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		if held.wrapColor then
 			UI.recolorIcon(icon, Color3.fromHex(tostring(held.wrapColor)))
 		end
-		if typeof(sync.selfRevives) == "number" and sync.selfRevives ~= selfRevives then
-			selfRevives = sync.selfRevives
+		local profile = sync.profile
+		local t = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
+		local cost = if sync.revive and typeof(sync.revive.selfCost) == "number" then sync.revive.selfCost else 1
+		if
+			t ~= tokens
+			or cost ~= selfCost
+			or (typeof(sync.selfRevives) == "number" and sync.selfRevives ~= selfRevives)
+		then
+			if t > tokens then
+				UI.punch(tokenChip, 1.3, 0.35)
+				if bleeding then
+					UI.punch(selfBtn, 1.2, 0.4) -- bought while downed: the button is armed again
+				end
+			end
+			tokens, selfCost = t, cost
+			selfRevives = tonumber(sync.selfRevives) or selfRevives
+			tokenLabel.Text = tostring(tokens)
 			paintSelf()
 		end
 		local char = player.Character

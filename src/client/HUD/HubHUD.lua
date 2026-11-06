@@ -264,6 +264,50 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		UI.punch(plus, 0.9, 0.15)
 		component.showPlaceholder("Gold")
 	end)
+	-- Brief 6: revive tokens beside the Gold pill; tap for the token packs.
+	local tokenChip = UI.button({
+		Name = "Tokens",
+		Text = "",
+		BackgroundColor3 = Theme.Colors.panel,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(20) + goldW + S(8), 1, -S(62)),
+		Size = UDim2.fromOffset(S(70), S(38)),
+		Parent = root,
+	})
+	UI.corner(tokenChip, S(8))
+	UI.stroke(tokenChip, Color3.fromHex("3FD47A"), S(1.5), 0.2)
+	local tokenDot = UI.frame({
+		BackgroundColor3 = Color3.fromHex("3FD47A"),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, S(7), 0.5, 0),
+		Size = UDim2.fromOffset(S(22), S(22)),
+		Parent = tokenChip,
+	})
+	UI.corner(tokenDot, S(11))
+	UI.text({
+		Text = "+",
+		Font = Theme.Fonts.display,
+		TextSize = S(18),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromScale(1, 1),
+		Parent = tokenDot,
+	})
+	local tokenLabel = UI.text({
+		Text = "0",
+		Font = Theme.Fonts.display,
+		TextSize = S(20),
+		TextColor3 = Theme.Colors.white,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(34), 0),
+		Size = UDim2.new(1, -S(36), 1, 0),
+		Parent = tokenChip,
+	})
+	tokenChip.Activated:Connect(function()
+		UI.punch(tokenChip, 0.9, 0.15)
+		local sheet = require(Client:WaitForChild("PurchaseSheet") :: ModuleScript) :: any
+		sheet.choose("Revive tokens", { "tokens_5", "tokens_25", "tokens_100" }, { context = "hub token chip" })
+	end)
+
 	local invite = UI.button({
 		Name = "Invite",
 		Text = if mobile then "+👥" else "INVITE FRIENDS",
@@ -406,9 +450,18 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.onDock = nil :: ((string) -> ())?
 
 	local shown = -1
+	local shownTokens = -1
 	local shownLevel, shownXp = -1, -1
 	function component.update(sync: any)
 		local profile = sync.profile
+		local tokens = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
+		if tokens ~= shownTokens then
+			if shownTokens >= 0 then
+				UI.punch(tokenChip, if tokens > shownTokens then 1.2 else 0.95, 0.3)
+			end
+			shownTokens = tokens
+			tokenLabel.Text = tostring(tokens)
+		end
 		local gold = if profile and typeof(profile.gold) == "number" then profile.gold else 0
 		if gold ~= shown then
 			if shown >= 0 then

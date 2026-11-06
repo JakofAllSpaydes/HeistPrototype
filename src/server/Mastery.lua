@@ -233,6 +233,11 @@ function Mastery.award(player: Player): Award
 	return out
 end
 
+-- Brief 6: mastery XP from a grant (crate dupes, the pass): straight into the profile, tier-ups pop as usual.
+function Mastery.grant(player: Player, kind: string, id: string, xp: number)
+	add(player, kind, id, xp, false)
+end
+
 -- Debug: +amount mastery on the held (or stowed) gun and the equipped class. Tier-ups pop and apply like real ones.
 function Mastery.debugAdd(player: Player, amount: number)
 	local state = PlayerState.get(player)

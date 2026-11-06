@@ -14,6 +14,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Classes = require(Shared:WaitForChild("Classes"))
+local Masks = require(Shared:WaitForChild("Masks"))
+local MaskShapes = require(Shared:WaitForChild("MaskShapes"))
+local Wraps = require(Shared:WaitForChild("Wraps"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -41,7 +44,7 @@ export type Scene = {
 -- Live preview on the character: wrap color on the grip, mask, class idle. Nothing here is saved.
 export type Preview = {
 	wrap: (string?) -> (), -- hex color or nil = clear
-	mask: (string?, string?) -> (), -- color hex, shape (nil = the equipped one from the server)
+	mask: (string?, string?, string?) -> (), -- color hex, shape, mask id (nil = the equipped one from the server)
 	classIdle: (string) -> (),
 	reset: () -> (),
 	commit: () -> (), -- after an equip landed on the server: forget the old baseline
@@ -94,10 +97,25 @@ local preview: Preview = {
 				savedWrapColor = grip.Color
 			end
 			grip.Color = if hex then Color3.fromHex(hex) else savedWrapColor :: Color3
-			grip.Material = if hex then Enum.Material.SmoothPlastic else Enum.Material.Metal
+			-- Brief 6: a wrap with its own material (the Legendary pass wraps glow) previews in it.
+			local wrapDef: Wraps.Wrap? = nil
+			if hex then
+				for _, w in Wraps.List do
+					if w.color == hex then
+						wrapDef = w
+						break
+					end
+				end
+			end
+			grip.Material = if wrapDef
+				then Wraps.material(wrapDef)
+				elseif hex then Enum.Material.SmoothPlastic
+				else Enum.Material.Metal
 		end
 	end,
-	mask = function(hex: string?, shape: string?)
+	-- `hex` / `shape` preview a mask (nil restores the worn one); `id` (brief 6) previews a Masks.lua mask with its
+	-- accent through the shared shape builder.
+	mask = function(hex: string?, shape: string?, id: string?)
 		local c = char()
 		local head = c and c:FindFirstChild("Head")
 		if not c or not head or not head:IsA("BasePart") then
@@ -113,39 +131,18 @@ local preview: Preview = {
 		end
 		if not hex then
 			head.Color = savedHeadColor :: Color3
-			if serverMask and serverMask:IsA("BasePart") then
-				serverMask.LocalTransparencyModifier = 0
+			for _, p in MaskShapes.parts(serverMask) do
+				p.LocalTransparencyModifier = 0
 			end
 			return
 		end
 		head.Color = Color3.fromHex(hex)
-		if serverMask and serverMask:IsA("BasePart") then
-			serverMask.LocalTransparencyModifier = 1
+		for _, p in MaskShapes.parts(serverMask) do
+			p.LocalTransparencyModifier = 1
 		end
-		if shape == "none" or shape == nil then
-			return
-		end
-		local part = Instance.new("Part")
-		part.Name = "PreviewMask"
-		part.CanCollide = false
-		part.CanQuery = false
-		part.Massless = true
-		part.Color = Color3.fromHex(hex)
-		if shape == "visor" then
-			part.Size = Vector3.new(1.3, 0.35, 0.3)
-			part.Material = Enum.Material.Neon
-			part.CFrame = head.CFrame * CFrame.new(0, 0.1, -0.55)
-		else
-			part.Size = Vector3.new(1.25, 0.5, 1.25)
-			part.Material = Enum.Material.Fabric
-			part.CFrame = head.CFrame * CFrame.new(0, -0.25, 0)
-		end
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = head
-		weld.Part1 = part
-		weld.Parent = part
-		part.Parent = c
-		previewMask = part
+		local m = if id then Masks.ById[id] else nil
+		local spec = if m then m else { color = hex, shape = shape or "none", accent = nil }
+		previewMask = MaskShapes.build(head, spec :: any, "PreviewMask", c)
 	end,
 	classIdle = function(classId: string)
 		stopIdle()
@@ -164,9 +161,8 @@ local preview: Preview = {
 		if head and head:IsA("BasePart") and savedHeadColor then
 			head.Color = savedHeadColor
 		end
-		local serverMask = c and c:FindFirstChild("MaskPart")
-		if serverMask and serverMask:IsA("BasePart") then
-			serverMask.LocalTransparencyModifier = 0
+		for _, p in MaskShapes.parts(c and c:FindFirstChild("MaskPart")) do
+			p.LocalTransparencyModifier = 0
 		end
 		if previewMask then
 			previewMask:Destroy()
@@ -190,9 +186,8 @@ local preview: Preview = {
 			previewMask = nil
 		end
 		local c = char()
-		local serverMask = c and c:FindFirstChild("MaskPart")
-		if serverMask and serverMask:IsA("BasePart") then
-			serverMask.LocalTransparencyModifier = 0
+		for _, p in MaskShapes.parts(c and c:FindFirstChild("MaskPart")) do
+			p.LocalTransparencyModifier = 0
 		end
 		savedHeadColor = nil
 		savedWrapColor = nil

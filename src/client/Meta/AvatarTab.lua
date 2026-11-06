@@ -50,7 +50,7 @@ local function renderMasks(scene: any, panel: Frame)
 	end
 	local mask = Masks.ById[selectedMask :: string] or Masks.ById[Masks.Default]
 	local isOwned = profile ~= nil and profile.masks.owned[mask.id] == true
-	scene.preview.mask(mask.color, mask.shape)
+	scene.preview.mask(mask.color, mask.shape, mask.id)
 
 	local rightW = if scene.mobile then S(200) else S(250)
 	local grid, card = MetaUI.columns(panel, rightW, S(44), "masks")

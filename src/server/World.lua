@@ -50,6 +50,9 @@ local World = {
 	vaultLive = false, -- CRACK THE VAULT is drawn, open or warning: the scoreboard header reads VAULT OPEN
 	pauseDirty = false, -- the pause or its votes changed: everyone resyncs
 	dealerDirty = false, -- the dealer's votes / teleports changed: everyone resyncs
+	-- Brief 6: party members with the purchase sheet up (userId -> true). Inside the SECOND CHANCE window the
+	-- revive window stands still while any of them is open; everywhere else the game runs on behind it.
+	sheetOpen = {} :: { [number]: boolean },
 }
 
 function World.survivedSec(): number

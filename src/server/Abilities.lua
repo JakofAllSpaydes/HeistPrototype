@@ -26,6 +26,7 @@ local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Log)
 local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
+local Boosts = require(script.Parent.Boosts)
 
 local triageTick: (number) -> () -- below, after the fields and structures it reads
 
@@ -175,7 +176,7 @@ local function hitEnemy(
 	secondary: boolean,
 	hit: Enemy.Hit?
 ): boolean
-	dmg = math.max(1, math.round(dmg))
+	dmg = math.max(1, math.round(dmg * Boosts.damageMult(owner))) -- POWER boost (brief 6)
 	local killed, killCash = Enemy.damage(
 		model,
 		dmg,

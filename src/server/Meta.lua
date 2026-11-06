@@ -41,6 +41,19 @@ end
 
 local NOT_ENOUGH = "Not enough Gold!"
 
+-- Brief 6: only Direct items are Gold-priced; the rest come from their own source.
+local SALE_ONLY = {
+	Crate = "From a crate in the SHOP",
+	Event = "EVENT ONLY",
+	Bundle = "In a SHOP bundle",
+	VIP = "VIP members only",
+	Pass = "From the battle pass",
+	Mastery = "Earned through weapon mastery",
+}
+local function saleOnly(saleType: string): string
+	return SALE_ONLY[saleType] or "Not for sale"
+end
+
 local handlers: { [string]: (Player, PlayerState.State, Profiles.Profile, any) -> Result } = {}
 
 ------------------------------------------------------------------ Weapons
@@ -52,10 +65,8 @@ handlers.unlockWeapon = function(player, state, p, args)
 	if p.weapons[w.id] then
 		return fail("already owned")
 	end
-	if w.saleType == "Event" then
-		return fail("EVENT ONLY")
-	elseif w.saleType == "Crate" then
-		return fail("CRATE UI · PHASE 4")
+	if w.saleType ~= "Direct" then
+		return fail(saleOnly(w.saleType))
 	end
 	local cost = Weapons.unlockCost(w)
 	if not charge(player, cost) then
@@ -121,6 +132,9 @@ handlers.buyWrap = function(player, state, p, args)
 	end
 	if MasteryCopy.wrapTier(wrap.id) then
 		return fail("mastery wrap", "Earned through weapon mastery")
+	end
+	if wrap.saleType ~= "Direct" then
+		return fail(saleOnly(wrap.saleType))
 	end
 	if not charge(player, Prices.wrap) then
 		return fail("gold", NOT_ENOUGH)
@@ -234,10 +248,8 @@ handlers.buyMask = function(player, state, p, args)
 	if p.masks.owned[m.id] then
 		return fail("already owned")
 	end
-	if m.saleType == "Event" then
-		return fail("EVENT ONLY")
-	elseif m.saleType == "Crate" then
-		return fail("CRATE UI · PHASE 4")
+	if m.saleType ~= "Direct" then
+		return fail(saleOnly(m.saleType))
 	end
 	if not charge(player, m.price or Prices.mask) then
 		return fail("gold", NOT_ENOUGH)
@@ -273,10 +285,8 @@ handlers.buyEmote = function(player, state, p, args)
 	if p.emotes.owned[e.id] then
 		return fail("already owned")
 	end
-	if e.saleType == "Event" then
-		return fail("EVENT ONLY")
-	elseif e.saleType == "Crate" then
-		return fail("CRATE UI · PHASE 4")
+	if e.saleType ~= "Direct" then
+		return fail(saleOnly(e.saleType))
 	end
 	if not charge(player, e.price or Prices.emote) then
 		return fail("gold", NOT_ENOUGH)

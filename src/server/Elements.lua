@@ -22,6 +22,7 @@ local Economy = require(script.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local World = require(script.Parent.World)
 local Pause = require(script.Parent.Pause)
+local Boosts = require(script.Parent.Boosts)
 
 type Status = {
 	model: Model,
@@ -251,8 +252,8 @@ end
 -- A burn tick on the owner's behalf: kill cash with their CASH GAIN, the Hit juice to them.
 local function burnTick(s: Status)
 	local model = s.model
-	local dmg = math.max(1, math.round(s.burnDps * Config.FieldTickSec))
 	local owner = s.burnOwner
+	local dmg = math.max(1, math.round(s.burnDps * Config.FieldTickSec * Boosts.damageMult(owner))) -- POWER (brief 6)
 	local live = owner ~= nil and owner.Parent ~= nil
 	local pos = Enemy.rootPosition(model) or Vector3.zero
 	local killed, killCash =

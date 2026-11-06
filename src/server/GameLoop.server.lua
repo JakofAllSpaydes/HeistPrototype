@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Remotes = require(Shared.Remotes)
 
 local Room = require(script.Parent.Room)
 Room.build()
@@ -44,6 +45,8 @@ local Elements = require(script.Parent.Elements)
 local Mastery = require(script.Parent.Mastery)
 local Pause = require(script.Parent.Pause)
 local Dealer = require(script.Parent.Dealer)
+local Purchases = require(script.Parent.Purchases)
+local Boosts = require(script.Parent.Boosts)
 
 Profiles.init()
 PlayerState.init()
@@ -67,6 +70,15 @@ Pause.init()
 Dealer.init()
 PlayerState.syncHooks.dealer = Dealer.view
 PlayerState.syncHooks.pause = Pause.view
+-- Brief 6: the revive token costs and the server's os.time (the client's fake clocks and boost timers run off it).
+PlayerState.syncHooks.revive = function()
+	return { selfCost = Config.SelfReviveTokens, allCost = Downed.reviveAllCost() }
+end
+PlayerState.syncHooks.osTime = function()
+	return os.time()
+end
+Purchases.init()
+Boosts.init()
 Elements.init()
 Combat.init()
 UpgradeShop.init()
@@ -280,9 +292,45 @@ task.spawn(function()
 			World.runClockEnd = Workspace:GetServerTimeNow() -- the clock freezes under the stamp
 			Enemy.freezeAll(Config.RunOverSlowSec)
 			Log.event("Run", "Run %d over at wave %d (%.1fs to revive everybody)", World.runId, World.wave, window)
+			-- Brief 6 upsell: all down and nobody can pay for REVIVE EVERYBODY: the token sheet opens for the first
+			-- bled-out member (the window holds while it is up).
+			do
+				local cost = Downed.reviveAllCost()
+				local anyone = false
+				local first: Player? = nil
+				for _, p in World.partyPlayers() do
+					local prof = Profiles.get(p)
+					if prof and prof.reviveTokens >= cost then
+						anyone = true
+					end
+					if not first and PlayerState.get(p).bledOut then
+						first = p
+					end
+				end
+				if not anyone and first then
+					Remotes.Juice:FireClient(first, "OfferTokens", { cost = cost })
+					Log.event("Tokens", "run over with no tokens in the crew: token sheet offered to %s", first.Name)
+				end
+			end
+			-- Brief 6: while a member has the purchase sheet up (GET TOKENS), the window stands still.
 			local t0 = os.clock()
+			local holding = false
 			while World.runOver and os.clock() - t0 < window do
-				task.wait(0.1)
+				local dt = task.wait(0.1)
+				local held = false
+				for _, p in World.partyPlayers() do
+					if World.sheetOpen[p.UserId] then
+						held = true
+						break
+					end
+				end
+				if held then
+					t0 += dt
+				end
+				if held ~= holding then
+					holding = held
+					World.fireRun("RunOverHold", { on = held, left = math.max(0, window - (os.clock() - t0)) })
+				end
 			end
 			if World.runOver then
 				break

@@ -19,6 +19,7 @@ local WeaponRoll = require(script.Parent.WeaponRoll)
 local Heat = require(script.Parent.Heat)
 local AllyCallout = require(script.Parent.AllyCallout)
 local Pause = require(script.Parent.Pause)
+local Profiles = require(script.Parent.Profiles)
 
 local Downed = {}
 
@@ -282,9 +283,48 @@ local function onHold(player: Player, on: any)
 	holding[player] = on == true
 end
 
+-- Brief 6: revives spend banked revive tokens (profile.reviveTokens). SELF-REVIVE costs SelfReviveTokens; REVIVE
+-- EVERYBODY costs ReviveAllTokensPerPlayer x the party size. Both fire on the press, no sheet; at zero the client
+-- opens the purchase sheet instead (the GET TOKENS button).
+function Downed.reviveAllCost(): number
+	return Config.ReviveAllTokensPerPlayer * math.max(1, #World.party)
+end
+
+local function spendTokens(player: Player, cost: number, what: string): boolean
+	local profile = Profiles.get(player)
+	if not profile or profile.reviveTokens < cost then
+		Log.event(
+			"Tokens",
+			"%s: %s refused, %d tokens of %d",
+			player.Name,
+			what,
+			if profile then profile.reviveTokens else 0,
+			cost
+		)
+		return false
+	end
+	profile.reviveTokens -= cost
+	Profiles.markDirty(player)
+	PlayerState.get(player).dirty = true
+	Log.event(
+		"Tokens",
+		"%s spent %d on %s at wave %d (%s), %d left",
+		player.Name,
+		cost,
+		what,
+		World.wave,
+		World.state,
+		profile.reviveTokens
+	)
+	return true
+end
+
 local function onSelfRevive(player: Player)
 	local state = PlayerState.get(player)
 	if not state.downed then
+		return
+	end
+	if not spendTokens(player, Config.SelfReviveTokens, "SELF-REVIVE") then
 		return
 	end
 	state.selfRevives += 1
@@ -302,6 +342,12 @@ end
 local function onReviveEverybody(player: Player)
 	local state = PlayerState.get(player)
 	if not state.bledOut then
+		return
+	end
+	if World.state ~= "RunOver" and not World.inRun() then
+		return -- any later press (run end, summary) is ignored
+	end
+	if not spendTokens(player, Downed.reviveAllCost(), "REVIVE EVERYBODY") then
 		return
 	end
 	if World.state == "RunOver" then
