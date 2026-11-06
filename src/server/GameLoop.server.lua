@@ -48,6 +48,7 @@ local Dealer = require(script.Parent.Dealer)
 local Purchases = require(script.Parent.Purchases)
 local Boosts = require(script.Parent.Boosts)
 local Shop = require(script.Parent.Shop)
+local CrateOpen = require(script.Parent.CrateOpen)
 
 Profiles.init()
 PlayerState.init()
@@ -81,6 +82,7 @@ end
 Purchases.init()
 Boosts.init()
 Shop.init()
+local _ = CrateOpen -- registers the crate purchase kind and the free-open action
 Elements.init()
 Combat.init()
 UpgradeShop.init()

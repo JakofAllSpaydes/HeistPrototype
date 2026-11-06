@@ -222,12 +222,14 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 					scene.refresh()
 				end
 			end)
-		elseif w.saleType == "Crate" then
-			MetaUI.button(card, 20, "VIEW CRATE", "blue", function()
-				scene.toast("CRATE UI · PHASE 4", "click")
-			end)
 		else
-			MetaUI.button(card, 20, "EVENT ONLY", "disabled", nil)
+			MetaUI.sourceButton(scene, card, 20, "weapon", w.id, w.saleType)
+		end
+		-- The FAL and the Mosin also come in a bundle.
+		local Bundles =
+			require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Bundles")) :: any
+		if w.saleType ~= "Bundle" and #Bundles.containing("weapon", w.id) > 0 then
+			MetaUI.sourceButton(scene, card, 21, "weapon", w.id, "Bundle")
 		end
 		return
 	end
@@ -486,10 +488,14 @@ local function renderCustomize(scene: any)
 			i,
 			wrap.name,
 			Color3.fromHex(wrap.color),
-			if isOwned then nil elseif mt then "MASTERY " .. MasteryCopy.Roman[mt] else MetaUI.fmtGold(Prices.wrap),
+			if isOwned
+				then nil
+				elseif mt then "MASTERY " .. MasteryCopy.Roman[mt]
+				elseif wrap.saleType ~= "Direct" then string.upper(wrap.saleType)
+				else MetaUI.fmtGold(Prices.wrap),
 			wrapPreview == wrap.id,
 			applied == wrap.id,
-			if mt then "MASTERY" else nil
+			if mt then "MASTERY" elseif wrap.saleType ~= "Direct" then string.upper(wrap.saleType) else nil
 		)
 		b.Activated:Connect(function()
 			wrapPreview = wrap.id
@@ -545,6 +551,8 @@ local function renderCustomize(scene: any)
 					scene.refresh()
 				end
 			end)
+		elseif not isOwned and pw.saleType ~= "Direct" then
+			MetaUI.sourceButton(scene, action, 1, "wrap", pw.id, pw.saleType)
 		elseif not isOwned then
 			MetaUI.button(action, 1, "BUY - " .. MetaUI.fmtGold(Prices.wrap), "green", function()
 				local r = scene.request("buyWrap", { wrapId = pw.id, weaponId = w.id })
@@ -649,6 +657,8 @@ function WeaponsTab.render(scene: any)
 			local tag: string? = nil
 			if isOwned and profile and profile.starterWeaponId == id then
 				tag = "STARTER"
+			elseif isOwned and w and w.saleType ~= "Direct" then
+				tag = string.upper(w.saleType) -- brief 6: where it came from, on owned tiles too
 			end
 			local b = MetaUI.tile(row, {
 				name = name,

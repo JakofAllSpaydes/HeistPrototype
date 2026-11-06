@@ -135,12 +135,8 @@ local function renderMasks(scene: any, panel: Frame)
 				scene.refresh()
 			end
 		end)
-	elseif mask.saleType == "Crate" then
-		MetaUI.button(card, 20, "VIEW CRATE", "blue", function()
-			scene.toast("CRATE UI · PHASE 4", "click")
-		end)
 	else
-		MetaUI.button(card, 20, "EVENT ONLY", "disabled", nil)
+		MetaUI.sourceButton(scene, card, 20, "mask", mask.id, mask.saleType)
 	end
 end
 
@@ -245,12 +241,8 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 				scene.refresh()
 			end
 		end)
-	elseif emote.saleType == "Crate" then
-		MetaUI.button(card, 20, "VIEW CRATE", "blue", function()
-			scene.toast("CRATE UI · PHASE 4", "click")
-		end)
 	else
-		MetaUI.button(card, 20, "EVENT ONLY", "disabled", nil)
+		MetaUI.sourceButton(scene, card, 20, "emote", emote.id, emote.saleType)
 	end
 end
 

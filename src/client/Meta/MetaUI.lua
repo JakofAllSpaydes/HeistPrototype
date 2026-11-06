@@ -51,14 +51,54 @@ function MetaUI.fmtGold(n: number): string
 	return "◆ " .. UI.fmtNum(n)
 end
 
--- Acquisition label for an unowned Direct / Crate / Event item.
+-- Acquisition label for an unowned item: the Gold price (Direct) or where it comes from (brief 6: CRATE, BUNDLE,
+-- VIP, PASS, EVENT).
+MetaUI.SourceColors = {
+	Crate = Theme.Colors.blue,
+	Event = Theme.Colors.malus,
+	Bundle = Color3.fromHex("E8792A"),
+	VIP = Color3.fromHex("F2C14E"),
+	Pass = Color3.fromHex("FF6A3D"),
+	Mastery = Theme.Colors.gold,
+} :: { [string]: Color3 }
+
 function MetaUI.acquisition(saleType: string, price: number): (string, Color3)
-	if saleType == "Crate" then
-		return "CRATE", Theme.Colors.blue
-	elseif saleType == "Event" then
-		return "EVENT", Theme.Colors.malus
+	local c = MetaUI.SourceColors[saleType]
+	if c then
+		return string.upper(saleType), c
 	end
 	return MetaUI.fmtGold(price), Theme.Colors.cash
+end
+
+-- Brief 6 deep links: VIEW CRATE / VIEW BUNDLE / VIEW PASS / VIEW VIP for an unowned item that is not Gold-priced
+-- (EVENT ONLY stays disabled). `kind` is the Rewards kind (weapon | mask | wrap | emote | class).
+function MetaUI.sourceButton(scene: any, card: Instance, order: number, kind: string, id: string, saleType: string)
+	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+	local Crates = require(Shared:WaitForChild("Crates")) :: any
+	local Bundles = require(Shared:WaitForChild("Bundles")) :: any
+	local PassSeason = require(Shared:WaitForChild("PassSeason")) :: any
+	local ClientState = require(script.Parent.Parent:WaitForChild("ClientState")) :: any
+	if saleType == "Crate" then
+		MetaUI.button(card, order, "VIEW CRATE", "blue", function()
+			ClientState.Juice:Fire("OpenStore", { tab = "CRATES", arg = { crate = Crates.crateOf(kind, id) } })
+		end)
+	elseif saleType == "Bundle" then
+		local list = Bundles.containing(kind, id)
+		MetaUI.button(card, order, "VIEW BUNDLE", "blue", function()
+			ClientState.Juice:Fire("OpenStore", { tab = "FEATURED", arg = { bundle = list[1] } })
+		end)
+	elseif saleType == "VIP" then
+		MetaUI.button(card, order, "VIEW VIP", "blue", function()
+			ClientState.Juice:Fire("OpenStore", { tab = "VIP" })
+		end)
+	elseif saleType == "Pass" then
+		local season, level = PassSeason.levelOf(kind, id)
+		MetaUI.button(card, order, "VIEW PASS", "blue", function()
+			ClientState.Juice:Fire("OpenPass", { level = level, season = season })
+		end)
+	else
+		MetaUI.button(card, order, "EVENT ONLY", "disabled", nil)
+	end
 end
 
 -- Icon drawn into a parent: gun silhouette, mask, wrap swatch or class circle. Returns the icon root.

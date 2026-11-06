@@ -396,6 +396,12 @@ function ClassesTab.render(scene: any)
 				scene.refresh()
 			end
 		end)
+		-- Brief 6: a class that comes in a bundle links to it too.
+		local Bundles =
+			require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Bundles")) :: any
+		if #Bundles.containing("class", class.id) > 0 then
+			MetaUI.sourceButton(scene, card, 21, "class", class.id, "Bundle")
+		end
 	end
 end
 

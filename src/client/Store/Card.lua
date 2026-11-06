@@ -19,6 +19,7 @@ export type Spec = {
 	rarity: number?, -- defaults to the art's rarity
 	art: { kind: string, id: string?, amount: number?, sec: number? }?,
 	artScale: number?, -- art size as a share of the well (0.62)
+	wellShare: number?, -- the art well's share of the card height (0.5)
 	title: string,
 	sub: string?,
 	price: number?, -- R$; nil = no price pill (use priceText)
@@ -113,7 +114,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	UI.corner(bar, S(2))
 
 	-- Art well with a pedestal.
-	local wellH = math.floor(h * 0.5)
+	local wellH = math.floor(h * (spec.wellShare or 0.5))
 	local well = UI.frame({
 		Name = "Well",
 		BackgroundColor3 = Fx.shade(color, -0.75),
@@ -186,7 +187,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		Name = "Content",
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(S(8), textTop + S(48)),
-		Size = UDim2.new(1, -S(16), 1, -(textTop + S(48)) - S(48)),
+		Size = UDim2.new(1, -S(16), 1, -(textTop + S(48)) - (if spec.price or spec.priceText then S(48) else S(10))),
 		ZIndex = z + 2,
 		Parent = body,
 	})
