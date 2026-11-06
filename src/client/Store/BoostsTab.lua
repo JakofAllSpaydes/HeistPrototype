@@ -77,7 +77,7 @@ function BoostsTab.render(ctx: any)
 			size = Vector2.new(cardW, math.floor(topH / UI.scale)),
 			art = { kind = "boost", id = def.id, sec = def.durations[idx].sec },
 			artScale = 0.62,
-			wellShare = 0.38,
+			wellShare = if ctx.mobile then 0.3 else 0.38,
 			rarity = if def.id == "lucky" then 4 elseif def.id == "power" then 3 else 2,
 			title = def.name,
 			sub = def.desc,

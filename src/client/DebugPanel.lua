@@ -309,6 +309,63 @@ local function build()
 		send("TogglePause")
 	end)
 
+	-- Brief 6: monetization (fake balance, tokens, free crate opens, the fake clock, pass XP, Jobs, the readout).
+	-- Force rarity above also lands on the next crate open.
+	UI.text({
+		Text = "MONETIZATION",
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.grey,
+		Size = UDim2.new(1, 0, 0, S(14)),
+		LayoutOrder = 17,
+		Parent = panel,
+	})
+	local function numberBox(parent: Instance, placeholder: string, w: number): TextBox
+		local box = UI.new("TextBox", {
+			PlaceholderText = placeholder,
+			Text = "",
+			TextSize = S(11),
+			Font = Theme.Fonts.body,
+			TextColor3 = Theme.Colors.text,
+			PlaceholderColor3 = Theme.Colors.grey,
+			BackgroundColor3 = Theme.Colors.bg,
+			Size = UDim2.new(w, -S(4), 1, 0),
+			ClearTextOnFocus = false,
+			Parent = parent,
+		}) :: TextBox
+		UI.corner(box, S(6))
+		UI.stroke(box, Theme.Colors.grey, S(1), 0.5)
+		return box
+	end
+	local rM1 = row(panel, 17.1, rh)
+	local robuxBox = numberBox(rM1, "R$…", 0.3)
+	btn(rM1, "Set R$", 0.2, function()
+		send("SetRobux", tonumber(robuxBox.Text) or 100000)
+	end, Color3.fromHex("2FD46A"))
+	local tokenBox = numberBox(rM1, "Tokens…", 0.3)
+	btn(rM1, "Set tkn", 0.2, function()
+		send("SetTokens", tonumber(tokenBox.Text) or 0)
+	end, Color3.fromHex("3FD47A"))
+	local rM2 = row(panel, 17.2, rh)
+	btn(rM2, "+10 Arms", 1 / 3, function()
+		send("CrateCredits", "arms")
+	end, Theme.Colors.gold)
+	btn(rM2, "+10 Mask", 1 / 3, function()
+		send("CrateCredits", "mask")
+	end, Theme.Colors.gold)
+	btn(rM2, "+1 day", 1 / 3, function()
+		send("AdvanceDay", 1)
+	end, Theme.Colors.amber)
+	local rM3 = row(panel, 17.3, rh)
+	btn(rM3, "+1,000 pass", 1 / 3, function()
+		send("AddPassXp", 1000)
+	end, Color3.fromHex("E8792A"))
+	btn(rM3, "Reset jobs", 1 / 3, function()
+		send("ResetJobs")
+	end, Theme.Colors.malus)
+	btn(rM3, "Buy log", 1 / 3, function()
+		send("PurchaseLog")
+	end)
+
 	local r8b = row(panel, 10, rh)
 	btn(r8b, "Down me", 1 / 3, function()
 		send("DownMe")

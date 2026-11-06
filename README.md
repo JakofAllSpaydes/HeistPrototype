@@ -11,7 +11,11 @@ replaces the event heat meter with the GDD's pace meter, adds cash and gold bags
 vault job, an account level with XP per run, and an in-run scoreboard. Brief 5 moves weapons onto the crate's own
 reel, gives upgrades elements and utility stats with wave-scaled income, adds real revive bars and ally callouts,
 reworks INITIATE and adds ENGINEER, adds weapon and class mastery with mid-run tier-ups, makes the vault job
-impossible to miss, and adds a dealer break after every boss wave and a vote to pause.
+impossible to miss, and adds a dealer break after every boss wave and a vote to pause. Brief 6 adds the monetization
+front end against a fake Robux balance: a premium store scene (FEATURED bundles, CRATES with a full opening scene,
+BOOSTS, VIP, GOLD), revive tokens, a battle pass with its own scene, daily Jobs and a weekly bounty on MARLOW's board,
+and the in-run upsells. Nothing touches real Robux; one module per side (`Purchases.lua`, `PurchaseSheet.lua`) is
+where `MarketplaceService` goes later.
 
 State as of **5 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
@@ -19,10 +23,11 @@ phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback 
 (revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
 ragdolls and hit sparks), the brief 4 build (Round 14: roster, boss, heat as pace, bags, vault, level, scoreboard) and
 the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause) with its feedback
-rounds 15b–15m, and the Round 16 / 16b feedback passes.
+rounds 15b–15m, the Round 16 / 16b feedback passes, and the brief 6 build (Round 17: fake purchase flow, store,
+crates, boosts, VIP, battle pass, Jobs; one commit per build step).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
-list", the "Round 13 verify list", the "Brief 4 verify list" and the "Brief 5 verify list" are the walk-throughs for a
-fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
+list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list" and the "Brief 6 verify list"
+are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
 where those changes came from); the full verify lists have not been walked end to end.
 
 ## Run it
@@ -36,7 +41,8 @@ The map is a Rojo-synced model (`src/map/Room.model.json`, regenerate with `lune
 `aftman.toml`, and the generator loads Config through `luau.load` with Vector2 / Vector3 stubs).
 
 You spawn in the **hub** (the yard south of the arena) with the hub HUD, 10,000 Gold on a fresh profile, the M1911 as
-starter, INITIATE equipped and the plain mask. Profiles need `Enable Studio Access to API Services` on the place
+starter, INITIATE equipped and the plain mask, plus (brief 6) a fake `R$ 100,000` balance and 3 revive tokens.
+MARLOW's job board stands by a planning table west of the spawn. Profiles need `Enable Studio Access to API Services` on the place
 (Game Settings → Security); without it the server warns once and keeps an in-memory profile for the session. Walk onto
 the blue queue pad in front of the arena door (or press PLAY) to create a match. The three customization stations stand
 along the west wall, the six minigame props and the tier pad along the east wall. Party and downed / revive lines need
@@ -61,6 +67,9 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Tab (hold) | The scoreboard: WAVE · TIME · stars · BANKED · CASH and one row per member in MVP order; the game keeps running behind it. Mobile: tap the wave bar (the `≡` chip beside N LEFT), tap again or anywhere outside to close. |
 | Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
 | PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
+| SHOP tile / Gold + (hub HUD) | Brief 6: the store scene on FEATURED (the Gold + opens GOLD). Tabs FEATURED · CRATES · BOOSTS · VIP · GOLD; the R$ + is GET ROBUX (adds 10,000 fake); LEAVE or Esc closes it; drag on the left of the panel turns the mannequin. VIEW CRATE / VIEW BUNDLE / VIEW VIP on customization tiles open it on that item. |
+| PASS / JOBS (hub HUD, top-right) | The battle pass scene and the JOBS board. F at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item and CLAIM IN PASS on the summary open the pass. Esc / LEAVE / BACK closes either. |
+| $ + (match HUD cash row) | Brief 6: the cash-pack sheet (+$5,000 / +$20,000 / +$100,000 for fake Robux); the game keeps running behind it. Short of cash at the dealer, the same sheet opens (REROLL offers the R$ RESTOCK). |
 | F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
 | Esc / X | Cancel an open minigame (counts as `cancel` in the log). |
 | ◀ ▶ / A D | Spectating (bled out): cycle living teammates. REVIVE EVERYBODY button bottom-center. |
@@ -69,7 +78,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
 | Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
-| Backtick | Debug panel: add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
+| Backtick | Debug panel (brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
 Hub HUD on mobile landscape: dock tiles 76×68, PLAY 44px, SHOP and INVITE as icon tiles, queue card at 80%; the
@@ -339,6 +348,104 @@ VOTE TO EXTEND (+`PauseExtendSec`, as often as everyone agrees) and VOTE TO RESU
 by itself at `PauseMaxSec` (5 min, plus extensions) after a `PauseCountdownSec` countdown. No limit on how often. Modules join through `Pause.active`, `Pause.delay`,
 `Pause.onTick` and `Pause.onResume`.
 
+**Monetization (brief 6).** Every purchase is fake and every one succeeds against `profile.fakeRobux`. Timers that
+would be live-ops (season, FEATURED rotation, VIP renewal, Job resets) run on the player's **fake clock**: real UTC plus
+`profile.clockOffset` (`Clock.lua`; the debug `+1 day` moves it). Robux prices live in the data files, never in logic:
+`Products.lua` (the catalog every real product id maps onto later) is built from `Crates`, `Bundles`, `GoldPacks`,
+`BoostDefs`, `ReviveTokenPacks`, `CashPacks` and the pass keys in Config. Every item sold or dropped is new: eight crate
+guns with their own silhouettes and accent colors (`Weapons.Look`: MAC-10, Skorpion, AUG, PS90, FAL, Model 1887, Mosin,
+1911 Gold), eight crate masks plus VIP / bundle / pass masks on new shapes (`MaskShapes.lua`: goggles, skull, halfmask,
+mono, horns, helmet, crown, hood), bundle and pass wraps (`Wraps` now carry rarity, saleType and a material; the Legendary
+pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (public Roblox emotes standing in).
+
+- **Fake purchase flow (`Purchases.lua`, `PurchaseSheet.lua`).** One server entry point (`Remotes.Purchase`) and one
+  client sheet modeled on the Roblox prompt: item art, name, `R$ price`, `Buy for R$ <price>` (green) and Cancel; confirm
+  → a `PurchaseProcessingSec` spinner → the server checks, debits, grants through the kind's handler and writes the
+  profile → `<item> purchased!` with a chime and sparks, or a decline. Short of Robux the button reads `Not enough Robux`
+  and GET ROBUX sits under it (adds `FakeRobuxTopUp`). The same sheet runs in a run and freezes nothing. Every purchase
+  prints `[GHS Purchase] purchase <id> R$<price> balance <after> (<name>, hub | in-run wave N · context)` and lands in
+  `profile.purchases`; the debug `Buy log` prints the readout with totals per product.
+- **Store scene (`Store/StoreScene.lua`).** A dip to black and the camera eases onto the SHOWROOM, a private set built on
+  this client far from the map (`Store/Sets.lua`: an enclosed dark room, gold key light, a pedestal on the left); the world
+  lighting goes dark and warm while it is up. A **mannequin** (a local clone of you) stands on the pedestal for previews:
+  masks, poses, wraps and class idles from whatever you hover. Header: SHOP, the tab strip (red dot = claimable / new,
+  scrolls on mobile), the R$ balance with +, Gold with +, LEAVE. The panel slides in and settles with an overshoot, tabs
+  crossfade, cards cascade in 40ms apart. The style bar lives in `Store/Fx.lua` (glow, rays, UI particles, hover lift /
+  press scale / disabled dim, count-ups, the store's sound set, haptics) and `Store/Card.lua` (the card with every state:
+  rarity glow, dark body, light edge, art on a pedestal with an idle bob, price pill, ribbons, OWNED check).
+- **FEATURED / bundles (`Bundles.lua`, `FeaturedTab.lua`).** Three hero cards under `ROTATES IN 2d 14h`
+  (`FeaturedRotationSec` on the fake clock; the order turns each rotation), LIMITED and the `-X%` from list vs bundle
+  price, a contents strip with owned items dimmed. The detail sheet lists every item with art and rarity; owned ones are
+  struck through and their list share comes off the price (`BundleOwnedDiscount`). Buying grants everything not owned in
+  one write and plays the stacked reveal (`Store/Reveal.lua`, `BundleRevealStagger` apart). STARTER HEIST (TORCH, FAL,
+  2,000 Gold, 5 tokens, 1 Arms open) R$ 399; THE MARKSMAN SET (SHARPSHOOTER, Mosin, Ghillie Hood, Salute, the Woodland
+  wrap on the Mosin, 5,000 Gold, 10 tokens) R$ 1,299; HIGH ROLLER (10 + 10 crate opens, a 24h POWER boost, 25 tokens)
+  R$ 1,999.
+- **GOLD (`GoldPacks.lua`).** Six packs on two shelves with `R$ x.x PER 100 ◆` and BEST VALUE on the cheapest Gold;
+  buying flies Gold into the header, which counts up.
+- **Crates (`Crates.lua`, `CrateOpen.lua`, `CratesTab.lua`, `CrateScene.lua`).** ARMS CRATE (the eight guns, weights
+  40 / 30 / 18 / 9 / 3, R$ 129 / 299 / 799) and MASK CRATE (the eight masks, 45 / 28 / 17 / 8 / 2, R$ 99 / 249 / 699). The
+  server resolves every open before any animation: rarity by weight (`Crates.odds`, the same table the ODDS panel prints
+  with the exact items and `[Legal copy: TBA]`), Epic+ forced on the `CratePity`-th open since the last one (the card
+  reads `EPIC+ GUARANTEED IN N`), an item uniformly inside the rarity; an owned item pays `DupeGoldByTier` Gold and
+  `DupeMasteryByTier` mastery (the gun's own; a mask's goes to the equipped class). Bundle and pass crate rewards bank as
+  free opens (`profile.crateOpens`, OPEN FREE ×N). The opening plays on the CRATE ROOM: the crate drops onto the pedestal,
+  rattles for `CrateOpenSec` with rising ticks while its seams glow in the rolled rarity (the telegraph), the lid blows
+  with a flash, a shake and the tier's stinger, the item rises on a beam and turns, rays by tier, sparks on Epic+, a
+  `CrateLegendarySlowSec` slow motion and sting on Legendary, then the name card (rarity, name, NEW or `DUPLICATE · +◆ N
+  · +N mastery`). ×1 ends on CONFIRM; ×N on NEXT or `CrateAutoNextSec`, SKIP from the first reveal jumps to the summary
+  grid (rarity frames, dupes, Gold and mastery totals, OPEN AGAIN, DONE). Paid crates never feel LUCKY.
+- **Boosts (`BoostDefs.lua`, `Boosts.lua`, `BoostsTab.lua`, `HUD/BoostChips.lua`).** POWER (+`PowerBoostPct` weapon
+  and ability damage, also element burns), CASH (+`CashBoostPct` match cash from kills, cash bags and job payouts) and
+  LUCKY (in-run rarity rolls, gun crates and upgrade card tiers, read the wave bracket `LuckyWeightShift` rows up),
+  30m / 2h / 24h (LUCKY 30m / 2h), real-time from purchase, buying an active one extends it. Applied where the value is
+  computed (`PlayerState.computed`, the ability and burn damage calls, `Rarity.roll`). Chips (glyph, label, mm:ss) in the
+  hub's BOOSTS corner and small under the heat stars in a run (below the boss bar while one is up); a chip pulses in its
+  last `BoostChipWarnSec` and pops out with a toast on expiry. Gold, XP, pass XP and paid crates are never boosted.
+- **Revive tokens (`ReviveTokenPacks.lua`).** `profile.reviveTokens` (fresh: `ReviveTokensStart`). SELF-REVIVE spends
+  `SelfReviveTokens`, REVIVE EVERYBODY `ReviveAllTokensPerPlayer` × the party size, both on the press (the SECOND CHANCE
+  press too); the buttons show the cost and your count. At zero the button reads GET TOKENS and opens the sheet on the
+  5-pack; the bleed keeps running, except inside the SECOND CHANCE window, which holds while any member has a sheet up
+  (`RunOverHold`). Packs 5 / 25 / 100 on the BOOSTS tab and the hub token chip; a token chip by the health bar in runs.
+- **VIP (`Vip.lua`, `VipTab.lua`).** A fake monthly subscription (`VipPrice`, renewing every `VipPeriodDays` on the fake
+  clock, charged again on each renewal; a short balance lapses it). Subscribing grants the VIP Gold Trim mask and the
+  Stadium / Big Tilt poses (kept for good, in a VIP row of the Locker), `VipMonthlyTokens` tokens now and per renewal;
+  while active: the VIP gold tag on the hub name tag, the party card, the scoreboard, the summary rows (with a pulsing gold
+  frame) and crew callouts, a permanent +`VipCashPct` CASH chip in runs (stacks with CASH), the `VipDailyGold` gift chip
+  on the hub HUD once per fake UTC day, the VIP mask's sparkles, and the dealer greets you by name. CANCEL (fake) keeps
+  the cosmetics and stops the perks; a lapsed player sees WELCOME BACK.
+- **Battle pass (`PassSeason.lua`, `Pass.lua`, `Pass/PassScene.lua`).** `SeasonLengthDays` seasons from
+  `SeasonEpochUtc` on the fake clock (two defined, then they cycle), `PassLevels` levels of `PassXpPerLevel`. Lanes FREE
+  (something every level), PREMIUM (`PassPremiumPrice`), PREMIUM+ (`PassPremiumPlusPrice`, includes PREMIUM; from
+  PREMIUM it costs the difference) with the hero cosmetics at 10 / 20 / 30. A cell is claimable once its level is reached
+  and its lane owned, so a tier bought later unlocks every level already reached (CLAIM ALL). Pass XP: `PassXpPerWave`
+  per wave cleared + `PassXpPerBoss` per boss kill at the summary, plus Job rewards; overflow carries; past the last level
+  every `PassXpPerLevel` pays `PassOverflowGold`. Skips ×1 / ×5 / ×10 at `PassSkipPrice` each, any tier. Season end
+  auto-claims owned lanes and shows SEASON OVER on the next open. The scene runs on its own PASS STAGE: the season banner
+  (level badge, XP bar, ENDS IN, skips) top-left, the premium sell card left, the selected reward in 3D (on the
+  mannequin for cosmetics, turning on the pedestal otherwise) with its card (rarity, REQUIRES PREMIUM / UNLOCKS AT LEVEL
+  N, CLAIM), the track along the bottom (lit diamonds, three stacked cells per level, claimable pulse, claimed check,
+  padlock, BACK / NEXT by `PassPageLevels`, GO TO CURRENT LEVEL) and CLAIM ALL bottom-right. The hub HUD PASS button
+  shows the level, a ring of dots for the progress and a red dot when a cell waits; the summary has a PASS XP bar after
+  the account XP bar with CLAIM IN PASS.
+- **Jobs (`JobPool.lua`, `Jobs.lua`, `RunEvents.lua`, `Jobs/JobBoard.lua`).** Three dailies a fake UTC day (no two of a
+  kind; a class Job only for a class you own) and one bounty a week (Monday). Progress comes from the run event bus
+  (kills by archetype, elites, headshots, bags, gold banked, best wave, side jobs, vaults, minigames, boss kills for the
+  party, revives, the class a run finished as, kills by weapon archetype) and persists until the reset; a quarter crossed
+  in a run toasts (`JOB · KILL 60 RUNNERS 30 / 60`) and the scoreboard footer lists the dailies. CLAIM pays
+  `DailyXp` / `DailyGold` / `DailyPassXp` (the bounty `WeeklyXp` / `WeeklyGold` / `WeeklyPassXp` / `WeeklyTokens`); one
+  free REROLL a day (`JobRerollsPerDay`). The board: the camera pushes onto MARLOW's corkboard (`JobBoardPosition`, a
+  beacon that pulses until today's board is opened), header with both reset clocks, three pinned paper dailies (MARLOW's
+  line, progress, rewards, CLAIM, REROLL with a tear-off), the WANTED bounty poster, a DONE stamp that slams on, claimed
+  stubs, CLAIM ALL. MARLOW announces a new board (`JobAnnounceLine`) on the first hub entry after a reset. The summary
+  lists the Jobs that moved; a finished one reads `JOB DONE · CLAIM AT THE BOARD` and opens it.
+- **In-run upsells.** The cash `+` (cash packs), GET TOKENS (pulses with `TokenNudgeSec` of bleed left and no tokens),
+  the token sheet offered to the first bled-out player when nobody in the crew can pay for REVIVE EVERYBODY, the
+  dealer's R$ RESTOCK and the cash sheet when short at the stall. Each is a nudge or a button, never a blocking popup.
+- **Customization tabs.** Crate, bundle, VIP and pass items show `CRATE` / `BUNDLE` / `VIP` / `PASS` (and `EVENT`) on
+  owned and unowned tiles and wraps, with VIEW CRATE / VIEW BUNDLE / VIEW VIP / VIEW PASS deep links (the FAL, the Mosin
+  and bundle classes link to their bundle as well). Only Direct items are Gold-priced.
+
 **Crew call / side job.** A call from MARLOW on wave 1 and every `SideJobEveryWaves` (2) waves, kind rolled from
 `SideJobKindWeights` (equal odds; the Safe dial is weighted 0 since it is the vault's own beat): "VAULT PING" (hack
 the terminal, hold F), "HOLD THE FLOOR" (stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is
@@ -377,11 +484,12 @@ in this server's arena. The party, not the server, is the run's player set: run-
 line-ups go to members only, non-members stay in the hub with the hub HUD, and late joiners always land in the hub.
 
 **Hub HUD.** PLAY top-center (green; teleports you onto the nearest open pad, where the Create Party card opens),
-SHOP icon tile left-center (amber, `Shop` placeholder), Gold pill bottom-left with `+` (placeholder) and INVITE
-FRIENDS under it (does nothing), the dock bottom-center (WEAPONS · CLASSES · AVATAR as 92px icon tiles with labels
-under them, reference style), BOOSTS bottom-right (icon chips: a stub `◆ +50%` chip with a countdown from `StubBoostSec`,
-two empty), the compact queue card under PLAY while in a party, and a `TOP WAVE N ★` billboard with the class icon
-above every character in the hub. Top-left stays empty for server chat.
+SHOP icon tile left-center (amber, the store scene), Gold pill bottom-left with `+` (the store's GOLD tab), the revive
+token chip beside it (the token packs) and INVITE FRIENDS under it (does nothing), the dock bottom-center (WEAPONS ·
+CLASSES · AVATAR as 92px icon tiles with labels under them, reference style), BOOSTS bottom-right (the live boost chips,
+VIP's CASH chip and daily gift, a `+` into the BOOSTS tab), PASS and JOBS top-right, the compact queue card under PLAY
+while in a party, and a `TOP WAVE N ★` billboard with the class icon (and the VIP tag) above every character in the hub.
+Top-left stays empty for server chat.
 
 **Queue zone and Create Match (`Queue.lua` / `QueueUI.lua`, GDD_7 Hub → Queue Zones minus the teleport).** Walk into an
 empty zone (or press PLAY) → the Create Party card (reference layout: blue header bar with X, Select Map thumbnails
@@ -405,7 +513,11 @@ per player; `UpdateAsync` with 3 tries and 1 / 2 / 4s backoff; written on every 
 back to an in-memory profile and warns once. Shape: `gold`, `weapons[id] = { level, wrap }` (presence = owned),
 `starterWeaponId`, `classes { owned, equipped }`, `abilities[id] = level`, `masks { owned, equipped }`, `wraps.owned`,
 `topWave["TheBank:Normal"]`, `topBanked`, `topTime`, `level`, `xp`, `lastHeistDay`, `stats { kills, matchesPlayed,
-goldEarned, bagsCollected, goldBanked, xp, timeSurvived }`, `pendingPayout`, `version`. A fresh profile
+goldEarned, bagsCollected, goldBanked, xp, timeSurvived }`, `pendingPayout`, `version`; v3 (brief 6, migrated from v2
+with the fresh defaults) adds `fakeRobux`, `reviveTokens`, `boosts[id] = { expiresAt }`, `vip { active, since,
+renewsAt, ever }`, `vipGiftDay`, `pass { season, level, xp, tier, claimed["L7"], seasonOver }`, `jobs { dailyResetDay,
+weeklyResetWeek, daily, bounty, rerollUsed, announcedDay, boardSeenDay }`, `cratePity`, `crateOpens`, `purchases`
+and `clockOffset`. A fresh profile
 has `StartingGold` (10,000), one gun of each archetype at level 0 (`Weapons.DefaultOwned`: M1911, UZI, AK-47,
 SPAS-12, AWP, M249; older stores are topped up on load), the M1911 as starter, INITIATE and the plain mask. `Prices.lua` is the only
 price file (`weaponUnlock`, `weaponUpgrade`, `class`, `ability`, `mask`, `wrap`, all 100). The whole profile rides in
@@ -500,7 +612,8 @@ and slider range; the slider spans a fixed band round `FreqCenter`, targets move
 
 **Downed, revive, game over.** 0 HP → `Downed.down`: crawl speed and animation (`DownedAnimationId`), no jump, no
 abilities / buys / swaps, enemies drop you from targeting, the health bar becomes a red bleed bar from
-`BleedOutSec` (15s) with GIVE UP (bleed out now) and SELF-REVIVE (free, counter) above it, a red-cross marker with name
+`BleedOutSec` (15s) with GIVE UP (bleed out now) and SELF-REVIVE (brief 6: spends a revive token; GET TOKENS at zero)
+above it, a red-cross marker with name
 and seconds over you for teammates. A standing teammate within `ReviveRadius` holds F for `ReviveHoldSec` (brief 5:
 a centered bar under their crosshair, `REVIVING NAME` with the seconds left, ticking every `ReviveTickSec`, green
 `REVIVED` on completion, a red snap-back on release, the crosshair ring kept; your bleed bar gains a green second fill
@@ -513,7 +626,7 @@ boss's last hit, a Legendary from a crate, a `CalloutMultiKill`+ frag or claymor
 behind MARLOW and the boss cutscene. A finished side job's NICE WORK card is the completer's (headshot, name,
 `doneByText`); NPC cards (MARLOW, DEALER) show a dummy avatar bust (`Lines.portraits`), also the fallback for a
 missing headshot. Bleed-out removes the character and opens spectate (camera orbits living teammates, name
-and HP top-center, REVIVE EVERYBODY free with a counter: everyone downed or bled out stands up where they fell,
+and HP top-center, REVIVE EVERYBODY (brief 6: one token per party member) stands everyone downed or bled out up where they fell,
 `<NAME> REVIVED THE CREW` center toast). **Run over** when nobody is standing and nobody is still bleeding, so a solo
 player bleeds (and can self-revive) before game over: enemies freeze and fade, the lens pulls in and the world
 desaturates under a `RUN OVER · WAVE N` stamp for `RunOverSlowSec + RunOverHoldSec` (5s). Inside that window REVIVE
@@ -743,6 +856,55 @@ first, then a 2-player Local Server with a pause and a dealer visit:
 10. Mobile (device emulator, landscape): the crate reel and tag, the revive bar, the top-right dealer card, the shop
     panel's BUY, the pause buttons and the mastery cards all read and tap at phone size.
 
+### Brief 6 verify list
+
+Written and built (`stylua`, `luau-lsp`, `rojo build`) step by step, not yet run in Studio. The done-line: one solo
+session that buys one of everything, opens ×1 / ×3 / ×10 of each crate, levels the pass, claims a daily, subscribes and
+cancels VIP, and rejoins to find it all kept (API access on). Verify the `Poses.lua` ids load (a failed one leaves the
+mannequin in its idle; the output shows the load error).
+
+1. Fresh profile: the hub shows the token chip (3) by the Gold pill, BOOSTS with only the `+`, PASS (LV 1) and JOBS
+   top-right with red dots; a few seconds in MARLOW's card slides in under them (`New jobs on the board…`) and his
+   corkboard's beacon pulses. Output: `[GHS Jobs] … new dailies`, `[GHS Profile] … v2 -> v3` on an old profile.
+2. SHOP: a dip to black, the showroom (dark, gold light, your mannequin on the left), header with `R$ 100,000` and Gold,
+   tabs that crossfade and cards that cascade, hover lifts / brightens, press squashes, sounds on every tap. LEAVE / Esc
+   return to the hub. R$ + adds 10,000 through the sheet.
+3. GOLD: six packs, BEST VALUE on RESERVE; buy one → the sheet (spinner 0.6s) → `… purchased!`, Gold flies into the
+   header and counts up; the output prints the purchase line.
+4. FEATURED: three cards, `ROTATES IN …`, LIMITED and -X%; hovering THE MARKSMAN SET puts the Ghillie Hood and the Salute
+   on the mannequin; its sheet lists seven items; buy it → the stacked reveal; the Armory has the Mosin with the Woodland
+   wrap, Crew has SHARPSHOOTER, the Locker the hood and the pose, Gold +5,000, tokens +10. Open STARTER HEIST: owned
+   items are struck through and the price is lower.
+5. CRATES: each card shows the strip, ODDS (percentages that sum to 100, the items, `[Legal copy: TBA]`) and `EPIC+
+   GUARANTEED IN 10`. OPEN 1 → straight into the crate room: rattle, seams in the rarity color, the lid, the item on its
+   beam, the name card, CONFIRM back to CRATES. OPEN 10 → ten in a row with NEXT / auto-advance, SKIP from the first
+   reveal → the summary grid with dupes and totals, OPEN AGAIN / DONE. Within 10 opens an Epic+ always lands; dupes say
+   `DUPLICATE · +◆ N · +N mastery`. Debug `Force rarity L` then OPEN 1: the Legendary slow motion. New guns hold with
+   their own silhouette; new masks wear in the hub and the run.
+6. BOOSTS: buy POWER 30m → a chip in BOOSTS with a timer and `ACTIVE · 29:59` on the card (EXTEND adds 30m). In a run:
+   the chip sits under the heat stars, damage numbers are ~20% higher (POWER), kill cash 50% higher (CASH), crates roll
+   higher (LUCKY). The summary's Gold and XP are unchanged.
+7. Tokens: debug `Down me` → SELF-REVIVE shows `1 TOKEN · YOU HAVE 3` and stands you up; `Set tkn` 0 then down →
+   GET TOKENS → the sheet; buy → the button is armed. Solo: give up → bleed out → REVIVE EVERYBODY (1 token) inside the
+   RUN OVER window → second chance; at zero tokens the sheet opens and the window holds while it is up.
+8. Cash +: in a run the sheet lists three packs; buying adds the cash with the usual float. At the dealer, REROLL without
+   the cash opens the R$ RESTOCK sheet.
+9. VIP: SUBSCRIBE → the gold tag over your head, on the party card, scoreboard, summary row (pulsing frame) and
+   callouts; the VIP chip in BOOSTS; the GFT chip pays 200 Gold once a day; the Locker's VIP row; +10 tokens. Debug
+   `+1 day` × 30 → a renewal charges R$ 399 and pays 10 tokens. CANCEL → perks gone, cosmetics stay, WELCOME BACK.
+10. Pass: PASS opens the stage; claim level 1 FREE; `+1,000 pass` levels up (the banner, the HUD ring); GET PREMIUM →
+    every reached PREMIUM cell pulses, CLAIM ALL claims them in a mini reveal; SKIP ×5; PREMIUM+ from PREMIUM costs the
+    difference; the hero at 10 / 20 / 30 shows on the mannequin or turning on the pedestal. Finish a run → the summary's
+    PASS XP bar fills (40 a wave, 200 a boss) and CLAIM IN PASS opens the scene. Debug `+1 day` until the season ends →
+    SEASON OVER on the next open and season 2 (COLD CASE).
+11. Jobs: JOBS / F at the board → the camera pushes onto the corkboard; the dailies show progress; play a run → JOB
+    toasts at each quarter, the scoreboard footer, the summary ticks; a finished one gets the DONE stamp at the board,
+    CLAIM pays XP + Gold + pass XP; REROLL tears a card off once a day. Debug `Reset jobs` draws a new board.
+12. Rejoin: balance, tokens, boosts with their time left, VIP, pass level and claims, Job progress, banked crate opens
+    and pity are all where they were. Debug `Buy log` prints every purchase with totals.
+13. Mobile (device emulator, landscape): the store tab strip scrolls, every card and button taps, the crate scene is full
+    screen with 56px SKIP / NEXT, the pass track and the job board fit.
+
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
@@ -755,7 +917,9 @@ Marksman, Boomer, Grenadier, Heavy), Spawner (brackets, proximity markers, cap, 
 VaultJob, Boss with `Bosses/Titan`, Progression (XP, level, rewards), Roster (scoreboard rows), Combat, Economy,
 UpgradeShop (`generate(state, wave, count)`, `applyCard`), WeaponRoll, BigCrate (`drop(at, { legendary })`, rolls),
 Elements (element procs and statuses), Mastery (XP, tiers, kill passives), Dealer (the break, stall, stock), Pause
-(the freeze and its hooks), CrewCall (the vault kind), Abilities, SkipVote,
+(the freeze and its hooks), CrewCall (the vault kind), Abilities, SkipVote, and brief 6: Purchases (the fake purchase
+entry point and kind registry), Grants (applies rewards, dupes), Shop (Remotes.Shop actions, bundles, boosts), CrateOpen,
+Boosts, Vip, Pass, Jobs, RunEvents (the run event bus),
 Hub (yard dressing, stations, tier pad, resets, the LV · TOP WAVE tag), Queue (zones, Create Match, party, countdown,
 PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions), Minigames (sessions, log, stats, a tier override), Downed
 (down / revive / bleed-out / game over / sidearm), AllyCallout (teammate radio lines), RunStart, RunEnd (payout, XP award, summary), Squad (dummy crew for
@@ -763,7 +927,9 @@ the sequences), Debug, Log; `GameLoop.server.lua` is the entry. All cash, Gold, 
 results, bags, XP and revives are server-authoritative; every remote is created in `src/shared/Remotes.lua`. Shared
 data: Config, Prices, Weapons (with `saleType` and the level math), Enemies (roster rows, scaling, brackets), BagSpots,
 LevelRewards, Classes, AbilityGrowth, Masks, Wraps, Rarity, Upgrades, Types, Remotes, Signal, CrewCall/Lines, CrateReel
-(reel timing), Callouts (ally lines), MasteryCopy (mastery copy and tier math).
+(reel timing), Callouts (ally lines), MasteryCopy (mastery copy and tier math), and brief 6: Products, Rewards,
+Crates, Bundles, GoldPacks, BoostDefs, CashPacks, ReviveTokenPacks, PassSeason, JobPool, Clock (the fake clock),
+MaskShapes, Poses.
 
 Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), HUD components under `src/client/HUD`
 (with `HUD.setMode` for hub / meta / downed / spectate / cinematic / boss and `HubHUD` for the hub layout; `BossBar`
@@ -774,7 +940,9 @@ shop panels; `UI/CardFace.lua` is the upgrade card look it shares with UpgradeOv
 callouts), Markers (beacon, bag and vault billboards, the vault chevrons), Minigames (Frame + one module
 per game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Spectate,
 RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary with the XP row), BossCutscene, Scoreboard,
-DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
+DebugPanel, Juice (rarity tiers), Camera, Gun, Main. Brief 6: PurchaseSheet, `src/client/Store/` (StoreScene, Fx,
+Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, GoldTab, CrateScene),
+`src/client/Pass/` (PassScene, PassSummary), `src/client/Jobs/` (JobBoard, JobSummary), HUD/BoostChips.
 
 ## Changelog (playtest rounds)
 
@@ -1098,7 +1266,31 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main.
   card is a ScreenGui that follows the stand on screen, so the nearer small cards (AlwaysOnTop billboards sort by
   distance) never cover it.
 
+- **Round 17 (5 Nov, brief 6)** — the monetization front end, one commit per build step, against a fake Robux balance.
+  (1) `Purchases.lua` / `PurchaseSheet.lua` and `Products.lua`, profile v3, revive tokens on SELF-REVIVE / REVIVE
+  EVERYBODY with GET TOKENS and the SECOND CHANCE hold, the cash `+`, the new content (crate guns with silhouettes,
+  masks on `MaskShapes`, wraps with materials, poses in `Poses.lua`), boost effects wired at the computation points.
+  (2) The store scene on a private showroom set with the mannequin, header, tabs, entrance motion, the card component
+  and the style kit. (3) GOLD and FEATURED with bundles, owned discount and the stacked reveal. (4) Crates: the roll,
+  pity, dupes, odds panel, the opening scene with ×1 / ×N / SKIP / summary, tags and deep links on the customization
+  tabs. (5) BOOSTS and the chips on both HUDs (the stub chip and `StubBoostSec` are gone); VIP with every perk, the
+  dealer's greeting and R$ RESTOCK. (6) The battle pass: server, scene, HUD button, summary bar, season end. (7) Jobs:
+  the run event bus, MARLOW's corkboard, the board screen, announce, toasts, summary ticks, scoreboard footer.
+  (8) Debug additions, the purchase log readout, mobile fit, this README.
+
 ## Open design notes (not built)
+
+- **Brief 6 assumptions to confirm.** The design canvas reference boards were not available to the build, so the look
+  follows the style bar list. Pass levels start at 1 with level 1's cells claimable at once. Boost timers use the real
+  clock (the fake clock never expires them); VIP renewals, seasons, FEATURED and Job resets use the fake clock. A VIP
+  renewal charges the fake balance again and lapses when it is short. Pass and crate items you already own convert to
+  Gold and mastery like crate dupes; bundle items you own are skipped (their share is already off the price). A mask
+  dupe's mastery goes to the equipped class. The FEATURED rotation re-orders the three bundles (there are only three).
+  Revive Everybody's party size is the party, not the number down. The bounty's gold banked and boss kills count for
+  the whole party; kills, headshots and revives for the player. Headshots count bullets that hit the head, not kills.
+  VIP poses are equippable as SQUAD / MVP poses (the hub has no emote button). Token packs are their own kind
+  (`tokens`); `revive_self` / `revive_all` are not products since revives spend banked tokens. The paid crates' ARMS
+  pool includes a `PS90` because the Direct `P90` already exists. Real catalog animation ids are unverified stand-ins.
 
 - **Brief 5 assumptions to confirm.** Elements (Round 15e) apply on every bullet that lands (each pellet and pierced enemy;
   ricochet / splash not). CONCUSSIVE never interrupts TITAN and interrupts anyone else at most every

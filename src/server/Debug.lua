@@ -31,6 +31,10 @@ local Progression = require(script.Parent.Progression)
 local Mastery = require(script.Parent.Mastery)
 local Dealer = require(script.Parent.Dealer)
 local Pause = require(script.Parent.Pause)
+local Purchases = require(script.Parent.Purchases)
+local CrateOpen = require(script.Parent.CrateOpen)
+local Pass = require(script.Parent.Pass)
+local Jobs = require(script.Parent.Jobs)
 
 local Debug = {}
 
@@ -95,8 +99,70 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		local r = if typeof(args) == "number" then args else Rarity.fromLetter(tostring(args))
 		if r then
 			state.forcedRarity = r
+			CrateOpen.forced[player] = r -- brief 6: the next paid / free crate open too
 			toast(player, "NEXT ROLL: " .. string.upper(Rarity.name(r)))
 		end
+	end,
+	------------------------------------------------------------------ Brief 6 (monetization)
+	SetRobux = function(player, _state, args)
+		Purchases.setBalance(player, tonumber(args) or 0)
+		toast(player, "R$ BALANCE SET")
+	end,
+	SetTokens = function(player, state, args)
+		local p = Profiles.get(player)
+		if p then
+			p.reviveTokens = math.max(0, math.floor(tonumber(args) or 0))
+			Profiles.markDirty(player)
+			state.dirty = true
+			Log.event("Tokens", "%s set to %d (debug)", player.Name, p.reviveTokens)
+		end
+	end,
+	CrateCredits = function(player, _state, args)
+		CrateOpen.grantCredits(player, tostring(args), 10)
+		toast(player, "+10 FREE " .. string.upper(tostring(args)) .. " OPENS")
+	end,
+	AdvanceDay = function(player, _state, args)
+		Pass.advanceDay(player, math.max(1, math.floor(tonumber(args) or 1)))
+		Jobs.normalize(player)
+		toast(player, "FAKE CLOCK +" .. math.max(1, math.floor(tonumber(args) or 1)) .. " DAY")
+	end,
+	AddPassXp = function(player, _state, args)
+		Pass.addXp(player, tonumber(args) or 1000, "debug")
+	end,
+	ResetJobs = function(player, _state, _args)
+		Jobs.reset(player)
+		toast(player, "JOBS RESET")
+	end,
+	-- The purchase log readout: every fake purchase on the profile, totals per kind.
+	PurchaseLog = function(player, _state, _args)
+		local p = Profiles.get(player)
+		if not p then
+			return
+		end
+		local total = 0
+		local byId: { [string]: { n: number, spent: number } } = {}
+		print(
+			string.format(
+				"[GHS Purchase] readout for %s: %d purchases, balance R$ %d, %d tokens",
+				player.Name,
+				#p.purchases,
+				p.fakeRobux,
+				p.reviveTokens
+			)
+		)
+		for _, e in p.purchases do
+			total += e.price
+			local row = byId[e.id] or { n = 0, spent = 0 }
+			row.n += 1
+			row.spent += e.price
+			byId[e.id] = row
+			print(string.format("  %s  %-22s R$%d", os.date("!%Y-%m-%d %H:%M", e.at), e.id, e.price))
+		end
+		for id, row in byId do
+			print(string.format("  total %-22s x%d  R$%d", id, row.n, row.spent))
+		end
+		print(string.format("  spent R$%d in all", total))
+		toast(player, "PURCHASE LOG PRINTED")
 	end,
 	ForceTradeoff = function(player, state, _args)
 		state.forceTradeoff = true
