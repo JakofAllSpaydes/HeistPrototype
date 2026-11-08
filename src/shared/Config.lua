@@ -961,7 +961,7 @@ local Config = {
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	BoothWalkIn = true, -- walking onto a booth's orange half-circle opens the customization scene on its tab
-	BoothPromptDistance = 12, -- OPEN at a booth's counter edge reaches this far (the booths stand on a stage)
+	BoothPromptDistance = 12, -- only with BoothWalkIn off: OPEN (F) at a booth reaches this far
 	BoardPromptDistance = 12, -- OPEN at MARLOW's board
 	-- The training range (the old helicopter bay): armed inside, nothing pays, scores or persists.
 	RangeAbilities = true, -- all three class abilities live inside the range (cooldowns as in a run)

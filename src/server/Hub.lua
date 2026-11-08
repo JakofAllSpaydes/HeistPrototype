@@ -165,9 +165,10 @@ local function decorate()
 		surfaceLabel(station.panel, Enum.NormalId.Right, station.tab, TEXT, 48)
 		stationPrompt(station.panel, station.tab, 9)
 	end
-	-- Brief 8: the warehouse's three booths (their signs are the asset's): OPEN on each counter edge.
+	-- Brief 8: the warehouse's booths open by walking onto their half-circle (BoothWalkIn); the F prompt is only the
+	-- fallback when that is switched off.
 	local view = HubMap.view
-	if view then
+	if view and not Config.BoothWalkIn then
 		for _, station in view.stations do
 			stationPrompt(station.part, station.tab, Config.BoothPromptDistance)
 		end
@@ -176,7 +177,7 @@ end
 
 ------------------------------------------------------------------ Booth walk-ins (brief 8)
 -- Walk onto a booth's orange half-circle (its Station node) and the customization scene opens on that tab
--- (BoothWalkIn); it opens again only after you have stepped off. OPEN (F) at the booth still works.
+-- (BoothWalkIn); it opens again only after you have stepped off. No prompt (BoothWalkIn false brings OPEN back).
 local onBooth: { [Player]: string } = {}
 
 local function boothAt(station: HubMap.Station, position: Vector3): boolean
