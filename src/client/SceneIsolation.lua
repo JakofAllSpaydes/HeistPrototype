@@ -1,7 +1,7 @@
 --!strict
 -- Brief 8 follow-up: while the customization scene (WEAPONS / CLASSES / AVATAR, the gun close-up included) is open,
 -- the shot is yours alone: proximity prompts are off and every other character on this client is hidden (other
--- players and their nameplates, the booth mannequins and rigs, the range dummies and any enemy or squad dummy).
+-- players and their nameplates, the booth mannequins and rigs, MARLOW, the range dummies and any enemy or squad dummy).
 -- Local only; everything comes back as it was when the scene closes.
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
@@ -53,7 +53,10 @@ local function others(): { Instance }
 	local hub = Workspace:FindFirstChild("Hub")
 	if hub then
 		for _, d in hub:GetDescendants() do
-			if d:IsA("Model") and (d.Name == "BoothMannequin" or d:GetAttribute("BoothTab") ~= nil) then
+			if
+				d:IsA("Model")
+				and (d.Name == "BoothMannequin" or d.Name == "Marlow" or d:GetAttribute("BoothTab") ~= nil)
+			then
 				table.insert(out, d)
 			end
 		end

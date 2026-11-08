@@ -966,7 +966,10 @@ local Config = {
 	PassDragTurn = 0.012, -- radians per pixel when you drag the battle pass mannequin
 	BoothWalkIn = true, -- walking onto a booth's orange half-circle opens the customization scene on its tab
 	BoothPromptDistance = 12, -- only with BoothWalkIn off: OPEN (F) at a booth reaches this far
-	BoardPromptDistance = 12, -- OPEN at MARLOW's board
+	BoardPromptDistance = 12, -- OPEN at MARLOW's board (the prompt is on MARLOW when he stands there)
+	MarlowNpc = true, -- MARLOW stands in front of his board in the hub (the board's OPEN prompt is on him)
+	MarlowOffset = 3.2, -- studs out from the board's face
+	MarlowIdleAnimationId = "rbxassetid://507766388", -- the default R15 idle
 	-- The training range (the old helicopter bay): armed inside, nothing pays, scores or persists.
 	RangeAbilities = true, -- all three class abilities live inside the range (cooldowns as in a run)
 	DummyCount = 3, -- dummies standing on the Dummy nodes (at most one per node)

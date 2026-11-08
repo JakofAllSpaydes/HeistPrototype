@@ -12,6 +12,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Fonts = require(Shared.Fonts)
+local Ground = require(Shared.Ground)
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Maps = require(Shared.Maps)
@@ -251,6 +252,91 @@ local function boardPrompt(parent: BasePart, distance: number)
 	end)
 end
 
+-- Round 20r: MARLOW himself, a default R15 in a dark suit standing in front of the board (MarlowOffset studs out
+-- from its face, on the floor under that point) facing the room, with an idle and a small name tag. Returns his root.
+local function buildMarlow(node: BasePart): BasePart?
+	if not Config.MarlowNpc then
+		return nil
+	end
+	local desc = Instance.new("HumanoidDescription")
+	local suit = Color3.fromRGB(34, 36, 44)
+	desc.HeadColor = Color3.fromRGB(196, 150, 116)
+	desc.LeftArmColor = suit
+	desc.RightArmColor = suit
+	desc.TorsoColor = suit
+	desc.LeftLegColor = Color3.fromRGB(24, 24, 30)
+	desc.RightLegColor = Color3.fromRGB(24, 24, 30)
+	local ok, made = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not made then
+		Log.event("Hub", "no MARLOW rig (%s): the board's prompt stays on the board", tostring(made))
+		return nil
+	end
+	local npc = made :: Model
+	npc.Name = "Marlow"
+	local hum = npc:FindFirstChildOfClass("Humanoid")
+	local hrp = npc:FindFirstChild("HumanoidRootPart")
+	if not hum or not hrp or not hrp:IsA("BasePart") then
+		npc:Destroy()
+		return nil
+	end
+	for _, d in npc:GetDescendants() do
+		if d:IsA("LuaSourceContainer") then
+			d:Destroy()
+		end
+	end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	hrp.Anchored = true
+	local front = node.CFrame.LookVector * Vector3.new(1, 0, 1)
+	front = if front.Magnitude > 0.1 then front.Unit else Vector3.new(0, 0, 1)
+	local spot = node.Position + front * Config.MarlowOffset
+	local floor = Ground.y(Vector3.new(spot.X, node.Position.Y, spot.Z), spot.Y - 8, 2, 20)
+	local at = Vector3.new(spot.X, floor + hum.HipHeight + hrp.Size.Y / 2, spot.Z)
+	npc:PivotTo(CFrame.lookAt(at, at + front))
+	npc.Parent = HubMap.model or workspace
+	-- His name over his head, small (the house style: dark plate, gold condensed caps).
+	local head = npc:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		local tag = Instance.new("BillboardGui")
+		tag.Name = "MarlowTag"
+		tag.Adornee = head
+		tag.Size = UDim2.fromOffset(110, 22)
+		tag.StudsOffsetWorldSpace = Vector3.new(0, 2.1, 0)
+		tag.MaxDistance = 60
+		tag.LightInfluence = 0
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+		label.BackgroundTransparency = 0.15
+		label.BorderSizePixel = 0
+		label.FontFace = Fonts.display
+		label.Text = "MARLOW"
+		label.TextSize = 15
+		label.TextColor3 = GOLD
+		label.Parent = tag
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 3)
+		corner.Parent = label
+		tag.Parent = npc
+	end
+	-- The idle (an Animator on the server replicates to every client).
+	task.spawn(function()
+		local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+		local anim = Instance.new("Animation")
+		anim.AnimationId = Config.MarlowIdleAnimationId
+		local okLoad, track = pcall(function()
+			return (animator :: Animator):LoadAnimation(anim)
+		end)
+		if okLoad and track then
+			track.Looped = true
+			track:Play()
+		end
+	end)
+	return hrp
+end
+
 local function buildHubBoard(node: BasePart)
 	local m = Instance.new("Model")
 	m.Name = "JobBoard"
@@ -284,9 +370,11 @@ local function buildHubBoard(node: BasePart)
 	local low = node.Position - Vector3.new(0, node.Size.Y / 2, 0) + front * 1
 	local anchor = part("PromptAnchor", Vector3.new(1, 1, 1), CFrame.new(low))
 	anchor.Transparency = 1
-	boardPrompt(anchor, Config.BoardPromptDistance)
 	m.Parent = HubMap.model or workspace
 	Hub.jobBoard = m
+	-- MARLOW stands in front of his board; the OPEN prompt is on him (on the board if he cannot be made).
+	local marlow = buildMarlow(node)
+	boardPrompt(marlow or anchor, Config.BoardPromptDistance)
 end
 
 -- MARLOW's board is the warehouse's bulletin board (the Board node); without one there is no board.
