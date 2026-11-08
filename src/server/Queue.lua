@@ -121,8 +121,8 @@ local function buildBoard(z: Zone)
 	gui.Name = "QueueBoard"
 	gui.Adornee = anchor
 	gui.AlwaysOnTop = false
-	gui.Size = UDim2.fromScale(16, 4.4)
-	gui.StudsOffset = Vector3.new(0, if anchor == z.room.pad then 8 else 1.5, 0)
+	gui.Size = UDim2.fromScale(Config.PadBoardWidth, Config.PadBoardWidth * 0.275) -- studs (Round 20q: smaller)
+	gui.StudsOffset = Vector3.new(0, if anchor == z.room.pad then Config.PadBoardLift else 0, 0)
 	gui.MaxDistance = 140
 	gui.LightInfluence = 0
 	gui.Parent = anchor

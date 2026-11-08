@@ -1052,6 +1052,8 @@ local Config = {
 	-- (doors, windows and the vault are stateful), so a second party on a busy map waits on its pad.
 	MapInstancesPerMap = 1, -- parties per map at once (above 1 needs map copies: out of scope, capped to 1)
 	MapBusyAutoStart = true, -- a waiting party starts the moment its map frees (false: its countdown restarts)
+	PadBoardWidth = 8, -- studs wide, the billboard over each queue pad (its height follows)
+	PadBoardLift = 4.5, -- studs above the middle of the pad
 	MapBusyText = "MAP BUSY · %s IS INSIDE", -- the pad's billboard line while it waits (%s = the crew inside)
 	-- Round 16: difficulty is live. Each row scales enemy HP (hpMult) and damage (dmgMult), the wave's enemy count
 	-- (budgetMult) and the run's Gold payout (goldMult). Top waves are kept per map:difficulty.

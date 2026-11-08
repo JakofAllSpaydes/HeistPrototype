@@ -217,7 +217,7 @@ function HubMap.read()
 			continue
 		end
 		seen[index] = true
-		-- The billboard hangs over the pad's back edge (the side its node faces: the wall).
+		-- The billboard floats over the middle of the pad, low (PadBoardLift), clear of the board on the wall.
 		local anchor = Instance.new("Part")
 		anchor.Name = "PadBoard" .. index
 		anchor.Anchored = true
@@ -226,7 +226,7 @@ function HubMap.read()
 		anchor.CanTouch = false
 		anchor.Transparency = 1
 		anchor.Size = Vector3.new(1, 1, 1)
-		anchor.CFrame = CFrame.new(p.Position + p.CFrame.LookVector * (p.Size.Z / 2) + Vector3.new(0, 6.5, 0))
+		anchor.CFrame = CFrame.new(p.Position + Vector3.new(0, Config.PadBoardLift, 0))
 		anchor.Parent = nodes
 		table.insert(view.pads, { index = index, pad = p, gate = nil, billboardAnchor = anchor })
 		Log.event("Map", "hub QueuePad %s index %d", p.Name, index)
