@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage.Shared
 local Fonts = require(Shared.Fonts)
@@ -171,6 +172,58 @@ local function decorate()
 			stationPrompt(station.part, station.tab, Config.BoothPromptDistance)
 		end
 	end
+end
+
+------------------------------------------------------------------ Booth walk-ins (brief 8)
+-- Walk onto a booth's orange half-circle (its Station node) and the customization scene opens on that tab
+-- (BoothWalkIn); it opens again only after you have stepped off. OPEN (F) at the booth still works.
+local onBooth: { [Player]: string } = {}
+
+local function boothAt(station: HubMap.Station, position: Vector3): boolean
+	local p = station.part
+	local o = p.CFrame:PointToObjectSpace(position)
+	return math.abs(o.X) <= p.Size.X / 2
+		and math.abs(o.Z) <= p.Size.Z / 2
+		and o.Y >= -p.Size.Y / 2 - 1
+		and o.Y <= p.Size.Y / 2 + 2
+end
+
+local function startBoothWalkIns()
+	local view = HubMap.view
+	if not view or #view.stations == 0 or not Config.BoothWalkIn then
+		return
+	end
+	local acc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		acc += dt
+		if acc < 0.1 then
+			return
+		end
+		acc = 0
+		for _, player in Players:GetPlayers() do
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local state = PlayerState.get(player)
+			if not root or Runs.inRunCycle(player) or not PlayerState.isStanding(state) then
+				onBooth[player] = nil
+				continue
+			end
+			local here: string? = nil
+			for _, station in view.stations do
+				if boothAt(station, root.Position) then
+					here = station.tab
+					break
+				end
+			end
+			if here and onBooth[player] ~= here then
+				Remotes.Juice:FireClient(player, "OpenMeta", { tab = here })
+				Log.event("Hub", "%s walked into the %s booth", player.Name, here)
+			end
+			onBooth[player] = here
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		onBooth[player] = nil
+	end)
 end
 
 ------------------------------------------------------------------ MARLOW's job board (brief 6)
@@ -613,6 +666,7 @@ function Hub.init()
 	buildProps()
 	decorate()
 	buildJobBoard()
+	startBoothWalkIns()
 	local function onPlayer(player: Player)
 		player.CharacterAdded:Connect(function(char)
 			task.spawn(function()

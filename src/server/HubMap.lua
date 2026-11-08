@@ -93,7 +93,40 @@ local function nearestModel(name: string, near: Vector3, maxDist: number): Model
 	return best
 end
 
+-- The builder left invisible collidable panels in the doorways: they would block the garage and the range for good.
+local function clearBlockers(p: BasePart)
+	local geo = HubMap.model and HubMap.model:FindFirstChild("Geometry")
+	if not geo then
+		return
+	end
+	local n = 0
+	for _, d in geo:GetDescendants() do
+		if d:IsA("BasePart") and d.CanCollide and d.Transparency >= 0.99 then
+			local o = p.CFrame:PointToObjectSpace(d.Position)
+			if
+				math.abs(o.X) <= p.Size.X / 2 + 1
+				and math.abs(o.Y) <= p.Size.Y / 2 + 1
+				and math.abs(o.Z) <= p.Size.Z / 2 + 1.5
+			then
+				d.CanCollide = false
+				d.CanQuery = false
+				n += 1
+			end
+		end
+	end
+	if n > 0 then
+		Log.event(
+			"Map",
+			"hub %s: %d invisible blocker%s in the doorway made passable",
+			p.Name,
+			n,
+			if n == 1 then "" else "s"
+		)
+	end
+end
+
 local function door(p: BasePart): Door
+	clearBlockers(p)
 	local meshName = str(p, "Mesh", "")
 	local mesh = if meshName ~= "" then nearestModel(meshName, p.Position, 30) else nil
 	if meshName ~= "" and not mesh then

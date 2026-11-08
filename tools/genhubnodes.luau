@@ -9,8 +9,9 @@
 --   hall    floor y 1.0, x -60..60 (walls at x ±60.5), z -64.8..45 (north wall at -64.8)
 --   pads    four yellow 15-stud pads at x -27 / -9 / 9 / 27, z -50.3, top y 2.9, on a 2-stud step along the north wall
 --   board   the corkboard on the north wall at x 0, y 10.6 (11.2 x 7.7), between pads 2 and 3
---   booths  stages 3.5 high: WEAPONS west (front edge x -35, rig x -52), CLASSES east (front x 35, rig x 52),
---           AVATAR south (front edge z 31.7, rig z 41.3)
+--   booths  stages 3.5 high, an orange half-circle on each (the Station node): WEAPONS west (circle x -46.3, rig
+--           x -52), CLASSES east (circle x 46.3, rig x 52),
+--           AVATAR south (circle z 36, rig z 41.3)
 --   garage  the north-east roll-up opening in the east wall: x 60.5, z -43.8, 17 wide, 16.5 high (no door panel in
 --           the asset: the hub builds the shutter); the van was parked straddling it, nose out
 --   range   the north-west opening in the west wall (x -60.5, z -43.8) onto the walled bay x -118.4..-60.5,
@@ -115,9 +116,10 @@ end
 local board = { node("board", { 0, 10.6, -64.3 }, { 11.2, 7.7, 0.4 }, 180, {}) }
 
 local stations = {
-	node("weapons", { -35, 5.5, -0.8 }, { 12, 3, 1.5 }, -90, { Tab = "weapons", Rig = "Rig" }),
-	node("classes", { 35, 5.5, -0.8 }, { 12, 3, 1.5 }, 90, { Tab = "classes", Rig = "Rig" }),
-	node("avatar", { 0, 5.5, 31.7 }, { 12, 3, 1.5 }, 0, { Tab = "avatar", Rig = "Rig" }),
+	-- Each booth node is the orange half-circle on its stage (walk onto it: the scene opens on that tab).
+	node("weapons", { -46.3, 7.5, -0.8 }, { 19.8, 6, 6.9 }, -90, { Tab = "weapons", Rig = "Rig" }),
+	node("classes", { 46.3, 7.5, -0.8 }, { 19.8, 6, 6.9 }, 90, { Tab = "classes", Rig = "Rig" }),
+	node("avatar", { 0, 7.6, 36 }, { 19.5, 6, 6.8 }, 0, { Tab = "avatar", Rig = "Rig" }),
 }
 
 ------------------------------------------------------------------ The garage

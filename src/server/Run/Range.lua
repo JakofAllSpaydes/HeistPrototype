@@ -284,12 +284,70 @@ local function buildSign(d: Dummy, parent: Instance)
 	end)
 end
 
+-- A default R15 rig (Players:CreateHumanoidModelFromDescription), in Rig.build's shape for Enemy.spawn. The plated
+-- dummy gets a chest plate and a shoulder plate welded to its root (they fall at the Heavy's HP shares).
+local STEEL = Color3.fromRGB(96, 104, 116)
+local function buildR15(plated: boolean): any
+	local ok, made = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not made then
+		Log.event("Range", "no R15 rig (%s): the dummy uses the enemy rig", tostring(made))
+		return nil
+	end
+	local model = made :: Model
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	local root = model:FindFirstChild("HumanoidRootPart")
+	local head = model:FindFirstChild("Head")
+	if not hum or not root or not root:IsA("BasePart") or not head or not head:IsA("BasePart") then
+		model:Destroy()
+		return nil
+	end
+	for _, d in model:GetDescendants() do
+		if d:IsA("LuaSourceContainer") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.CollisionGroup = "Enemy"
+		end
+	end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	local plates: { BasePart } = {}
+	if plated then
+		for i, spec in
+			{
+				{ Vector3.new(2.3, 1.6, 0.3), CFrame.new(0, 1, -0.75) },
+				{ Vector3.new(3.4, 0.45, 1.5), CFrame.new(0, 1.85, 0) },
+			}
+		do
+			local plate = Instance.new("Part")
+			plate.Name = "Plate" .. i
+			plate.Size = spec[1]
+			plate.CFrame = root.CFrame * spec[2]
+			plate.Color = STEEL
+			plate.Material = Enum.Material.Metal
+			plate.Massless = true
+			plate.CanCollide = false
+			plate.CollisionGroup = "Enemy"
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = plate
+			weld.Parent = plate
+			plate.Parent = model
+			table.insert(plates, plate)
+		end
+	end
+	return { model = model, root = root, head = head, humanoid = hum, plates = plates }
+end
+
 local function spawnDummy(d: Dummy)
-	local archetype = if d.plated then "Heavy" else "Henchman"
+	local built = buildR15(d.plated)
+	local archetype = if built then "Henchman" elseif d.plated then "Heavy" else "Henchman"
 	local model = Enemy.spawn(archetype, 1, d.cframe.Position, {
 		dummy = true,
-		elite = d.plated,
+		elite = d.plated and not built,
 		brain = brainFor(d),
+		built = built,
 	})
 	local data = Enemy.data(model)
 	if not data then
@@ -316,13 +374,15 @@ local function spawnDummy(d: Dummy)
 			Vector3.new(d.cframe.X, floor + up, d.cframe.Z) + d.cframe.LookVector
 		)
 	)
-	-- A grey body and the red neon head (headshots read); the plated one keeps the elite look.
-	if not d.plated then
-		for _, p in model:GetDescendants() do
-			if p:IsA("BasePart") and p ~= data.head and p.Transparency < 1 then
-				p.Color = GREY
-			end
+	-- A grey body (the plated one darker, under steel) and the red neon head so headshots read.
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") and p ~= data.head and p.Transparency < 1 and not string.match(p.Name, "^Plate") then
+			p.Color = if d.plated then Color3.fromRGB(70, 74, 84) else GREY
 		end
+	end
+	local face = data.head:FindFirstChildOfClass("Decal")
+	if face then
+		face:Destroy()
 	end
 	data.head.Color = RED
 	data.head.Material = Enum.Material.Neon

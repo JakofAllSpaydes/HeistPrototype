@@ -1895,6 +1895,8 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothManneq
   readout and RESET, the plated dummy; `RangeAbilities`, `DummyCount`, `DummyScale`, `DummyHp`, `DummyHeavyPlates`,
   `DummyPlateRegrowSec`, `RangeDpsWindowSec`). (5) Debug HUB group, the RANGE sign prompt, README.
 
+- **Round 20b (7 Nov) — first look at the hub.** The server stopped on load (TITAN's module still required `Log` / `PlayerState` / `Economy` from `Run/`; and the run modules waited on `Workspace.Effects` before anything made it), so nothing in the hub worked: both fixed. The builder's invisible collidable panels in the garage and range doorways are made passable at load (`[GHS Map] hub … invisible blocker`). Walking onto a booth's orange half-circle opens the customization scene on its tab (`BoothWalkIn`; the Station nodes now cover the half-circles; F still works). The range dummies are default R15 rigs (the plated one with a chest and a shoulder plate).
+
 ## Open design notes (not built)
 
 - **Brief 8 notes and deviations (Round 20, unplayed).** The hub's nodes were authored from the asset read in Lune

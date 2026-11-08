@@ -477,14 +477,15 @@ local api = {
 
 ------------------------------------------------------------------ Spawn
 -- Brief 8: `dummy` (the range's targets) never dies, never counts for the run hooks and is never cleared by killAll.
-export type SpawnOpts = { elite: boolean?, row: Enemies.Row?, brain: any?, box: any?, dummy: boolean? }
+-- `built` hands in a body made elsewhere (the range's R15 dummies) in Rig.build's shape.
+export type SpawnOpts = { elite: boolean?, row: Enemies.Row?, brain: any?, box: any?, dummy: boolean?, built: any? }
 
 -- Spawn one `archetype` at a floor point, scaled for `wave` and the party size. opts.row / opts.brain let the
 -- boss supply its own row and brain.
 function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: SpawnOpts?): Model
 	local row = (opts and opts.row) or Enemies.ById[archetype] or Enemies.ById[Enemies.Default]
 	local elite = opts ~= nil and opts.elite == true and row.noElite ~= true
-	local built = Rig.build(row, elite)
+	local built = (opts and opts.built) or Rig.build(row, elite)
 	local model, root, head, hum = built.model, built.root, built.head, built.humanoid
 	model:PivotTo(CFrame.new(position + Vector3.new(0, root.Size.Y / 2 + 1, 0)))
 	hum.WalkSpeed = row.speed
