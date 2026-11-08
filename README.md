@@ -36,7 +36,7 @@ wave 10), 19f (the glass offices as mini vaults), 19g (door waves 2 / 5 / 8 / 12
 pass (stand-in gun models, a procedural hold / aim / fire / reload animation, 3D viewport icons for guns and
 cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h (feedback on it: the gun-only
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
-screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade), 19m (the premium scene sets moved under the arena so the pass lights up at once) and 19n (the hub nameplate: level badge, name, class block, best wave; seen by Jack in Studio).
+screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade), 19m (the premium scene sets moved under the arena so the pass lights up at once) 19n (the hub nameplate: level badge, name, class block, best wave) and 19o (the game-wide style pass: Oswald / Builder Sans, sharp corners, bigger text, fuller HUD tiles; seen by Jack in Studio).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -1178,6 +1178,11 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     (+ the gold VIP tag), `★ WAVE N · MAP` (the class name before a first wave), the class block on the right, a class
     tint and underline; no Roblox name over it. `+500 XP` to a new level pops the badge; switching class recolours it;
     CUSTOMIZE hides your own plate; a run hides every plate in the party and the Roblox names come back.
+    Round 19o: every screen uses Oswald caps for headings / numbers and Builder Sans for body text, at least as big as
+    the old LuckiestGuy / Gotham text; panels, cards, pills and buttons have tight 4px corners (dots and dials stay
+    round); text outlines are thin. In a run the ability / buy tiles (80x90) are filled by the icon with the name
+    sized to the width (`UPGRADE`, not NEW UPGRADE), bigger hotkey / price / cooldown text, larger boost timers and
+    controls hint. Server signs (hub floor labels, queue board, dealer, doors, bags, vault, elite tag, podium) match.
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
@@ -1755,6 +1760,18 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
   from the left and a fading class underline. `Hub.refreshTag` now only publishes Player attributes (`Plate`,
   `PlateLevel`, `PlateTop`, `PlateMap`, `PlateClass`, `PlateVip`); the Roblox name hides locally under a plate.
   `NameplateOffset`, `NameplateHeight` (everything scales from it), `NameplateMaxDistance`, `NameplateShowSelf`.
+
+- **Round 19o (7 Nov) — game-wide style pass.** Fonts are Font objects in `shared/Fonts.lua` (display Oswald Bold,
+  body Builder Sans Bold, mono Roboto Mono), read as `Theme.Fonts` and set with `FontFace =` (a codemod moved ~330
+  `Font =` sites; server signs require `Shared.Fonts`). The UI kit does the rest: `UI.corner` caps radii at
+  `Theme.Corner` (4) except a full round on an offset-sized square; `UI.stroke` caps text outlines at
+  `Theme.TextStrokeMax`; every TextLabel / TextButton from `UI.new` keeps display text in caps (rich-text tags kept)
+  and multiplies its TextSize by `Theme.TextScale` per font (display 1.3, body 1.25, mono 1.15) so the narrower faces
+  read at least as big as before (attribute `FixedTextSize` opts out; the nameplate does). Panels darkened
+  (`bg` 0B0B0F, `panel` 15151A, `panel2` 1F1F26). HUD tiles (`Tile.lua`): the icon well fills the tile, the name is
+  TextScaled up to 21, larger hotkey chip / price pill; ability column cooldown 30, charge pill, floats, BUY /
+  class headers 20, boost timers, controls hint and camera chips up; `Theme.Desktop.tile` 80x90; the buy tile reads
+  UPGRADE. Readability first: Jack rejected the first pass for tiny text.
 
 ## Open design notes (not built)
 

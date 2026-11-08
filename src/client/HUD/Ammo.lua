@@ -23,7 +23,7 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local ammo = UI.text({
 		Name = "Count",
 		Text = "0 / ∞",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(40),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Size = UDim2.new(1, 0, 0, S(46)),
@@ -33,11 +33,11 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local hint = UI.text({
 		Name = "Hint",
 		Text = "R RELOAD · F INTERACT · Q E Z ABILITIES · ` DEBUG",
-		TextSize = S(12),
+		TextSize = S(14),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Position = UDim2.fromOffset(0, S(48)),
-		Size = UDim2.new(1, 0, 0, S(18)),
+		Size = UDim2.new(1, 0, 0, S(22)),
 		Visible = not ClientState.isMobile,
 		Parent = root,
 	})
@@ -48,14 +48,14 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, 0, 0, -S(2)),
-		Size = UDim2.fromOffset(S(200), S(20)),
+		Size = UDim2.fromOffset(S(240), S(24)),
 		Visible = not ClientState.isMobile,
 		Parent = root,
 	})
 	UI.list(camRow, Enum.FillDirection.Horizontal, S(6), Enum.HorizontalAlignment.Right)
 	local key = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel2,
-		Size = UDim2.fromOffset(S(38), S(18)),
+		Size = UDim2.fromOffset(S(46), S(22)),
 		LayoutOrder = 1,
 		Parent = camRow,
 	})
@@ -63,15 +63,15 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.stroke(key, Theme.Colors.grey, S(1), 0.4)
 	UI.text({
 		Text = "CTRL",
-		Font = Theme.Fonts.display,
-		TextSize = S(11),
+		FontFace = Theme.Fonts.display,
+		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		Size = UDim2.fromScale(1, 1),
 		Parent = key,
 	})
-	local camPill, camLabel = UI.pill(camRow, "CAMERA LOCKED", Theme.Colors.panel2, Theme.Colors.textDim, S(18), S(11))
+	local camPill, camLabel = UI.pill(camRow, "CAMERA LOCKED", Theme.Colors.panel2, Theme.Colors.textDim, S(22), S(13))
 	camPill.LayoutOrder = 2
-	camLabel.Font = Theme.Fonts.display
+	camLabel.FontFace = Theme.Fonts.display
 	local lastFree: boolean? = nil
 	track(RunService.RenderStepped:Connect(function()
 		local free = ClientState.mouseFree or ClientState.mouseFreeHold

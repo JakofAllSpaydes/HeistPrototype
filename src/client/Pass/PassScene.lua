@@ -270,7 +270,7 @@ local function check(parent: Instance, size: number, z: number): Frame
 	UI.corner(c, size // 2)
 	UI.text({
 		Text = "✓",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = math.floor(size * 0.75),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),
@@ -321,7 +321,7 @@ local function renderBanner(p: any)
 	local num = tonumber(pass.season) or s.id
 	UI.text({
 		Text = string.format("SEASON %d · %s", num, s.name),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -343,7 +343,7 @@ local function renderBanner(p: any)
 	UI.stroke(badge, Color3.new(1, 1, 1), S(2), 0.3)
 	local lv = UI.text({
 		Text = tostring(pass.level),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(24),
 		TextColor3 = Theme.Colors.white,
 		Position = UDim2.fromOffset(S(6), S(6)),
@@ -382,7 +382,7 @@ local function renderBanner(p: any)
 				UI.fmtInt(Config.PassXpPerLevel),
 				pass.level + 1
 			),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -393,7 +393,7 @@ local function renderBanner(p: any)
 	})
 	local ends = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Color3.fromHex("FF9A8C"),
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -421,7 +421,7 @@ local function renderBanner(p: any)
 	UI.list(skips, Enum.FillDirection.Horizontal, S(8))
 	UI.text({
 		Text = "SKIP",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.textDim,
 		Size = UDim2.fromOffset(S(46), S(40)),
@@ -434,7 +434,7 @@ local function renderBanner(p: any)
 		b.LayoutOrder = i
 		UI.text({
 			Text = "×" .. n,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(15),
 			TextColor3 = Theme.Colors.white,
 			Position = UDim2.fromOffset(0, S(3)),
@@ -444,7 +444,7 @@ local function renderBanner(p: any)
 		})
 		UI.text({
 			Text = "R$ " .. UI.fmtInt(Config.PassSkipPrice * n),
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(10),
 			TextColor3 = Color3.fromHex("8FE3A1"),
 			Position = UDim2.fromOffset(0, S(22)),
@@ -488,7 +488,7 @@ local function renderSell(p: any)
 	)
 	local title = UI.text({
 		Text = "PREMIUM+ CHASE",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = GOLDC,
 		Position = UDim2.fromOffset(0, S(8)),
@@ -550,7 +550,7 @@ local function renderSell(p: any)
 		UI.corner(lv, S(5))
 		UI.text({
 			Text = "LV " .. level,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(if big then 14 else 11),
 			TextColor3 = Theme.Colors.bg,
 			Size = UDim2.fromScale(1, 1),
@@ -559,7 +559,7 @@ local function renderSell(p: any)
 		})
 		local nm = UI.text({
 			Text = Rewards.name(hero),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(if big then 17 else 11),
 			TextColor3 = Theme.Colors.white,
 			TextWrapped = true,
@@ -668,7 +668,7 @@ renderSelected = function(p: any)
 		Text = if isHero
 			then string.format("PREMIUM+ HERO · LEVEL %d", selLevel)
 			else string.format("LEVEL %d · %s", selLevel, PassSeason.LaneName[selLane]),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -679,7 +679,7 @@ renderSelected = function(p: any)
 	})
 	local name = UI.text({
 		Text = Rewards.name(cell),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(28),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -702,7 +702,7 @@ renderSelected = function(p: any)
 	local rp, rl = UI.pill(pills, string.upper(Rarity.name(rarity)), color, Theme.Colors.bg, S(20), S(11))
 	rp.ZIndex = 7
 	rl.ZIndex = 8
-	rl.Font = Theme.Fonts.display
+	rl.FontFace = Theme.Fonts.display
 	-- Round 18: the state pill carries the tile's state color (the same words as the tile's footer).
 	local tagText: string? = nil
 	local tagBg, tagFg = Color3.fromHex("2E3135"), Theme.Colors.text
@@ -724,7 +724,7 @@ renderSelected = function(p: any)
 		tp.LayoutOrder = 2
 		tp.ZIndex = 7
 		tl.ZIndex = 8
-		tl.Font = Theme.Fonts.display
+		tl.FontFace = Theme.Fonts.display
 	end
 	local desc = Rewards.kindLabel(cell)
 	if cell.kind == "mask" then
@@ -742,7 +742,7 @@ renderSelected = function(p: any)
 	end
 	UI.text({
 		Text = desc,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -869,7 +869,7 @@ local function slotButton(
 	if amount then
 		local a = UI.text({
 			Text = amount,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(12),
 			TextColor3 = Theme.Colors.white,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -900,7 +900,7 @@ local function slotButton(
 		UI.corner(ribbon, S(4))
 		UI.text({
 			Text = "HERO",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(11),
 			TextColor3 = Theme.Colors.bg,
 			Size = UDim2.fromScale(1, 1),
@@ -912,7 +912,7 @@ local function slotButton(
 	do
 		local tag = UI.text({
 			Text = PassSeason.LaneName[lane],
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(10),
 			TextColor3 = Fx.shade(LANE_COLOR[lane], 0.2),
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -1123,7 +1123,7 @@ renderTrack = function(p: any)
 		)
 		UI.text({
 			Text = tostring(level),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = if lit then Theme.Colors.white else Theme.Colors.textDim,
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -1171,7 +1171,7 @@ renderTrack = function(p: any)
 		UI.corner(band, S(6))
 		UI.text({
 			Text = (if isBonus then "BONUS " else "LEVEL ") .. level,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(14),
 			TextColor3 = if lit then Theme.Colors.bg else Theme.Colors.textDim,
 			Size = UDim2.fromScale(1, 1),
@@ -1325,7 +1325,7 @@ local function seasonOver(p: any)
 	do
 		local l = UI.text({
 			Text = line[1] :: string,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(line[2] :: number),
 			TextColor3 = line[3] :: Color3,
 			Position = UDim2.fromOffset(0, S(20) + (i - 1) * S(46)),

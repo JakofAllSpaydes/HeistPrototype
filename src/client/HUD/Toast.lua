@@ -27,7 +27,7 @@ function Toast.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 	UI.pad(root, S(16), 0, S(16), 0)
 	local label = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.cash,
 		Size = UDim2.fromScale(0, 1),

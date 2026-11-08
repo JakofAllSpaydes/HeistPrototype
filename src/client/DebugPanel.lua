@@ -102,7 +102,7 @@ local function build()
 	task.defer(fit)
 	UI.text({
 		Text = "DEBUG  (` to close)",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.gold,
 		Size = UDim2.new(1, 0, 0, S(20)),
@@ -132,7 +132,7 @@ local function build()
 		PlaceholderText = "Set wave…",
 		Text = "",
 		TextSize = S(11),
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextColor3 = Theme.Colors.text,
 		PlaceholderColor3 = Theme.Colors.grey,
 		BackgroundColor3 = Theme.Colors.bg,
@@ -253,7 +253,7 @@ local function build()
 		PlaceholderText = "Heat…",
 		Text = "",
 		TextSize = S(11),
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextColor3 = Theme.Colors.text,
 		PlaceholderColor3 = Theme.Colors.grey,
 		BackgroundColor3 = Theme.Colors.bg,
@@ -322,7 +322,7 @@ local function build()
 		PlaceholderText = "Level…",
 		Text = "",
 		TextSize = S(11),
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextColor3 = Theme.Colors.text,
 		PlaceholderColor3 = Theme.Colors.grey,
 		BackgroundColor3 = Theme.Colors.bg,
@@ -365,7 +365,7 @@ local function build()
 			PlaceholderText = placeholder,
 			Text = "",
 			TextSize = S(11),
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextColor3 = Theme.Colors.text,
 			PlaceholderColor3 = Theme.Colors.grey,
 			BackgroundColor3 = Theme.Colors.bg,
@@ -450,7 +450,7 @@ local function build()
 	-- Brief 7: MAP (THE BANK's nodes and doors).
 	UI.text({
 		Text = "MAP",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.amber,
 		Size = UDim2.new(1, 0, 0, S(16)),
@@ -608,7 +608,7 @@ local function buildMobileToggle()
 	}) :: ScreenGui
 	local chip = UI.button({
 		Text = "DBG",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.gold,
 		BackgroundColor3 = Theme.Colors.panel,

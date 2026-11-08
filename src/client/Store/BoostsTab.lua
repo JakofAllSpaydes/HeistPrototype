@@ -31,7 +31,7 @@ function BoostsTab.render(ctx: any)
 	local root = ctx.content :: Frame
 	UI.text({
 		Text = "BOOSTS",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(26),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -41,7 +41,7 @@ function BoostsTab.render(ctx: any)
 	})
 	UI.text({
 		Text = "Real-time from purchase · in-run only · Gold, XP, pass XP and paid crates are never boosted",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -90,7 +90,7 @@ function BoostsTab.render(ctx: any)
 		UI.list(content, Enum.FillDirection.Vertical, S(6), Enum.HorizontalAlignment.Center)
 		local status = UI.text({
 			Text = "",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(14),
 			TextColor3 = if active then Color3.fromHex("3FD47A") else Theme.Colors.grey,
 			Size = UDim2.new(1, 0, 0, S(18)),
@@ -117,7 +117,7 @@ function BoostsTab.render(ctx: any)
 			local on = k == idx
 			local b = UI.button({
 				Text = d.label,
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(13),
 				TextColor3 = if on then Theme.Colors.bg else Theme.Colors.textDim,
 				BackgroundColor3 = color,
@@ -168,7 +168,7 @@ function BoostsTab.render(ctx: any)
 	local have = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
 	local tokenTitle = UI.text({
 		Text = string.format("REVIVE TOKENS · OWNED: %d", have),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(24),
 		TextColor3 = Color3.fromHex("3FD47A"),
 		TextXAlignment = Enum.TextXAlignment.Left,

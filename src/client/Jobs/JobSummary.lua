@@ -40,7 +40,7 @@ function JobSummary.show(parent: Instance, width: number, position: UDim2, ticks
 		row.Parent = frame
 		UI.text({
 			Text = (if t.weekly then "BOUNTY · " else "JOB · ") .. tostring(t.title),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = if done then Theme.Colors.gold else Theme.Colors.text,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -75,7 +75,7 @@ function JobSummary.show(parent: Instance, width: number, position: UDim2, ticks
 					UI.fmtInt(tonumber(t.to) or 0),
 					UI.fmtInt(target)
 				),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(12),
 			TextColor3 = if done then Color3.fromHex("3FD47A") else Theme.Colors.textDim,
 			TextXAlignment = Enum.TextXAlignment.Right,

@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
+local Fonts = require(Shared.Fonts)
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Enemies = require(Shared.Enemies)
@@ -99,7 +100,7 @@ local function buildBoard(z: Zone)
 	frame.Size = UDim2.fromScale(1, 1)
 	frame.Parent = gui
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.12, 0)
+	corner.CornerRadius = UDim.new(0.04, 0)
 	corner.Parent = frame
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = BLUE
@@ -110,7 +111,7 @@ local function buildBoard(z: Zone)
 		l.BackgroundTransparency = 1
 		l.Position = UDim2.fromScale(0.03, y)
 		l.Size = UDim2.fromScale(0.94, h)
-		l.Font = Enum.Font.LuckiestGuy
+		l.FontFace = Fonts.display
 		l.TextScaled = true
 		l.TextColor3 = color
 		l.Text = ""
@@ -169,7 +170,7 @@ local function paintBoard(z: Zone)
 		end
 		return
 	end
-	b.title.Text = string.format("%s · %s", mapName(s.mapId), diffName(s.difficultyId))
+	b.title.Text = string.upper(string.format("%s · %s", mapName(s.mapId), diffName(s.difficultyId)))
 	for i, slot in b.slots do
 		slot.Visible = i <= s.partySize
 		local filled = i <= #z.members
@@ -193,7 +194,7 @@ local function boardToast(z: Zone, text: string)
 	end
 	z.toastToken += 1
 	local token = z.toastToken
-	b.toast.Text = text
+	b.toast.Text = string.upper(text)
 	task.delay(2.5, function()
 		if z.toastToken == token and b.toast.Parent then
 			b.toast.Text = ""

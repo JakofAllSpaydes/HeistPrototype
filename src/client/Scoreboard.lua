@@ -238,7 +238,7 @@ local function jobCard(parent: Frame, item: any, slot: number, pos: Vector2, w: 
 	local padX, top, bottom = S(9), S(12), S(9)
 	local title = UI.text({
 		Text = def.title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextColor3 = INK,
 		TextTransparency = inkT,
 		TextWrapped = true,
@@ -299,7 +299,7 @@ local function jobCard(parent: Frame, item: any, slot: number, pos: Vector2, w: 
 	end
 	local count = UI.text({
 		Text = UI.fmtInt(progress) .. " / " .. UI.fmtInt(target),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = Theme.Colors.white,
 		TextTransparency = if claimed then 0.35 else 0,
@@ -465,7 +465,7 @@ local function build()
 	panel = p
 	header = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, S(10)),
@@ -506,7 +506,7 @@ local function build()
 	local pauseBtn = UI.button({
 		Name = "Pause",
 		Text = if ClientState.isMobile then "VOTE PAUSE" else "VOTE PAUSE [P]",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = Theme.Colors.grey,
@@ -605,7 +605,7 @@ local function paint()
 				row.vip
 			),
 			RichText = true,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(12),
 			TextColor3 = if mine then Theme.Colors.gold else Theme.Colors.text,
 			TextXAlignment = Enum.TextXAlignment.Left,

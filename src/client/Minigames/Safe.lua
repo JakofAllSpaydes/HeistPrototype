@@ -85,7 +85,7 @@ function Safe.open(host: Frame.Host)
 		if major then
 			UI.text({
 				Text = tostring(i),
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = u(14),
 				TextColor3 = Theme.Colors.textDim,
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -111,7 +111,7 @@ function Safe.open(host: Frame.Host)
 	UI.corner(pointer, u(3))
 	local readout = UI.text({
 		Text = "0",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = u(34),
 		TextColor3 = Theme.Colors.text,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -123,7 +123,7 @@ function Safe.open(host: Frame.Host)
 	UI.stroke(readout, Theme.Colors.black, u(2), 0.3)
 	local dirLabel = UI.text({
 		Text = "TURN RIGHT ▶",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = u(13),
 		TextColor3 = Theme.Colors.textDim,
 		AnchorPoint = Vector2.new(0.5, 0.5),

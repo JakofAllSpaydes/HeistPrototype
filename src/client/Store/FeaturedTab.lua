@@ -51,7 +51,7 @@ local function timerPill(parent: Instance, position: UDim2, anchor: Vector2, col
 	UI.stroke(pill, color, S(1.5), 0.1)
 	local l = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Fx.shade(color, 0.4),
 		Size = UDim2.fromScale(1, 1),
@@ -65,7 +65,7 @@ local function sectionTitle(parent: Instance, text: string, y: number, color: Co
 	local S = UI.S
 	UI.text({
 		Text = text,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(28),
 		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -127,7 +127,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 	})
 	local name = UI.text({
 		Text = b.name,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(32),
 		TextColor3 = Theme.Colors.white,
 		TextWrapped = true,
@@ -140,7 +140,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 	UI.stroke(name, Color3.new(0, 0, 0), S(2), 0.2)
 	UI.text({
 		Text = b.tagline,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Fx.shade(color, 0.45),
 		TextWrapped = true,
@@ -162,7 +162,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 	UI.corner(off, S(6))
 	UI.text({
 		Text = "-" .. Bundles.discountPct(b) .. "%",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),
@@ -217,7 +217,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 		Fx.bob(art, S(2), 2.2 + i * 0.2)
 		UI.text({
 			Text = Rewards.name(r),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = Theme.Colors.white,
 			TextWrapped = true,
@@ -229,7 +229,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 		})
 		UI.text({
 			Text = if owned[i] then "OWNED" else Rewards.kindLabel(r),
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(10),
 			TextColor3 = if owned[i] then Theme.Colors.grey else rc,
 			AnchorPoint = Vector2.new(0.5, 1),
@@ -245,7 +245,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 		if i < n then
 			UI.text({
 				Text = "+",
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(26),
 				TextColor3 = Fx.shade(color, 0.4),
 				Size = UDim2.fromOffset(plusW, S(30)),
@@ -278,7 +278,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 	})
 	local worth = UI.text({
 		Text = "WORTH R$ " .. UI.fmtInt(Bundles.listPrice(b)),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.grey,
 		Size = UDim2.new(1, 0, 0, S(20)),
@@ -310,7 +310,7 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 	Fx.robux(priceRow, S(28), 10)
 	UI.text({
 		Text = UI.fmtInt(price),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(38),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromOffset(0, S(44)),
@@ -384,7 +384,7 @@ local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
 	UI.list(rr, Enum.FillDirection.Horizontal, S(6), Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 	UI.text({
 		Text = "REROLL",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromOffset(0, S(20)),
@@ -397,7 +397,7 @@ local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
 	plate.LayoutOrder = 2
 	UI.text({
 		Text = UI.fmtInt(Config.DailyShopRerollPrice),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Color3.fromHex("8FE3A1"),
 		Size = UDim2.fromOffset(0, S(20)),

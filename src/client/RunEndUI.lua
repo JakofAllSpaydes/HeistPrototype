@@ -161,7 +161,7 @@ local function showMvp(d: any)
 	stampFrame = frame
 	local mvp = UI.text({
 		Text = "MVP",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(110),
 		TextColor3 = Theme.Colors.gold,
 		Size = UDim2.new(1, 0, 0, S(110)),
@@ -172,7 +172,7 @@ local function showMvp(d: any)
 	UI.stroke(mvp, Theme.Colors.black, S(4), 0.1)
 	local name = UI.text({
 		Text = string.upper(tostring(d.mvp.name)),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(34),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, S(112)),
@@ -183,7 +183,7 @@ local function showMvp(d: any)
 	UI.stroke(name, Theme.Colors.black, S(2), 0.2)
 	local stat = UI.text({
 		Text = tostring(d.mvp.statLine),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(24),
 		TextColor3 = Theme.Colors.gold,
 		Position = UDim2.fromOffset(0, S(152)),
@@ -258,7 +258,7 @@ local function showSummary(d: any)
 	-- of it paid to your profile. Cash is the per-run currency and sits in the rows.
 	UI.text({
 		Text = "GOLD BANKED",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -269,7 +269,7 @@ local function showSummary(d: any)
 	})
 	bankedLabel = UI.text({
 		Text = "◆ 0",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(40),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -294,7 +294,7 @@ local function showSummary(d: any)
 	end
 	UI.text({
 		Text = if #bests > 0 then table.concat(bests, "  ·  ") else "PAID TO YOUR PROFILE",
-		Font = if #bests > 0 then Theme.Fonts.display else Theme.Fonts.body,
+		FontFace = if #bests > 0 then Theme.Fonts.display else Theme.Fonts.body,
 		TextSize = if #bests > 0 then S(13) else S(10),
 		TextColor3 = if #bests > 0 then Theme.Colors.cash else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -321,12 +321,12 @@ local function showSummary(d: any)
 	wavePill.Position = UDim2.new(1, -S(24), 0, S(36))
 	wavePill.ZIndex = 11
 	waveLabel.ZIndex = 12
-	waveLabel.Font = Theme.Fonts.display
+	waveLabel.FontFace = Theme.Fonts.display
 	-- Brief 7: the map and difficulty the run was on, small over the wave pill.
 	if typeof(d.mapName) == "string" then
 		UI.text({
 			Text = string.format("%s · %s", d.mapName, tostring(d.difficultyName or "")),
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(11),
 			TextColor3 = Theme.Colors.grey,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -386,7 +386,7 @@ local function showSummary(d: any)
 			end
 			local label = UI.text({
 				Text = "MASTERY   " .. table.concat(parts, "  ·  "),
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(14),
 				TextColor3 = Theme.Colors.text,
 				TextTruncate = Enum.TextTruncate.AtEnd,
@@ -441,18 +441,10 @@ local function showSummary(d: any)
 	}
 	local tableX, tableW = S(24), W - S(48)
 	local y = headerH
-	local function cell(
-		parent: Instance,
-		text: string,
-		col: any,
-		x: number,
-		color: Color3,
-		size: number,
-		font: Enum.Font
-	)
+	local function cell(parent: Instance, text: string, col: any, x: number, color: Color3, size: number, font: Font)
 		return UI.text({
 			Text = text,
-			Font = font,
+			FontFace = font,
 			TextSize = size,
 			TextColor3 = color,
 			TextXAlignment = col.align,
@@ -521,7 +513,7 @@ local function showSummary(d: any)
 			tag.Position = UDim2.new(cols[1].w, -S(6), 0.5, 0)
 			tag.ZIndex = 13
 			tagLabel.ZIndex = 14
-			tagLabel.Font = Theme.Fonts.display
+			tagLabel.FontFace = Theme.Fonts.display
 			nameCell.Size = UDim2.new(cols[1].w, -S(60), 1, 0)
 		end
 		xx += math.floor(tableW * cols[1].w)
@@ -555,7 +547,7 @@ local function showSummary(d: any)
 	end
 	local again = UI.button({
 		Text = "PLAY AGAIN",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = Theme.Colors.cash,
@@ -571,7 +563,7 @@ local function showSummary(d: any)
 	end)
 	local lobby = UI.button({
 		Text = "TO LOBBY",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.gold,
 		BackgroundColor3 = Theme.Colors.panel2,
@@ -750,7 +742,7 @@ local function step(_dt: number)
 							end
 							local pop = UI.text({
 								Text = tostring(up.text or ""),
-								Font = Theme.Fonts.display,
+								FontFace = Theme.Fonts.display,
 								TextSize = UI.S(16),
 								TextColor3 = Theme.Colors.cash,
 								AnchorPoint = Vector2.new(0.5, 1),
@@ -803,7 +795,7 @@ local function step(_dt: number)
 						local line = if up then tostring(up.line or "") else ""
 						local pop = UI.text({
 							Text = string.format("LEVEL %d · %s", seg.level + 1, line),
-							Font = Theme.Fonts.display,
+							FontFace = Theme.Fonts.display,
 							TextSize = UI.S(16),
 							TextColor3 = Theme.Colors.gold,
 							AnchorPoint = Vector2.new(0.5, 1),

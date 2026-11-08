@@ -302,7 +302,7 @@ local function stripTile(
 	else
 		UI.text({
 			Text = glyph,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = math.floor(size * 0.36),
 			TextColor3 = Theme.Colors.white,
 			Size = UDim2.fromScale(1, 1),
@@ -311,7 +311,7 @@ local function stripTile(
 	end
 	local l = UI.text({
 		Text = label,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(11),
 		TextColor3 = if locked then Theme.Colors.grey else Theme.Colors.text,
 		Position = UDim2.fromOffset(0, size + S(1)),
@@ -343,7 +343,7 @@ local function renderCustomize(scene: any)
 	-- Name over the gun.
 	UI.text({
 		Text = string.upper(w.displayName),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(26),
 		TextColor3 = Theme.Colors.white,
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -474,7 +474,7 @@ local function renderCustomize(scene: any)
 			chip.Position = UDim2.new(0.5, 0, 1, -S(3))
 			chip.ZIndex = 6
 			chipLabel.ZIndex = 6
-			chipLabel.Font = Theme.Fonts.display
+			chipLabel.FontFace = Theme.Fonts.display
 		end
 		local l = UI.text({
 			Text = name,
@@ -493,7 +493,7 @@ local function renderCustomize(scene: any)
 			tag.Position = UDim2.new(0.5, 0, 0, -S(8))
 			tag.ZIndex = 4
 			tagLabel.ZIndex = 4
-			tagLabel.Font = Theme.Fonts.display
+			tagLabel.FontFace = Theme.Fonts.display
 		end
 		if isSelected and popSelect == name then
 			UI.punch(b, Config.MetaSelectPopScale, 0.25)
@@ -565,7 +565,7 @@ local function renderCustomize(scene: any)
 					MasteryCopy.Roman[mt],
 					Config.WeaponMasteryTiers[mt] or 0
 				),
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(12),
 				TextColor3 = Theme.Colors.gold,
 				TextWrapped = true,
@@ -623,7 +623,7 @@ function WeaponsTab.render(scene: any)
 	local searchBox = UI.new("TextBox", {
 		PlaceholderText = "Search…",
 		Text = search,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.white,
 		PlaceholderColor3 = Theme.Colors.grey,

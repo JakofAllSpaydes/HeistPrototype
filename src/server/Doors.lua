@@ -18,6 +18,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage.Shared
+local Fonts = require(Shared.Fonts)
 local Config = require(Shared.Config)
 local Lines = require(Shared.CrewCall.Lines)
 local Ground = require(Shared.Ground)
@@ -150,9 +151,9 @@ local function sign(model: Model, cf: CFrame, size: Vector3, text: string)
 		local label = Instance.new("TextLabel")
 		label.BackgroundTransparency = 1
 		label.Size = UDim2.fromScale(1, 1)
-		label.Font = Enum.Font.LuckiestGuy
+		label.FontFace = Fonts.display
 		label.TextScaled = true
-		label.Text = text
+		label.Text = string.upper(text)
 		label.TextColor3 = AMBER
 		label.Parent = gui
 		local pad = Instance.new("UIPadding")

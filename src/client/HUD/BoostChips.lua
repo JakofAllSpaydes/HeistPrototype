@@ -61,7 +61,7 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 		local holder = UI.frame({
 			Name = id,
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(size, size + S(if opts.hub then 16 else 12)),
+			Size = UDim2.fromOffset(size, size + S(if opts.hub then 20 else 16)),
 			LayoutOrder = order,
 			Parent = row,
 		})
@@ -79,11 +79,11 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 		icon.Position = UDim2.fromScale(0.5, 0.5)
 		local timer = UI.text({
 			Text = "",
-			Font = Theme.Fonts.display,
-			TextSize = math.max(9, math.floor(size * 0.22)),
+			FontFace = Theme.Fonts.display,
+			TextSize = math.max(11, math.floor(size * 0.28)),
 			TextColor3 = Theme.Colors.text,
 			Position = UDim2.fromOffset(0, size + S(1)),
-			Size = UDim2.new(1, 0, 0, math.max(10, math.floor(size * 0.24))),
+			Size = UDim2.new(1, 0, 0, math.max(13, math.floor(size * 0.32))),
 			Parent = holder,
 		})
 		UI.stroke(timer, Theme.Colors.black, S(1.5), 0.3)

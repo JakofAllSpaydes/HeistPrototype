@@ -682,7 +682,7 @@ local function dockTile(
 	end
 	local l = UI.text({
 		Text = label,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, size + S(1)),
@@ -755,7 +755,7 @@ local function build()
 	})
 	titleLabel = UI.text({
 		Text = "Weapons",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(28),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -766,7 +766,7 @@ local function build()
 	})
 	local closeBtn = UI.button({
 		Text = "X",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.white,
 		BackgroundColor3 = Theme.Colors.red,
@@ -793,7 +793,7 @@ local function build()
 	toastLabel = UI.text({
 		Name = "Toast",
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.cash,
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -861,7 +861,7 @@ local function build()
 		else 0
 	goldLabel = UI.text({
 		Text = UI.fmtNum(goldNow),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(26),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -872,7 +872,7 @@ local function build()
 	})
 	local plus = UI.button({
 		Text = "+",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = Theme.Colors.cash,

@@ -74,7 +74,7 @@ local function section(parent: Instance, order: number, text: string)
 	UI.corner(bar, S(4))
 	UI.text({
 		Text = text,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -107,7 +107,7 @@ local function segment(
 		local on = i == selectedIndex
 		local b = UI.button({
 			Text = e.name,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(16),
 			TextColor3 = if e.disabled then Theme.Colors.grey else Theme.Colors.white,
 			BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,
@@ -187,7 +187,7 @@ local function openCreate(v: any)
 	})
 	UI.text({
 		Text = "Create Party",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(26),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -197,7 +197,7 @@ local function openCreate(v: any)
 	})
 	local closeBtn = UI.button({
 		Text = "X",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.white,
 		BackgroundColor3 = Theme.Colors.red,
@@ -307,7 +307,7 @@ local function openCreate(v: any)
 		end
 		UI.text({
 			Text = if m then m.name else "COMING SOON",
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(12),
 			TextColor3 = if m then Theme.Colors.white else Theme.Colors.grey,
 			AnchorPoint = Vector2.new(0, 1),
@@ -368,7 +368,7 @@ local function openCreate(v: any)
 	UI.corner(bonusRow, S(4))
 	bonus = UI.text({
 		Text = "",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.gold,
 		Size = UDim2.fromScale(1, 1),
@@ -419,7 +419,7 @@ local function openCreate(v: any)
 		icon.Position = UDim2.new(0.5, 0, 0, S(4))
 		local sub = UI.text({
 			Text = "",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = Theme.Colors.text,
 			Position = UDim2.fromOffset(0, S(27)),
@@ -486,7 +486,7 @@ local function openCreate(v: any)
 
 	local create = UI.button({
 		Text = "CREATE PARTY",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(24),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = GREEN,
@@ -538,7 +538,7 @@ local function buildParty(v: any)
 	local diff = diffById(v.settings and v.settings.difficultyId)
 	UI.text({
 		Text = string.format("%s · %s", map.name, diff.name),
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -548,7 +548,7 @@ local function buildParty(v: any)
 	})
 	partyCountdown = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Right,

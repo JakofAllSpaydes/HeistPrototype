@@ -241,7 +241,7 @@ function MetaUI.rarityChip(parent: GuiObject, rarity: number, z: number?): Frame
 	chip.BackgroundTransparency = 0.15
 	chip.ZIndex = z or 3
 	label.ZIndex = (z or 3) + 1
-	label.Font = Theme.Fonts.display
+	label.FontFace = Theme.Fonts.display
 	UI.stroke(chip, color, S(1.5), 0.2)
 	return chip
 end
@@ -352,7 +352,7 @@ function MetaUI.icon(
 		else
 			UI.text({
 				Text = glyph or "?",
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = math.floor(size * 0.34),
 				TextColor3 = Theme.Colors.bg,
 				Size = UDim2.fromScale(1, 1),
@@ -424,7 +424,7 @@ function MetaUI.masteryBar(parent: GuiObject, kind: string, id: string, xp: numb
 			if tier > 0 then MasteryCopy.Roman[tier] else "0",
 			if need > 0 then string.format("%d / %d", into, need) else "MAX"
 		),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -489,7 +489,7 @@ function MetaUI.masteryPanel(
 	UI.list(left, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 	UI.text({
 		Text = if tier > 0 then "MASTERY " .. MasteryCopy.Roman[tier] else "MASTERY",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = if tier > 0 then Theme.Colors.gold else Theme.Colors.textDim,
 		AutomaticSize = Enum.AutomaticSize.X,
@@ -517,7 +517,7 @@ function MetaUI.masteryPanel(
 	if need > 0 and nextLabel then
 		UI.text({
 			Text = "NEXT · " .. nextLabel,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(10),
 			TextColor3 = Theme.Colors.textDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -546,7 +546,7 @@ function MetaUI.masteryPanel(
 	UI.corner(fill, barH / 2)
 	local count = UI.text({
 		Text = if need > 0 then string.format("%s / %s %s", UI.fmtInt(into), UI.fmtInt(need), unit) else "MAXED",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),
@@ -606,7 +606,7 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 	UI.text({
 		Text = if o.nameTag then string.format('%s  <font color="#E8B64C">%s</font>', o.name, o.nameTag) else o.name,
 		RichText = o.nameTag ~= nil,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(12),
 		TextColor3 = if o.owned then Theme.Colors.white else Theme.Colors.text,
 		TextTruncate = Enum.TextTruncate.AtEnd,
@@ -642,7 +642,7 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 		chip.Position = UDim2.new(1, -S(5), 1, -S(5))
 		chip.ZIndex = 3
 		label.ZIndex = 3
-		label.Font = Theme.Fonts.display
+		label.FontFace = Theme.Fonts.display
 	elseif not o.owned and o.price then
 		local pill, label = UI.pill(b, MetaUI.fmtGold(o.price), Theme.Colors.bg, Theme.Colors.cash, S(20), S(11))
 		pill.AnchorPoint = Vector2.new(0.5, 1)
@@ -650,7 +650,7 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 		pill.BackgroundTransparency = 0.15
 		pill.ZIndex = 3
 		label.ZIndex = 3
-		label.Font = Theme.Fonts.display
+		label.FontFace = Theme.Fonts.display
 	end
 	if o.equipped then
 		-- The big check, centered on the art (Round 18c).
@@ -681,7 +681,7 @@ function MetaUI.header(parent: Instance, order: number, text: string, count: num
 	UI.corner(bar, S(4))
 	UI.text({
 		Text = text,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -692,7 +692,7 @@ function MetaUI.header(parent: Instance, order: number, text: string, count: num
 	if count then
 		UI.text({
 			Text = tostring(count),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = Theme.Colors.grey,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -744,7 +744,7 @@ function MetaUI.statRow(parent: Instance, order: number, label: string, current:
 	UI.corner(row, S(4))
 	UI.text({
 		Text = label,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -754,7 +754,7 @@ function MetaUI.statRow(parent: Instance, order: number, label: string, current:
 	})
 	local value = UI.text({
 		Text = current,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -784,12 +784,12 @@ function MetaUI.levelRow(parent: Instance, order: number, level: number, showNex
 	local badge, label = UI.pill(row, string.format("LV %d", level), Theme.Colors.gold, Theme.Colors.bg, S(22), S(14))
 	badge.AnchorPoint = Vector2.new(0, 0.5)
 	badge.Position = UDim2.new(0, S(5), 0.5, 0)
-	label.Font = Theme.Fonts.display
+	label.FontFace = Theme.Fonts.display
 	if showNext then
 		UI.text({
 			Text = string.format('NEXT <font color="#2FD46A">» LV %d</font>', level + 1),
 			RichText = true,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = Theme.Colors.textDim,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -818,7 +818,7 @@ function MetaUI.button(parent: Instance, order: number, text: string, kind: stri
 		else Theme.Colors.grey
 	local b = UI.button({
 		Text = text,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(17),
 		TextColor3 = fg,
 		BackgroundColor3 = bg,
@@ -977,7 +977,7 @@ function MetaUI.heading(card: Frame, order: number, name: string, sub: string, s
 	UI.list(row, Enum.FillDirection.Horizontal, S(10), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Bottom)
 	UI.text({
 		Text = name,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(24),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -988,7 +988,7 @@ function MetaUI.heading(card: Frame, order: number, name: string, sub: string, s
 	})
 	UI.text({
 		Text = sub,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(13),
 		TextColor3 = subColor or Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -1017,7 +1017,7 @@ function MetaUI.pills(
 		local on = e.id == selected
 		local b = UI.button({
 			Text = e.name,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(12),
 			TextColor3 = if e.disabled then Theme.Colors.grey else Theme.Colors.white,
 			BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,

@@ -27,8 +27,8 @@ local EMBLEM = Color3.fromRGB(205, 208, 214)
 local EMBLEM_DARK = Color3.fromRGB(42, 42, 48)
 local VIP = Color3.fromHex("F2C14E")
 local PLATE = Color3.fromHex("0B0B0F")
-local BOLD = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
-local MEDIUM = Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Medium)
+local BOLD = Theme.Fonts.display
+local MEDIUM = Theme.Fonts.displayMedium
 
 type Plate = { gui: BillboardGui, humanoid: Humanoid?, savedDisplay: Enum.HumanoidDisplayDistanceType? }
 
@@ -40,6 +40,7 @@ local localHidden = false
 local function text(props: { [string]: any }, font: Font): TextLabel
 	local label = UI.text(props)
 	label.FontFace = font
+	label:SetAttribute("FixedTextSize", true) -- the plate was tuned (and approved) at these sizes
 	return label
 end
 

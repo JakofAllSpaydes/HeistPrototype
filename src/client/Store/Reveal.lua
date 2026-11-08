@@ -53,7 +53,7 @@ function Reveal.stack(parent: Instance, items: { Item }, title: string, opts: { 
 	UI.tween(layer, { BackgroundTransparency = if mini then 0.45 else 0.25 }, 0.2)
 	local head = UI.text({
 		Text = title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(if mini then 26 else 38),
 		TextColor3 = Theme.Colors.gold,
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -121,7 +121,7 @@ function Reveal.stack(parent: Instance, items: { Item }, title: string, opts: { 
 		end
 		UI.text({
 			Text = it.name or Rewards.name(it :: any),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(if mini then 12 else 15),
 			TextColor3 = Theme.Colors.white,
 			TextWrapped = true,
@@ -141,7 +141,7 @@ function Reveal.stack(parent: Instance, items: { Item }, title: string, opts: { 
 			else Rewards.kindLabel(it :: any)
 		UI.text({
 			Text = subText,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(if mini then 9 else 10),
 			TextColor3 = if it.new
 				then Color3.fromHex("3FD47A")
@@ -176,7 +176,7 @@ function Reveal.stack(parent: Instance, items: { Item }, title: string, opts: { 
 	-- A quiet hint under the cards once they have all landed.
 	local hint = UI.text({
 		Text = "TAP ANYWHERE TO CONTINUE",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(if mini then 13 else 15),
 		TextColor3 = Theme.Colors.textDim,
 		TextTransparency = 1,

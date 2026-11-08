@@ -23,7 +23,7 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Position = UDim2.new(1, -S(40), 1, -S(90)),
 		Size = UDim2.fromOffset(S(96), S(96)),
 		Text = "FIRE",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		Parent = gui,
 	})
@@ -57,7 +57,7 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Position = UDim2.new(1, -S(150), 1, -S(70)),
 		Size = UDim2.fromOffset(S(56), S(56)),
 		Text = "ADS",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.grey,
 		Parent = gui,
@@ -87,7 +87,7 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Position = UDim2.new(0.5, S(120), 1, -S(18)),
 		Size = UDim2.fromOffset(S(56), S(56)),
 		Text = "R",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(24),
 		Parent = gui,
 	})

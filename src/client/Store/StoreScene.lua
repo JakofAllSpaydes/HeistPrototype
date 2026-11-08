@@ -229,7 +229,7 @@ local function build(focus: string, arg: any?)
 	local header = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, headerH), ZIndex = 4, Parent = w })
 	local title = UI.text({
 		Text = "SHOP",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = if mobile then S(26) else S(34),
 		TextColor3 = Color3.new(1, 1, 1),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -275,7 +275,7 @@ local function build(focus: string, arg: any?)
 		UI.stroke(pill, color, S(1.5), 0.3)
 		UI.text({
 			Text = glyph,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(20),
 			TextColor3 = color,
 			Position = UDim2.fromOffset(S(6), 0),
@@ -285,7 +285,7 @@ local function build(focus: string, arg: any?)
 		})
 		local label = UI.text({
 			Text = "0",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = if mobile then S(16) else S(19),
 			TextColor3 = Theme.Colors.white,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -296,7 +296,7 @@ local function build(focus: string, arg: any?)
 		})
 		local plus = UI.button({
 			Text = "+",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.bg,
 			BackgroundColor3 = color,
@@ -380,7 +380,7 @@ local function build(focus: string, arg: any?)
 		UI.corner(swatch, S(2))
 		local label = UI.text({
 			Text = tab,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = if mobile then S(14) else S(18),
 			TextColor3 = Theme.Colors.textDim,
 			TextXAlignment = Enum.TextXAlignment.Left,

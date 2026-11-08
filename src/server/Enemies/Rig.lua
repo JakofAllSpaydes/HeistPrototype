@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Fonts = require(Shared.Fonts)
 local Config = require(Shared.Config)
 local Enemies = require(Shared.Enemies)
 
@@ -85,7 +86,7 @@ local function eliteTag(head: BasePart)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.LuckiestGuy
+	label.FontFace = Fonts.display
 	label.TextScaled = true
 	label.Text = "ELITE"
 	label.TextColor3 = Color3.fromHex("F2E6C8")

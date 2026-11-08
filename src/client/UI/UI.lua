@@ -14,6 +14,87 @@ function UI.S(n: number): number
 	return math.round(n * UI.scale)
 end
 
+-- Upper-cases text outside rich-text tags (<font ...>) and entities (&lt;), which must keep their case.
+local function upperText(s: string): string
+	local out = {}
+	local i = 1
+	while i <= #s do
+		local a = string.find(s, "[<&]", i)
+		if not a then
+			table.insert(out, string.upper(string.sub(s, i)))
+			break
+		end
+		table.insert(out, string.upper(string.sub(s, i, a - 1)))
+		local close = if string.sub(s, a, a) == "<" then string.find(s, ">", a, true) else string.find(s, ";", a, true)
+		if not close or (string.sub(s, a, a) == "&" and close - a > 8) then
+			table.insert(out, string.sub(s, a, a))
+			i = a + 1
+		else
+			table.insert(out, string.sub(s, a, close))
+			i = close + 1
+		end
+	end
+	return table.concat(out)
+end
+
+-- Round 19o: the house fonts draw smaller than the old ones at the same TextSize (Oswald is narrow, Builder Sans
+-- has a smaller x-height), so every label's TextSize is the size the code asked for x Theme.TextScale[font]. The
+-- base (what the code wrote) is remembered per label; our own write is told apart from an outside one (a later
+-- `.TextSize =`, a tween step) by the value we last set. Opt out with the FixedTextSize attribute.
+local textBase: { [Instance]: number } = setmetatable({}, { __mode = "k" }) :: any
+local textSet: { [Instance]: number } = setmetatable({}, { __mode = "k" }) :: any
+
+local function textFactor(font: Font): number
+	local f = Theme.Fonts
+	local k = Theme.TextScale
+	if font.Family == f.display.Family then
+		return k.display
+	elseif font.Family == f.body.Family then
+		return k.body
+	elseif font.Family == f.mono.Family then
+		return k.mono
+	end
+	return 1
+end
+
+-- Display-font text is always caps (LuckiestGuy, the old display face, had no lower case, so mixed-case strings
+-- always rendered as caps; Oswald has both), and every label gets the font's size factor.
+function UI.caps(label: TextLabel | TextButton)
+	local family = Theme.Fonts.display.Family
+	local function caps()
+		if label.FontFace.Family == family then
+			local up = upperText(label.Text)
+			if up ~= label.Text then
+				label.Text = up
+			end
+		end
+	end
+	local function size()
+		if label:GetAttribute("FixedTextSize") then
+			return
+		end
+		local current = label.TextSize
+		if textSet[label] ~= current then
+			textBase[label] = current
+		end
+		local base = textBase[label] or current
+		local want = math.clamp(math.round(base * textFactor(label.FontFace)), 1, 100)
+		textSet[label] = want
+		if current ~= want then
+			label.TextSize = want
+		end
+	end
+	label:GetPropertyChangedSignal("Text"):Connect(caps)
+	label:GetPropertyChangedSignal("FontFace"):Connect(function()
+		caps()
+		size()
+	end)
+	label:GetPropertyChangedSignal("TextSize"):Connect(size)
+	caps()
+	-- Deferred, so a FixedTextSize set right after creation (or a FontFace swap) is seen first.
+	task.defer(size)
+end
+
 function UI.new(className: string, props: { [string]: any }?, children: { Instance }?): any
 	local inst = Instance.new(className) :: any
 	if props then
@@ -22,6 +103,9 @@ function UI.new(className: string, props: { [string]: any }?, children: { Instan
 				inst[k] = v
 			end
 		end
+	end
+	if className == "TextLabel" or className == "TextButton" then
+		UI.caps(inst)
 	end
 	if children then
 		for _, c in children do
@@ -54,7 +138,7 @@ function UI.text(props: { [string]: any }?): TextLabel
 		merge({
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextColor3 = Theme.Colors.text,
 			TextSize = UI.S(14),
 			Text = "",
@@ -69,7 +153,7 @@ function UI.button(props: { [string]: any }?): TextButton
 			AutoButtonColor = false,
 			BackgroundColor3 = Theme.Colors.panel,
 			BorderSizePixel = 0,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextColor3 = Theme.Colors.text,
 			TextSize = UI.S(14),
 			Text = "",
@@ -77,15 +161,35 @@ function UI.button(props: { [string]: any }?): TextButton
 	)
 end
 
+-- Round 19o: every radius caps at Theme.Corner (sharp panels, cards, tags), except a full round on an
+-- offset-sized square (dots, dials, rings, knobs), which stays a circle.
 function UI.corner(parent: Instance, radius: number): UICorner
-	return UI.new("UICorner", { CornerRadius = UDim.new(0, radius), Parent = parent })
+	local r = radius
+	local cap = UI.S(Theme.Corner)
+	if r > cap then
+		local round = false
+		if parent:IsA("GuiObject") then
+			local size = parent.Size
+			local w, h = size.X.Offset, size.Y.Offset
+			round = size.X.Scale == 0
+				and size.Y.Scale == 0
+				and w > 0
+				and math.abs(w - h) <= 2
+				and r >= math.min(w, h) / 2 - 1
+		end
+		if not round then
+			r = cap
+		end
+	end
+	return UI.new("UICorner", { CornerRadius = UDim.new(0, r), Parent = parent })
 end
 
--- Border stroke on frames and buttons; text outline on labels.
+-- Border stroke on frames and buttons; text outline on labels (capped at Theme.TextStrokeMax).
 function UI.stroke(parent: Instance, color: Color3, thickness: number, transparency: number?): UIStroke
+	local isText = parent:IsA("TextLabel") or parent:IsA("TextButton") or parent:IsA("TextBox")
 	return UI.new("UIStroke", {
 		Color = color,
-		Thickness = thickness,
+		Thickness = if isText then math.min(thickness, math.max(1, UI.S(Theme.TextStrokeMax))) else thickness,
 		Transparency = transparency or 0,
 		ApplyStrokeMode = if parent:IsA("TextLabel")
 			then Enum.ApplyStrokeMode.Contextual

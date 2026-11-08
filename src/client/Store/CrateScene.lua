@@ -195,7 +195,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	})
 	local counter = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(26),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -208,7 +208,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	UI.stroke(counter, Color3.new(0, 0, 0), S(2), 0.3)
 	UI.text({
 		Text = crate.name,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Color3.fromHex(crate.trim),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -509,7 +509,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		setGlow(1.4)
 		UI.text({
 			Text = string.upper(Rarity.name(tier)),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(16),
 			TextColor3 = color,
 			Position = UDim2.fromOffset(0, S(10)),
@@ -519,7 +519,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		})
 		local nm = UI.text({
 			Text = string.upper(r.name),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(34),
 			TextColor3 = Theme.Colors.white,
 			Position = UDim2.fromOffset(0, S(30)),
@@ -533,7 +533,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			else (if r.kind == "weapon" then "NEW WEAPON · IN YOUR ARMORY" else "NEW MASK · IN YOUR LOCKER")
 		UI.text({
 			Text = sub,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(12),
 			TextColor3 = if r.dupe then Theme.Colors.gold else Color3.fromHex("8FE3A1"),
 			Position = UDim2.fromOffset(0, S(76)),
@@ -554,7 +554,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			UI.corner(ribbon, S(4))
 			UI.text({
 				Text = "NEW",
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(15),
 				TextColor3 = Theme.Colors.white,
 				Size = UDim2.fromScale(1, 1),
@@ -565,7 +565,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		if r.pity then
 			UI.text({
 				Text = "PITY · EPIC+ GUARANTEED",
-				Font = Theme.Fonts.body,
+				FontFace = Theme.Fonts.body,
 				TextSize = S(10),
 				TextColor3 = Fx.rarityColor(4),
 				Position = UDim2.fromOffset(0, S(92)),
@@ -606,7 +606,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		})
 		local title = UI.text({
 			Text = string.format("%s ×%d", crate.name, #results),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(34),
 			TextColor3 = Color3.fromHex(crate.trim),
 			AnchorPoint = Vector2.new(0.5, 0),
@@ -660,7 +660,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			art.Position = UDim2.new(0.5, 0, 0, S(6))
 			UI.text({
 				Text = string.upper(r.name),
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(12),
 				TextColor3 = Theme.Colors.white,
 				TextWrapped = true,
@@ -672,7 +672,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			})
 			UI.text({
 				Text = if r.dupe then string.format("DUPE +◆%d", r.gold) else "NEW",
-				Font = Theme.Fonts.body,
+				FontFace = Theme.Fonts.body,
 				TextSize = S(10),
 				TextColor3 = if r.dupe then Theme.Colors.gold else Color3.fromHex("3FD47A"),
 				AnchorPoint = Vector2.new(0.5, 1),
@@ -693,7 +693,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		end
 		local totals = UI.text({
 			Text = string.format("DUPLICATES PAID +◆ %s GOLD · +%s MASTERY XP", UI.fmtInt(gold), UI.fmtInt(mastery)),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.gold,
 			AnchorPoint = Vector2.new(0.5, 1),

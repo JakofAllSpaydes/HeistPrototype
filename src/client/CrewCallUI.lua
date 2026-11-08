@@ -93,7 +93,7 @@ local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStro
 	UI.corner(icon, S(6))
 	UI.text({
 		Text = "!",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.bg,
 		Size = UDim2.fromScale(1, 1),
@@ -101,7 +101,7 @@ local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStro
 	})
 	UI.text({
 		Text = data.name,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(S(40), 0),
@@ -110,7 +110,7 @@ local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStro
 	})
 	local timer = UI.text({
 		Text = "1:15",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -305,7 +305,7 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 	local textX = h + S(4)
 	UI.text({
 		Text = spec.crewLead,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
@@ -319,7 +319,7 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 	end
 	local timer = UI.text({
 		Text = if spec.duration then fmtTime(spec.duration) else "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -343,7 +343,7 @@ local function buildCard(parent: Instance, spec: CardSpec): (Frame, TextLabel, U
 	typewrite(body, head)
 	UI.text({
 		Text = spec.rewardLine,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.cash,
 		TextXAlignment = Enum.TextXAlignment.Left,

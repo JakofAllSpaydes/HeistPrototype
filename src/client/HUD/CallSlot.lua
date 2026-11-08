@@ -75,7 +75,7 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 		UI.stroke(toast, color, S(2))
 		UI.text({
 			Text = text,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(20),
 			TextColor3 = color,
 			Size = UDim2.fromScale(1, 1),

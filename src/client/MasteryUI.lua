@@ -98,7 +98,7 @@ local function emblem(parent: Instance, color: Color3, roman: string, size: numb
 	UI.corner(inner, UI.S(6))
 	local numeral = UI.text({
 		Text = roman,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = math.floor(size * 0.32),
 		TextColor3 = color,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -158,7 +158,7 @@ local function show(d: any)
 	local textX = H * 1.25
 	UI.text({
 		Text = if d.kind == "weapon" then "WEAPON MASTERY" else "CLASS MASTERY",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -168,7 +168,7 @@ local function show(d: any)
 	})
 	local title = UI.text({
 		Text = string.format("%s · MASTERY %s", tostring(d.name or ""), tostring(d.roman or tier)),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(if mobile then 18 else 21),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -193,7 +193,7 @@ local function show(d: any)
 	end
 	UI.text({
 		Text = tostring(d.reward or ""),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,

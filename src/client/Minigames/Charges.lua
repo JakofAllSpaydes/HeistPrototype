@@ -62,7 +62,7 @@ function Charges.open(host: Frame.Host)
 		local y = originY + row * (size + gap)
 		local button = UI.button({
 			Text = tostring(number),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = math.floor(size * 0.5),
 			TextColor3 = Theme.Colors.text,
 			BackgroundColor3 = Theme.Colors.panel2,

@@ -89,7 +89,7 @@ function VipTab.render(ctx: any)
 	UI.pad(card, S(26), S(22), S(26), S(22))
 	local title = UI.text({
 		Text = if active then "VIP" elseif ever then "WELCOME BACK" else "BECOME A VIP",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(42),
 		TextColor3 = VIP_GOLD,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -103,7 +103,7 @@ function VipTab.render(ctx: any)
 			then string.format("VIP · RENEWS IN %s", Clock.span(renewsIn))
 			elseif ever then "Your mask and poses are still yours. Pick the perks back up any time."
 			else string.format("R$ %s / month · fake subscription in the prototype", UI.fmtInt(Config.VipPrice)),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = if active then Color3.fromHex("3FD47A") else Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -144,7 +144,7 @@ function VipTab.render(ctx: any)
 		UI.corner(badge, S(6))
 		UI.text({
 			Text = perk[1],
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = if active then Theme.Colors.bg else VIP_GOLD,
 			Size = UDim2.fromScale(1, 1),
@@ -153,7 +153,7 @@ function VipTab.render(ctx: any)
 		})
 		UI.text({
 			Text = perk[2],
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(12),
 			TextColor3 = Theme.Colors.text,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -200,7 +200,7 @@ function VipTab.render(ctx: any)
 		Fx.bob(a, S(2), 2.2)
 		UI.text({
 			Text = if r.kind == "mask" then "MASK" else "POSE",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(11),
 			TextColor3 = VIP_GOLD,
 			AnchorPoint = Vector2.new(0.5, 1),
@@ -279,7 +279,7 @@ function VipTab.render(ctx: any)
 		end)
 		local cancel = UI.button({
 			Text = "Cancel subscription (fake)",
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(12),
 			TextColor3 = Theme.Colors.textDim,
 			BackgroundTransparency = 1,

@@ -18,7 +18,7 @@ function GoldTab.render(ctx: any)
 	local root = ctx.content :: Frame
 	UI.text({
 		Text = "GOLD",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(28),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -28,7 +28,7 @@ function GoldTab.render(ctx: any)
 	})
 	UI.text({
 		Text = "Weapons, classes, upgrades and cosmetics in the customization scene all spend Gold.",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,

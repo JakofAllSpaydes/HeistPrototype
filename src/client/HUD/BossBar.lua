@@ -35,7 +35,7 @@ function BossBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	local name = UI.text({
 		Text = "TITAN",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.red,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -46,7 +46,7 @@ function BossBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.stroke(name, Theme.Colors.black, S(1.5), 0.3)
 	local hpText = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -157,7 +157,7 @@ function BossBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			b.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 			local t = UI.text({
 				Text = label,
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(15),
 				TextColor3 = Theme.Colors.red,
 				Size = UDim2.new(1, 0, 0, S(18)),
@@ -166,7 +166,7 @@ function BossBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.stroke(t, Theme.Colors.black, S(1.5), 0.2)
 			distLabel = UI.text({
 				Text = "",
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(11),
 				TextColor3 = Theme.Colors.text,
 				Position = UDim2.fromOffset(0, S(18)),

@@ -82,7 +82,7 @@ local function addTag(gun: BasePart)
 
 	local timerLabel = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = Theme.Colors.grey,
 		Size = UDim2.fromScale(1, 0.28),
@@ -96,7 +96,7 @@ local function addTag(gun: BasePart)
 		Size = UDim2.fromScale(1, 0.7),
 		Parent = gui,
 	})
-	UI.new("UICorner", { CornerRadius = UDim.new(0.15, 0), Parent = frame })
+	UI.new("UICorner", { CornerRadius = UDim.new(0.05, 0), Parent = frame })
 	UI.stroke(frame, color, 2)
 	local nameText = string.upper(tostring(gun:GetAttribute("DisplayName") or gun:GetAttribute("WeaponId")))
 	-- Round 19e: the weapon type beside the name, dimmed.
@@ -107,7 +107,7 @@ local function addTag(gun: BasePart)
 	UI.text({
 		Text = nameText,
 		RichText = true,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = color,
 		Position = UDim2.fromScale(0.05, 0.04),

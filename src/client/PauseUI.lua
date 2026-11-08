@@ -57,7 +57,7 @@ local function show(data: any)
 	UI.tween(dim, { BackgroundTransparency = 0.45 }, 0.25)
 	local title = UI.text({
 		Text = "PAUSED",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(72),
 		TextColor3 = Theme.Colors.text,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -69,7 +69,7 @@ local function show(data: any)
 	UI.punch(title, 1.3, 0.35)
 	local names = UI.text({
 		Text = tostring(data.names or ""),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.textDim,
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -79,7 +79,7 @@ local function show(data: any)
 	})
 	local count = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.amber,
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -99,7 +99,7 @@ local function show(data: any)
 	local function voteButton(text: string, color: Color3, order: number, action: string): TextButton
 		local b = UI.button({
 			Text = text,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.bg,
 			BackgroundColor3 = color,

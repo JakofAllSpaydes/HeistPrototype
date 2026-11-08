@@ -1,5 +1,5 @@
 --!strict
--- Left column: header BUY and the NEW UPGRADE tile (1). Weapons come only from crates (brief 5).
+-- Left column: header BUY and the UPGRADE tile (1). Weapons come only from crates (brief 5).
 local UserInputService = game:GetService("UserInputService")
 
 local Client = script.Parent.Parent
@@ -25,10 +25,10 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.list(root, Enum.FillDirection.Vertical, S(profile.tilePad), Enum.HorizontalAlignment.Center)
 	UI.text({
 		Text = "BUY",
-		Font = Theme.Fonts.display,
-		TextSize = S(16),
+		FontFace = Theme.Fonts.display,
+		TextSize = S(20),
 		TextColor3 = Theme.Colors.grey,
-		Size = UDim2.new(1, 0, 0, S(20)),
+		Size = UDim2.new(1, 0, 0, S(26)),
 		LayoutOrder = 0,
 		Parent = root,
 	})
@@ -36,7 +36,7 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local tiles = {
 		upgrade = Tile.build(
 			root,
-			{ name = "NEW UPGRADE", hotkey = "1", order = 1, iconKind = "plus", showPrice = true },
+			{ name = "UPGRADE", hotkey = "1", order = 1, iconKind = "plus", showPrice = true },
 			profile.tile,
 			profile.hotkeyChips
 		),

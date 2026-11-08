@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
+local Fonts = require(Shared.Fonts)
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Room = require(script.Parent.Room)
@@ -92,7 +93,7 @@ local function headTag(char: Model, row: Row)
 	local name = Instance.new("TextLabel")
 	name.BackgroundTransparency = 1
 	name.Size = UDim2.fromScale(1, 0.5)
-	name.Font = Enum.Font.LuckiestGuy
+	name.FontFace = Fonts.display
 	name.TextScaled = true
 	name.Text = string.upper(row.name)
 	name.TextColor3 = Color3.fromHex(row.maskColor)
@@ -102,7 +103,7 @@ local function headTag(char: Model, row: Row)
 	line.BackgroundTransparency = 1
 	line.Position = UDim2.fromScale(0, 0.5)
 	line.Size = UDim2.fromScale(1, 0.5)
-	line.Font = Enum.Font.GothamBold
+	line.FontFace = Fonts.body
 	line.TextScaled = true
 	line.Text = string.format("%d KILLS · $%d", row.kills, row.cash)
 	line.TextColor3 = Color3.fromHex("F2E6C8")

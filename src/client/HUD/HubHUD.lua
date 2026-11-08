@@ -67,7 +67,7 @@ local function iconTile(
 	end
 	local l = UI.text({
 		Text = label,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, size + S(1)),
@@ -100,7 +100,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local play = UI.button({
 		Name = "Play",
 		Text = "PLAY",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = if mobile then S(22) else S(32),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = GREEN,
@@ -160,7 +160,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.corner(phHeader, S(10))
 	local placeholderTitle = UI.text({
 		Text = "Shop",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -180,7 +180,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	local okBtn = UI.button({
 		Text = "OK",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = GREEN,
@@ -262,7 +262,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local goldLabel = UI.text({
 		Name = "Gold",
 		Text = "0",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -272,7 +272,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	local plus = UI.button({
 		Text = "+",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = GREEN,
@@ -293,7 +293,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local invite = UI.button({
 		Name = "Invite",
 		Text = if mobile then "+👥" else "INVITE FRIENDS",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.white,
 		BackgroundColor3 = Theme.Colors.panel,
@@ -352,7 +352,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	UI.text({
 		Text = "BOOSTS",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -434,7 +434,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		UI.stroke(dot, Theme.Colors.white, S(1.5), 0)
 		local sub = UI.text({
 			Text = label,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(12),
 			TextColor3 = Theme.Colors.text,
 			Position = UDim2.fromOffset(0, topSize + S(2)),
@@ -479,7 +479,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.corner(emblem, S(4))
 	local passLv = UI.text({
 		Text = "1",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = math.floor(topSize * 0.3),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),

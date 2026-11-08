@@ -105,7 +105,7 @@ function PurchaseSheet.toast(text: string, color: Color3?, sound: boolean?)
 	UI.pad(pill, S(20), 0, S(20), 0)
 	UI.text({
 		Text = text,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = color or Color3.fromHex("8FE3A1"),
 		Size = UDim2.fromScale(0, 1),
@@ -228,7 +228,7 @@ local function frame(title: string): Frame
 	})
 	UI.text({
 		Text = title,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -238,7 +238,7 @@ local function frame(title: string): Frame
 	})
 	local x = UI.button({
 		Text = "X",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.textDim,
 		BackgroundColor3 = SHEET_BG2,
@@ -294,7 +294,7 @@ local function itemRow(parent: Frame, product: any, price: number, order: number
 	Fx.bob(art, S(2), 2.2)
 	UI.text({
 		Text = product.name,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(19),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -308,7 +308,7 @@ local function itemRow(parent: Frame, product: any, price: number, order: number
 	if product.sub then
 		UI.text({
 			Text = product.sub,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(11),
 			TextColor3 = Theme.Colors.textDim,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -331,7 +331,7 @@ local function itemRow(parent: Frame, product: any, price: number, order: number
 	Fx.robux(priceRow, S(18), 13)
 	UI.text({
 		Text = if price > 0 then UI.fmtInt(price) else "FREE",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromOffset(0, S(22)),
@@ -343,7 +343,7 @@ local function itemRow(parent: Frame, product: any, price: number, order: number
 	if product.kind == "vip" then
 		UI.text({
 			Text = "/ month",
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(12),
 			TextColor3 = Theme.Colors.textDim,
 			Size = UDim2.fromOffset(0, S(22)),
@@ -359,7 +359,7 @@ local function line(parent: Frame, text: string, color: Color3, order: number, s
 	local S = UI.S
 	return UI.text({
 		Text = text,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(size or 12),
 		TextColor3 = color,
 		TextWrapped = true,
@@ -539,7 +539,7 @@ confirm = function(product: any, opts: Opts)
 	end
 	local cancel = UI.button({
 		Text = "Cancel",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.textDim,
 		BackgroundTransparency = 1,
@@ -610,7 +610,7 @@ function PurchaseSheet.choose(title: string, productIds: { string }, opts: Opts?
 		art.Position = UDim2.new(0, S(8), 0.5, 0)
 		UI.text({
 			Text = product.name,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(17),
 			TextColor3 = Theme.Colors.white,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -642,7 +642,7 @@ function PurchaseSheet.choose(title: string, productIds: { string }, opts: Opts?
 		UI.corner(pill, S(8))
 		UI.text({
 			Text = "R$ " .. UI.fmtInt(priceOf(product)),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(16),
 			TextColor3 = Theme.Colors.white,
 			Size = UDim2.fromScale(1, 1),
@@ -658,7 +658,7 @@ function PurchaseSheet.choose(title: string, productIds: { string }, opts: Opts?
 	Fx.cascade(rows, 0.04)
 	local cancel = UI.button({
 		Text = "Cancel",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.textDim,
 		BackgroundTransparency = 1,

@@ -125,7 +125,7 @@ local function build()
 	local label = UI.text({
 		Name = "Name",
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		Position = UDim2.fromOffset(0, S(12)),
 		Size = UDim2.new(1, 0, 0, S(28)),
@@ -135,7 +135,7 @@ local function build()
 	for _, side in { -1, 1 } do
 		local arrow = UI.button({
 			Text = if side < 0 then "◀" else "▶",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(20),
 			TextColor3 = Theme.Colors.text,
 			BackgroundColor3 = Theme.Colors.panel2,
@@ -162,7 +162,7 @@ local function build()
 
 	local revive = UI.button({
 		Text = "REVIVE EVERYBODY",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = Theme.Colors.gold,
@@ -178,7 +178,7 @@ local function build()
 	UI.pad(revive, 0, S(6), 0, 0)
 	reviveCostLabel = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.bg,
 		Position = UDim2.new(0, 0, 1, -S(30)),

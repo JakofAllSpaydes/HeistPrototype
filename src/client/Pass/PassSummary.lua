@@ -56,7 +56,7 @@ function PassSummary.show(
 	UI.corner(diamond, S(5))
 	local lv = UI.text({
 		Text = tostring(award.fromLevel or 1),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.white,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -68,7 +68,7 @@ function PassSummary.show(
 	UI.stroke(lv, Color3.new(0, 0, 0), S(1.5), 0.2)
 	UI.text({
 		Text = "PASS XP",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(13),
 		TextColor3 = ORANGE,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -79,7 +79,7 @@ function PassSummary.show(
 	})
 	local gainLabel = UI.text({
 		Text = "+0",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.cash,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -174,7 +174,7 @@ function PassSummary.show(
 				Fx.stinger(3)
 				local pop = UI.text({
 					Text = "PASS LV " .. seg.levelUp,
-					Font = Theme.Fonts.display,
+					FontFace = Theme.Fonts.display,
 					TextSize = S(16),
 					TextColor3 = ORANGE,
 					AnchorPoint = Vector2.new(0, 1),

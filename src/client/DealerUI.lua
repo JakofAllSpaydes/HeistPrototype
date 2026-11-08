@@ -116,7 +116,7 @@ local function standCard(it: Item, statId: string, tier: number)
 		Size = UDim2.fromScale(1, 0.8),
 		Parent = gui,
 	})
-	UI.new("UICorner", { CornerRadius = UDim.new(0.12, 0), Parent = face })
+	UI.new("UICorner", { CornerRadius = UDim.new(0.04, 0), Parent = face })
 	UI.stroke(face, color, 3)
 	-- A conditional (synergy) card: a small SYNERGY strip on the top edge (the opened card says why).
 	if Upgrades.isConditional(statId) then
@@ -129,10 +129,10 @@ local function standCard(it: Item, statId: string, tier: number)
 			ZIndex = 3,
 			Parent = face,
 		})
-		UI.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = strip })
+		UI.new("UICorner", { CornerRadius = UDim.new(0.12, 0), Parent = strip })
 		UI.text({
 			Text = "SYNERGY",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextScaled = true,
 			TextColor3 = Theme.Colors.bg,
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -154,7 +154,7 @@ local function standCard(it: Item, statId: string, tier: number)
 		local bigText = Upgrades.cardTexts(card.stat, card.pct)
 		UI.text({
 			Text = bigText,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextScaled = true,
 			TextColor3 = Theme.Colors.cash,
 			AnchorPoint = Vector2.new(0.5, 0),
@@ -163,7 +163,7 @@ local function standCard(it: Item, statId: string, tier: number)
 			Parent = face,
 		})
 	end
-	UI.new("UICorner", { CornerRadius = UDim.new(0.18, 0), Parent = icon })
+	UI.new("UICorner", { CornerRadius = UDim.new(0.06, 0), Parent = icon })
 	-- The stat's pictogram (Icons.lua; the short name is the text fallback), sized to the tile so it scales with
 	-- the billboard.
 	Icons.fit(icon, statId, 0.86, Theme.Colors.bg, color, Upgrades.shortName(statId))
@@ -174,10 +174,10 @@ local function standCard(it: Item, statId: string, tier: number)
 		Size = UDim2.fromScale(0.96, 0.17),
 		Parent = gui,
 	})
-	UI.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = pill })
+	UI.new("UICorner", { CornerRadius = UDim.new(0.12, 0), Parent = pill })
 	UI.text({
 		Text = UI.fmtCash(it.price),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = Theme.Colors.bg,
 		Size = UDim2.fromScale(1, 1),
@@ -200,7 +200,7 @@ local function propTag(it: Item)
 	gui.Parent = att
 	UI.text({
 		Text = it.title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.amber,
 		Size = UDim2.new(1, 0, 0, S(18)),
@@ -347,7 +347,7 @@ local function openCardPanel(it: Item, card: any)
 	local affordable = (ClientState.sync and ClientState.sync.cash or 0) >= it.price
 	local price = UI.text({
 		Text = UI.fmtCash(it.price),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(24),
 		TextColor3 = if affordable then Theme.Colors.cash else Theme.Colors.malus,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -356,7 +356,7 @@ local function openCardPanel(it: Item, card: any)
 	})
 	local buyBtn = UI.button({
 		Text = if ClientState.isMobile then "BUY" else "F  BUY",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = if affordable then Theme.Colors.cash else Theme.Colors.grey,
@@ -406,7 +406,7 @@ local function openPanel(it: Item)
 	UI.pad(frame, S(10), S(6), S(10), S(6))
 	UI.text({
 		Text = it.title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(17),
 		TextColor3 = it.color,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -435,7 +435,7 @@ local function openPanel(it: Item)
 	end
 	local price = UI.text({
 		Text = UI.fmtCash(it.price),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = if (ClientState.sync and ClientState.sync.cash or 0) >= it.price
 			then Theme.Colors.cash
@@ -448,7 +448,7 @@ local function openPanel(it: Item)
 	})
 	local buyBtn = UI.button({
 		Text = if ClientState.isMobile then "BUY" else "F  BUY",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = Theme.Colors.cash,
@@ -566,7 +566,7 @@ local function buildCard()
 	home.add(box, 3)
 	local title = UI.text({
 		Text = "DEALER · 1:30",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.amber,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -585,7 +585,7 @@ local function buildCard()
 	local function button(text: string, color: Color3, order: number, fn: () -> ()): TextButton
 		local b = UI.button({
 			Text = text,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(if mobile then 13 else 12),
 			TextColor3 = Theme.Colors.bg,
 			TextWrapped = true,

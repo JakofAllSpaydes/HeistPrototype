@@ -77,7 +77,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	local wave = UI.text({
 		Name = "Wave",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(44),
 		Text = "WAVE 1",
 		Size = UDim2.new(1, 0, 0, S(50)),
@@ -103,7 +103,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	-- Enemies left under the stars; red and pulsing for the last few.
 	local left = UI.text({
 		Name = "Left",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		Text = "",
 		TextColor3 = Theme.Colors.grey,
@@ -129,7 +129,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		UI.stroke(chip, Theme.Colors.grey, S(1), 0.5)
 		UI.text({
 			Text = "≡",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(16),
 			TextColor3 = Theme.Colors.grey,
 			Size = UDim2.fromScale(1, 1),
@@ -281,7 +281,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local label = UI.text({
 			Name = "WaveBanner",
 			Text = text,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(size),
 			TextColor3 = color,
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -552,7 +552,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 					UI.fmtNum(math.abs(delta)),
 					tostring(data.reason or "")
 				),
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(13),
 				TextColor3 = color,
 				TextXAlignment = Enum.TextXAlignment.Left,

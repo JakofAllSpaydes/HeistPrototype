@@ -219,7 +219,7 @@ local function stampOn(a: Active, text: string, color: Color3)
 	local u = a.host.u
 	local label = UI.text({
 		Text = text,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = u(56),
 		TextColor3 = color,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -299,7 +299,7 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 
 	UI.text({
 		Text = spec.title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = u(26),
 		TextColor3 = spec.color,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -319,7 +319,7 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	})
 	local timer = UI.text({
 		Text = "0.0s",
-		Font = Theme.Fonts.mono,
+		FontFace = Theme.Fonts.mono,
 		TextSize = u(14),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -330,7 +330,7 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	})
 	local closeBtn = UI.button({
 		Text = "X",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = u(18),
 		TextColor3 = Theme.Colors.grey,
 		BackgroundColor3 = Theme.Colors.panel2,

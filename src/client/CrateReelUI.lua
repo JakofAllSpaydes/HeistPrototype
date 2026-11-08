@@ -111,7 +111,7 @@ local function addTag(model: Instance)
 	gui.Parent = body
 	local timer = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.grey,
 		Size = UDim2.new(1, 0, 0, S(14)),
@@ -130,7 +130,7 @@ local function addTag(model: Instance)
 	UI.stroke(pill, Theme.Colors.gold, S(2))
 	local label = UI.text({
 		Text = "GUN CRATE",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(15),
 		TextColor3 = Theme.Colors.gold,
 		Size = UDim2.fromScale(1, 1),
@@ -209,7 +209,7 @@ local function playReel(data: any)
 	local stroke = UI.stroke(panel, Theme.Colors.grey, S(3))
 	local title = UI.text({
 		Text = "GUN CRATE",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.grey,
 		Size = UDim2.new(1, 0, 0, S(22)),
@@ -259,7 +259,7 @@ local function playReel(data: any)
 	end
 	local result = UI.text({
 		Text = "ROLLING",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.text,
 		Size = UDim2.new(1, 0, 0, S(26)),

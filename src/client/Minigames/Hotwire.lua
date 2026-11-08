@@ -101,7 +101,7 @@ function Hotwire.open(host: Frame.Host)
 		UI.corner(b, size / 2)
 		local letter = UI.text({
 			Text = SYMBOLS[i],
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = math.floor(size * 0.7),
 			TextColor3 = col(i),
 			Size = UDim2.fromScale(1, 1),
@@ -184,7 +184,7 @@ function Hotwire.open(host: Frame.Host)
 	local toggleStroke = UI.stroke(toggle, Theme.Colors.grey, u(1), 0.5)
 	local toggleLabel = UI.text({
 		Text = "COLORBLIND",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = u(12),
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 10,

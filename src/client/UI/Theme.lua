@@ -1,11 +1,14 @@
 --!strict
 -- Colors, fonts, sizes and sounds. Layout changes are diffs here, not Studio edits.
+local Fonts = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Fonts"))
+
 local Theme = {}
 
+-- Round 19o style pass: near-black panels, tight corners, condensed caps (see Theme.Fonts / Theme.Corner).
 Theme.Colors = {
-	bg = Color3.fromHex("101014"),
-	panel = Color3.fromHex("1A1A20"),
-	panel2 = Color3.fromHex("23232B"),
+	bg = Color3.fromHex("0B0B0F"),
+	panel = Color3.fromHex("15151A"),
+	panel2 = Color3.fromHex("1F1F26"),
 	text = Color3.fromHex("F2E6C8"),
 	textDim = Color3.fromHex("B8AE98"),
 	gold = Color3.fromHex("E8B64C"),
@@ -20,11 +23,17 @@ Theme.Colors = {
 	white = Color3.new(1, 1, 1),
 }
 
-Theme.Fonts = {
-	display = Enum.Font.LuckiestGuy, -- stand-in for Lilita One
-	body = Enum.Font.GothamBold,
-	mono = Enum.Font.RobotoMono,
-}
+-- Font objects (shared/Fonts.lua): set them with `FontFace =`, never `Font =`.
+Theme.Fonts = Fonts
+
+-- Corners: UI.corner caps every radius at this (px at the basis) so panels, cards, pills and buttons read sharp;
+-- a full round on a square (dots, dials, rings) stays round. Text outlines cap at TextStrokeMax (thick outlines
+-- read cartoony on the condensed face).
+Theme.Corner = 4
+Theme.TextStrokeMax = 1.5
+-- Every label's TextSize x this, per font (UI.caps): brings the house fonts back to the old fonts' visual size so
+-- nothing reads smaller. Readability first: raise these before shrinking anything.
+Theme.TextScale = { display = 1.3, body = 1.25, mono = 1.15 }
 
 -- Pixel sizes at the basis height; UI.S() scales them to the viewport.
 -- scaleBasis: the viewport height at which sizes render 1:1. Lower = bigger UI on the same screen.
@@ -32,7 +41,7 @@ Theme.Desktop = {
 	scaleBasis = 760,
 	minScale = 0.6,
 	maxScale = 2.2,
-	tile = Vector2.new(92, 104),
+	tile = Vector2.new(80, 90),
 	tilePad = 10,
 	card = Vector2.new(236, 288),
 	tracker = 64,

@@ -72,7 +72,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local b = UI.button({
 			Name = name,
 			Text = text,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = Theme.Colors.bg,
 			BackgroundColor3 = bg,
@@ -100,7 +100,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.pad(selfBtn, 0, S(4), 0, 0)
 	local selfSub = UI.text({
 		Text = "",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(9),
 		TextColor3 = Theme.Colors.bg,
 		AnchorPoint = Vector2.new(0, 1),
@@ -142,7 +142,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.corner(tokenDot, S(7))
 	UI.text({
 		Text = "+",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),
@@ -150,7 +150,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	local tokenLabel = UI.text({
 		Text = "0",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -198,7 +198,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local name = UI.text({
 		Text = "M1911",
 		RichText = true, -- Round 19e: the weapon type sits beside the name, smaller and dimmed
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(slotH + S(2), S(4)),
@@ -406,7 +406,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local up = delta > 0
 		local label = UI.text({
 			Text = string.format("%s%d DPS", if up then "+" else "", delta),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = if up then Theme.Colors.cash else Theme.Colors.malus,
 			TextXAlignment = Enum.TextXAlignment.Right,

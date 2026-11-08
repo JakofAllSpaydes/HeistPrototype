@@ -128,7 +128,7 @@ function Markers.add(
 	local stroke = UI.stroke(frame, color, S(2))
 	local title = UI.text({
 		Text = titleText,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(17),
 		TextColor3 = color,
 		Position = UDim2.fromOffset(0, S(4)),
@@ -145,7 +145,7 @@ function Markers.add(
 	})
 	local timer = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = color,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -202,7 +202,7 @@ function Markers.add(
 	UI.stroke(compact, Theme.Colors.black, S(1.5), 0.4)
 	UI.text({
 		Text = glyph or "!",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.bg,
 		Size = UDim2.fromScale(1, 1),
@@ -210,7 +210,7 @@ function Markers.add(
 	})
 	local compactLabel = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = color,
 		AnchorPoint = Vector2.new(0.5, 0),

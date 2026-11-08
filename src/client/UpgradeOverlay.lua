@@ -113,7 +113,7 @@ local function buildTrackerTile(
 		UI.corner(pip, S(8))
 		UI.text({
 			Text = "-",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(14),
 			TextColor3 = Theme.Colors.bg,
 			Size = UDim2.fromScale(1, 1),
@@ -258,7 +258,7 @@ local function buildCard(index: number, card: Types.Card): CardUI
 	end
 	detail(UI.text({
 		Text = string.upper(card.name),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextWrapped = true,
 		Position = UDim2.fromOffset(S(8), S(122)),
@@ -270,7 +270,7 @@ local function buildCard(index: number, card: Types.Card): CardUI
 	local bigText, smallText = Upgrades.cardTexts(card.stat, card.pct)
 	detail(UI.text({
 		Text = bigText,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(48),
 		TextColor3 = Theme.Colors.cash,
 		Position = UDim2.fromOffset(0, S(160)),
@@ -279,7 +279,7 @@ local function buildCard(index: number, card: Types.Card): CardUI
 	}))
 	detail(UI.text({
 		Text = smallText,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.cash,
 		Position = UDim2.fromOffset(0, S(210)),
@@ -464,7 +464,7 @@ local function build()
 	})
 	UI.text({
 		Text = "PICK ONE",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(30),
 		Size = UDim2.new(1, 0, 0, S(36)),
 		Parent = panel,
@@ -495,7 +495,7 @@ local function build()
 	local trackerY = S(50) + cardH + S(30) + S(10)
 	trackerHeader = UI.text({
 		Text = "THIS RUN · 0",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.grey,
 		Position = UDim2.fromOffset(0, trackerY),

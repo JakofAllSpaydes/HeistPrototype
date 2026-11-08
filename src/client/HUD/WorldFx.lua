@@ -38,7 +38,7 @@ local function floatText(position: Vector3, text: string, color: Color3, size: n
 	local gui = billboard(position + Vector3.new((math.random() - 0.5) * 1.5, 0, 0), 160, 60, lifetime)
 	local label = UI.text({
 		Text = text,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = size,
 		TextColor3 = color,
 		Size = UDim2.fromScale(1, 1),
@@ -404,7 +404,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local comboLabel = UI.text({
 		Name = "Combo",
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,

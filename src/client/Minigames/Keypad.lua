@@ -46,7 +46,7 @@ function Keypad.open(host: Frame.Host)
 	local displayStroke = UI.stroke(display, Theme.Colors.grey, u(2), 0.4)
 	local codeLabel = UI.text({
 		Text = codeText,
-		Font = Theme.Fonts.mono,
+		FontFace = Theme.Fonts.mono,
 		TextSize = u(34),
 		TextColor3 = Theme.Colors.cash,
 		Size = UDim2.fromScale(1, 1),
@@ -178,7 +178,7 @@ function Keypad.open(host: Frame.Host)
 		local row = math.floor((i - 1) / cols)
 		local key = UI.button({
 			Text = tostring(digit),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = math.floor(keyH * 0.55),
 			TextColor3 = Theme.Colors.grey,
 			BackgroundColor3 = Theme.Colors.panel,

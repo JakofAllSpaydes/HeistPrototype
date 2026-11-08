@@ -99,7 +99,7 @@ end
 local function tag(parent: Instance, text: string, order: number): Frame
 	local S = UI.S
 	local p, l = UI.pill(nil, text, INK, PAPER, S(22), S(13))
-	l.Font = Theme.Fonts.display
+	l.FontFace = Theme.Fonts.display
 	l.ZIndex = 9
 	local corner = p:FindFirstChildOfClass("UICorner")
 	if corner then
@@ -145,7 +145,7 @@ local function quote(
 	fit(q, size, S(11))
 	UI.text({
 		Text = "— MARLOW",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(13),
 		TextColor3 = SIGN,
 		TextTransparency = inkT,
@@ -220,7 +220,7 @@ local function rewardTiles(parent: Instance, weekly: boolean, height: number, se
 		art.Position = UDim2.new(0.5, 0, 0, S(5))
 		local amount = UI.text({
 			Text = "+" .. UI.fmtInt(r.amount),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextColor3 = Theme.Colors.white,
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -S(16)),
@@ -232,7 +232,7 @@ local function rewardTiles(parent: Instance, weekly: boolean, height: number, se
 		UI.stroke(amount, Color3.new(0, 0, 0), S(1.5), 0.2)
 		UI.text({
 			Text = r.label,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(11),
 			TextColor3 = Fx.shade(r.color, 0.35),
 			AnchorPoint = Vector2.new(0.5, 1),
@@ -281,7 +281,7 @@ local function progressBar(
 		UI.text({
 			RichText = true,
 			Text = string.format('%s<font size="%d" color="#%s"> / %s</font>', count, S(26), INK_SOFT:ToHex(), total),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(52),
 			TextColor3 = INK,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -333,7 +333,7 @@ local function progressBar(
 	if not hero then
 		local l = UI.text({
 			Text = count .. " / " .. total,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = math.floor(barH * 0.62),
 			TextColor3 = Theme.Colors.white,
 			Size = UDim2.fromScale(1, 1),
@@ -407,7 +407,7 @@ local function stamp(parent: Instance, shaker: GuiObject, text: string, color: C
 	UI.stroke(ring, color, S(1.5), 0.15)
 	UI.text({
 		Text = text,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(42),
 		TextColor3 = color,
 		Size = UDim2.fromScale(1, 1),
@@ -652,7 +652,7 @@ local function rerollButton(parent: Instance, key: string, weekly: boolean): Tex
 	local b = UI.button({
 		Name = "Reroll",
 		Text = "R",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(17),
 		TextColor3 = Theme.Colors.white,
 		BackgroundColor3 = if free then Color3.fromHex("4D9FE8") else Color3.fromHex("6E7C8C"),
@@ -740,7 +740,7 @@ local function dailyCard(parent: Frame, slot: number, e: any, order: number): Fr
 	tag(top, "DAILY JOB", 1)
 	local title = UI.text({
 		Text = def.title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextColor3 = INK,
 		TextTransparency = inkT,
 		TextWrapped = true,
@@ -836,7 +836,7 @@ local function bountyCard(parent: Frame, e: any, order: number): Frame?
 	UI.list(top, Enum.FillDirection.Vertical, S(4), Enum.HorizontalAlignment.Center)
 	UI.text({
 		Text = "WANTED",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(46),
 		TextColor3 = Color3.fromHex("5A1E10"),
 		TextTransparency = inkT,
@@ -864,7 +864,7 @@ local function bountyCard(parent: Frame, e: any, order: number): Frame?
 	q.Position = UDim2.new(0, 0, 1, -(rewardsH + slotH + gap * 2))
 	local title = UI.text({
 		Text = def.title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextColor3 = INK,
 		TextTransparency = inkT,
 		TextWrapped = true,
@@ -923,7 +923,7 @@ local function timerChip(parent: Instance, label: string, color: Color3, anchor:
 	UI.stroke(fr, color, S(2), 0.15)
 	UI.text({
 		Text = label,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(12),
 		TextColor3 = Fx.shade(color, 0.35),
 		Position = UDim2.fromOffset(0, S(5)),
@@ -933,7 +933,7 @@ local function timerChip(parent: Instance, label: string, color: Color3, anchor:
 	})
 	local v = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(26),
 		TextColor3 = Theme.Colors.white,
 		Position = UDim2.fromOffset(0, S(17)),
@@ -973,7 +973,7 @@ render = function()
 	local header = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, headerH), ZIndex = 5, Parent = b })
 	local title = UI.text({
 		Text = "JOBS",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(44),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -1229,7 +1229,7 @@ local function announce(line: string)
 	portrait(slot, 3, 1)
 	UI.text({
 		Text = "MARLOW · JOBS",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -1240,7 +1240,7 @@ local function announce(line: string)
 	})
 	local text = UI.text({
 		Text = "",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		TextWrapped = true,

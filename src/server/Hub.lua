@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
+local Fonts = require(Shared.Fonts)
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Maps = require(Shared.Maps)
@@ -46,8 +47,8 @@ local function surfaceLabel(part: BasePart, face: Enum.NormalId, text: string, c
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.LuckiestGuy
-	label.Text = text
+	label.FontFace = Fonts.display
+	label.Text = string.upper(text)
 	label.TextColor3 = color
 	label.TextScaled = true
 	label.Parent = gui

@@ -150,7 +150,7 @@ local function addMark(userId: number, name: string, bleedEndsAt: number)
 		})
 		UI.text({
 			Text = string.upper(name),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(16),
 			TextColor3 = Theme.Colors.text,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -160,7 +160,7 @@ local function addMark(userId: number, name: string, bleedEndsAt: number)
 		})
 		local seconds = UI.text({
 			Text = "",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.red,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -235,7 +235,7 @@ local function buildPrompt()
 		})
 		local label = UI.text({
 			Text = "",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = B(17),
 			TextColor3 = Theme.Colors.cash,
 			Size = UDim2.new(1, 0, 0, B(22)),
@@ -263,7 +263,7 @@ local function buildPrompt()
 		local button = UI.button({
 			Name = "ReviveButton",
 			Text = "REVIVE",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(20),
 			TextColor3 = Theme.Colors.bg,
 			BackgroundColor3 = Theme.Colors.cash,
@@ -304,7 +304,7 @@ local function buildPrompt()
 		local label = UI.text({
 			Name = "RevivePromptLabel",
 			Text = "HOLD F · REVIVE",
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.cash,
 			AnchorPoint = Vector2.new(0.5, 0.5),

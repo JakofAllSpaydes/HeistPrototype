@@ -30,7 +30,7 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.corner(cashIcon, S(8))
 	UI.text({
 		Text = "$",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.bg,
 		Size = UDim2.fromScale(1, 1),
@@ -39,7 +39,7 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local cashLabel = UI.text({
 		Name = "Cash",
 		Text = "$0",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(30),
 		TextColor3 = Theme.Colors.cash,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -50,7 +50,7 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.stroke(cashLabel, Theme.Colors.black, S(1.5), 0.4)
 	local plus = UI.button({
 		Text = "+",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.gold,
 		BackgroundColor3 = Theme.Colors.panel,
@@ -76,7 +76,7 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	UI.text({
 		Text = "◆",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.gold,
 		Position = UDim2.fromOffset(S(5), 0),
@@ -86,7 +86,7 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local bankedLabel = UI.text({
 		Name = "Banked",
 		Text = "0 BANKED",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -137,7 +137,7 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				UI.tween(cashLabel, { TextColor3 = Theme.Colors.cash }, 0.4)
 				local spent = UI.text({
 					Text = "-" .. UI.fmtCash(shown - target),
-					Font = Theme.Fonts.display,
+					FontFace = Theme.Fonts.display,
 					TextSize = S(20),
 					TextColor3 = Theme.Colors.malus,
 					TextXAlignment = Enum.TextXAlignment.Left,

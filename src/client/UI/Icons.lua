@@ -751,7 +751,7 @@ local function build(root: Frame, id: string, color: Color3, detail: Color3?, fa
 		label.Name = "Fallback"
 		label.BackgroundTransparency = 1
 		label.BorderSizePixel = 0
-		label.Font = Theme.Fonts.display
+		label.FontFace = Theme.Fonts.display
 		label.Text = text
 		label.TextColor3 = color
 		if px > 0 then

@@ -68,7 +68,7 @@ local function oddsPanel(ctx: any, crate: Crates.Crate)
 	UI.tween(sc, { Scale = 1 }, 0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	UI.text({
 		Text = crate.name .. " · ODDS",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(24),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -98,7 +98,7 @@ local function oddsPanel(ctx: any, crate: Crates.Crate)
 		})
 		UI.text({
 			Text = string.upper(Rarity.name(r)),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(15),
 			TextColor3 = color,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -113,7 +113,7 @@ local function oddsPanel(ctx: any, crate: Crates.Crate)
 		end
 		UI.text({
 			Text = if #names > 0 then table.concat(names, " · ") else "—",
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(11),
 			TextColor3 = Theme.Colors.text,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -125,7 +125,7 @@ local function oddsPanel(ctx: any, crate: Crates.Crate)
 		})
 		UI.text({
 			Text = string.format("%.1f%%", odds[r] * 100),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.white,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -141,7 +141,7 @@ local function oddsPanel(ctx: any, crate: Crates.Crate)
 			"Each item is equally likely inside its rarity. Epic or better is guaranteed on the %dth open since your last one; owned items convert to Gold and mastery XP.",
 			Config.CratePity
 		),
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.textDim,
 		TextWrapped = true,
@@ -153,7 +153,7 @@ local function oddsPanel(ctx: any, crate: Crates.Crate)
 	})
 	UI.text({
 		Text = "[Legal copy: TBA]",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -203,7 +203,7 @@ function CratesTab.render(ctx: any)
 	local root = ctx.content :: Frame
 	UI.text({
 		Text = "CRATES",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(26),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -213,7 +213,7 @@ function CratesTab.render(ctx: any)
 	})
 	UI.text({
 		Text = "Every item inside is crate-only. Results land in your Armory and Locker the moment they roll.",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -300,7 +300,7 @@ function CratesTab.render(ctx: any)
 		local left = pityLeft(profile, crate.id)
 		UI.text({
 			Text = string.format("EPIC+ GUARANTEED IN %d", left),
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(14),
 			TextColor3 = if left <= 2 then Rarity.color(4) else Theme.Colors.text,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -331,7 +331,7 @@ function CratesTab.render(ctx: any)
 			free.TextSize = S(17)
 			UI.text({
 				Text = string.format("%d BANKED", have),
-				Font = Theme.Fonts.body,
+				FontFace = Theme.Fonts.body,
 				TextSize = S(9),
 				TextColor3 = Theme.Colors.bg,
 				AnchorPoint = Vector2.new(1, 0.5),
@@ -367,7 +367,7 @@ function CratesTab.render(ctx: any)
 			b.LayoutOrder = k
 			UI.text({
 				Text = "OPEN " .. n,
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(16),
 				TextColor3 = Theme.Colors.white,
 				Position = UDim2.fromOffset(0, S(6)),
@@ -377,7 +377,7 @@ function CratesTab.render(ctx: any)
 			})
 			UI.text({
 				Text = "R$ " .. UI.fmtInt(crate.prices[n]),
-				Font = Theme.Fonts.body,
+				FontFace = Theme.Fonts.body,
 				TextSize = S(12),
 				TextColor3 = Theme.Colors.white,
 				Position = UDim2.fromOffset(0, S(28)),

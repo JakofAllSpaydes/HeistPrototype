@@ -85,11 +85,13 @@ function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: 
 			ZIndex = 3,
 			Parent = button,
 		})
+		chip.Size = UDim2.fromOffset(S(26), S(22))
 		UI.corner(chip, S(5))
 		UI.stroke(chip, Theme.Colors.grey, S(1), 0.4)
 		UI.text({
 			Text = opts.hotkey,
-			TextSize = S(11),
+			FontFace = Theme.Fonts.display,
+			TextSize = S(15),
 			TextColor3 = Theme.Colors.text,
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 3,
@@ -98,7 +100,8 @@ function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: 
 		hotkeyChip = chip
 	end
 
-	local pricePill, priceLabel = UI.pill(button, "", Theme.Colors.panel2, Theme.Colors.gold, S(18), S(11))
+	local pricePill, priceLabel = UI.pill(button, "", Theme.Colors.panel2, Theme.Colors.gold, S(22), S(14))
+	priceLabel.FontFace = Theme.Fonts.display
 	pricePill.AnchorPoint = Vector2.new(1, 0)
 	pricePill.Position = UDim2.new(1, S(6), 0, -S(8))
 	pricePill.ZIndex = 3
@@ -106,32 +109,36 @@ function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: 
 	UI.stroke(pricePill, Theme.Colors.gold, S(1), 0.3)
 	pricePill.Visible = opts.showPrice == true
 
-	local wellSize = if compact then math.floor(h * 0.62) else S(52)
+	-- Round 19o: the icon well fills the tile above a name strip, and the name scales to the strip's width (up to
+	-- NAME_MAX) so short names read big and long ones still fit on one line.
+	local inset = if compact then S(3) else S(5)
+	local nameH = if compact then S(14) else S(24)
+	local wellH = h - inset - nameH - S(2)
 	local well = UI.frame({
 		Name = "IconWell",
 		BackgroundColor3 = Theme.Colors.panel2,
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, if compact then S(4) else S(16)),
-		Size = UDim2.fromOffset(if compact then wellSize else S(60), wellSize),
+		Position = UDim2.new(0.5, 0, 0, inset),
+		Size = UDim2.fromOffset(w - inset * 2, wellH),
 		ClipsDescendants = true,
 		Parent = button,
 	})
-	UI.corner(well, S(8))
-	local icon = makeIcon(opts.iconKind, well, wellSize, opts.weaponId)
+	UI.corner(well, S(4))
+	local icon = makeIcon(opts.iconKind, well, wellH, opts.weaponId)
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 
 	local name = UI.text({
 		Name = "Name",
 		Text = opts.name,
-		Font = Theme.Fonts.display,
-		TextSize = if compact then S(8) else S(12),
+		FontFace = Theme.Fonts.display,
+		TextScaled = true,
 		TextColor3 = Theme.Colors.text,
-		TextWrapped = true,
-		Size = UDim2.new(1, -S(6), 0, if compact then S(14) else S(28)),
-		Position = UDim2.new(0, S(3), 1, if compact then -S(15) else -S(32)),
+		Size = UDim2.new(1, -inset * 2, 0, nameH),
+		Position = UDim2.new(0, inset, 1, -nameH - S(1)),
 		Parent = button,
 	})
+	UI.new("UITextSizeConstraint", { MaxTextSize = if compact then S(13) else S(21), Parent = name })
 
 	local tooltip: Frame? = nil
 	if opts.stub then

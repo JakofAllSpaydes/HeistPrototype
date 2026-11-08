@@ -58,7 +58,7 @@ function CardFace.synergyPill(parent: GuiObject, statId: string, height: number)
 	pill.Position = UDim2.fromScale(0.5, 0)
 	pill.ZIndex = 4
 	label.ZIndex = 4
-	label.Font = Theme.Fonts.display
+	label.FontFace = Theme.Fonts.display
 	return pill
 end
 
@@ -72,7 +72,7 @@ function CardFace.body(parent: GuiObject, card: any, S: (number) -> number, top:
 	local y = top
 	UI.text({
 		Text = string.upper(tostring(card.name or "")),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = s(20),
 		TextWrapped = true,
 		Position = UDim2.fromOffset(s(8), y),
@@ -83,7 +83,7 @@ function CardFace.body(parent: GuiObject, card: any, S: (number) -> number, top:
 	local bigText, smallText = Upgrades.cardTexts(card.stat, card.pct)
 	UI.text({
 		Text = bigText,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = s(44),
 		TextColor3 = Theme.Colors.cash,
 		Position = UDim2.fromOffset(0, y),
@@ -93,7 +93,7 @@ function CardFace.body(parent: GuiObject, card: any, S: (number) -> number, top:
 	y += s(48)
 	UI.text({
 		Text = smallText,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = s(16),
 		TextColor3 = Theme.Colors.cash,
 		Position = UDim2.fromOffset(0, y),

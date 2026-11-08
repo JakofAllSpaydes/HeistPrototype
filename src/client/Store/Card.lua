@@ -150,7 +150,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	UI.text({
 		Name = "Title",
 		Text = spec.title,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(if w < S(150) then 17 else 21),
 		TextColor3 = Theme.Colors.white,
 		TextWrapped = false, -- one line, truncated (Round 18: a wrapped title was cut in half by its box)
@@ -163,7 +163,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	local subLabel = UI.text({
 		Name = "Sub",
 		Text = spec.sub or "",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		TextWrapped = true,
@@ -219,7 +219,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	local badge = Fx.robux(priceRow, S(18), z + 5)
 	local priceLabel = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(17),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromOffset(0, S(24)),
@@ -250,7 +250,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	UI.corner(check, S(10))
 	UI.text({
 		Text = "✓",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),
@@ -259,7 +259,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	})
 	UI.text({
 		Text = "OWNED",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(17),
 		TextColor3 = Theme.Colors.text,
 		Size = UDim2.fromScale(1, 1),
@@ -299,7 +299,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 			UI.pad(r, S(7), 0, S(7), 0)
 			UI.text({
 				Text = text,
-				Font = Theme.Fonts.display,
+				FontFace = Theme.Fonts.display,
 				TextSize = S(12),
 				TextColor3 = if rc == RIBBON_COLORS["BEST VALUE"] or rc == RIBBON_COLORS["VIP"]
 					then Theme.Colors.bg

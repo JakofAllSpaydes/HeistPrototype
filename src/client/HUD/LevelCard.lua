@@ -70,7 +70,7 @@ function LevelCard.build(parent: Instance, width: number, compact: boolean?): Ca
 	end
 	UI.text({
 		Text = "★",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = math.floor(emblemSize * 0.36),
 		TextColor3 = EMBLEM_DARK,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -83,7 +83,7 @@ function LevelCard.build(parent: Instance, width: number, compact: boolean?): Ca
 	local textX = s(10) + emblemSize + s(14)
 	local levelLabel = UI.text({
 		Text = "LV 1",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = s(30),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -94,7 +94,7 @@ function LevelCard.build(parent: Instance, width: number, compact: boolean?): Ca
 	})
 	local rankLabel = UI.text({
 		Text = "ROOKIE",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = s(15),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -105,7 +105,7 @@ function LevelCard.build(parent: Instance, width: number, compact: boolean?): Ca
 	})
 	local gainLabel = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = s(28),
 		TextColor3 = GREEN,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -117,7 +117,7 @@ function LevelCard.build(parent: Instance, width: number, compact: boolean?): Ca
 	})
 	local subLabel = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = s(10),
 		TextColor3 = GREEN,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -146,7 +146,7 @@ function LevelCard.build(parent: Instance, width: number, compact: boolean?): Ca
 	UI.corner(fill, s(3))
 	local barText = UI.text({
 		Text = "",
-		Font = Theme.Fonts.mono,
+		FontFace = Theme.Fonts.mono,
 		TextSize = s(13),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),

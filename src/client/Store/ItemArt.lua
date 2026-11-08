@@ -52,7 +52,7 @@ end
 local function glyph(parent: Instance, text: string, color: Color3, size: number, z: number, y: number?, h: number?)
 	local l = UI.text({
 		Text = text,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = color,
 		AnchorPoint = Vector2.new(0.5, 0.5),

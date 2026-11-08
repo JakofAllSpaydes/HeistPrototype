@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
+local Fonts = require(Shared.Fonts)
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Upgrades = require(Shared.Upgrades)
@@ -293,7 +294,7 @@ local function buildStall(): Model
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.LuckiestGuy
+	label.FontFace = Fonts.display
 	label.Text = "DEALER"
 	label.TextScaled = true
 	label.TextColor3 = AMBER

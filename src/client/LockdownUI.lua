@@ -50,7 +50,7 @@ local function build()
 	})
 	title = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(16),
 		TextColor3 = Theme.Colors.red,
 		Size = UDim2.new(1, 0, 0, S(18)),
@@ -59,7 +59,7 @@ local function build()
 	UI.stroke(title, Theme.Colors.black, S(1.5), 0.2)
 	sub = UI.text({
 		Text = "",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, S(18)),
@@ -80,7 +80,7 @@ local function build()
 	UI.stroke(arrow, Theme.Colors.blue, S(2))
 	local glyph = UI.text({
 		Text = "▲",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.blue,
 		Size = UDim2.fromScale(1, 1),

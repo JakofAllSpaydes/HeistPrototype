@@ -68,7 +68,7 @@ local function futurePill(parent: Instance, order: number, onPick: () -> ()): Te
 	UI.corner(circle, 999)
 	UI.text({
 		Text = "+",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = Theme.Colors.grey,
 		Size = UDim2.fromScale(1, 1),
@@ -76,7 +76,7 @@ local function futurePill(parent: Instance, order: number, onPick: () -> ()): Te
 	})
 	UI.text({
 		Text = "FUTURE",
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -127,7 +127,7 @@ local function masteryBlock(parent: Instance, order: number, classId: string, xp
 		UI.corner(badge, S(6))
 		UI.text({
 			Text = MasteryCopy.Roman[t],
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(16),
 			TextColor3 = if earned then Theme.Colors.bg else Theme.Colors.textDim,
 			Size = UDim2.fromScale(1, 1),
@@ -136,7 +136,7 @@ local function masteryBlock(parent: Instance, order: number, classId: string, xp
 		local textX = S(48)
 		UI.text({
 			Text = name,
-			Font = Theme.Fonts.display,
+			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = if earned then Theme.Colors.white else Theme.Colors.textDim,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -147,7 +147,7 @@ local function masteryBlock(parent: Instance, order: number, classId: string, xp
 		})
 		UI.text({
 			Text = line,
-			Font = Theme.Fonts.body,
+			FontFace = Theme.Fonts.body,
 			TextSize = S(10),
 			TextColor3 = if earned then Theme.Colors.text else Theme.Colors.grey,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -220,7 +220,7 @@ local function classPill(
 	end
 	UI.text({
 		Text = string.upper(c.name),
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = if own then Theme.Colors.white else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -289,18 +289,18 @@ local function abilityRow(
 	pricePill.AnchorPoint = Vector2.new(0.5, 1)
 	pricePill.Position = UDim2.new(0.5, 0, 1, -S(6))
 	pricePill.BackgroundTransparency = 0.15
-	priceLabel.Font = Theme.Fonts.display
+	priceLabel.FontFace = Theme.Fonts.display
 	-- Hotkey on the icon's top-left corner.
 	local hotkey, hotkeyLabel = UI.pill(well, a.hotkey, Theme.Colors.bg, Theme.Colors.white, S(22), S(13))
 	hotkey.Position = UDim2.fromOffset(S(5), S(5))
 	hotkey.ZIndex = 3
 	hotkeyLabel.ZIndex = 3
-	hotkeyLabel.Font = Theme.Fonts.display
+	hotkeyLabel.FontFace = Theme.Fonts.display
 	local textX = pad + wellSize + S(14)
 	local rightW = S(170)
 	UI.text({
 		Text = a.name,
-		Font = Theme.Fonts.body,
+		FontFace = Theme.Fonts.body,
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -338,7 +338,7 @@ local function abilityRow(
 	local lv, lvLabel = UI.pill(row, string.format("LV %d", level), Theme.Colors.gold, Theme.Colors.bg, S(30), S(16))
 	lv.AnchorPoint = Vector2.new(1, 0)
 	lv.Position = UDim2.new(1, -pad, 0, pad)
-	lvLabel.Font = Theme.Fonts.display
+	lvLabel.FontFace = Theme.Fonts.display
 	local btnHolder = UI.frame({
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 1),

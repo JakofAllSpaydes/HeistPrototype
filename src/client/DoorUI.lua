@@ -51,7 +51,7 @@ local function ensureBar()
 	UI.corner(fill, S(13))
 	local label = UI.text({
 		Text = "",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.white,
 		Size = UDim2.fromScale(1, 1),

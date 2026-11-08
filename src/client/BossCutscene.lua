@@ -80,7 +80,7 @@ local function nameCard(d: any)
 	})
 	local name = UI.text({
 		Text = string.upper(tostring(d.name or "BOSS")),
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(92),
 		TextColor3 = Theme.Colors.red,
 		Size = UDim2.new(1, 0, 0, S(96)),
@@ -91,7 +91,7 @@ local function nameCard(d: any)
 	UI.stroke(name, Theme.Colors.black, S(4), 0.1)
 	local sub = UI.text({
 		Text = "· " .. string.upper(tostring(d.subtitle or "")) .. " ·",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, S(98)),

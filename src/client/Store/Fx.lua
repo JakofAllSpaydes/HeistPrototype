@@ -479,7 +479,7 @@ function Fx.button(
 	local S = UI.S
 	local b = UI.button({
 		Text = text,
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = S(18),
 		TextColor3 = fg,
 		BackgroundColor3 = bg,
@@ -509,7 +509,7 @@ function Fx.robux(parent: Instance, height: number, z: number?): Frame
 	UI.corner(plate, math.floor(height * 0.3))
 	UI.text({
 		Text = "R$",
-		Font = Theme.Fonts.display,
+		FontFace = Theme.Fonts.display,
 		TextSize = math.floor(height * 0.72),
 		TextColor3 = Color3.fromHex("0E2A17"),
 		Size = UDim2.fromScale(1, 1),

@@ -47,10 +47,10 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.list(root, Enum.FillDirection.Vertical, S(profile.tilePad), Enum.HorizontalAlignment.Center)
 	local header = UI.text({
 		Text = "ABILITIES",
-		Font = Theme.Fonts.display,
-		TextSize = S(16),
+		FontFace = Theme.Fonts.display,
+		TextSize = S(20),
 		TextColor3 = Theme.Colors.grey,
-		Size = UDim2.new(1, 0, 0, S(20)),
+		Size = UDim2.new(1, 0, 0, S(26)),
 		LayoutOrder = 0,
 		Parent = root,
 	})
@@ -118,8 +118,8 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.corner(sweep, S(10))
 			local label = UI.text({
 				Text = "",
-				Font = Theme.Fonts.display,
-				TextSize = S(20),
+				FontFace = Theme.Fonts.display,
+				TextSize = S(30),
 				TextColor3 = Theme.Colors.text,
 				Size = UDim2.fromScale(1, 1),
 				Visible = false,
@@ -128,7 +128,8 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			})
 			UI.stroke(label, Theme.Colors.black, S(1.5), 0.3)
 			-- Charges left (DOUBLE DOWN): a small gold count in the corner, only on multi-charge abilities.
-			local chargePill, chargeLabel = UI.pill(t.button, "", Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
+			local chargePill, chargeLabel = UI.pill(t.button, "", Theme.Colors.gold, Theme.Colors.bg, S(20), S(14))
+			chargeLabel.FontFace = Theme.Fonts.display
 			chargePill.AnchorPoint = Vector2.new(1, 0)
 			chargePill.Position = UDim2.new(1, -S(3), 0, S(3))
 			chargePill.ZIndex = 6
@@ -157,12 +158,12 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.corner(rechargeFill, S(4))
 			local rechargeLabel = UI.text({
 				Text = "",
-				Font = Theme.Fonts.display,
-				TextSize = S(10),
+				FontFace = Theme.Fonts.display,
+				TextSize = S(13),
 				TextColor3 = Theme.Colors.gold,
 				AnchorPoint = Vector2.new(0, 1),
 				Position = UDim2.new(0, S(5), 1, -S(12)),
-				Size = UDim2.fromOffset(S(40), S(12)),
+				Size = UDim2.fromOffset(S(48), S(16)),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Visible = false,
 				ZIndex = 6,
@@ -207,12 +208,12 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		UI.punch(t.button, 1.08, 0.15)
 		local f = UI.text({
 			Text = text,
-			Font = Theme.Fonts.display,
-			TextSize = S(14),
+			FontFace = Theme.Fonts.display,
+			TextSize = S(18),
 			TextColor3 = color,
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 0, 0),
-			Size = UDim2.fromOffset(S(60), S(18)),
+			Size = UDim2.fromOffset(S(70), S(22)),
 			ZIndex = 8,
 			Parent = t.button,
 		})
