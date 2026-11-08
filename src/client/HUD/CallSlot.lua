@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Lines = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CrewCall"):WaitForChild("Lines"))
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -12,6 +13,40 @@ local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 
 local CallSlot = {}
+
+-- Round 25: gas toasts (vault, office, zone) show only to members near the gas; the narrative pill tells the rest.
+local function myRoot(): BasePart?
+	local char = Players.LocalPlayer.Character
+	return char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function nearGas(data: any): boolean
+	local root = myRoot()
+	if not root then
+		return false
+	end
+	local margin = Config.GasToastNearStuds
+	if typeof(data.boxes) == "table" and #data.boxes > 0 then
+		for _, b in data.boxes do
+			if typeof(b) == "table" and typeof(b.cframe) == "CFrame" and typeof(b.size) == "Vector3" then
+				local rel = (b.cframe :: CFrame):PointToObjectSpace(root.Position)
+				local half = (b.size :: Vector3) / 2
+				if
+					math.abs(rel.X) <= half.X + margin
+					and math.abs(rel.Y) <= half.Y + margin
+					and math.abs(rel.Z) <= half.Z + margin
+				then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	if typeof(data.position) == "Vector3" then
+		return (root.Position - data.position).Magnitude <= margin
+	end
+	return true -- nothing to measure against (the building-wide lockdown): everyone
+end
 
 function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 	local S = UI.S
@@ -140,7 +175,7 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 			)
 		elseif name == "VaultOpen" then
 			component.toast(tostring(data.toast or Lines.vault.openToast), Theme.Colors.amber, 1.3)
-		elseif name == "VaultGas" then
+		elseif name == "VaultGas" and nearGas(data) then
 			component.toast(
 				if data.phase == "warn"
 					then string.format(
@@ -151,7 +186,7 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 				Theme.Colors.red,
 				1.2
 			)
-		elseif name == "OfficeState" and typeof(data.toast) == "string" then
+		elseif name == "OfficeState" and typeof(data.toast) == "string" and (data.phase == "open" or nearGas(data)) then
 			-- Round 19f: the office's open / gas / sealed beats.
 			component.toast(
 				data.toast,
@@ -161,7 +196,7 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 					else Theme.Colors.red,
 				if data.phase == "warn" then 2 else 1.4
 			)
-		elseif name == "ZoneGas" and typeof(data.toast) == "string" then
+		elseif name == "ZoneGas" and typeof(data.toast) == "string" and (data.force == true or nearGas(data)) then
 			-- Round 19c: the zone gas event (warning, gas, clear).
 			component.toast(
 				data.toast,

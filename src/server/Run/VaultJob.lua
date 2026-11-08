@@ -19,6 +19,7 @@ local Remotes = require(script.Parent.SlotRemotes)
 local Rarity = require(Shared.Rarity)
 local Lines = require(Shared.CrewCall.Lines)
 local Room = require(script.Parent.Room)
+local Slot = require(script.Parent.Slot)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
 local PlayerState = require(script.Parent.Parent.PlayerState)
@@ -89,6 +90,7 @@ local warnAt = 0
 local runToken = 0
 local tinted: { [Player]: boolean } = {}
 local lastGasTick = 0
+local gasStartedAt = 0 -- Round 25: the gas seals the vault after VaultGasMaxSec whoever is still inside
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -326,7 +328,7 @@ function VaultJob.startJob(onCracked: (Player) -> ())
 	local p = Instance.new("ProximityPrompt")
 	p.ActionText = Lines.vault.promptAction
 	p.ObjectText = Lines.vault.promptObject
-	p.KeyboardKeyCode = Enum.KeyCode.F
+	p.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 	p.HoldDuration = 0
 	p.MaxActivationDistance = 9
 	p.RequiresLineOfSight = false
@@ -399,6 +401,7 @@ local function startGas()
 	setLights(true, GAS)
 	Bags.fizzleVault()
 	lastGasTick = 0
+	gasStartedAt = now()
 	World.fireRun("VaultGas", { phase = "gas", position = VaultJob.front() })
 	Log.event("Vault", "gas in, %d inside", #playersInside())
 end
@@ -585,15 +588,18 @@ function VaultJob.init()
 			warnAt += dt
 		end
 	end)
+	-- Round 25: the arena closet's dressing only. THE BANK slot has no Room.vault (its vault is the site), and this
+	-- used to return here, so the Heartbeat below (gas damage, the seal, the sealed-room eject) never ran on THE
+	-- BANK: the gas never cleared and the vault stuck on GET OUT.
 	local v = Room.vault
-	if not v then
+	if v then
+		setLights(false)
+		paintBeacons(AMBER)
+	elseif Slot.mapId == "Arena" then
 		Log.event("Vault", "no VaultDoor in the map; CRACK THE VAULT is never drawn")
-		return
 	end
-	setLights(false)
-	paintBeacons(AMBER)
 	-- The VAULT sign over the door.
-	local sign = v.sign
+	local sign = v and v.sign
 	if sign then
 		local gui = Instance.new("SurfaceGui")
 		gui.Face = Enum.NormalId.Front
@@ -650,7 +656,17 @@ function VaultJob.init()
 				end
 			end
 		end
-		if #inside == 0 then
+		-- Round 25: only a STANDING member holds the door. A downed or bled-out body inside kept the vault gassed
+		-- forever (stuck on GET OUT); the seal now also comes after VaultGasMaxSec, and the sealed phase moves
+		-- anyone still inside out to the landing.
+		local standing = 0
+		for _, player in inside do
+			if PlayerState.isStanding(PlayerState.get(player)) then
+				standing += 1
+			end
+		end
+		if standing == 0 or t - gasStartedAt >= Config.VaultGasMaxSec then
+			Log.event("Vault", "sealing: %d inside, %d standing, %.0fs of gas", #inside, standing, t - gasStartedAt)
 			seal()
 		end
 	end)

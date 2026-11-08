@@ -667,6 +667,25 @@ DRAW.BlastRadius = function(c: Ctx) -- an explosion inside its radius ring
 	burst(sub(c, 0.2, 0.2, 0.6))
 end
 
+-- Round 25: defense.
+DRAW.MaxHP = function(c: Ctx) -- a heart with a plus
+	heart(c)
+	plusMark(c, 0.5, 0.48, 0.26, 0.08, 2, c.dt)
+end
+
+DRAW.HPRegen = function(c: Ctx) -- a heart with a rising chevron
+	heart(c)
+	arrowHead(c, 0.5, 0.34, 0, -1, 0.2, 0.08, 2, c.dt)
+	arrowHead(c, 0.5, 0.5, 0, -1, 0.2, 0.08, 2, c.dt)
+end
+
+DRAW.Armor = function(c: Ctx) -- a plated shield
+	local fg, dt = c.fg, c.dt
+	rect(c, 0.5, 0.34, 0.62, 0.36, 1, fg, 0.15)
+	rect(c, 0.5, 0.52, 0.4384, 0.4384, 1, fg, 0.06, 45)
+	bar(c, 0.5, 0.26, 0.5, 0.66, 0.07, 2, dt)
+end
+
 -- UI ids.
 DRAW.classes = function(c: Ctx) -- a shield with a chevron (the class tab)
 	local fg = c.fg

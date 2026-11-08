@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Enemies = require(Shared.Enemies)
 local Room = require(script.Parent.Room)
+local Ground = require(Shared.Ground)
 local Log = require(script.Parent.Parent.Log)
 local World = require(script.Parent.World)
 local PlayerState = require(script.Parent.Parent.PlayerState)
@@ -309,6 +310,7 @@ local function ghostsPassShots(bank: Model)
 end
 
 ------------------------------------------------------------------ Reading
+local playAreaAdded = false
 local function readZones(nodes: Instance)
 	for _, p in partsIn(nodes, "Zones") do
 		local id = p.Name
@@ -346,6 +348,32 @@ local function readZones(nodes: Instance)
 	table.sort(MapLoader.zoneOrder, function(a, b)
 		return a.depth > b.depth
 	end)
+	-- Round 25: bags, crates and ejected guns stand only inside a zone (Ground.clearSpot), and spawns only inside
+	-- their own box's zone (Spawner.zoneAt): a spot on the outer ledge or through a wall is out of play. The check
+	-- abstains (nil) outside this map's bounds, so the other run slots' maps are unaffected.
+	if #MapLoader.zoneOrder > 0 then
+		Spawner.zoneAt = MapLoader.zoneAt
+	end
+	if not playAreaAdded and #MapLoader.zoneOrder > 0 then
+		playAreaAdded = true
+		local lo = Vector3.new(math.huge, math.huge, math.huge)
+		local hi = -lo
+		for _, z in MapLoader.zoneOrder do
+			for _, v in z.parts do
+				local r = v.size.Magnitude / 2
+				lo = lo:Min(v.cframe.Position - Vector3.one * r)
+				hi = hi:Max(v.cframe.Position + Vector3.one * r)
+			end
+		end
+		lo -= Vector3.one * 30
+		hi += Vector3.one * 30
+		Ground.addPlayArea(function(p: Vector3): boolean?
+			if p.X < lo.X or p.Y < lo.Y or p.Z < lo.Z or p.X > hi.X or p.Y > hi.Y or p.Z > hi.Z then
+				return nil
+			end
+			return MapLoader.zoneAt(p) ~= nil
+		end)
+	end
 end
 
 local function zoneKnown(name: string, zoneId: string, what: string): boolean

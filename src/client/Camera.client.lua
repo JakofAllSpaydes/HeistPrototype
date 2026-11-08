@@ -465,6 +465,7 @@ local function opticZoom(): number?
 end
 
 local pivotYNow = 1.5
+local fpWallK = 0 -- Round 25: 0..1 how close the first-person eye is to a wall ahead (eased)
 local shoulderBlend = 1 -- Round 24aa: 1 over the shoulder, 0 centred (cursor unlocked)
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
@@ -553,8 +554,40 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 		local smoothed = prev:Lerp(rel, 1 - math.exp(-dt * Config.FirstPersonSteadyRate))
 		fpEyeRel = smoothed
 		camPos = (root.Position + smoothed):Lerp(raw, Config.FirstPersonBobKeep)
+		-- Round 25: the eye sits above the head's centre (the centre read short / "tiny").
+		camPos += Vector3.new(0, Config.FirstPersonEyeLift, 0)
+		-- Round 25: right up against a crate or wall the surface filled the screen. Closer than
+		-- FirstPersonWallClearance the eye eases back (up to FirstPersonWallPullMax, never into what's behind)
+		-- and FirstPersonView lowers the gun by the same share.
+		local filter: { Instance } = { char }
+		for _, name in { "GroundLoot", "Effects", "Enemies" } do
+			local f = Workspace:FindFirstChild(name)
+			if f then
+				table.insert(filter, f)
+			end
+		end
+		params.FilterDescendantsInstances = filter
+		local look = rot.LookVector
+		local clear = Config.FirstPersonWallClearance
+		local ahead = Workspace:Raycast(camPos, look * clear, params)
+		local wallK = 0
+		if ahead then
+			local want = math.min(clear - (ahead.Position - camPos).Magnitude, Config.FirstPersonWallPullMax)
+			local flatBack = Vector3.new(-look.X, 0, -look.Z)
+			if want > 0 and flatBack.Magnitude > 0.05 then
+				flatBack = flatBack.Unit
+				local behind = Workspace:Raycast(camPos, flatBack * (want + 0.2), params)
+				local room = if behind then math.max(0, (behind.Position - camPos).Magnitude - 0.2) else want
+				camPos += flatBack * math.min(want, room)
+			end
+			wallK = math.clamp((clear - (ahead.Position - camPos).Magnitude) / clear, 0, 1)
+		end
+		fpWallK += (wallK - fpWallK) * math.clamp(dt * 10, 0, 1)
+		ClientState.fpWallK = fpWallK
 	else
 		fpEyeRel = nil
+		fpWallK = 0
+		ClientState.fpWallK = 0
 		local dist = zoom * (1 + (adsZoom - 1) * adsBlend)
 		local side = math.clamp(dist / Config.CameraZoomDefault, 0, 1)
 		-- Round 24aa: cursor unlocked (Ctrl / Alt): the shoulder offset eases out so the character sits mid-screen.

@@ -271,10 +271,12 @@ local function build(b: Bag): Model
 	local color = if isGold then GOLD else CASH
 	local yaw = math.random() * math.pi * 2
 	local body = if isGold then buildGoldBag(model, b.position, yaw) else buildCashBag(model, b.position, yaw)
+	-- Round 25: the column stops at the ceiling (it poked up through the floor above a bag on a lower level).
+	local tall = Ground.ceiling(b.position, Config.BagBeaconHeight)
 	part({
 		Name = "Beacon",
-		Size = Vector3.new(0.7, 50, 0.7),
-		CFrame = CFrame.new(b.position + Vector3.new(0, 25, 0)),
+		Size = Vector3.new(0.7, tall, 0.7),
+		CFrame = CFrame.new(b.position + Vector3.new(0, tall / 2, 0)),
 		Color = color,
 		Material = Enum.Material.Neon,
 		Transparency = 0.88,
@@ -289,11 +291,24 @@ end
 -- One bag at a floor point.
 function Bags.spawnAt(kind: string, position: Vector3, vault: boolean?): Bag
 	nextId += 1
+	-- Round 25: never inside a wall or out of play (a bag spot dragged into geometry, a vault jitter).
+	local at, moved = Ground.clearSpot(position, Config.LootClearRadius, 2, Config.LootClearSearch)
+	if moved then
+		Log.event(
+			"Bags",
+			"WARN %s bag spot (%d, %d, %d) was in a wall: moved %.1f studs",
+			kind,
+			math.round(position.X),
+			math.round(position.Y),
+			math.round(position.Z),
+			(at - Ground.at(position)).Magnitude
+		)
+	end
 	local b: Bag = {
 		id = nextId,
 		kind = kind,
 		model = nil :: any,
-		position = Ground.at(position),
+		position = at,
 		wave = World.wave,
 		value = Bags.valueFor(kind, World.wave),
 		vault = vault == true,

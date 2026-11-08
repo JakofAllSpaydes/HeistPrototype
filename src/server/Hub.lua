@@ -4,6 +4,7 @@
 -- in your loadout), MARLOW's board, the van in its garage (the departure beat on run start), the range door, and
 -- the minigame props and tier pad standing in the range. Owns the hub's housekeeping (spawns, resets) and the
 -- nameplate data (level, class, best wave, VIP) each character shows while they stand in the hub.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -141,7 +142,7 @@ local function stationPrompt(part: BasePart, tab: string, distance: number)
 	prompt.Name = "Prompt"
 	prompt.ActionText = "OPEN"
 	prompt.ObjectText = tab
-	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = distance
 	prompt.RequiresLineOfSight = false
@@ -175,7 +176,7 @@ local function decorate()
 		prompt.Name = "Prompt"
 		prompt.ActionText = "TIER " .. t
 		prompt.ObjectText = "MINIGAMES"
-		prompt.KeyboardKeyCode = Enum.KeyCode.F
+		prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 		prompt.HoldDuration = 0
 		prompt.MaxActivationDistance = 7
 		prompt.RequiresLineOfSight = false
@@ -262,7 +263,7 @@ local function boardPrompt(parent: BasePart, distance: number)
 	prompt.Name = "Prompt"
 	prompt.ActionText = "OPEN"
 	prompt.ObjectText = "MARLOW'S JOBS"
-	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = distance
 	prompt.RequiresLineOfSight = false
@@ -319,31 +320,11 @@ local function buildMarlow(node: BasePart): BasePart?
 	local at = Vector3.new(spot.X, floor + hum.HipHeight + hrp.Size.Y / 2, spot.Z)
 	npc:PivotTo(CFrame.lookAt(at, at + front))
 	npc.Parent = HubMap.model or workspace
-	-- His name over his head, small (the house style: dark plate, gold condensed caps).
-	local head = npc:FindFirstChild("Head")
-	if head and head:IsA("BasePart") then
-		local tag = Instance.new("BillboardGui")
-		tag.Name = "MarlowTag"
-		tag.Adornee = head
-		tag.Size = UDim2.fromOffset(110, 22)
-		tag.StudsOffsetWorldSpace = Vector3.new(0, 2.1, 0)
-		tag.MaxDistance = 60
-		tag.LightInfluence = 0
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
-		label.BackgroundTransparency = 0.15
-		label.BorderSizePixel = 0
-		label.FontFace = Fonts.display
-		label.Text = "MARLOW"
-		label.TextSize = 15
-		label.TextColor3 = GOLD
-		label.Parent = tag
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 3)
-		corner.Parent = label
-		tag.Parent = npc
-	end
+	-- Round 25: his name tag is the booth keepers' one (client/BoothMannequins.lua: fades in close, hides behind
+	-- menus), tagged GHSKeeper like them.
+	npc:SetAttribute("BoothNpc", "MARLOW")
+	npc:SetAttribute("BoothRole", Config.MarlowRole)
+	CollectionService:AddTag(npc, "GHSKeeper")
 	-- The idle (an Animator on the server replicates to every client).
 	task.spawn(function()
 		local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
@@ -526,7 +507,7 @@ local function buildProps()
 		prompt.Name = "Prompt"
 		prompt.ActionText = "OPEN"
 		prompt.ObjectText = string.upper(name)
-		prompt.KeyboardKeyCode = Enum.KeyCode.F
+		prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 		prompt.HoldDuration = 0
 		prompt.MaxActivationDistance = 9
 		prompt.RequiresLineOfSight = false
@@ -742,6 +723,89 @@ function Hub.beginRun(players: { Player })
 	end
 end
 
+-- Round 25: a booth keeper. The rig's look comes from the avatar's HumanoidDescription (Config.BoothNpcs[tab]),
+-- built as an R15 standing where the rig stood, facing its way, looping the R15 idle. The asset rig stays (its
+-- BoothTab attribute) but turns invisible with its own name hidden.
+local function buildBoothNpc(rig: Model, tab: string)
+	local spec = (Config.BoothNpcs :: any)[tab]
+	local rigRoot = rig:FindFirstChild("HumanoidRootPart")
+	if not spec or not rigRoot or not rigRoot:IsA("BasePart") then
+		return
+	end
+	local desc: HumanoidDescription? = nil
+	local ok, got = pcall(function()
+		return Players:GetHumanoidDescriptionFromUserId(spec.userId)
+	end)
+	if ok and got then
+		desc = got
+	else
+		Log.event("Hub", "booth NPC %s: no avatar for user %d (%s), plain R15", spec.name, spec.userId, tostring(got))
+		desc = Instance.new("HumanoidDescription")
+	end
+	local ok2, npc = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(desc :: HumanoidDescription, Enum.HumanoidRigType.R15)
+	end)
+	if not ok2 or not npc then
+		Log.event("Hub", "booth NPC %s failed: %s", spec.name, tostring(npc))
+		return
+	end
+	local model = npc :: Model
+	model.Name = "BoothNpc_" .. tab
+	model:SetAttribute("BoothNpc", spec.name)
+	model:SetAttribute("BoothRole", spec.role)
+	CollectionService:AddTag(model, "GHSKeeper")
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	local hrp = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hum or not hrp then
+		model:Destroy()
+		return
+	end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.NameDisplayDistance = 0 -- Round 25: never Roblox's own name over the keeper (only the client tag)
+	hum.HealthDisplayDistance = 0
+	hum.DisplayName = spec.name
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+		end
+	end
+	hrp.Anchored = true
+	model.PrimaryPart = hrp
+	local box, size = rig:GetBoundingBox()
+	local floor = box.Position.Y - size.Y / 2
+	local look = rigRoot.CFrame.LookVector * Vector3.new(1, 0, 1)
+	local at = Vector3.new(rigRoot.Position.X, floor + hum.HipHeight + hrp.Size.Y / 2, rigRoot.Position.Z)
+	model:PivotTo(CFrame.lookAt(at, at + (if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, 1))))
+	-- The asset rig hides (server-wide), its name with it.
+	for _, d in rig:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Transparency = 1
+			d.CanCollide = false
+		elseif d:IsA("Decal") then
+			d.Transparency = 1
+		elseif d:IsA("Humanoid") then
+			d.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		elseif d:IsA("BillboardGui") then
+			d.Enabled = false
+		end
+	end
+	model.Parent = rig.Parent
+	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+	local anim = Instance.new("Animation")
+	anim.AnimationId = Config.BoothNpcIdleAnim
+	local ok3, track = pcall(function()
+		return (animator :: Animator):LoadAnimation(anim)
+	end)
+	if ok3 and track then
+		track.Looped = true
+		track.Priority = Enum.AnimationPriority.Idle
+		track:Play()
+	end
+	Log.event("Hub", "booth %s keeper %s ready", tab, spec.name)
+end
+
 function Hub.init()
 	HubMap.init()
 	PlayerState.spawnCFrame = Hub.spawnCFrame
@@ -756,7 +820,7 @@ function Hub.init()
 			prompt.Name = "RangePrompt"
 			prompt.ActionText = "WALK IN"
 			prompt.ObjectText = "RANGE"
-			prompt.KeyboardKeyCode = Enum.KeyCode.F
+			prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 			prompt.HoldDuration = 0
 			prompt.MaxActivationDistance = 12
 			prompt.RequiresLineOfSight = false
@@ -766,7 +830,8 @@ function Hub.init()
 			end)
 		end
 		prepareVan()
-		-- The booth rigs: each client dresses them in its own player's loadout (client/BoothMannequins.lua).
+		-- Round 25: the booth keepers. Each rig gives way to a named R15 NPC (Config.BoothNpcs); the client draws
+		-- the close-range name tag (client/BoothMannequins.lua).
 		for _, station in view.stations do
 			local rig = station.rig
 			if rig then
@@ -775,6 +840,7 @@ function Hub.init()
 				if root and root:IsA("BasePart") then
 					root.Anchored = true
 				end
+				task.spawn(buildBoothNpc, rig, station.tab)
 			end
 		end
 	end

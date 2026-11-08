@@ -179,7 +179,7 @@ function Minigames.init()
 		prompt.Name = "Prompt"
 		prompt.ActionText = "OPEN"
 		prompt.ObjectText = string.upper(name)
-		prompt.KeyboardKeyCode = Enum.KeyCode.F
+		prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 		prompt.HoldDuration = 0
 		prompt.MaxActivationDistance = 9
 		prompt.RequiresLineOfSight = false

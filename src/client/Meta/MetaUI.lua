@@ -149,6 +149,73 @@ function MetaUI.hover(b: GuiButton, scale: number?)
 	end)
 end
 
+-- Round 25: the success moment for an upgrade / unlock / buy, on the button just pressed (MetaUI.lastPress): a
+-- white flash over the button, a ring that swells off it, two waves of sparks (the button's colour and gold) and
+-- the upgrade confirm. Drawn on a full-screen layer in the button's ScreenGui, so the re-render that replaces the
+-- button does not cut it short.
+MetaUI.lastPress = nil :: { button: GuiObject, color: Color3, at: number }?
+function MetaUI.successJuice(big: boolean?)
+	local lp = MetaUI.lastPress
+	MetaUI.lastPress = nil
+	if not lp or os.clock() - lp.at > 3 then
+		return
+	end
+	local b = lp.button
+	local gui = b:FindFirstAncestorOfClass("ScreenGui")
+	if not gui then
+		return
+	end
+	local S = UI.S
+	local layer = UI.frame({
+		Name = "SuccessJuice",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 300,
+		Parent = gui,
+	})
+	local origin = layer.AbsolutePosition
+	local pos = b.AbsolutePosition - origin
+	local size = b.AbsoluteSize
+	local center = UDim2.fromOffset(pos.X + size.X / 2, pos.Y + size.Y / 2)
+	-- Flash over the button.
+	local flash = UI.frame({
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.15,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = center,
+		Size = UDim2.fromOffset(size.X, size.Y),
+		ZIndex = 301,
+		Parent = layer,
+	})
+	UI.corner(flash, S(6))
+	UI.tween(flash, { BackgroundTransparency = 1, Size = UDim2.fromOffset(size.X * 1.12, size.Y * 1.4) }, 0.35)
+	-- A ring swelling off it.
+	local ring = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = center,
+		Size = UDim2.fromOffset(size.X, size.Y),
+		ZIndex = 301,
+		Parent = layer,
+	})
+	UI.corner(ring, S(8))
+	local st = UI.stroke(ring, Theme.Colors.gold, S(4), 0)
+	UI.tween(ring, { Size = UDim2.fromOffset(size.X + S(90), size.Y + S(70)) }, 0.5, Enum.EasingStyle.Quad)
+	UI.tween(st, { Transparency = 1, Thickness = S(1) }, 0.5, Enum.EasingStyle.Quad)
+	local Fx = require(Client:WaitForChild("Store"):WaitForChild("Fx")) :: any
+	local n = if big then Config.MetaSuccessSparks * 1.5 else Config.MetaSuccessSparks
+	Fx.burst(layer, center, lp.color, math.floor(n * 0.6), 302)
+	task.delay(0.06, function()
+		if layer.Parent then
+			Fx.burst(layer, center, Theme.Colors.gold, math.floor(n * 0.5), 302)
+		end
+	end)
+	UI.sound(Theme.Sounds.upgrade, 1, 0.5)
+	task.delay(1.2, function()
+		layer:Destroy()
+	end)
+end
+
 -- A badge popping in (equip): from small to full with an overshoot, plus a few green sparks.
 function MetaUI.popIn(obj: GuiObject, sparksIn: GuiObject?)
 	UI.punch(obj, 0.2, 0.4)
@@ -366,13 +433,13 @@ function MetaUI.icon(
 	model: IconModel?
 ): GuiObject
 	if model and (kind == "gun" or kind == "mask" or kind == "wrap") then
-		-- UI art pass: the real model, turning while hovered (a detail well's turns all the time). The drawn
-		-- shapes below stay as the fallback when no item is known.
+		-- UI art pass: the real model (a detail well's turns all the time). Round 25: grid tiles hold still (the
+		-- hover sway re-ran on every re-render and read as blinking). The drawn shapes below stay as the fallback.
 		local o: ModelIcon.Opts = {
 			rarity = model.rarity,
 			wrapId = model.wrapId,
 			archetype = model.archetype,
-			motion = model.motion or "hover",
+			motion = model.motion,
 		}
 		if kind == "gun" then
 			return ModelIcon.weapon(parent, model.id, size, o)
@@ -634,6 +701,40 @@ end
 
 -- A grid tile: rarity block, name on top, icon in the middle. Owned tiles carry nothing else at the bottom (the
 -- weapon tab adds its mastery bar there); unowned tiles show the Gold price or a small source chip and dim.
+-- The tile's outline for its state: green when equipped (the strongest state), white when selected, a faint dark
+-- edge otherwise; selected and equipped adds a white ring inside the green one. Round 25: callable on a live tile,
+-- so a tap re-styles two tiles instead of rebuilding the grid.
+function MetaUI.tileState(b: GuiObject, selected: boolean, equipped: boolean)
+	local S = UI.S
+	local stroke = b:FindFirstChild("TileOutline") :: UIStroke?
+	if not stroke then
+		stroke = UI.stroke(b, Theme.Colors.black, S(1.5), 0.4) :: any;
+		(stroke :: UIStroke).Name = "TileOutline"
+	end
+	local st = stroke :: UIStroke
+	st.Color = if equipped then MetaUI.Green elseif selected then Theme.Colors.white else Theme.Colors.black
+	-- (UI.stroke caps text-button outlines at Theme.TextStrokeMax: same look as the tile always had)
+	st.Thickness =
+		math.min(S(if equipped then 3.5 elseif selected then 3 else 1.5), math.max(1, S(Theme.TextStrokeMax)))
+	st.Transparency = if equipped or selected then 0 else 0.4
+	local ring = b:FindFirstChild("SelectRing")
+	if equipped and selected and not ring then
+		local r = UI.frame({
+			Name = "SelectRing",
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -S(5), 1, -S(5)),
+			ZIndex = 5,
+			Parent = b,
+		})
+		UI.corner(r, S(6))
+		UI.stroke(r, Theme.Colors.white, S(2), 0)
+	elseif ring and not (equipped and selected) then
+		ring:Destroy()
+	end
+end
+
 function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 	local S = UI.S
 	local w = o.size
@@ -649,27 +750,7 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 		Parent = parent,
 	})
 	UI.corner(b, S(8))
-	-- Outline: green when equipped (the strongest state), white when selected, a faint dark edge otherwise.
-	local outline = if o.equipped then MetaUI.Green elseif o.selected then Theme.Colors.white else Theme.Colors.black
-	UI.stroke(
-		b,
-		outline,
-		S(if o.equipped then 3.5 elseif o.selected then 3 else 1.5),
-		if o.equipped or o.selected then 0 else 0.4
-	)
-	if o.equipped and o.selected then
-		-- Selected and equipped: a white ring inside the green one.
-		local ring = UI.frame({
-			BackgroundTransparency = 1,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.new(1, -S(5), 1, -S(5)),
-			ZIndex = 5,
-			Parent = b,
-		})
-		UI.corner(ring, S(6))
-		UI.stroke(ring, Theme.Colors.white, S(2), 0)
-	end
+	MetaUI.tileState(b, o.selected == true, o.equipped == true)
 	-- A soft dark band under the name so it reads on every rarity color.
 	local band = UI.frame({
 		BackgroundColor3 = Theme.Colors.black,
@@ -912,6 +993,8 @@ function MetaUI.button(parent: Instance, order: number, text: string, kind: stri
 	if enabled and onPress then
 		b.Activated:Connect(function()
 			UI.punch(b, 0.95, 0.15)
+			-- Round 25: remembered so a successful upgrade / unlock bursts from where it was pressed.
+			MetaUI.lastPress = { button = b, color = bg, at = os.clock() }
 			onPress()
 		end)
 		MetaUI.hover(b, 1.03)
@@ -1044,19 +1127,21 @@ function MetaUI.heading(card: Frame, order: number, name: string, sub: string, s
 	local S = UI.S
 	local row = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(30)),
+		Size = UDim2.new(1, 0, 0, S(36)),
 		LayoutOrder = order,
 		ClipsDescendants = true,
 		Parent = card,
 	})
 	UI.list(row, Enum.FillDirection.Horizontal, S(10), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Bottom)
+	-- Round 25: the name in the house display face (condensed caps, like MASTERY III and the HUD's gun name),
+	-- not the mixed-case body face.
 	UI.text({
-		Text = name,
-		FontFace = Theme.Fonts.body,
-		TextSize = S(24),
+		Text = string.upper(name),
+		FontFace = Theme.Fonts.display,
+		TextSize = S(28),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.fromOffset(0, S(28)),
+		Size = UDim2.fromOffset(0, S(34)),
 		AutomaticSize = Enum.AutomaticSize.X,
 		LayoutOrder = 1,
 		Parent = row,
@@ -1160,8 +1245,7 @@ function MetaUI.iconPills(
 		if e.glyph then
 			Icons.fit(iconArea, e.glyph, 0.7, Theme.Colors.red, Theme.Colors.white)
 		elseif e.weaponId then
-			local vp =
-				ModelIcon.weapon(iconArea, e.weaponId, UDim2.fromScale(1, 1), { motion = "hover", hoverTarget = b })
+			local vp = ModelIcon.weapon(iconArea, e.weaponId, UDim2.fromScale(1, 1), {}) -- Round 25: still (tiny, not worth the motion)
 			vp.BackgroundTransparency = 1
 		else
 			-- ALL: a 2x2 grid of squares.

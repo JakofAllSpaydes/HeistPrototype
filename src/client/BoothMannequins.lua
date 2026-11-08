@@ -1,172 +1,149 @@
 --!strict
--- Brief 8: the warehouse booths' mannequins. Each booth's rig (the server tags it with a BoothTab attribute) is
--- shown, on this client only, as a copy of your own character: your mask, your class idle, your starter gun in hand
--- with its wrap, the way the store's mannequin is dressed. Two players each see their own loadout on the same rig.
--- Re-dressed when the character loads and whenever the equipped class, mask, starter gun or wrap changes in the hub.
--- Config.BoothMannequin false leaves the asset's rigs as they are.
+-- The warehouse booth keepers' name tags. Round 25: the booths are run by three named R15 NPCs the server builds
+-- (Hub.lua buildBoothNpc, Config.BoothNpcs; they replaced brief 8's copies of your own character). Each gets a
+-- small tag over its head in the house style (the name in the display face, the role under it) that shows only
+-- right by the stall (Config.BoothNpcTagFadeNear..Far, fading) and hides while any menu is open (weapons, classes, customize,
+-- the shop: ClientState.blocked()).
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
-local Classes = require(Shared:WaitForChild("Classes"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
-local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
+local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
+local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 
 local BoothMannequins = {}
 
 local player = Players.LocalPlayer
-local copies: { [Model]: Model } = {} -- booth rig -> this client's copy standing in for it
-local token = 0
+-- Each faded piece with its own full-opacity transparency (the fade scales from there).
+type Fade = { obj: Instance, prop: string, base: number }
+type Tag = { gui: BillboardGui, fades: { Fade }, head: BasePart, alpha: number }
+local tags: { [Model]: Tag } = {}
+local pending: { [Model]: boolean } = {}
 
-local function rigs(): { Model }
-	local out = {}
-	local hub = Workspace:FindFirstChild("Hub")
-	if not hub then
-		return out
-	end
-	for _, d in hub:GetDescendants() do
-		if d:IsA("Model") and d:GetAttribute("BoothTab") ~= nil then
-			table.insert(out, d)
-		end
-	end
-	return out
-end
-
--- The asset rig disappears locally (the copy stands where it stood).
-local function hideRig(rig: Model)
-	for _, d in rig:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.LocalTransparencyModifier = 1
-		elseif d:IsA("Decal") then
-			d.Transparency = 1
-		end
-	end
-end
-
-local function copyCharacter(): Model?
-	local char = player.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") then
-		return nil
-	end
-	char.Archivable = true
-	local ok, clone = pcall(function()
-		return char:Clone()
-	end)
-	char.Archivable = false
-	if not ok or not clone then
-		return nil
-	end
-	local model = clone :: Model
-	model.Name = "BoothMannequin"
-	for _, d in model:GetDescendants() do
-		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("BillboardGui") or d:IsA("ForceField") then
-			d:Destroy()
-		elseif d:IsA("BasePart") then
-			d.LocalTransparencyModifier = 0
-			d.CanCollide = false
-			d.CanQuery = false
-			d.CanTouch = false
-		end
-	end
-	local hum = model:FindFirstChildOfClass("Humanoid")
-	if hum then
-		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-		hum.PlatformStand = false
-	end
-	return model
-end
-
-local function dress()
-	token += 1
-	for rig, copy in copies do
-		copy:Destroy()
-		copies[rig] = nil
-	end
-	if not Config.BoothMannequin then
+local function addTag(npc: Model)
+	if tags[npc] or pending[npc] then
 		return
 	end
-	local sync = ClientState.sync
-	local classId = (sync and sync.classId) or Classes.Default
-	for _, rig in rigs() do
-		local rigRoot = rig:FindFirstChild("HumanoidRootPart")
-		if not rigRoot or not rigRoot:IsA("BasePart") then
-			continue
-		end
-		local copy = copyCharacter()
-		if not copy then
-			return
-		end
-		hideRig(rig)
-		local hrp = copy:FindFirstChild("HumanoidRootPart") :: BasePart
-		hrp.Anchored = true
-		copy.PrimaryPart = hrp
-		-- Feet on the rig's floor, facing the way the rig faces.
-		local box, size = rig:GetBoundingBox()
-		local floor = box.Position.Y - size.Y / 2
-		local hum = copy:FindFirstChildOfClass("Humanoid")
-		local height = if hum then hum.HipHeight + hrp.Size.Y / 2 else 3
-		local look = rigRoot.CFrame.LookVector * Vector3.new(1, 0, 1)
-		local at = Vector3.new(rigRoot.Position.X, floor + height, rigRoot.Position.Z)
-		copy:PivotTo(CFrame.lookAt(at, at + (if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, 1))))
-		copy.Parent = rig.Parent
-		copies[rig] = copy
-		local id = Config.ClassIdleAnimationId[classId] or Config.ClassIdleAnimationId[Classes.Default]
-		if id then
-			local track = RunStartUI.playAnim(copy, id, nil)
-			if track then
-				track.Looped = true
-				track.Priority = Enum.AnimationPriority.Idle
-			end
+	pending[npc] = true
+	local head = npc:WaitForChild("Head", 10) :: BasePart?
+	pending[npc] = nil
+	if not head or not npc.Parent or tags[npc] then
+		return
+	end
+	local S = UI.S
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "KeeperTag"
+	gui.Adornee = head
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Size = UDim2.fromOffset(S(260), S(64))
+	gui.StudsOffset = Vector3.new(0, Config.BoothNpcTagOffset, 0)
+	-- Round 25: no MaxDistance cut-off (it measured from the camera and blinked at the edge) and no CanvasGroup or
+	-- Enabled toggling at the range edge (both flashed): every piece's own transparency fades with the
+	-- character's distance (BoothNpcTagFadeNear..Far). Enabled only follows the menus.
+	gui.MaxDistance = 10000
+	gui.ResetOnSpawn = false
+	local plate = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.15,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(0, S(58)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Parent = gui,
+	})
+	UI.corner(plate, S(3))
+	UI.stroke(plate, Theme.Colors.gold, S(1), 0.5)
+	UI.pad(plate, S(16), 0, S(16), 0)
+	UI.list(plate, Enum.FillDirection.Vertical, 0, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+	UI.text({
+		Text = string.upper(tostring(npc:GetAttribute("BoothNpc") or "")),
+		FontFace = Theme.Fonts.display,
+		TextSize = S(28),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromOffset(0, S(30)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 1,
+		Parent = plate,
+	})
+	UI.text({
+		Text = string.upper(tostring(npc:GetAttribute("BoothRole") or "")),
+		FontFace = Theme.Fonts.display,
+		TextSize = S(16),
+		TextColor3 = Theme.Colors.gold,
+		Size = UDim2.fromOffset(0, S(19)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 2,
+		Parent = plate,
+	})
+	local fades: { Fade } = {}
+	for _, d in gui:GetDescendants() do
+		if d:IsA("TextLabel") then
+			table.insert(fades, { obj = d, prop = "TextTransparency", base = d.TextTransparency })
+		elseif d:IsA("Frame") then
+			table.insert(fades, { obj = d, prop = "BackgroundTransparency", base = d.BackgroundTransparency })
+		elseif d:IsA("UIStroke") then
+			table.insert(fades, { obj = d, prop = "Transparency", base = d.Transparency })
 		end
 	end
-end
-
--- Re-dress a moment after a change (the server puts the new mask and gun on the character first).
-local function soon()
-	token += 1
-	local my = token
-	task.delay(0.6, function()
-		if my == token and ClientState.inHub() then
-			dress()
+	for _, f in fades do
+		(f.obj :: any)[f.prop] = 1
+	end
+	gui.Enabled = false
+	gui.Parent = player:WaitForChild("PlayerGui")
+	tags[npc] = { gui = gui, fades = fades, head = head, alpha = 0 }
+	npc.AncestryChanged:Connect(function()
+		if not npc:IsDescendantOf(Workspace) then
+			gui:Destroy()
+			tags[npc] = nil
 		end
 	end)
-end
-
-local function loadoutKey(): string
-	local sync = ClientState.sync :: any
-	if not sync then
-		return ""
-	end
-	local profile = sync.profile
-	local held = sync.held
-	return table.concat({
-		tostring(sync.classId),
-		tostring(held and held.weaponId),
-		tostring(held and held.wrapColor),
-		tostring(profile and profile.masks and profile.masks.equipped),
-		tostring(sync.waveState == "Hub"),
-	}, "|")
 end
 
 function BoothMannequins.init()
-	local last = ""
-	ClientState.Changed:Connect(function()
-		local key = loadoutKey()
-		if key ~= last then
-			last = key
-			soon()
+	-- Round 25: every keeper the server tags GHSKeeper (the three booth NPCs and MARLOW at the job board).
+	local function try(inst: Instance)
+		if inst:IsA("Model") then
+			task.spawn(addTag, inst)
+		end
+	end
+	for _, inst in CollectionService:GetTagged("GHSKeeper") do
+		try(inst)
+	end
+	CollectionService:GetInstanceAddedSignal("GHSKeeper"):Connect(try)
+	-- Fades with your distance; hidden while a menu is open (and in a run, where the hub is far away anyway).
+	RunService.RenderStepped:Connect(function()
+		local show = not ClientState.blocked() and ClientState.inHub()
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local near, far = Config.BoothNpcTagFadeNear, Config.BoothNpcTagFadeFar
+		for _, t in tags do
+			if t.gui.Enabled ~= show then
+				t.gui.Enabled = show
+			end
+			local alpha = 0
+			if root then
+				local d = (t.head.Position - root.Position).Magnitude
+				alpha = 1 - math.clamp((d - near) / math.max(far - near, 0.1), 0, 1)
+			end
+			-- Smoothed, and only written when it moves, so nothing re-renders while you stand still.
+			local a = t.alpha + (alpha - t.alpha) * 0.25
+			if math.abs(a - alpha) < 0.005 then
+				a = alpha
+			end
+			if a ~= t.alpha then
+				t.alpha = a
+				for _, f in t.fades do
+					(f.obj :: any)[f.prop] = 1 - (1 - f.base) * a
+				end
+			end
 		end
 	end)
-	player.CharacterAdded:Connect(function(char)
-		char:WaitForChild("HumanoidRootPart", 10)
-		task.wait(1)
-		soon()
-	end)
-	if player.Character then
-		soon()
-	end
 end
 
 return BoothMannequins

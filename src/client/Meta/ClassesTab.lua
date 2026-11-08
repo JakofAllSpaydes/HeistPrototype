@@ -431,11 +431,8 @@ function ClassesTab.render(scene: any)
 		lock.AnchorPoint = Vector2.new(1, 0)
 		lock.Position = UDim2.new(1, -S(10), 0, S(10))
 	end
-	local kit = {}
-	for _, a in class.abilities do
-		table.insert(kit, string.upper(a.name))
-	end
-	MetaUI.heading(card, 2, class.name, table.concat(kit, " · "))
+	-- Round 25: the name alone (the three abilities are already the rows on the left).
+	MetaUI.heading(card, 2, class.name, "")
 	local m = profile and profile.mastery and profile.mastery.classes and profile.mastery.classes[class.id]
 	masteryBlock(card, 5, class.id, if m then (tonumber(m.xp) or 0) else 0)
 	if equipped == class.id then

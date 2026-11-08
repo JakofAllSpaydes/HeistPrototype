@@ -28,8 +28,10 @@ local ClientState = {
 	downed = false, -- the local player is down: crawl, no fire, no buys
 	spectating = false, -- bled out: the camera rides a teammate
 	viewMuzzleAtt = nil :: Attachment?, -- Round 24i: the first-person viewmodel's muzzle (local tracers start on it)
+	dealerFocus = false, -- Round 25: a dealer stand / prop is what the interact key does now (gun prompts step aside)
 	sprinting = false, -- Round 24aa prototype: Shift held while moving (no fire, no ADS, faster)
 	chargeProgress = 0, -- Round 24v: 0..1 the plasma charge (the crosshair ring)
+	fpWallK = 0, -- Round 25: 0..1 a wall right ahead of the first-person eye (the viewmodel lowers)
 	fpAdsT = 0, -- Round 24r: 0..1 how far the first-person viewmodel is into ADS (the scope overlay fades with it)
 	firstPerson = false, -- Round 24c: the gameplay camera is in first person (FirstPersonView draws the viewmodel)
 	cameraMode = "gameplay", -- gameplay | spectate | cinematic: who drives the camera
@@ -39,6 +41,23 @@ local ClientState = {
 	requestCameraYaw = nil :: number?, -- a sequence hands the gameplay camera back facing this yaw
 	musicDuck = false, -- Round 19d: a big moment (the boss cutscene) holds the soundtrack down (Music.lua)
 }
+
+-- Round 25: how squarely the player is looking at a world point, for choosing between interactables in reach
+-- (lower is better): degrees off the camera's look line plus InteractDistWeight per stud from the character.
+function ClientState.aimScore(pos: Vector3): number
+	local cam = Workspace.CurrentCamera
+	local char = game:GetService("Players").LocalPlayer.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not cam then
+		return math.huge
+	end
+	local to = pos - cam.CFrame.Position
+	local angle = if to.Magnitude > 0.01
+		then math.deg(math.acos(math.clamp(cam.CFrame.LookVector:Dot(to.Unit), -1, 1)))
+		else 0
+	local dist = if root then (pos - root.Position).Magnitude else 0
+	return angle + dist * Config.InteractDistWeight
+end
 
 function ClientState.setAds(on: boolean)
 	if ClientState.ads == on then

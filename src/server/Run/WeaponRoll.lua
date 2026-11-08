@@ -105,7 +105,9 @@ function WeaponRoll.alignBeam(gun: BasePart)
 		return
 	end
 	a0.Position = gun.CFrame:PointToObjectSpace(gun.Position + Vector3.new(0, 0.2, 0))
-	a1.Position = gun.CFrame:PointToObjectSpace(gun.Position + Vector3.new(0, 14, 0))
+	-- Round 25: stops at the ceiling (a gun on a lower floor no longer shines through the one above).
+	local tall = Ground.ceiling(gun.Position, Config.GunBeaconHeight)
+	a1.Position = gun.CFrame:PointToObjectSpace(gun.Position + Vector3.new(0, math.max(tall, 0.6), 0))
 end
 
 -- A ground gun: rarity-colored Part, vertical beam, ProximityPrompt. Tags are drawn by the client.
@@ -158,7 +160,7 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	prompt.Name = "Prompt"
 	prompt.ActionText = opts.promptText or "SWAP"
 	prompt.ObjectText = string.format("%s · %s", weapon.displayName, Rarity.name(opts.rarity))
-	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 	prompt.MaxActivationDistance = Config.InteractRadius
 	prompt.HoldDuration = 0
 	prompt.RequiresLineOfSight = false

@@ -71,8 +71,16 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 	local function boost(id: string): number
 		return 1 + math.max(0, pct(upgrades, id))
 	end
+	-- Round 25: the archetype synergies raise their own guns' damage: ELEMENTAL POWER an Elemental gun's,
+	-- DEMOLITION an Explosive gun's (it raises Frag / Claymore / Splash through explosiveDmgMult too).
+	local archMult = if w.archetype == "Elemental"
+		then elemMult
+		elseif w.archetype == "Explosive" then boost("Demolition")
+		else 1
 	return {
-		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage"), held.level) * b.damageMult,
+		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage"), held.level)
+			* b.damageMult
+			* archMult,
 		fireRate = base.fireRate * mult(upgrades, "FireRate") * b.fireRateMult,
 		magSize = math.max(1, math.round(base.magSize * mult(upgrades, "MagSize"))),
 		reloadTime = base.reloadTime / (mult(upgrades, "ReloadSpeed") * b.reloadSpeedMult),
@@ -103,6 +111,7 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		healMult = boost("HealPower"),
 		deadEyeTimeMult = boost("DeadEyeTime"),
 		blastRadiusMult = boost("BlastRadius"),
+		explosiveDmgMult = boost("Demolition"),
 	}
 end
 

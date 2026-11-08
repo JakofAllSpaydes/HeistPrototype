@@ -14,7 +14,14 @@ local serial = 0
 
 -- `from` may also be a function returning the start each frame (first person: a point fixed in camera space,
 -- so the line moves with the view but not with the viewmodel's recoil flip).
-function Tracer.draw(from: Attachment | Vector3 | () -> Vector3, to: Vector3, color: Color3?, thin: boolean?)
+function Tracer.draw(
+	from: Attachment | Vector3 | () -> Vector3,
+	to: Vector3,
+	color: Color3?,
+	thin: boolean?,
+	life: number?,
+	aimed: boolean?
+)
 	local a1 = Instance.new("Attachment")
 	a1.WorldPosition = to
 	a1.Parent = Workspace.Terrain
@@ -48,12 +55,18 @@ function Tracer.draw(from: Attachment | Vector3 | () -> Vector3, to: Vector3, co
 	-- First person: the start is a lens-width from the eye, so the line is drawn thin.
 	beam.Width0 = if thin then 0.035 else 0.12
 	beam.Width1 = if thin then 0.03 else 0.05
+	if aimed then
+		-- Round 25: an aimed first-person tracer widens with distance, so it still reads through a magnified scope.
+		local startPos = (a0 :: Attachment).WorldPosition
+		beam.Width0 = 0.03
+		beam.Width1 = math.clamp((to - startPos).Magnitude * 0.005, 0.05, 0.6)
+	end
 	beam.FaceCamera = true
 	beam.LightEmission = 1
 	beam.Color = ColorSequence.new(color or Tracer.Color)
 	beam.Transparency = NumberSequence.new(0.1)
 	beam.Parent = a1
-	task.delay(LIFE, function()
+	task.delay(life or LIFE, function()
 		if follow then
 			RunService:UnbindFromRenderStep(follow)
 		end

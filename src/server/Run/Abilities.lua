@@ -562,7 +562,7 @@ local function startBuff(player: Player, state: PlayerState.State, id: string, d
 		id,
 		level(state, id),
 		math.round(healed),
-		duration,
+		math.round(duration),
 		b.damageMult,
 		b.moveSpeedMult,
 		b.fireRateMult,
@@ -580,7 +580,7 @@ local function adrenaline(player: Player, state: PlayerState.State, char: Model)
 		heal = if hum then hum.MaxHealth * Config.StimMasteryHealPct else 0
 	end
 	state.stimExtended = 0
-	startBuff(player, state, "stim", Config.AdrenalineDuration, heal)
+	startBuff(player, state, "stim", Config.AdrenalineDuration * PlayerState.abilityDurationAmp(state), heal)
 end
 
 ------------------------------------------------------------------ Fields (med bag, molotov, drum fire)
@@ -937,7 +937,7 @@ local function stimShot(player: Player, state: PlayerState.State, _char: Model)
 		player,
 		state,
 		"stimshot",
-		Config.StimShotDuration,
+		Config.StimShotDuration * PlayerState.abilityDurationAmp(state),
 		grown("stimshot", "Heal", Config.StimShotHeal, level(state, "stimshot"))
 			* PlayerState.abilityPower(state)
 			* PlayerState.computed(state).healMult -- HEALING (DOC synergy card)
@@ -1074,7 +1074,9 @@ local function placeClaymore(player: Player, state: PlayerState.State, char: Mod
 	model.Parent = folder
 	local lv = level(state, "claymore")
 	local s = newStructure("claymore", player, model, body, Config.ClaymoreLifetime)
-	s.dmg = grown("claymore", "ClaymoreDamage", Config.ClaymoreDamage, lv) * PlayerState.abilityPower(state)
+	s.dmg = grown("claymore", "ClaymoreDamage", Config.ClaymoreDamage, lv)
+		* PlayerState.abilityPower(state)
+		* PlayerState.computed(state).explosiveDmgMult -- DEMOLITION (explosive synergy)
 	s.range = Config.ClaymoreBlastRadius * PlayerState.computed(state).blastRadiusMult -- BLAST RADIUS (INITIATE synergy)
 	s.armedAt = now() + Config.ClaymoreArmSec
 	placed(s, Color3.fromHex("4D9FE8"), 3)
@@ -1115,13 +1117,20 @@ end
 
 local function deadEye(player: Player, state: PlayerState.State, _char: Model)
 	-- DEAD EYE TIME (SHARPSHOOTER synergy card).
-	startBuff(player, state, "deadeye", Config.DeadEyeDuration * PlayerState.computed(state).deadEyeTimeMult, 0)
+	startBuff(
+		player,
+		state,
+		"deadeye",
+		Config.DeadEyeDuration * PlayerState.computed(state).deadEyeTimeMult * PlayerState.abilityDurationAmp(state),
+		0
+	)
 end
 
 local function throwFlashbang(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "flashbang")
-	local radius = grown("flashbang", "FlashRadius", Config.FlashRadius, lv)
-	local stunSec = grown("flashbang", "StunDuration", Config.StunDuration, lv)
+	-- Round 25: ABILITY POWER widens the flash and lengthens the stun (soft shares, AbilityPower*Share).
+	local radius = grown("flashbang", "FlashRadius", Config.FlashRadius, lv) * PlayerState.abilityRadiusAmp(state)
+	local stunSec = grown("flashbang", "StunDuration", Config.StunDuration, lv) * PlayerState.abilityDurationAmp(state)
 	throw(char, COLOR.grey, false, function(pos: Vector3)
 		local victims = Enemy.within(pos, radius)
 		for _, model in victims do
@@ -1280,7 +1289,9 @@ end
 -- thrown out of the blast.
 local function throwFrag(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "frag")
-	local dmg = grown("frag", "FragDamage", Config.FragDamage, lv) * PlayerState.abilityPower(state)
+	local dmg = grown("frag", "FragDamage", Config.FragDamage, lv)
+		* PlayerState.abilityPower(state)
+		* PlayerState.computed(state).explosiveDmgMult -- DEMOLITION (explosive synergy)
 	local radius = Config.FragRadius * PlayerState.computed(state).blastRadiusMult -- BLAST RADIUS (INITIATE synergy)
 	throw(char, Color3.fromRGB(60, 70, 50), false, function(pos: Vector3)
 		do
@@ -1318,9 +1329,13 @@ end
 ------------------------------------------------------------------ ENGINEER: Overclock (brief 5)
 local function startOverclock(player: Player, state: PlayerState.State, _char: Model)
 	local lv = level(state, "overclock")
-	local mult = 1 + grown("overclock", "RatePct", (Config.OverclockRateMult - 1) * 100, lv) / 100
+	local mult = 1
+		+ PlayerState.abilityBuffAmp(state)
+			* grown("overclock", "RatePct", (Config.OverclockRateMult - 1) * 100, lv)
+			/ 100
 	local shield = grown("overclock", "ShieldHp", Config.OverclockShieldHp, lv) * PlayerState.abilityPower(state)
-	local untilT = now() + Config.OverclockSec
+	local ocSec = Config.OverclockSec * PlayerState.abilityDurationAmp(state)
+	local untilT = now() + ocSec
 	local wasOn = overclocked()
 	overclock.untilT = math.max(overclock.untilT, untilT)
 	overclock.mult = if wasOn then math.max(overclock.mult, mult) else mult
@@ -1347,7 +1362,7 @@ local function startOverclock(player: Player, state: PlayerState.State, _char: M
 		lv,
 		mult,
 		math.round(shield),
-		Config.OverclockSec
+		math.round(ocSec)
 	)
 end
 
@@ -1356,21 +1371,25 @@ end
 -- (Round 16: a slow replaced the old bonus damage). The boss takes EagleEyeBossSlowMult of the slow.
 local function eagleEye(player: Player, state: PlayerState.State, char: Model)
 	local lv = level(state, "eagleeye")
-	local radius = grown("eagleeye", "EagleEyeRadius", Config.EagleEyeRadius, lv)
-	local slow =
-		math.min(grown("eagleeye", "EagleEyeSlowPct", Config.EagleEyeSlowPct * 100, lv) / 100, Config.EagleEyeSlowCap)
+	-- Round 25: ABILITY POWER: a wider sweep, a stronger slow (still under EagleEyeSlowCap), a longer mark.
+	local radius = grown("eagleeye", "EagleEyeRadius", Config.EagleEyeRadius, lv) * PlayerState.abilityRadiusAmp(state)
+	local slow = math.min(
+		grown("eagleeye", "EagleEyeSlowPct", Config.EagleEyeSlowPct * 100, lv) / 100 * PlayerState.abilityBuffAmp(state),
+		Config.EagleEyeSlowCap
+	)
+	local markSec = Config.EagleEyeSec * PlayerState.abilityDurationAmp(state)
 	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then
 		return
 	end
 	local victims = Enemy.within(root.Position, radius)
 	for _, model in victims do
-		Enemy.mark(model, Config.EagleEyeSec)
+		Enemy.mark(model, markSec)
 		local d = Enemy.data(model)
 		local boss = d ~= nil and d.row.boss == true
-		Enemy.slow(model, 1 - slow * (if boss then Config.EagleEyeBossSlowMult else 1), Config.EagleEyeSec)
+		Enemy.slow(model, 1 - slow * (if boss then Config.EagleEyeBossSlowMult else 1), markSec)
 	end
-	state.abilityActive.eagleeye = now() + Config.EagleEyeSec
+	state.abilityActive.eagleeye = now() + markSec
 	state.dirty = true
 	World.fireRun("EagleEye", { position = root.Position, radius = radius, owner = player.UserId })
 	Log.event(
@@ -1379,7 +1398,7 @@ local function eagleEye(player: Player, state: PlayerState.State, char: Model)
 		player.Name,
 		lv,
 		#victims,
-		Config.EagleEyeSec,
+		math.round(markSec),
 		math.round(slow * 100),
 		math.round(radius)
 	)

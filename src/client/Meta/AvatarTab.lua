@@ -11,6 +11,7 @@ local Masks = require(Shared:WaitForChild("Masks"))
 local Emotes = require(Shared:WaitForChild("Emotes"))
 local Prices = require(Shared:WaitForChild("Prices"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -152,9 +153,8 @@ local function renderMasks(scene: any, panel: Frame)
 	if not selectedMask then
 		selectedMask = equipped
 	end
-	local mask = Masks.ById[selectedMask :: string] or Masks.ById[Masks.Default]
-	local isOwned = profile ~= nil and profile.masks.owned[mask.id] == true
-	scene.preview.mask(mask.color, mask.shape, mask.id)
+	local first = Masks.ById[selectedMask :: string] or Masks.ById[Masks.Default]
+	scene.preview.mask(first.color, first.shape, first.id)
 
 	local rightW = if scene.mobile then S(200) else S(250)
 	local grid, card = MetaUI.columns(panel, rightW, S(44), "masks")
@@ -170,6 +170,9 @@ local function renderMasks(scene: any, panel: Frame)
 	ownedList, unownedList = favFilter(profile, "mask", ownedList), favFilter(profile, "mask", unownedList)
 	favSort(profile, "mask", ownedList)
 	favSort(profile, "mask", unownedList)
+	-- Round 25: a tap re-styles two tiles and rebuilds the detail card only (no grid rebuild, no blink).
+	local tiles: { [string]: { b: TextButton, equipped: boolean } } = {}
+	local renderDetail: () -> ()
 	local function tilesFor(list: { Masks.Mask }, header: string, order: number)
 		MetaUI.header(grid, order, header, #list)
 		if #list == 0 then
@@ -194,56 +197,73 @@ local function renderMasks(scene: any, panel: Frame)
 				source = if not own then m.saleType else nil,
 				pop = if isEq and equipPopFor(m.id) then "equip" elseif popSelect == m.id then "select" else nil,
 			})
+			tiles[m.id] = { b = b, equipped = isEq }
 			MetaUI.favHeart(b, isFav(profile, "mask:" .. m.id), function()
 				toggleFav(scene, profile, "mask", m.id)
 			end)
 			b.Activated:Connect(function()
-				if selectedMask ~= m.id then
-					popSelect = m.id
+				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
+				if selectedMask == m.id then
+					return
+				end
+				local old = selectedMask and tiles[selectedMask :: string]
+				if old and old.b.Parent then
+					MetaUI.tileState(old.b, false, old.equipped)
 				end
 				selectedMask = m.id
-				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
-				scene.refresh()
+				MetaUI.tileState(b, true, isEq)
+				UI.punch(b, Config.MetaSelectPopScale, 0.25)
+				scene.preview.mask(m.color, m.shape, m.id)
+				renderDetail()
 			end)
+		end
+	end
+	-- Detail: the art box (rarity on it, the equipped check), name, the accessory type, where it comes from.
+	renderDetail = function()
+		for _, c in card:GetChildren() do
+			if c:IsA("GuiObject") then
+				c:Destroy()
+			end
+		end
+		local mask = Masks.ById[selectedMask :: string] or Masks.ById[Masks.Default]
+		local isOwned = profile ~= nil and profile.masks.owned[mask.id] == true
+		local ic =
+			MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color), { id = mask.id })
+		local well = ic.Parent :: Frame
+		MetaUI.rarityChip(well, mask.rarity)
+		MetaUI.wellSource(well, mask.saleType) -- Round 24af
+		if equipped == mask.id then
+			MetaUI.wellCheck(well, equipPopFor(mask.id))
+		end
+		MetaUI.heading(card, 2, mask.name, string.upper(mask.type) .. " ACCESSORY")
+		MetaUI.statRow(card, 10, "From", MetaUI.sourceName(mask.saleType, "mask", mask.id), nil)
+		if equipped == mask.id then
+			MetaUI.equippedButton(card, 20)
+		elseif isOwned then
+			MetaUI.button(card, 20, "EQUIP", "green", function()
+				local r = scene.request("equipMask", { maskId = mask.id })
+				if r.ok then
+					markEquipPop(mask.id)
+					scene.preview.commit()
+					scene.refresh()
+				end
+			end)
+		elseif mask.saleType == "Direct" then
+			MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(mask.price or Prices.mask), "green", function()
+				local r = scene.request("buyMask", { maskId = mask.id })
+				if r.ok then
+					markEquipPop(mask.id) -- buying equips it
+					scene.preview.commit()
+					scene.refresh()
+				end
+			end)
+		else
+			MetaUI.sourceButton(scene, card, 20, "mask", mask.id, mask.saleType)
 		end
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
-
-	-- Detail: the art box (rarity on it, the equipped check), name, the accessory type, where it comes from.
-	local ic =
-		MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color), { id = mask.id })
-	local well = ic.Parent :: Frame
-	MetaUI.rarityChip(well, mask.rarity)
-	MetaUI.wellSource(well, mask.saleType) -- Round 24af
-	if equipped == mask.id then
-		MetaUI.wellCheck(well, equipPopFor(mask.id))
-	end
-	MetaUI.heading(card, 2, mask.name, string.upper(mask.type) .. " ACCESSORY")
-	MetaUI.statRow(card, 10, "From", MetaUI.sourceName(mask.saleType, "mask", mask.id), nil)
-	if equipped == mask.id then
-		MetaUI.equippedButton(card, 20)
-	elseif isOwned then
-		MetaUI.button(card, 20, "EQUIP", "green", function()
-			local r = scene.request("equipMask", { maskId = mask.id })
-			if r.ok then
-				markEquipPop(mask.id)
-				scene.preview.commit()
-				scene.refresh()
-			end
-		end)
-	elseif mask.saleType == "Direct" then
-		MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(mask.price or Prices.mask), "green", function()
-			local r = scene.request("buyMask", { maskId = mask.id })
-			if r.ok then
-				markEquipPop(mask.id) -- buying equips it
-				scene.preview.commit()
-				scene.refresh()
-			end
-		end)
-	else
-		MetaUI.sourceButton(scene, card, 20, "mask", mask.id, mask.saleType)
-	end
+	renderDetail()
 	popSelect = nil
 	if popEquip and popEquip == equipped then
 		popEquip = nil -- played

@@ -28,6 +28,7 @@ local Nameplates = require(script.Parent:WaitForChild("Nameplates"))
 local SceneIsolation = require(script.Parent:WaitForChild("SceneIsolation"))
 local MetaFolder = script.Parent:WaitForChild("Meta")
 local GunPreview = require(MetaFolder:WaitForChild("GunPreview"))
+local MetaUI = require(MetaFolder:WaitForChild("MetaUI"))
 
 local MetaScene = {}
 
@@ -543,6 +544,17 @@ local function toast(text: string, kind: string?)
 	end)
 end
 
+-- Round 25: the actions that get the success burst (true = the bigger one: an unlock).
+local JUICY: { [string]: boolean } = {
+	upgradeWeapon = false,
+	upgradeAbility = false,
+	unlockWeapon = true,
+	unlockClass = true,
+	buyMask = true,
+	buyEmote = true,
+	buyWrap = true,
+}
+
 local function request(action: string, args: any): any
 	local ok, result = pcall(function()
 		return Remotes.Meta:InvokeServer(action, args)
@@ -553,6 +565,11 @@ local function request(action: string, args: any): any
 	end
 	if result.toast then
 		toast(tostring(result.toast), if result.ok then (result.kind or "click") else "error")
+	end
+	-- Round 25: upgrades, unlocks and buys burst off the button that did it.
+	local juice = JUICY[action]
+	if result.ok and juice ~= nil then
+		MetaUI.successJuice(juice)
 	end
 	return result
 end
@@ -1106,14 +1123,16 @@ function MetaScene.init()
 				end
 				em = string.format("%d:%s:%s", owned, tostring(p.emotes.squad), tostring(p.emotes.mvp))
 			end
+			-- Round 25: both starter slots (slot 2 was missing, so equipping into it waited for the next tap).
 			stamp = string.format(
-				"%d|%d|%d|%d|%d|%s|%s|%s|%s",
+				"%d|%d|%d|%d|%d|%s|%s|%s|%s|%s",
 				n,
 				a,
 				m,
 				c,
 				wr,
 				tostring(p.starterWeaponId),
+				tostring(p.starterWeaponId2),
 				tostring(p.classes.equipped),
 				tostring(p.masks.equipped),
 				em

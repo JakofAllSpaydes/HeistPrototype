@@ -267,9 +267,24 @@ local function fire(chargeT: number?)
 	-- viewmodel up (a start riding the flip made every line run downhill).
 	-- Round 24q: ...but in camera space, so it moves with the view while you walk and turn.
 	local from: any = Tracer.muzzleOf(char) or headPos
-	if fpMuzzle then
+	-- Round 25: aimed in first person (iron, red dot or a scope with the viewmodel hidden) the line starts off-axis
+	-- in camera space, whatever the viewmodel is doing; the offset shrinks with the zoom so a magnified scope still
+	-- shows the streak inside its ring.
+	local adsTracer = ClientState.firstPerson and ClientState.ads
+	if adsTracer or fpMuzzle then
 		local cam = Workspace.CurrentCamera :: Camera
-		local localStart = cam.CFrame:PointToObjectSpace(fpMuzzle.WorldPosition)
+		local localStart: Vector3
+		if adsTracer then
+			local st = Config.FirstPersonAdsTracerStart
+			local zoomK = math.clamp(
+				math.tan(math.rad(cam.FieldOfView / 2)) / math.tan(math.rad(Config.CameraFov * Config.AdsFovMult / 2)),
+				0.15,
+				1.5
+			)
+			localStart = Vector3.new(st.X * zoomK, st.Y * zoomK, st.Z)
+		else
+			localStart = cam.CFrame:PointToObjectSpace((fpMuzzle :: Attachment).WorldPosition)
+		end
 		from = function(): Vector3
 			return cam.CFrame:PointToWorldSpace(localStart)
 		end
@@ -281,7 +296,14 @@ local function fire(chargeT: number?)
 		local d = if h.pellets > 1 then coneSpread(dir, spread) else sendDir
 		local result = Workspace:Raycast(headPos, d * Config.MaxShotRange, params)
 		local endPoint = if result then result.Position else headPos + d * Config.MaxShotRange
-		Tracer.draw(from, endPoint, tracerColor, fpMuzzle ~= nil)
+		Tracer.draw(
+			from,
+			endPoint,
+			tracerColor,
+			fpMuzzle ~= nil or adsTracer,
+			if adsTracer then Config.FirstPersonAdsTracerLife else nil,
+			adsTracer
+		)
 	end
 
 	UI.sound(Theme.Sounds.shot, Config.ShotPitchByArchetype[h.archetype] or 1, 0.35)
@@ -317,6 +339,14 @@ local function updateSprint()
 			ClientState.setAds(false)
 			chargeStart = nil
 			ClientState.chargeProgress = 0
+		elseif
+			-- Round 25: RMB still held when the sprint ends (or pressed during it): straight back into ADS.
+			UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+			and not ClientState.blocked()
+			and not ClientState.downed
+			and not ClientState.combatOff()
+		then
+			ClientState.setAds(true)
 		end
 	end
 end

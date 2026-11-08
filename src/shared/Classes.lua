@@ -274,6 +274,13 @@ for _, c in Classes.List do
 	end
 end
 
+-- Round 25: the hotkey chips follow Config.AbilityKeys by slot (the per-ability `hotkey` fields are overwritten).
+for _, c in Classes.List do
+	for i, a in c.abilities do
+		a.hotkey = Config.AbilityKeys[i] or a.hotkey
+	end
+end
+
 Classes.Default = "INITIATE"
 
 -- Hotkey slot (1..3) of an ability in its class.

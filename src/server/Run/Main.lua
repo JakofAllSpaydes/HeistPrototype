@@ -176,6 +176,7 @@ local function runWaves()
 			and (World.isBossWave(wave) or Dealer.requested)
 		then
 			World.skipRequested = false
+			Downed.reviveForDealer() -- Round 25: the crew is back up for the break
 			Dealer.run(wave)
 			if World.runOver then
 				return
@@ -199,6 +200,7 @@ local function runWaves()
 		waitIntermission()
 		-- Debug "Open dealer now" during the intermission: the break runs, then the next wave.
 		if Dealer.requested and not World.runOver and not World.pendingWave then
+			Downed.reviveForDealer()
 			Dealer.run(wave)
 			if World.runOver then
 				return

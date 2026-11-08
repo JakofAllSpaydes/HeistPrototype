@@ -81,6 +81,7 @@ require(script.Parent:WaitForChild("DayNight")).init() -- Round 21
 require(script.Parent:WaitForChild("Minigames")).init()
 require(script.Parent:WaitForChild("DownedUI")).init()
 require(script.Parent:WaitForChild("PlayerTags")).init()
+require(script.Parent:WaitForChild("TeammateMarkers")).init() -- Round 25
 require(script.Parent:WaitForChild("Nameplates")).init()
 require(script.Parent:WaitForChild("Spectate")).init()
 require(script.Parent:WaitForChild("RunStartUI")).init()

@@ -76,6 +76,7 @@ Spawner.zoneHops = nil :: (() -> { [string]: number }?)?
 local boxSpawns: { [string]: number } = {}
 local contacts: { [string]: { number } } = {}
 local warned = false
+local warnedBoxes: { [string]: boolean } = {}
 
 -- Standing in the crew's zone (the zone volume holding the box's centre, not its Zone attribute: a box behind a
 -- fence or a window stands outside every zone and feeds its zone even while the crew holds it).
@@ -176,6 +177,43 @@ local function inPlainSight(point: Vector3): boolean
 	return false
 end
 
+-- Round 25: MapLoader installs its zone lookup (it requires this module, so no require back). nil on the arena.
+Spawner.zoneAt = nil :: ((Vector3) -> string?)?
+
+-- Round 25: a spawn point that is really inside its box's room. Re-rolls (up to 8) a point whose floor fell
+-- through to a lower level (outside the box's height), that stands in another zone or none (the outer ledge of
+-- THE BANK's upper floor, the street side of a wall), or that sits inside solid geometry. Last resort: the box's
+-- centre on its floor.
+local function pointFor(box: any): Vector3
+	local want = box.standsIn or box.zone
+	local bottom = box.cframe.Position.Y - box.size.Y / 2
+	local top = box.cframe.Position.Y + box.size.Y / 2
+	local zoneAt = Spawner.zoneAt
+	for _ = 1, 8 do
+		local p = Room.pointInBox(box)
+		local ok = p.Y >= bottom - 1.5 and p.Y <= top + 1.5
+		if ok and zoneAt and want then
+			ok = zoneAt(p + Vector3.new(0, 2.5, 0)) == want
+		end
+		if ok then
+			ok = Ground.isClear(p, 1, 4)
+		end
+		if ok then
+			return p
+		end
+	end
+	if not warnedBoxes[box.name] then
+		warnedBoxes[box.name] = true
+		Log.event(
+			"Spawn",
+			"WARN box %s: no clean point in 8 tries, using its centre (drag it inside the room?)",
+			box.name
+		)
+	end
+	local c = box.cframe.Position
+	return Vector3.new(c.X, Ground.y(c + Vector3.new(0, box.size.Y / 2, 0), bottom), c.Z)
+end
+
 -- Round 21: where a stranded straggler warps (EnemyPath): an eligible box picked like a spawn (weighted toward the
 -- crew, never in its zone), at a point nobody sees and no closer than CatchUpMinPlayerDistance to anyone.
 EnemyPath.relocate = function(): Vector3?
@@ -184,7 +222,7 @@ EnemyPath.relocate = function(): Vector3?
 		if not box then
 			return nil
 		end
-		local p = Room.pointInBox(box)
+		local p = pointFor(box)
 		if not inPlainSight(p) and nearestPlayerDistance(p) >= Config.CatchUpMinPlayerDistance then
 			return p
 		end
@@ -197,9 +235,9 @@ function Spawner.spawnOne(wave: number, archetype: string?): Model
 	local id = archetype or Enemies.rollArchetype(wave, World.bracketShift())
 	local elite = Spawner.rollElite()
 	local box = Spawner.pickBox(id, elite)
-	local at = if box then Room.pointInBox(box) else Room.randomSpawnPoint()
+	local at = if box then pointFor(box) else Room.randomSpawnPoint()
 	if box and inPlainSight(at) then
-		at = Room.pointInBox(box)
+		at = pointFor(box)
 	end
 	local model = Enemy.spawn(id, wave, at, { elite = elite, box = box })
 	if box then

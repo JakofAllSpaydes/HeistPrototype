@@ -759,7 +759,7 @@ function Doors.attachPrompt(prop: Prop, group: string, door: MapLoader.Door)
 		return -- D4 is the vault's Safe dial (VaultJob); dressing doors never prompt
 	end
 	local p = Instance.new("ProximityPrompt")
-	p.KeyboardKeyCode = Enum.KeyCode.F
+	p.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 	p.RequiresLineOfSight = false
 	p.MaxActivationDistance = math.max(10, prop.part.size.X / 2 + 4)
 	p.ActionText = Lines.door.lockedAction

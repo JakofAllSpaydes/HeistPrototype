@@ -24,7 +24,7 @@ Brief 8 replaces the generated yard with a builder-made warehouse hub: four queu
 own loadout, MARLOW's board on the wall, the van leaving through a roll-up garage on run start, and a walled training
 range where the helicopter bay was.
 
-State as of **8 Nov 2026 (Round 24ah)**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
+State as of **8 Nov 2026 (Round 25)**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
 phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes), the Round 13 multiplayer pass
 (revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
@@ -46,6 +46,7 @@ step), then Rounds 20b–20u from Jack's first plays of it (the load fixes, walk
 a clean customization shot, hub walk speed, the place's own lighting, the pass stage spotlight, the van cutscene,
 doors taking the objective slot, smaller pad boards, MARLOW at his board, the upper doors gone from THE BANK, and map
 dressing as a Workspace file: `Workspace.Hub.Dressing`, and minigame anti-cheat floors a fast player clears), then
+Round 25 (8 Nov, unplayed: E interacts and abilities are Q / F / Z, defense upgrades with ARMOR, EXPLOSIVE synergies, teammate markers, shared-crate pools, named hub booth keepers, the BANK vault gas fix; see the changelog), before it
 Round 21 (8 Nov; Jack confirmed the gun switch in Studio, the rest is unplayed: two gun slots, the run clock from night, smaller SHOP / JOBS windows, the hub player list,
 wave-scaled dealer prices and leaving warnings, the vault stairwell shot fix, stragglers warped in, a front door that
 opens itself when you're already inside, every SQUAD / MVP emote playing), then
@@ -68,7 +69,7 @@ minigame panel and a gentler Safe dial, Meta drag-rotate direction fixed, and gu
 Rounds 24b–24ag (8 Nov; Jack's play-feedback rounds, built unplayed unless noted: stacked side job + door pills, cutscenes
 hide markers, a first-person viewmodel (arms, gun, ADS down real iron sights / red dot / holo / ACOG / medium / sniper
 scope with zoom, reload, swap draw, sway), muzzle-attached tracers, mobile landscape lock and look-while-moving fix, the
-EXPLOSIVE (RPG-7, M32, Cluster Launcher, TNT) and ELEMENTAL (Flamethrower, Cryo Sprayer, Arc Gun, Plasma Caster)
+EXPLOSIVE (RPG-7, M32, Cluster Launcher, TNT) and ELEMENTAL (Flamethrower, Cryo Sprayer, Arc Gun, Plasma Gun)
 weapon types, eight more guns and the four showcase guns made real, per-gun receiver shapes and silhouettes, icon
 category tiles, favourites (weapons and avatar), two starter slots, soft-capped weapon and ability levels, a Shift sprint
 prototype, faint mouse aim assist, a centred camera when the cursor is unlocked, and the Railcaster beam hitting real
@@ -118,36 +119,36 @@ dummies, the seven minigame props and the tier pad. Party and downed / revive li
 | Scroll wheel | Zoom. Fully in is first person (character hidden locally); out to `CameraZoomMax`. |
 | 1 | Switch guns (Round 21): you carry two. You start with one; a gun picked up with the second slot empty goes there and you switch to it, and with both full a pickup replaces the gun in your hands. The square chip right of the weapon slot shows the other gun (tap it on mobile). `WeaponSlots` / `WeaponSwitchSec` in Config. |
 | 2 | Buy an upgrade pick (also the clickable tile, left column; was 1). Weapons come only from gun crates. |
-| F on a gun crate | `OPEN` (a `GUN CRATE` tag over it): every roll the crate holds plays back to back on the reel above it, seen by everyone, and each gun ejects onto the floor beside it as loot anyone can take. |
-| Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land where the cursor points up to `ThrowMaxRange` (100), locking on and homing to the enemy under the cursor (or the one the camera ray just missed, or the one nearest the point: `ThrowAssist*`); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
+| E on a gun crate | `OPEN` (a `GUN CRATE` tag over it): every roll the crate holds plays back to back on the reel above it, seen by everyone, and each gun ejects onto the floor beside it as loot anyone can take. |
+| Q / F / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land where the cursor points up to `ThrowMaxRange` (100), locking on and homing to the enemy under the cursor (or the one the camera ray just missed, or the one nearest the point: `ThrowAssist*`); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
 | P | Vote to pause (in a wave, the intermission or the dealer break; solo pauses at once). Also on the dealer card and the scoreboard. RESUME on the overlay (anyone). |
-| T / V / F at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
-| F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` at MARLOW's board (the booths open by walking onto their orange half-circle, no prompt); in the range `OPEN` on a minigame prop, `TIER n` on the tier pad. |
+| T / V / E at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, E buys the stand or prop whose panel is open (Round 25: the stand you look at; a floor gun you look at more squarely takes E instead, `InteractDistWeight`). Mobile: the card's buttons and the panel's BUY. |
+| E | Swap with a floor gun (ProximityPrompt). Round 25: E is the interact key everywhere and abilities moved to Q / F / Z (`InteractKey`, `AbilityKeys`). 0.5s cooldown between swaps. In the hub: `OPEN` at MARLOW's board (the booths open by walking onto their orange half-circle, no prompt); in the range `OPEN` on a minigame prop, `TIER n` on the tier pad. |
 | (walk into the range) | Brief 8: the north-west door of the warehouse. Inside you are armed with your starter gun (fire, reload, ADS, abilities, Ctrl camera lock) and the HUD switches to the range layout; walking out stows it. Nothing pays or scores. `R` at a dummy's sign (`RESET`) zeroes its `DMG · DPS · HS` tag. |
 | (walk up to a bag) | No button: stand within `BagStartRadius` of a cash or gold bag and it fills over `BagChannelSec`, then it is yours (cash to everyone / the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
-| F at the vault door | `CRACK` the vault while CRACK THE VAULT is the open side job: opens the Safe dial at the wave bracket's tier. |
+| E at the vault door | `CRACK` the vault while CRACK THE VAULT is the open side job: opens the Safe dial at the wave bracket's tier. |
 | Tab (hub) | Roblox's own player list with LEVEL and BEST WAVE leaderstats (Round 21). |
 | Tab (hold, in a run) | The scoreboard: WAVE · TIME · stars · BANKED · CASH and one row per member in MVP order; the game keeps running behind it. Mobile: tap the wave bar (the `≡` chip beside N LEFT), tap again or anywhere outside to close. |
 | Walk onto a queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. Brief 8: four pads, one party each; a pad whose party is in a run refuses entry; a party whose map is busy waits on its pad (`MAP BUSY · <name> IS INSIDE`). |
 | PLAY (hub HUD) | Walks you to the nearest open pad (no party, or a party with room). Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
 | SHOP tile / Gold + (hub HUD) | Brief 6: the store window over a dark dim, scrolled to FEATURED (the Gold + scrolls to GOLD). The rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD) scrolls the one page to that section; LEAVE, Esc or a tap outside the window closes it (Esc closes an open detail sheet first). A red dot on the SHOP tile means banked crate opens or the VIP gift wait; the tile then opens on that section. VIEW CRATE / VIEW BUNDLE / VIEW VIP on customization tiles open it on that item. |
-| PASS / JOBS (hub HUD, right-center) | The battle pass scene and the JOBS board. F at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item opens the pass; CLAIM IN PASS on the summary takes you back to the hub first and opens it there (Round 19c). Esc / LEAVE / BACK closes either. |
+| PASS / JOBS (hub HUD, right-center) | The battle pass scene and the JOBS board. E at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item opens the pass; CLAIM IN PASS on the summary takes you back to the hub first and opens it there (Round 19c). Esc / LEAVE / BACK closes either. |
 | $ + (match HUD cash row) | Brief 6: the cash-pack sheet (+$5,000 / +$20,000 / +$100,000 for fake Robux); the game keeps running behind it. Short of cash at the dealer, the same sheet opens (REROLL offers the R$ RESTOCK). |
-| F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
+| E (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
 | Esc / X | Cancel an open minigame (counts as `cancel` in the log). |
 | ◀ ▶ / A D | Spectating (bled out): cycle living teammates. REVIVE EVERYBODY button bottom-center. |
-| F (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Minigame jobs: F opens the game at the beacon. Kind is rolled per job from `SideJobKindWeights` (eight kinds, equal odds by default). |
+| E (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Minigame jobs: E opens the game at the beacon. Kind is rolled per job from `SideJobKindWeights` (eight kinds, equal odds by default). |
 | Esc / X / 2 | Close the upgrade overlay. |
 | V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
-| Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
+| Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / F / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
 | Backtick | Debug panel (brief 8 adds HUB: To hub / To range, Reset dummies, Open garage (the departure beat with nobody in the van), Force pad 1–4, Spawn at range (the archetype row, ELITE, Range boss); brief 7 adds MAP: Show nodes with per-type toggles, Recompute nodes, Teleport to zone, Open D1–D4, Close all doors, Open / Gas / Seal vault, Spawn at a chosen box (with the archetype row and ELITE), Pin the crew zone / AUTO, Path debug; Stats adds the MAP block; Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
 Round 24b–ag: the game holds landscape (LandscapeSensor, also set on StarterGui in default.project.json); touch look is
 polled per finger and a pinch only counts with both fingers right of the stick, so move + look + fire work together.
 PC (Round 24aa prototype): hold **Shift** while moving to sprint (SprintSpeedMult, gun away: no fire, no ADS). Charge
-weapons (Plasma Caster, Railcaster): hold fire to charge (the crosshair ring fills), release to fire; a held plasma beam
+weapons (Plasma Gun, Railcaster): hold fire to charge (the crosshair ring fills), release to fire; a held plasma beam
 follows the cursor. First person (zoom all the way in) shows a viewmodel; aiming an optic zooms and draws its reticle.
 Round 24: FIRE / ADS sit left of Roblox's jump button, FIRE is also a look stick (hold to shoot, slide to aim), every HUD
 button is `MobileButtonScale` (1.3) bigger, and aim assist pulls toward the torso (crosshair held up = the head).
@@ -355,8 +356,9 @@ Rarity: the wave bracket's odds, the crate floor `BigCrateRarityFloorByBracket`,
 while a roll plays; the crate closes at 0 rolls or after `CrateLifetimeSec`, and floor guns keep their own timers. The
 NEW WEAPON tile, hotkey 1 and the weapon price are gone.
 
-**Upgrades.** Pick 1 of 3 cards (and the dealer's stands) from three categories drawn by `CategoryWeights` (gun 60 /
-element 25 / utility 15) before the stat: 13 gun stats (Damage, FireRate, MagSize, ReloadSpeed, CritChance, HeadshotMult,
+**Upgrades.** Pick 1 of 3 cards (and the dealer's stands) from four categories drawn by `CategoryWeights` (gun 50 /
+element 15 / defense 15 / utility 10; Round 25 added defense: Max HP, HP Regen and ARMOR, flat shield points over HP that
+refill `ArmorRegenDelay` after the last hit at `ArmorRegenPctPerSec`, the thin bar on the HP bar) before the stat: 13 gun stats (Damage, FireRate, MagSize, ReloadSpeed, CritChance, HeadshotMult,
 MoveSpeed, Accuracy, Pierce, Ricochet, Splash, Multishot, Lifesteal); three ammo types that go on every bullet that lands, each
 shotgun pellet included (`Elements.lua`, ids Incendiary / Cryo / Concussive; look in `StatusFx.lua`): Fire Ammo (a burn
 that stacks per hit up to `IncendiaryMaxStacks`, `IncendiaryDps` per stack for `IncendiaryBurnSec`, orange tint and
@@ -432,8 +434,9 @@ run's tier-ups.
 `DealerSec` (no spawns, heat frozen, the clock only stops for a pause), the DEALER phones in (`DealerLine` on the call card), then
 a compact card in the top-right stack (`DEALER · 1:30`, TELEPORT any number of times, unanimous SKIP); a stall of three
 tables in a half circle (`DealerArcRadius`, `DealerTableAngles`, `DealerPerTable`) round an idling DEALER at
-`DealerStallPosition`. Per-player stock: `DealerStock` stands from the pick-3 generator priced `ShopPriceByTier` × the
-upgrade escalation (each buy counts as an upgrade bought), drawn by each client as always-on-top small upgrade cards (icon, big number, price pill) on the same tables; ARMS DROP
+`DealerStallPosition`. Per-player stock: `DealerStock` stands from the pick-3 generator priced as a share of your own
+UPGRADE price (Round 25: `DealerCardPriceShare` by tier, the first two each break at `DealerFirstBuyDiscount`; each buy
+counts as an upgrade bought), drawn by each client as always-on-top small upgrade cards (icon, big number, price pill) on the same tables; ARMS DROP
 (`ShopCratePrice`, a crate at the stall), HEAL ALL (`ShopHealPrice`), REROLL (`ShopRerollPrice`, doubling). The nearest
 stand within `ShopReadRadius` swaps its small card for the full pick-3 card on the same spot (`UI/CardFace.lua`,
 `DealerCardWidth`; screen-space, so always in front of the other stands) with the effect lines current → new and a
@@ -913,8 +916,9 @@ them (Range is a volume, off by default like Zones). The arena is a standalone r
   PLAY and the join toasts name the pad; PLAY AGAIN re-forms the party on its pad. Logs: `[GHS Queue] pad N create
   <map> <difficulty> owner <name>` / `start` / `busy-wait` / `reset`.
 - **Booths, board, garage.** OPEN at each booth's counter edge (the Station node) opens the customization scene on
-  that tab. Each booth's rig is replaced, on each client, by a copy of that player's own character (`BoothMannequins`:
-  mask, class idle, starter gun and wrap; re-dressed on every equip; `BoothMannequin`). MARLOW's board is the
+  that tab. Round 25: each booth is kept by a named R15 NPC the server builds from an avatar (`BoothNpcs`: DUKE the
+  gunsmith, SABLE the trainer, NOVA the stylist; Hub.buildBoothNpc), with MARLOW sharing their tag: a close-range
+  plate that fades with distance (`BoothNpcTagFadeNear` / `Far`) and hides behind menus (BoothMannequins.lua). MARLOW's board is the
   warehouse's bulletin board (the Board node): a beacon strip over it pulses until today's board is seen, F (OPEN)
   opens the Jobs board with the camera push. The garage and the range door are roll-up shutters the hub builds in the
   asset's openings (the garage down, the range up: `RangeDoorOpen`; the RANGE prompt at the door is only a sign).
@@ -1952,6 +1956,13 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothManneq
   *EXPLOSIVE / ELEMENTAL (Run/SpecialFire.lua, Weapons `mode`):* projectile guns fly server parts — RPG-7 on contact, M32 0.25 s fuse (direct hit = at once), Cluster Launcher 0.5 s then bomblets, TNT thrown with a 1 s fuse; lobs are solved onto the crosshair point (`LobMaxTargetStuds`) and roll after landing (`bounce`, `GrenadeRollKeep`). Flamethrower / Cryo Sprayer hit a cone each tick (burn / chill via `Elements.burn` / `Elements.chillOn`), the Arc Gun chains lightning, the Plasma Caster charges a long piercing beam (charge = width + hold time + ticks, steered by the cursor via `BeamAim`); ElementFx.client.lua draws jets, arcs and beams. Beams hit by a sphere swept against the enemies' real parts (heads and limbs count; headshot multiplier); Round 24ah: any part of the beam overlapping the head is a headshot, not only a first contact on it.
   *Aim / camera / abilities:* aim assist lets go when you pull off a target (`AimAssistPullAwayMult`, `AimAssistReleaseSec`) and a faint version runs on mouse (`AimAssistMouseScale`); an unlocked cursor centres the camera (`CameraCenterRate`); ability ranges, slows, durations and buff percentages soft-cap (`AbilitySoftCapBy`, `AbilitySoftCap`: Eagle Eye up to 3x, the rest 2x), damage / heal / HP stay linear. Swap with 1 works in the range.
 
+
+- **Round 25 (8 Nov) — Jack's feedback rounds after 24ah.** Built unplayed.
+  *Guns:* M93R full auto (15 dmg at 9/s). The Plasma Caster reads Plasma Gun (id kept) and is Legendary; its full-charge beam is half as wide. Aimed first-person tracers start off-axis in camera space, zoom-aware and widening with distance, so they read through sights and scopes (`FirstPersonAdsTracer*`). TNT leaves from hand height (`startDrop`) and an out-of-reach lob throws along the aim pitch plus a loft instead of 45° (`LobFallback*`). Iron sights: the rear notch / ears / ring no longer fade as "behind the sight" blockers (the pistol post floated over the slide).
+  *First person:* eye `FirstPersonEyeLift` (0.9) above the head; against a wall the eye eases back and the gun lowers (`FirstPersonWall*`); RMB still held when a sprint ends puts you back in ADS.
+  *Upgrades:* EXPLOSIVE synergies (Demolition, and Blast Radius widened) offered with an Explosive gun, Splash or INITIATE, raising Explosive guns, Splash kill blasts, Frag and Claymore; Elemental Power also comes with an Elemental gun and raises its damage (Upgrades `requires` gained archetype / owns / anyOf, `tag`). Ability Power now amplifies buffs, durations and radii (`AbilityPower*Share`). Defense category (above).
+  *Run:* the shared crate's first roll draws from guns every member owns, each later roll from one member's own pool in turn. The dealer revives the downed / bled-out crew (`DealerRevivesCrew`) and prices cards off your UPGRADE price. Gas toasts show only near the gas (`GasToastNearStuds`). THE BANK vault gas never ended (VaultJob.init returned before its Heartbeat on maps without the arena closet); it now seals once nobody standing is inside or after `VaultGasMaxSec`. Bags, crates and ejected guns move out of walls / out-of-zone spots (`Ground.clearSpot`, `LootClear*`, a `WARN` log names bad bag spots); spawns re-roll points outside their box's zone or height or inside geometry (`[GHS Spawn] WARN box`). Loot / job beacon columns stop at the ceiling (`Ground.ceiling`). Teammate markers at any range with an edge arrow (TeammateMarkers.lua, `TeammateMarker*`).
+  *Meta / UI:* a tile tap re-styles in place and rebuilds only the detail card (no viewport blink); grid and category viewports hold still; detail headings in the display face; successful upgrades / unlocks / buys burst off the button (`MetaSuccessSparks`); the class detail drops the ability list; equipping into slot 2 re-renders at once.
 
 ## Open design notes (not built)
 

@@ -355,7 +355,7 @@ local function openCardPanel(it: Item, card: any)
 		Parent = bar,
 	})
 	local buyBtn = UI.button({
-		Text = if ClientState.isMobile then "BUY" else "F  BUY",
+		Text = if ClientState.isMobile then "BUY" else Config.InteractKey .. "  BUY",
 		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.bg,
@@ -447,7 +447,7 @@ local function openPanel(it: Item)
 		Parent = frame,
 	})
 	local buyBtn = UI.button({
-		Text = if ClientState.isMobile then "BUY" else "F  BUY",
+		Text = if ClientState.isMobile then "BUY" else Config.InteractKey .. "  BUY",
 		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.bg,
@@ -472,18 +472,37 @@ local function nearest(): Item?
 	if not root then
 		return nil
 	end
+	-- Round 25: among the stands in reach, the one you're looking at (ClientState.aimScore), not just the nearest;
+	-- and a floor gun in reach that you're looking at more squarely takes the interact key instead (the panel
+	-- closes and its prompt comes back). ClientState.dealerFocus tells GroundLoot which one owns the key.
 	local best: Item? = nil
-	local bestD = readRadius
+	local bestScore = math.huge
 	for _, it in items do
 		if it.sold then
 			continue
 		end
 		local d = Vector3.new(it.position.X - root.Position.X, 0, it.position.Z - root.Position.Z).Magnitude
-		if d <= bestD then
-			bestD = d
-			best = it
+		if d <= readRadius then
+			local s = ClientState.aimScore(it.position + Vector3.new(0, 2, 0))
+			if s < bestScore then
+				bestScore = s
+				best = it
+			end
 		end
 	end
+	if best then
+		local loot = workspace:FindFirstChild("GroundLoot")
+		for _, gun in if loot then loot:GetChildren() else {} do
+			if gun:IsA("BasePart") and gun:GetAttribute("Landing") ~= true then
+				local d = (gun.Position - root.Position).Magnitude
+				if d <= Config.InteractRadius and ClientState.aimScore(gun.Position) < bestScore then
+					best = nil
+					break
+				end
+			end
+		end
+	end
+	ClientState.dealerFocus = best ~= nil
 	return best
 end
 
@@ -651,6 +670,7 @@ end
 
 local function stop()
 	active = false
+	ClientState.dealerFocus = false
 	cardToken += 1
 	clearItems()
 	closePanel()
@@ -731,9 +751,9 @@ function DealerUI.init()
 		if not active then
 			return
 		end
-		if key == Enum.KeyCode.F then
+		if key == Enum.KeyCode[Config.InteractKey] then
 			local p = panel
-			if p then
+			if p and ClientState.dealerFocus then
 				buy(p.key)
 			end
 		elseif key == Enum.KeyCode.T then

@@ -257,8 +257,10 @@ local function buildBeaconBase(position: Vector3, radius: number): Model
 	pad.Parent = model
 	local column = Instance.new("Part")
 	column.Name = "Column"
-	column.Size = Vector3.new(2, 40, 2)
-	column.CFrame = CFrame.new(position + Vector3.new(0, 20, 0))
+	-- Round 25: stops at the ceiling (no column up through the floor above).
+	local tall = Ground.ceiling(position, 40)
+	column.Size = Vector3.new(2, tall, 2)
+	column.CFrame = CFrame.new(position + Vector3.new(0, tall / 2, 0))
 	column.Anchored = true
 	column.CanCollide = false
 	column.CanQuery = false
@@ -301,7 +303,7 @@ local function buildHackBeacon(
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = actionText
 	prompt.ObjectText = objectText
-	prompt.KeyboardKeyCode = Enum.KeyCode.F -- F is the interact key everywhere (guns, props, door, beacons)
+	prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey] -- Config.InteractKey everywhere (guns, props, door, beacons)
 	prompt.HoldDuration = holdSec
 	prompt.MaxActivationDistance = Config.SideJobBeaconRadius + 2
 	prompt.RequiresLineOfSight = false

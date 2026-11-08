@@ -52,8 +52,11 @@ local function refreshTag(gun: BasePart, tag: Tag)
 	tag.rateLabel.TextColor3 = rateColor
 	local prompt = tag.prompt
 	if prompt then
-		-- A downed teammate in reach owns F: gun prompts step aside until they are up.
-		prompt.Enabled = not ClientState.reviveNearby and gun:GetAttribute("Landing") ~= true
+		-- A downed teammate in reach owns the interact key: gun prompts step aside until they are up. Round 25: so
+		-- does a dealer stand you're looking at (DealerUI sets ClientState.dealerFocus).
+		prompt.Enabled = not ClientState.reviveNearby
+			and not ClientState.dealerFocus
+			and gun:GetAttribute("Landing") ~= true
 	end
 end
 
@@ -174,9 +177,11 @@ function GroundLoot.init()
 	-- Beam fades over the last seconds of lifetime.
 	local acc = 0
 	local lastNearby = false
+	local lastDealer = false
 	RunService.Heartbeat:Connect(function(dt)
-		if ClientState.reviveNearby ~= lastNearby then
+		if ClientState.reviveNearby ~= lastNearby or ClientState.dealerFocus ~= lastDealer then
 			lastNearby = ClientState.reviveNearby
+			lastDealer = ClientState.dealerFocus
 			for gun, tag in tags do
 				if gun.Parent then
 					refreshTag(gun, tag)

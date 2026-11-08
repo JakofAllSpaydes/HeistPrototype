@@ -249,8 +249,8 @@ function Downed.reviveOne(player: Player, by: string)
 end
 
 -- Everyone downed or bled out stands up at ReviveHPPct where they fell. Free, counted per buyer.
-function Downed.reviveEverybody(buyer: Player?)
-	local who = if buyer then buyer.Name else "DEBUG"
+function Downed.reviveEverybody(buyer: Player?, label: string?)
+	local who = if buyer then buyer.Name else (label or "DEBUG")
 	local count = 0
 	for _, player in World.runAudience() do
 		local state = PlayerState.get(player)
@@ -279,6 +279,21 @@ function Downed.reviveEverybody(buyer: Player?)
 	end
 	World.fireRun("CrewRevived", { name = who, count = count })
 	Log.event("Downed", "%s revived the crew (%d players)", who, count)
+end
+
+-- Round 25: the boss wave is down and the DEALER sets up: everyone downed or bled out comes back for free
+-- (Config.DealerRevivesCrew). Nothing fires when the whole crew is already up.
+function Downed.reviveForDealer()
+	if not Config.DealerRevivesCrew then
+		return
+	end
+	for _, player in World.runAudience() do
+		local state = PlayerState.get(player)
+		if state.downed or state.bledOut then
+			Downed.reviveEverybody(nil, "DEALER")
+			return
+		end
+	end
 end
 
 local function onHold(player: Player, on: any)

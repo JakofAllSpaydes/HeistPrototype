@@ -117,9 +117,11 @@ local function dealDamage(
 		secondary = info.secondary == true,
 	})
 	if killed and allowSplash and shooter.stats.splash > 0 then
-		local splashDmg = dmg * shooter.stats.splash / 100
-		local victims = Enemy.within(position, Config.SplashRadius, model)
-		World.fireRun("Splash", { position = position, radius = Config.SplashRadius, hits = #victims })
+		-- Round 25: the explosive synergies (DEMOLITION, BLAST RADIUS) raise the kill explosion too.
+		local splashDmg = dmg * shooter.stats.splash / 100 * (shooter.stats.explosiveDmgMult or 1)
+		local splashR = Config.SplashRadius * (shooter.stats.blastRadiusMult or 1)
+		local victims = Enemy.within(position, splashR, model)
+		World.fireRun("Splash", { position = position, radius = splashR, hits = #victims })
 		for _, victim in victims do
 			local vp = Enemy.rootPosition(victim) or position
 			local away = vp - position
@@ -127,7 +129,7 @@ local function dealDamage(
 				secondary = true,
 				dir = if away.Magnitude > 0.1 then away.Unit else nil,
 				blast = true,
-				blastT = 1 - math.clamp(away.Magnitude / Config.SplashRadius, 0, 1),
+				blastT = 1 - math.clamp(away.Magnitude / splashR, 0, 1),
 			}, false)
 		end
 	end

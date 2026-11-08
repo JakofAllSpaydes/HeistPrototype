@@ -6,7 +6,7 @@
 -- SKIP (unanimous) and VOTE TO PAUSE.
 --
 -- The shop is diegetic and per player: eight upgrade stands on the table (drawn by the pick-3 generator, same
--- categories and tradeoff rules; Round 21: priced ShopPriceByTier x the wave, not the upgrade escalation) that every client draws
+-- categories and tradeoff rules; Round 25: priced as a share of your own UPGRADE price, see cardPrice) that every client draws
 -- from its own stock (DealerStock), plus three props for the party: ARMS DROP (a crate at the stall), HEAL ALL and
 -- REROLL (new stands, price doubles per use). DealerUI opens the nearest stand's panel within ShopReadRadius; F
 -- (DealerAction "buy") buys: the upgrade applies at once, a bought stand stays empty.
@@ -328,16 +328,18 @@ local function buildStall(): Model
 end
 
 ------------------------------------------------------------------ Stock and prices
--- Round 21: income grows with the wave (kill cash and bags are linear in it), so the stall does too. Cards no longer
--- ride the UPGRADE escalation (UpgradePriceMult ^ upgrades bought made them unreasonable late); each card bought this
--- break raises your next by DealerBuyStepMult. Crates, heals and rerolls scale with the wave as well.
+-- Round 25: cards are a share of YOUR current UPGRADE price again (Round 21's wave-only pricing left them at
+-- $5-10k against a $100k upgrade): DealerCardPriceShare by card tier, and the first cards bought each break at
+-- DealerFirstBuyDiscount, so a few always feel cheap before it climbs back to normal. Every buy counts toward
+-- the escalation (upgradesBought), so the next card re-prices up. Crates, heals and rerolls scale with the wave.
 local function waveScale(perWave: number): number
 	return 1 + perWave * math.max(0, World.wave - 1)
 end
 
-local function cardPrice(card: Types.Card, s: Stock): number
-	local base = Config.ShopPriceByTier[math.clamp(card.tier, 1, 5)] or 100
-	return math.round(base * waveScale(Config.DealerCardWaveMult) * Config.DealerBuyStepMult ^ s.buys)
+local function cardPrice(card: Types.Card, s: Stock, state: PlayerState.State): number
+	local share = Config.DealerCardPriceShare[math.clamp(card.tier, 1, 5)] or 1
+	local discount = Config.DealerFirstBuyDiscount[s.buys + 1] or 1
+	return math.max(1, math.round(Economy.upgradePrice(state) * share * discount))
 end
 
 local function rerollPrice(s: Stock): number
@@ -405,7 +407,7 @@ local function sendStock(player: Player)
 			position = standPosition(i),
 			card = card,
 			sold = s.sold[i] == true,
-			price = cardPrice(card, s),
+			price = cardPrice(card, s, state),
 			title = string.upper(card.name),
 			tierName = string.upper(Rarity.name(card.tier)),
 			lines = effectLines(state, card),
@@ -466,7 +468,7 @@ local function buy(player: Player, slot: any)
 		if not card or s.sold[i] or not near(player, standPosition(i)) then
 			return result(player, false, slot, "gone")
 		end
-		local price = cardPrice(card, s)
+		local price = cardPrice(card, s, state)
 		if not Economy.tryCharge(state, price) then
 			return result(player, false, slot, "cash")
 		end

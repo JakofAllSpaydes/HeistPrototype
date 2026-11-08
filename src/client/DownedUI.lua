@@ -303,7 +303,7 @@ local function buildPrompt()
 	else
 		local label = UI.text({
 			Name = "RevivePromptLabel",
-			Text = "HOLD F · REVIVE",
+			Text = "HOLD " .. Config.InteractKey .. " · REVIVE",
 			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.cash,
@@ -334,7 +334,7 @@ local function setPrompt(name: string?)
 	end
 	if promptLabel then
 		promptLabel.Visible = name ~= nil
-		promptLabel.Text = if name then "HOLD F · " .. text else ""
+		promptLabel.Text = if name then "HOLD " .. Config.InteractKey .. " · " .. text else ""
 		if name then
 			UI.punch(promptLabel, 1.2, 0.3)
 		end
@@ -541,12 +541,12 @@ function DownedUI.init()
 		if gameProcessed then
 			return
 		end
-		if input.KeyCode == Enum.KeyCode.F then
+		if input.KeyCode == Enum.KeyCode[Config.InteractKey] then
 			holdingKey = true
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input: InputObject)
-		if input.KeyCode == Enum.KeyCode.F then
+		if input.KeyCode == Enum.KeyCode[Config.InteractKey] then
 			holdingKey = false
 		end
 	end)

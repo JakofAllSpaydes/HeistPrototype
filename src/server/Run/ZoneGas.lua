@@ -76,6 +76,19 @@ local function clearClouds()
 end
 
 -- One emitter per zone volume, filling its bottom ZoneGasHeight studs.
+-- Round 25: the zone's boxes ride along on its events, so a client shows the top-centre gas toast only to
+-- members in (or near) the zone; everyone else keeps the narrative pill alone.
+local function zoneBoxes(id: string): { { cframe: CFrame, size: Vector3 } }
+	local out = {}
+	local z = MapLoader.zones[id]
+	if z then
+		for _, v in z.parts do
+			table.insert(out, { cframe = v.cframe, size = v.size })
+		end
+	end
+	return out
+end
+
 local function fillClouds(ids: { string }, rateMult: number)
 	clearClouds()
 	local effects = Workspace:FindFirstChild("Effects") or Workspace
@@ -144,10 +157,12 @@ local function finish(reason: string)
 		})
 		Log.event("Zone", "lockdown gas over (%s)", reason)
 	elseif was and reason == "clear" then
-		World.fireRun(
-			"ZoneGas",
-			{ phase = "clear", zone = was, toast = string.format(Lines.zoneGas.clearToast, label(was)) }
-		)
+		World.fireRun("ZoneGas", {
+			phase = "clear",
+			zone = was,
+			boxes = zoneBoxes(was),
+			toast = string.format(Lines.zoneGas.clearToast, label(was)),
+		})
 		Log.event("Zone", "gas cleared from %s", was)
 	end
 end
@@ -161,7 +176,12 @@ local function startGas(my: number)
 	Alarms.set("zonegas", false)
 	fillClouds({ id }, 1)
 	lastTick = 0
-	World.fireRun("ZoneGas", { phase = "gas", zone = id, toast = string.format(Lines.zoneGas.gasToast, label(id)) })
+	World.fireRun("ZoneGas", {
+		phase = "gas",
+		zone = id,
+		boxes = zoneBoxes(id),
+		toast = string.format(Lines.zoneGas.gasToast, label(id)),
+	})
 	Log.event("Zone", "gas in %s for %ds", id, Config.ZoneGasSec)
 	Pause.delay(Config.ZoneGasSec, function()
 		if my == token and ZoneGas.phase == "gas" then
@@ -186,6 +206,7 @@ local function startWarn(my: number)
 	World.fireRun("ZoneGas", {
 		phase = "warn",
 		zone = id,
+		boxes = zoneBoxes(id),
 		endsAt = Workspace:GetServerTimeNow() + Config.ZoneGasWarnSec,
 		toast = string.format(Lines.zoneGas.warnToast, label(id), Config.ZoneGasWarnSec),
 	})

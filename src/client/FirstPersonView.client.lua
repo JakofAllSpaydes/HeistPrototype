@@ -33,6 +33,17 @@ local OPTICS = {
 	HoloGlass = true,
 }
 
+-- Round 25: the iron sight's own rear pieces are the sight picture: they never fade as "behind the sight"
+-- blockers (the pistol notch and ears vanished, leaving the front post floating over the slide).
+local REAR_SIGHT = {
+	RearSight = true,
+	RearEar = true,
+	RearRing = true,
+	RearWing = true,
+	RearBase = true,
+	SightDot = true,
+}
+
 local source: BasePart? = nil -- the real HeldGun this copy was made from
 local gun: BasePart? = nil -- the copy
 local holder: Model? = nil -- wraps the copy so Model:ScaleTo shrinks parts and attachments together
@@ -192,7 +203,12 @@ local function build(char: Model, held: BasePart)
 	-- would sit right in front of the lens when aimed: it fades out with the aim-in.
 	local rootCf = copy.CFrame
 	for _, part in parts do
-		if part ~= copy and not OPTICS[part.Name] and copy:GetAttribute("Sight") ~= "bare" then
+		if
+			part ~= copy
+			and not OPTICS[part.Name]
+			and not REAR_SIGHT[part.Name]
+			and copy:GetAttribute("Sight") ~= "bare"
+		then
 			local l = rootCf:ToObjectSpace(part.CFrame)
 			local sz = part.Size / 2
 			local function extent(axis: Vector3): number
@@ -438,6 +454,14 @@ RunService:BindToRenderStep("GHSFirstPersonView", Enum.RenderPriority.Camera.Val
 			* CFrame.new(gripPos)
 			* CFrame.Angles(math.rad(rot.X) * tilt + bump, math.rad(rot.Y) * tilt, math.rad(rot.Z) * tilt)
 			* CFrame.new(-gripPos)
+	end
+	-- Round 25: against a wall the gun lowers and pulls in instead of sinking into it.
+	local wk = ClientState.fpWallK
+	if wk > 0.01 then
+		local r = Config.FirstPersonWallLowerDeg
+		motion = CFrame.new(0.03 * wk, -0.16 * wk, 0.22 * wk)
+			* CFrame.Angles(math.rad(-r.X) * wk, math.rad(r.Y) * wk, 0)
+			* motion
 	end
 	GunModels.pivot(g, cam * motion * local_)
 

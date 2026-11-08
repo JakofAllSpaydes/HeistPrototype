@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Upgrades = require(Shared.Upgrades)
+local Weapons = require(Shared.Weapons)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(script.Parent.SlotRemotes)
 local Types = require(Shared.Types)
@@ -42,8 +43,16 @@ end
 local function synergyPool(state: PlayerState.State, exclude: { [string]: boolean }): { string }
 	local pool = {}
 	local classId = PlayerState.classOf(state)
+	-- Round 25: the loadout's archetypes (both slots) for Explosive / Elemental synergies.
+	local archetypes: { [string]: boolean } = {}
+	for _, h in { state.held, state.offhand } do
+		local w = h and Weapons.ById[h.weaponId]
+		if w then
+			archetypes[w.archetype] = true
+		end
+	end
 	for _, s in Upgrades.Stats do
-		if s.requires and not exclude[s.id] and Upgrades.meets(s, state.upgrades, classId) then
+		if s.requires and not exclude[s.id] and Upgrades.meets(s, state.upgrades, classId, archetypes) then
 			table.insert(pool, s.id)
 		end
 	end

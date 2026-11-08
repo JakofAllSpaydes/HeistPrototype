@@ -277,6 +277,10 @@ local Config = {
 	ExplosiveEdgeDmg = 0.35, -- blast damage at the rim (full in the inner 60% of the radius)
 	ProjectileMaxLife = 6, -- seconds before an unlanded projectile blows anyway
 	LobMaxTargetStuds = 260, -- Round 24aa: lobbed rounds aim at the crosshair point when it is this close
+	-- Round 25: a lob that can't reach the crosshair throws at the aim pitch + this loft (degrees), capped at
+	-- LobFallbackMaxDeg (was always 45, which left a first-person view).
+	LobFallbackLoftDeg = 10,
+	LobFallbackMaxDeg = 28,
 	GrenadeRollKeep = 0.75, -- horizontal speed kept per touch while a landed round rolls
 	ClusterScatter = 14, -- studs/s the bomblets fly out sideways...
 	ClusterScatterUp = 16, -- ...and up
@@ -340,6 +344,10 @@ local Config = {
 	CameraZoomStep = 1.5, -- studs per scroll-wheel tick
 	CameraFirstPersonBelow = 2, -- zooming under this snaps to first person (character hidden locally)
 	-- Round 24b/c first person: the body hides, a steady eye, and a camera-locked viewmodel (FirstPersonView).
+	FirstPersonEyeLift = 0.9, -- Round 25: studs the first-person eye sits above the head's centre (0.45 still felt low)
+	FirstPersonWallClearance = 1.6, -- Round 25: a wall closer than this ahead of the eye eases it back...
+	FirstPersonWallPullMax = 0.9, -- ...by at most this many studs, and lowers the gun
+	FirstPersonWallLowerDeg = Vector2.new(30, 18), -- the gun's muzzle-down / yaw-in degrees at a wall
 	FirstPersonBobKeep = 0.2, -- share of the head's walk bob the view keeps (0 = rock steady, 1 = the raw head)
 	FirstPersonSteadyRate = 6, -- how fast the steady eye follows the head's offset (crouch, downed, lean)
 	-- Round 24r optics in first person: magnified zoom (FOV multipliers while aimed; plain ADS is AdsFovMult) and
@@ -371,6 +379,11 @@ local Config = {
 		default = 0.25,
 	},
 	FirstPersonAdsDrop = 0.0, -- ...and this far below the crosshair line
+	-- Round 25: aimed in first person the muzzle sits on the crosshair line, so its tracer ran straight away from
+	-- the lens and drew as a dot. Aimed tracers start here in camera space instead (right, up, -forward): a hair
+	-- below and right of the sight, so the line reads as a streak converging on the crosshair.
+	FirstPersonAdsTracerStart = Vector3.new(0.05, -0.09, -1.4),
+	FirstPersonAdsTracerLife = 0.07, -- seconds an aimed tracer shows (hip tracers 0.05)
 	FirstPersonSway = 0.6, -- how much the gun trails camera turns
 	FirstPersonSwayMaxDeg = 4, -- cap on that lag
 	FirstPersonSwayReturn = 10, -- how fast it settles back (per second)
@@ -450,7 +463,10 @@ local Config = {
 
 	------------------------------------------------------------------ Upgrades (brief 5: categories, elements, utility, income)
 	-- The pick-3 and the dealer draw a category by these weights, then a stat inside it.
-	CategoryWeights = { gun = 60, element = 25, utility = 15 },
+	CategoryWeights = { gun = 50, element = 15, defense = 15, utility = 10 }, -- Round 25: defense (Max HP, HP Regen, Armor)
+	ArmorRegenDelay = 4, -- Round 25 ARMOR: seconds without a hit before spent armor refills...
+	ArmorRegenPctPerSec = 0.25, -- ...at this share of the total per second
+	ArmorColor = "8FD3FF", -- the HUD's armor plate bar
 	-- Elements go on every bullet that lands (each shotgun pellet counts) and all three can be held. The numbers below are
 	-- at power 1 (the first take, shown as 100%); every later take adds the card's percent (Upgrades.Magnitude) to the
 	-- power, which scales the burn DPS and tick rate, the slow and freeze, and the knockback.
@@ -471,6 +487,11 @@ local Config = {
 	ConcussiveInterruptSec = 1.5, -- ...at most this often per enemy
 	ConcussiveSlideSec = 0.15, -- the knockback slide takes this long
 	AbilityCooldownCap = 60, -- ABILITY COOLDOWN never takes more than this % off
+	-- Round 25: ABILITY POWER also amplifies effects that aren't damage or healing. Shares of its bonus (+20% power
+	-- at share 0.5 = +10%): buff strengths (Adrenaline / Stim Shot / Dead Eye / Overclock rate, Eagle Eye slow)...
+	AbilityPowerBuffShare = 1,
+	AbilityPowerDurationShare = 0.5, -- ...buff, stun, mark and Overclock durations...
+	AbilityPowerRadiusShare = 0.35, -- ...and the Flashbang / Eagle Eye radius (soft: ranges stay readable)
 	-- Kill cash = archetype cash x (1 + CashWaveMult x (wave - 1)) x elite x heat x CASH GAIN.
 	CashWaveMult = 0.1,
 
@@ -503,6 +524,19 @@ local Config = {
 	GroundWeaponLifetime = 30, -- floor guns despawn after this; a fresh drop (or swap) restarts it
 	GroundWeaponFadeSec = 10, -- beam fades over the last N seconds of lifetime
 	InteractRadius = 8,
+	-- Round 25: keys. Interact (every prompt, the dealer's BUY, the revive hold) and the three ability slots.
+	InteractKey = "E",
+	AbilityKeys = { "Q", "F", "Z" },
+	-- Round 25: between a dealer stand and a floor gun both in reach, the one you look at more squarely wins the
+	-- interact key: score = degrees off the camera's look line + this many per stud away.
+	InteractDistWeight = 2,
+	-- Round 25: loot light columns stop at the ceiling above them (Ground.ceiling), never taller than these.
+	GunBeaconHeight = 14,
+	-- Round 25: bags and crates that would sit in a wall or out of play (outside every zone) move to the nearest
+	-- clear floor within LootClearSearch studs (Ground.clearSpot); a bag needs LootClearRadius of room.
+	LootClearRadius = 1,
+	LootClearSearch = 12,
+	BagBeaconHeight = 50,
 	MaxConsecutiveNonUpgrades = 3, -- pity, per player: crate rolls below your held rarity before the floor kicks in on your next roll
 
 	-- Rarity odds per wave bracket, in order Common / Uncommon / Rare / Epic / Legendary.
@@ -751,6 +785,8 @@ local Config = {
 	VaultOpenSec = 60, -- the loot window from the door opening
 	VaultGasWarnSec = 10, -- alarm, strobe and MARLOW's warning this long before the gas
 	VaultGasDps = 8, -- to any player inside once the gas is in (stops the moment they step out)
+	GasToastNearStuds = 45, -- Round 25: vault / office / zone gas toasts (top centre) show only this close (zones: to the box)
+	VaultGasMaxSec = 20, -- Round 25: the vault seals this long after the gas whoever is inside (they're moved out)
 	VaultEjectStuds = 4, -- Round 19c: a player inside the sealed vault (walked in as the door shut) lands this far out on the landing side
 	-- Brief 5: the CRACK THE VAULT draw is impossible to miss.
 	VaultStampSec = 1.5, -- the center VAULT JOB stamp
@@ -1019,6 +1055,7 @@ local Config = {
 	------------------------------------------------------------------ Dealer (brief 5; Dealer.lua, DealerUI.lua)
 	-- After every boss wave is cleared: a DealerSec break (no spawns, heat frozen) with a stall of per-player stands.
 	DealerSec = 90,
+	DealerRevivesCrew = true, -- Round 25: the DEALER's break stands every downed / bled-out member back up, free
 	DealerLine = "Set up in the middle of the floor. You've got ninety seconds, then I'm gone.", -- the DEALER's call (match DealerSec)
 	DealerStallPosition = Vector3.new(0, 0, 18), -- arena center for the prototype (clear of the center spawn)
 	DealerStock = 8, -- upgrade cards per player
@@ -1031,11 +1068,11 @@ local Config = {
 	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
 	-- Round 19c: about a quarter cheaper across the stall (was 100 / 160 / 260 / 420 / 700, crate 800, heal 300, reroll 150).
 	-- Round 21: stall prices scale with the wave (income does: CashWaveMult, CashBagPerWave), not with upgrades bought.
-	-- card = ShopPriceByTier x (1 + DealerCardWaveMult x (wave - 1)) x DealerBuyStepMult ^ cards bought this break
-	-- (wave 10: tier 1 $416, tier 5 $2.9k; was x UpgradePriceMult ^ upgrades bought: tier 1 ~$3.7k at 13 upgrades).
-	ShopPriceByTier = { 75, 120, 195, 315, 525 },
-	DealerCardWaveMult = 0.5,
-	DealerBuyStepMult = 1.1,
+	-- Round 25: card = your current UPGRADE price x DealerCardPriceShare[tier] x DealerFirstBuyDiscount[n] (the nth
+	-- card bought this break; past the list = 1). Every buy counts toward the UPGRADE escalation, so cards climb with
+	-- it (Round 21's wave-only prices fell to $5-10k against a $100k upgrade).
+	DealerCardPriceShare = { 0.6, 0.75, 0.9, 1.1, 1.35 }, -- common .. legendary (you pick the exact card, so tier costs)
+	DealerFirstBuyDiscount = { 0.35, 0.6 }, -- the first two cards each break come cheap
 	-- props = price x (1 + DealerPropWaveMult x (wave - 1)) (wave 10: crate $2.8k, heal $1k, reroll $506 doubling per use)
 	DealerPropWaveMult = 0.4,
 	ShopCratePrice = 600, -- ARMS DROP: a crate at the stall for the party
@@ -1129,7 +1166,19 @@ local Config = {
 	------------------------------------------------------------------ The hub (brief 8: the warehouse)
 	HubOrigin = CFrame.new(0, 0, 1000), -- where the hub bakes: the floor logo (the star, the spawn) lands here
 	HubImportDrop = { "Helicopter" }, -- models tools/importhub.luau drops (matched against the part names inside)
-	BoothMannequin = true, -- each booth's rig wears your mask and class idle and holds your starter gun (your own view)
+	-- Round 25: the booth keepers are three R15 NPCs (server-built from these avatars' HumanoidDescriptions, a
+	-- plain body-coloured R15 if the fetch fails), named on a small tag that shows only right by the stall
+	-- (fading out over BoothNpcTagFadeNear..Far) and hides while a menu is open. Keyed by the booth's Tab. (Replaces Round 20's
+	-- BoothMannequin: the rigs wore your own character.)
+	BoothNpcs = {
+		WEAPONS = { name = "DUKE", role = "GUNSMITH", userId = 156 },
+		CLASSES = { name = "SABLE", role = "TRAINER", userId = 261 },
+		AVATAR = { name = "NOVA", role = "STYLIST", userId = 1 },
+	},
+	BoothNpcIdleAnim = "rbxassetid://507766666", -- R15 default idle
+	BoothNpcTagFadeNear = 18, -- studs: the name tag is solid this close...
+	BoothNpcTagFadeFar = 34, -- ...and fades out by here
+	BoothNpcTagOffset = 2.4, -- studs above the head
 	RangeDoorOpen = true, -- the range's roll-up door stays up (false: it stays down and the range is shut)
 	HubDepartSec = 2.5, -- run start: the party fades into the hub van, the garage rolls up, the van pulls out
 	GarageCloseSec = 3, -- the garage rolls back down this long after the van has gone (everyone sees it)
@@ -1154,6 +1203,7 @@ local Config = {
 	MarlowNpc = true, -- MARLOW stands in front of his board in the hub (the board's OPEN prompt is on him)
 	MarlowOffset = 3.2, -- studs out from the board's face
 	MarlowIdleAnimationId = "rbxassetid://507766388", -- the default R15 idle
+	MarlowRole = "FIXER", -- Round 25: the line under his name on the keeper tag
 	-- The training range (the old helicopter bay): armed inside, nothing pays, scores or persists.
 	RangeAbilities = true, -- all three class abilities live inside the range (cooldowns as in a run)
 	DummyCount = 3, -- dummies standing on the Dummy nodes (at most one per node)
@@ -1330,6 +1380,7 @@ local Config = {
 	MetaWeaponPreview = true, -- tapping a gun in the Weapons tab puts it in the avatar's hand (local only; the real one comes back on leaving the tab or closing)
 	MetaTileHoverScale = 1.05, -- customization tiles grow this much under the cursor (scale only, they never move)
 	MetaSelectPopScale = 1.1, -- the tile you just tapped pops from this scale back to 1
+	MetaSuccessSparks = 30, -- Round 25: sparks off a button on a successful upgrade (unlocks / buys: x1.5)
 	MetaEquipBadgeShare = 0.36, -- the big equipped check on a tile, as a share of the tile's width
 
 	------------------------------------------------------------------ Payout (GDD_7)
@@ -1404,6 +1455,11 @@ local Config = {
 	RevivePausesBleed = true, -- a teammate's revive hold freezes the bleed timer; letting go resumes it
 	ReviveTickSec = 0.5, -- the reviver's centered bar ticks this often while it fills
 	BusyTagOffset = 3.2, -- studs above a teammate's head for the LOCKPICK / HACKING / CAPTURING tag
+	-- Round 25: teammate markers in a run (client/TeammateMarkers.lua): diamond + name + distance at any range,
+	-- an edge arrow when off screen.
+	TeammateMarkers = true,
+	TeammateMarkerOffset = 4.4, -- studs above the head (clear of the busy tag)
+	TeammateMarkerHideNear = 12, -- on screen and this close: hidden (a downed teammate always shows)
 	-- The hub nameplate (client/Nameplates.lua): level badge, name, VIP chip, class pictogram, best top wave.
 	NameplateOffset = 2.8, -- studs above the head
 	NameplateHeight = 44, -- px at the UI basis (the class block is this square); the level badge is 1.3x this

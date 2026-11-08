@@ -12,7 +12,17 @@ local Config = require(script.Parent.Config)
 --   element = "<element stat id>"  the player holds that element (Incendiary / Cryo / Concussive)
 --   anyElement = true              the player holds at least one element
 --   class = "<class id>"           the player's equipped class (Classes.lua ids: TORCH, ENGINEER, DOC, ...)
-export type Requires = { element: string?, anyElement: boolean?, class: string? }
+--   archetype = "<archetype>"      Round 25: a gun of that archetype in either loadout slot (Explosive, Elemental)
+--   owns = "<stat id>"             Round 25: the player holds that upgrade (Splash: the kill explosions)
+--   anyOf = { Requires, ... }       Round 25: passes when ANY one of these passes (on top of the keys above)
+export type Requires = {
+	element: string?,
+	anyElement: boolean?,
+	class: string?,
+	archetype: string?,
+	owns: string?,
+	anyOf: { Requires }?,
+}
 export type Stat = {
 	id: string,
 	name: string,
@@ -24,13 +34,24 @@ export type Stat = {
 	negative: boolean?,
 	effect: string?, -- elements: the effect the percent raises (Burn / Slow / Stun); synergy stats: what it raises
 	requires: Requires?,
+	tag: string?, -- Round 25: the synergy pill's word ("EXPLOSIVE"), when `requires` alone can't name it
 }
 
 local Upgrades = {}
 
+-- Round 25: shared conditions (cast per alternative so the mixed shapes type-check).
+local ELEMENT_REQ: Requires = { anyOf = { { anyElement = true } :: Requires, { archetype = "Elemental" } :: Requires } }
+local EXPLOSIVE_REQ: Requires = {
+	anyOf = {
+		{ archetype = "Explosive" } :: Requires,
+		{ owns = "Splash" } :: Requires,
+		{ class = "INITIATE" } :: Requires,
+	},
+}
+
 -- The categories the normal draw weighs (Config.CategoryWeights). Conditional stats are category "synergy" and
 -- are drawn on their own (Config.SynergyChance), never through these.
-Upgrades.Categories = { "gun", "element", "utility" }
+Upgrades.Categories = { "gun", "element", "defense", "utility" }
 
 Upgrades.Stats = {
 	{ id = "Damage", name = "Damage", short = "DMG", additive = false, unit = "%", category = "gun" },
@@ -77,6 +98,19 @@ Upgrades.Stats = {
 		additive = true,
 		unit = "%",
 		category = "element",
+		noMalus = true,
+	},
+	-- Round 25: Defense. Max HP and HP Regen (their numbers were already in the matrix), and ARMOR: flat points of
+	-- shield over HP that soak hits first and refill after ArmorRegenDelay seconds without damage.
+	{ id = "MaxHP", name = "Max HP", short = "HP", additive = false, unit = "%", category = "defense" },
+	{ id = "HPRegen", name = "HP Regen", short = "REG", additive = false, unit = "%", category = "defense" },
+	{
+		id = "Armor",
+		name = "Armor",
+		short = "ARM",
+		additive = true,
+		unit = "",
+		category = "defense",
 		noMalus = true,
 	},
 	-- Utility.
@@ -144,7 +178,23 @@ Upgrades.Stats = {
 		unit = "%",
 		category = "synergy",
 		noMalus = true,
-		requires = { anyElement = true },
+		-- Round 25: an Elemental gun counts too, and the card raises that gun's damage as well.
+		requires = ELEMENT_REQ,
+		tag = "ELEMENT",
+	},
+	-- Round 25: EXPLOSIVE synergies. Offered with an Explosive gun in the loadout, the Splash upgrade (kill
+	-- explosions) or INITIATE (Frag / Claymore); each raises all of them.
+	{
+		id = "Demolition",
+		name = "Demolition",
+		short = "DEM",
+		effect = "Explosion Dmg",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = EXPLOSIVE_REQ,
+		tag = "EXPLOSIVE",
 	},
 	-- Class synergies: one per class, on the abilities it owns.
 	{
@@ -200,7 +250,9 @@ Upgrades.Stats = {
 		unit = "%",
 		category = "synergy",
 		noMalus = true,
-		requires = { class = "INITIATE" },
+		-- Round 25: an explosive synergy now (was INITIATE only): Frag, Claymore, Explosive guns, Splash.
+		requires = EXPLOSIVE_REQ,
+		tag = "EXPLOSIVE",
 	},
 } :: { Stat }
 
@@ -211,6 +263,7 @@ Upgrades.TierNames = {
 	MagSize = { "Extra Clip", "Extended Mag", "Drum Mag", "Belt Fed", "Bottomless" },
 	ReloadSpeed = { "Fast Hands", "Slick Reload", "Speed Loader", "Lightning Hands", "Instant Swap" },
 	MaxHP = { "Thick Skin", "Toughened", "Iron Hide", "Juggernaut", "Immortal" },
+	Armor = { "Padding", "Kevlar", "Plate Carrier", "Riot Gear", "Juggernaut Suit" },
 	HPRegen = { "Second Wind", "Field Patch", "Medkit", "Regenerator", "Phoenix" },
 	MoveSpeed = { "Light Feet", "Sprinter", "Runner", "Blur", "Afterimage" },
 	CritChance = { "Lucky Shot", "Keen Eye", "Marksman", "Deadeye", "Executioner" },
@@ -236,6 +289,7 @@ Upgrades.TierNames = {
 	HealPower = { "Bedside Manner", "Triage", "Field Medic", "Surgeon", "Miracle Worker" },
 	DeadEyeTime = { "Steady Breath", "Held Breath", "Patient", "In The Zone", "Time Stops" },
 	BlastRadius = { "Bigger Bang", "Shrapnel", "Wide Blast", "Demo Expert", "Ground Zero" },
+	Demolition = { "Hot Powder", "Shaped Charge", "Demolition", "High Yield", "Big Boom" },
 } :: { [string]: { string } }
 
 -- Magnitude per stat x tier (1..5). Percent for "%" stats, flat count for "" stats. Elements: the power a later
@@ -246,6 +300,7 @@ Upgrades.Magnitude = {
 	MagSize = { 20, 30, 45, 60, 80 },
 	ReloadSpeed = { 15, 22, 30, 40, 55 },
 	MaxHP = { 15, 25, 35, 50, 70 },
+	Armor = { 15, 25, 35, 50, 70 }, -- armor points (a shield over HP that refills out of combat)
 	HPRegen = { 50, 80, 120, 180, 260 },
 	MoveSpeed = { 8, 12, 16, 22, 30 },
 	CritChance = { 5, 10, 15, 22, 30 },
@@ -260,18 +315,20 @@ Upgrades.Magnitude = {
 	Cryo = { 20, 30, 45, 60, 80 },
 	Concussive = { 20, 30, 45, 60, 80 },
 	AbilityCooldown = { 5, 8, 12, 16, 22 }, -- % shorter cooldowns (capped at Config.AbilityCooldownCap)
-	AbilityPower = { 8, 12, 18, 25, 35 }, -- % more ability damage, heal and placeable HP
+	AbilityPower = { 8, 12, 18, 25, 35 }, -- % more ability damage, heal, placeable HP and buff strength (Round 25:
+	-- durations / radii take Config.AbilityPowerDurationShare / RadiusShare of it)
 	CashGain = { 15, 25, 35, 50, 70 }, -- % more cash from kills, bags and job payouts
 	-- Synergy (conditional) stats.
 	Wildfire = { 40, 50, 60, 75, 90 }, -- % of a burn's strength that jumps to nearby enemies when the burner dies
 	Shatter = { 15, 22, 30, 40, 55 }, -- % more bullet damage to chilled enemies (frozen: x Config.ShatterFrozenMult)
 	Aftershock = { 30, 45, 60, 80, 100 }, -- % of gun damage a stagger sends to enemies around the target
-	ElementalPower = { 10, 15, 20, 28, 36 }, -- % more power on every held element
+	ElementalPower = { 10, 15, 20, 28, 36 }, -- % more power on every held element and more Elemental gun damage
 	Accelerant = { 15, 22, 30, 40, 55 }, -- % more Molotov, Flame Turret and Oil Drum damage
 	TurretDamage = { 15, 22, 30, 40, 55 }, -- % more Turret damage per shot
 	HealPower = { 15, 22, 30, 40, 55 }, -- % more Stim Shot, Med Bag and Healing Turret healing
 	DeadEyeTime = { 15, 22, 30, 40, 55 }, -- % longer Dead Eye
-	BlastRadius = { 10, 15, 20, 28, 36 }, -- % wider Frag and Claymore blasts
+	BlastRadius = { 10, 15, 20, 28, 36 }, -- % wider Frag, Claymore, Explosive gun and Splash blasts
+	Demolition = { 12, 18, 25, 33, 45 }, -- % more Frag, Claymore, Explosive gun and Splash damage
 } :: { [string]: { number } }
 
 Upgrades.TradeoffChance = Config.TradeoffChance
@@ -303,10 +360,25 @@ end
 
 -- The condition filter: true when every key of the stat's `requires` holds for a player who holds `owned` (the
 -- run's tracker items by stat id) and has `classId` equipped. Stats without `requires` always pass.
-function Upgrades.meets(stat: Stat, owned: { [string]: any }, classId: string): boolean
-	local r = stat.requires
-	if not r then
-		return true
+-- Round 25: `archetypes` = the archetypes in the player's loadout (both slots), for `archetype` conditions.
+local function holds(r: Requires, owned: { [string]: any }, classId: string, archetypes: { [string]: boolean }): boolean
+	if r.anyOf then
+		local any = false
+		for _, alt in r.anyOf do
+			if holds(alt, owned, classId, archetypes) then
+				any = true
+				break
+			end
+		end
+		if not any then
+			return false
+		end
+	end
+	if r.archetype and not archetypes[r.archetype] then
+		return false
+	end
+	if r.owns and not owned[r.owns] then
+		return false
 	end
 	if r.element and not owned[r.element] then
 		return false
@@ -329,6 +401,19 @@ function Upgrades.meets(stat: Stat, owned: { [string]: any }, classId: string): 
 	return true
 end
 
+function Upgrades.meets(
+	stat: Stat,
+	owned: { [string]: any },
+	classId: string,
+	archetypes: { [string]: boolean }?
+): boolean
+	local r = stat.requires
+	if not r then
+		return true
+	end
+	return holds(r, owned, classId, archetypes or {})
+end
+
 -- The pill on a conditional card says why it showed up: "FIRE SYNERGY" (an element), "ELEMENT SYNERGY" (any
 -- element), "TORCH SYNERGY" (a class). nil for ordinary stats.
 function Upgrades.synergyTag(statId: string): string?
@@ -338,7 +423,9 @@ function Upgrades.synergyTag(statId: string): string?
 		return nil
 	end
 	local why = "SYNERGY"
-	if r.class then
+	if s and s.tag then
+		why = s.tag
+	elseif r.class then
 		why = r.class
 	elseif r.element then
 		-- "Fire Ammo" -> "FIRE"
@@ -429,13 +516,13 @@ function Upgrades.effectLine(statId: string, value: number): string
 	return string.format("%s %s", Upgrades.pctText(value, statId), string.upper(Upgrades.statName(statId)))
 end
 
--- The tracker badge: elements show their power ("130%"), utility and synergy the running total ("-12%"), gun
--- stats the count.
+-- The tracker badge: elements show their power ("130%"), utility, defense and synergy the running total ("-12%",
+-- "+40" armor), gun stats the count.
 function Upgrades.badgeText(statId: string, item: { count: number, pct: number }): string
 	local cat = Upgrades.category(statId)
 	if cat == "element" then
 		return string.format("%s%%", fmtValue(item.pct))
-	elseif cat == "utility" or cat == "synergy" then
+	elseif cat == "utility" or cat == "synergy" or cat == "defense" then
 		return Upgrades.pctText(item.pct, statId)
 	end
 	return string.format("x%d", item.count)

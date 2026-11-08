@@ -10,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Classes = require(Shared:WaitForChild("Classes"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -30,7 +31,11 @@ type CooldownUI = {
 	lastCharges: number,
 }
 
-local HOTKEYS = { Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.Z }
+-- Round 25: Config.AbilityKeys (Q / F / Z: E became the interact key).
+local HOTKEYS = {}
+for i, k in Config.AbilityKeys do
+	HOTKEYS[i] = (Enum.KeyCode :: any)[k]
+end
 
 function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local S = UI.S

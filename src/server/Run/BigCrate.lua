@@ -41,7 +41,8 @@ type Crate = {
 	expired: boolean,
 	active: boolean,
 	guaranteed: boolean,
-	deck: { Entry },
+	rolledIds: { [string]: boolean }, -- Round 25: weapon types this crate already gave (kept distinct while it can)
+	order: { Player }?, -- Round 25: whose own pool each roll after the first draws from (cycled)
 	endsAt: number,
 }
 
@@ -59,43 +60,126 @@ local function rollCount(): number
 	return math.max(1, #World.runAudience() + Config.CrateRollsExtra)
 end
 
--- The crate pool: every weapon owned by someone in the run. Round 16: no level rides along; whoever picks the
--- gun up holds it at their own Armory level for that weapon (WeaponRoll.swap).
-local function partyPool(): { Entry }
-	local owned: { [string]: boolean } = {}
-	for _, p in World.runAudience() do
-		local state = PlayerState.get(p)
-		for _, w in PlayerState.ownedWeapons(state) do
-			owned[w.id] = true
-		end
+-- Round 25: the crate pools when the crew owns different guns. Roll 1 draws from the SHARED pool (guns every
+-- member owns); every roll after it draws from one member's OWN pool, cycling through the crew (members whose
+-- pool holds guns outside the shared one first). Whatever lands is ordinary floor loot anyone can take, and
+-- whoever picks a gun up holds it at their own Armory level for that weapon (WeaponRoll.swap, Round 16).
+local function ownedSet(p: Player): { [string]: boolean }
+	local set = {}
+	for _, w in PlayerState.ownedWeapons(PlayerState.get(p)) do
+		set[w.id] = true
 	end
+	return set
+end
+
+local function toEntries(set: { [string]: boolean }): { Entry }
 	local out = {}
 	for _, w in Weapons.List do
-		if owned[w.id] then
+		if set[w.id] then
 			table.insert(out, { weapon = w })
 		end
 	end
+	return out
+end
+
+local function sharedPool(): { Entry }
+	local shared: { [string]: boolean }? = nil
+	for _, p in World.runAudience() do
+		local own = ownedSet(p)
+		if not shared then
+			shared = own
+		else
+			for id in shared do
+				if not own[id] then
+					shared[id] = nil
+				end
+			end
+		end
+	end
+	local out = toEntries(shared or {})
 	if #out == 0 then
 		table.insert(out, { weapon = Weapons.ById[Weapons.Starter] })
 	end
 	return out
 end
 
-local function shuffled(list: { Entry }): { Entry }
-	local deck = table.clone(list)
-	for i = #deck, 2, -1 do
+local function shuffledPlayers(list: { Player }): { Player }
+	local out = table.clone(list)
+	for i = #out, 2, -1 do
 		local k = math.random(i)
-		deck[i], deck[k] = deck[k], deck[i]
+		out[i], out[k] = out[k], out[i]
 	end
-	return deck
+	return out
 end
 
--- Distinct weapon types per crate while the pool lasts: deal from a shuffled deck, reshuffle when it runs out.
-local function deal(crate: Crate): Entry
-	if #crate.deck == 0 then
-		crate.deck = shuffled(partyPool())
+-- The cycle for rolls 2+: members with guns beyond the shared pool first (shuffled), then the rest.
+local function rollOrder(): { Player }
+	local shared: { [string]: boolean } = {}
+	for _, e in sharedPool() do
+		shared[e.weapon.id] = true
 	end
-	return table.remove(crate.deck, 1) :: Entry
+	local extra, plain = {}, {}
+	for _, p in shuffledPlayers(World.runAudience()) do
+		local more = false
+		for id in ownedSet(p) do
+			if not shared[id] then
+				more = true
+				break
+			end
+		end
+		table.insert(if more then extra else plain, p)
+	end
+	for _, p in plain do
+		table.insert(extra, p)
+	end
+	return extra
+end
+
+-- A random entry, preferring weapon types this crate hasn't given yet.
+local function pick(crate: Crate, pool: { Entry }): Entry
+	local fresh = {}
+	for _, e in pool do
+		if not crate.rolledIds[e.weapon.id] then
+			table.insert(fresh, e)
+		end
+	end
+	local from = if #fresh > 0 then fresh else pool
+	local e = from[math.random(#from)]
+	crate.rolledIds[e.weapon.id] = true
+	return e
+end
+
+-- `crate.rolled` already counts this roll (1 = the first).
+local function deal(crate: Crate): (Entry, string)
+	if crate.rolled <= 1 then
+		return pick(crate, sharedPool()), "shared pool"
+	end
+	if not crate.order or #(crate.order :: { Player }) == 0 then
+		crate.order = rollOrder()
+	end
+	local order = crate.order :: { Player }
+	local member: Player? = nil
+	-- Skip anyone who left since the order was set.
+	for _ = 1, #order do
+		local idx = (crate.rolled - 2) % #order + 1
+		local p = order[idx]
+		if p and p.Parent then
+			member = p
+			break
+		end
+		table.remove(order, idx)
+		if #order == 0 then
+			break
+		end
+	end
+	if not member then
+		return pick(crate, sharedPool()), "shared pool"
+	end
+	local own = toEntries(ownedSet(member :: Player))
+	if #own == 0 then
+		return pick(crate, sharedPool()), "shared pool"
+	end
+	return pick(crate, own), (member :: Player).Name .. "'s pool"
 end
 
 local function dustRing(position: Vector3)
@@ -133,10 +217,9 @@ end
 -- within a couple of studs, so two guns never stack.
 local function freeSpot(crate: Crate): Vector3
 	local center = crate.landPos
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	local room = Workspace:FindFirstChild("Room")
-	params.FilterDescendantsInstances = if room then { room } else {}
+	-- Round 25: every map's geometry (was the arena's Room only: on THE BANK guns ejected through walls), and the
+	-- spot itself must be clear floor in play.
+	local params = Ground.params()
 	local best: Vector3? = nil
 	local base = math.random() * math.pi * 2
 	for i = 0, 11 do
@@ -146,7 +229,14 @@ local function freeSpot(crate: Crate): Vector3
 		local from = center + Vector3.new(0, 1.5, 0)
 		local to = target + Vector3.new(0, 1.5, 0)
 		local hit = Workspace:Raycast(from, to - from, params)
-		if not hit then
+		local floorY = Ground.y(target, center.Y - 100, 3, 6)
+		if
+			not hit
+			and math.abs(floorY - center.Y) <= 2
+			and Ground.isClear(Vector3.new(target.X, floorY, target.Z), 0.8, 1.5)
+			and Ground.inPlayArea(target + Vector3.new(0, 2, 0))
+		then
+			target = Vector3.new(target.X, floorY, target.Z)
 			local crowded = false
 			for _, gun in lootFolder:GetChildren() do
 				if gun:IsA("BasePart") then
@@ -163,7 +253,8 @@ local function freeSpot(crate: Crate): Vector3
 			best = best or target
 		end
 	end
-	return best or (center + Vector3.new(Config.CrateDropRadius, 0, 0))
+	-- Nothing clear round the crate: beside it, nudged out of anything solid.
+	return best or (Ground.clearSpot(center + Vector3.new(2.5, 0, 0), 0.8, 1.5, Config.LootClearSearch))
 end
 
 local function eject(crate: Crate, entry: Entry, rarity: number, _roller: PlayerState.State)
@@ -222,7 +313,7 @@ local function rollOnce(player: Player, state: PlayerState.State, crate: Crate)
 	crate.rolled += 1
 	syncAttributes(crate)
 
-	local entry = deal(crate)
+	local entry, poolNote = deal(crate)
 	local weapon = entry.weapon
 	local wave = World.wave
 	local floor = Config.BigCrateRarityFloorByBracket[Rarity.bracketIndex(wave)]
@@ -253,11 +344,12 @@ local function rollOnce(player: Player, state: PlayerState.State, crate: Crate)
 	})
 	Log.event(
 		"Crate",
-		"%s opened %s: %s %s (floor %s%s), %d rolls left",
+		"%s opened %s: %s %s from %s (floor %s%s), %d rolls left",
 		player.Name,
 		crate.id,
 		Rarity.name(rarity),
 		weapon.id,
+		poolNote,
 		Rarity.name(floor),
 		if note ~= "" then ", " .. note else "",
 		crate.rolls
@@ -368,6 +460,18 @@ function BigCrate.drop(at: Vector3?, opts: DropOpts?)
 		end
 		landPos = Ground.at(best or (crew + Vector3.new(6, 0, 6)))
 	end
+	-- Round 25: a crate never lands in a wall or out of play (the crew's average between floors, a job spot by a
+	-- wall, the boss's last position): nudged to the nearest clear floor its size fits.
+	do
+		local body0 = template:FindFirstChild("Body") :: BasePart?
+		local r = if body0 then math.max(body0.Size.X, body0.Size.Z) / 2 else 2
+		local h = if body0 then body0.Size.Y else 3
+		local spot, moved = Ground.clearSpot(landPos, r, h, Config.LootClearSearch)
+		if moved then
+			Log.event("Crate", "landing moved %.1f studs out of a wall", (spot - landPos).Magnitude)
+		end
+		landPos = spot
+	end
 
 	local model = template:Clone()
 	model.Name = id
@@ -402,7 +506,8 @@ function BigCrate.drop(at: Vector3?, opts: DropOpts?)
 		expired = false,
 		active = true,
 		guaranteed = opts ~= nil and opts.legendary == true,
-		deck = shuffled(partyPool()),
+		rolledIds = {},
+		order = nil,
 		endsAt = endsAt,
 	}
 	crates[id] = crate
@@ -449,7 +554,7 @@ function BigCrate.drop(at: Vector3?, opts: DropOpts?)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "Prompt"
 		prompt.ActionText = "OPEN"
-		prompt.KeyboardKeyCode = Enum.KeyCode.F
+		prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
 		prompt.MaxActivationDistance = Config.InteractRadius
 		prompt.HoldDuration = 0
 		prompt.RequiresLineOfSight = false

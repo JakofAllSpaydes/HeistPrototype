@@ -88,7 +88,8 @@ export type Computed = {
 	turretDmgMult: number, -- ENGINEER: Turret damage
 	healMult: number, -- DOC: Stim Shot / Med Bag / Healing Turret healing
 	deadEyeTimeMult: number, -- SHARPSHOOTER: Dead Eye duration
-	blastRadiusMult: number, -- INITIATE: Frag / Claymore blast radius
+	blastRadiusMult: number, -- explosive synergy: Frag / Claymore / Explosive gun / Splash blast radius
+	explosiveDmgMult: number, -- Round 25 DEMOLITION: Frag / Claymore / Splash damage (Explosive guns: in damage)
 }
 
 -- charges / maxCharges: DOUBLE DOWN gives Frag and Claymore a second charge; the sweep shows only at 0 charges.
@@ -116,6 +117,8 @@ export type Sync = {
 	boss: { id: string, name: string, hp: number, maxHP: number, phase: number }?, -- the live boss, for the bar
 	roster: any?, -- the scoreboard (Roster.View): rows in MVP order plus team cash, banked and time survived
 	maxHP: number,
+	armor: number?, -- Round 25 ARMOR points left / total (0 without the card)
+	maxArmor: number?,
 	dmgPct: number, -- in-run damage upgrade share (Round 16: floor-gun tags compute your own numbers from it)
 	held: HeldView,
 	offhand: OffhandView?, -- Round 21: the other loadout slot (nil = empty)

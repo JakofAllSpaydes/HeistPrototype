@@ -229,8 +229,7 @@ local function pickSlot(scene: any, anchor: Instance, w: Weapons.Weapon, profile
 		UI.corner(b, S(4))
 		MetaUI.hover(b, 1.04)
 		if cur then
-			local vp =
-				ModelIcon.weapon(b, cur.id, UDim2.new(1, -S(16), 0, S(90)), { motion = "hover", hoverTarget = b })
+			local vp = ModelIcon.weapon(b, cur.id, UDim2.new(1, -S(16), 0, S(90)), {})
 			vp.AnchorPoint = Vector2.new(0.5, 0)
 			vp.Position = UDim2.new(0.5, 0, 0, S(8))
 			vp.ZIndex = 53
@@ -828,6 +827,27 @@ function WeaponsTab.render(scene: any)
 		end
 	end
 
+	-- Round 25: a tap re-styles the two tiles and rebuilds the detail card only (rebuilding the whole grid made
+	-- every viewport blink out on each tap).
+	local tiles: { [string]: { b: TextButton, equipped: boolean } } = {}
+	local function renderDetail()
+		for _, c in card:GetChildren() do
+			if c:IsA("GuiObject") then
+				c:Destroy()
+			end
+		end
+		local dw = selected and Weapons.ById[selected]
+		local dshow: Weapons.Showcase? = nil
+		if not dw then
+			for _, s in Weapons.Showcase do
+				if s.id == selected then
+					dshow = s
+				end
+			end
+		end
+		detail(scene, card, dw, dshow)
+	end
+
 	local function tilesFor(list: { any }, header: string, order: number)
 		MetaUI.header(grid, order, header, #list)
 		if #list == 0 then
@@ -864,6 +884,7 @@ function WeaponsTab.render(scene: any)
 				source = if not isOwned then saleType else nil,
 				pop = if equipped and equipPopFor(id) then "equip" elseif popSelect == id then "select" else nil,
 			})
+			tiles[id] = { b = b, equipped = equipped }
 			if w and isOwned then
 				MetaUI.masteryBar(b, "weapon", w.id, masteryXp(profile, w.id))
 			end
@@ -904,28 +925,25 @@ function WeaponsTab.render(scene: any)
 				scene.refresh()
 			end)
 			b.Activated:Connect(function()
-				if selected ~= id then
-					popSelect = id
+				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
+				if selected == id then
+					return
+				end
+				local old = selected and tiles[selected]
+				if old and old.b.Parent then
+					MetaUI.tileState(old.b, false, old.equipped)
 				end
 				selected = id
-				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
-				scene.refresh()
+				MetaUI.tileState(b, true, equipped)
+				UI.punch(b, Config.MetaSelectPopScale, 0.25)
+				scene.preview.weapon(id)
+				renderDetail()
 			end)
 		end
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
-
-	local w = selected and Weapons.ById[selected]
-	local show: Weapons.Showcase? = nil
-	if not w then
-		for _, s in Weapons.Showcase do
-			if s.id == selected then
-				show = s
-			end
-		end
-	end
-	detail(scene, card, w, show)
+	renderDetail()
 	popSelect = nil
 	if popEquip and isEquipped(profile, popEquip) then
 		popEquip = nil -- played

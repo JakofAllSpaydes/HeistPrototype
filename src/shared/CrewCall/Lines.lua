@@ -1,5 +1,8 @@
 --!strict
 -- Every string the crew call component shows. Rewrite freely; nothing else references the copy.
+-- Round 25: the interact key in every hint (Config.InteractKey).
+local KEY = (require(script.Parent.Parent:WaitForChild("Config")) :: any).InteractKey :: string
+
 local Lines = {
 	job = {
 		name = "VAULT PING",
@@ -159,10 +162,10 @@ local Lines = {
 			Safe = "CRACK",
 			Cut = "CUT",
 		},
-		holdHint = "HOLD F · %s",
-		minigameHint = "F · %s",
+		holdHint = "HOLD " .. KEY .. " · %s",
+		minigameHint = KEY .. " · %s",
 		rewardLine = "+$%d CASH · OPENS %s",
-		markerHint = "HOLD F",
+		markerHint = "HOLD " .. KEY,
 		promptAction = "OPEN",
 		lockedAction = "LOCKED",
 		busyTag = "OPENING",

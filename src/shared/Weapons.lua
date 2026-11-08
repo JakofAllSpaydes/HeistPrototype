@@ -250,7 +250,7 @@ Weapons.List = {
 		auto = true,
 	}),
 	-- Round 24s: two more each for the thin types (pistol / shotgun / sniper / LMG), Gold-unlocked (Direct).
-	-- Paper DPS at common: Python 139, M93R 138 (burst), AA-12 173, M870 156, SVD 140, Kar98k 136, PKM 176, MG42 170.
+	-- Paper DPS at common: Python 139, M93R 135 (auto since Round 25), AA-12 173, M870 156, SVD 140, Kar98k 136, PKM 176, MG42 170.
 	def({
 		id = "Python",
 		displayName = "Python .357",
@@ -265,10 +265,9 @@ Weapons.List = {
 		id = "M93R",
 		displayName = "M93R",
 		archetype = "Pistol",
-		baseDmg = 26,
-		fireRate = 14, -- inside the burst
-		burst = 3,
-		burstDelay = 0.35, -- 3 shots per 0.56s = 5.3/s effective
+		baseDmg = 15,
+		fireRate = 9, -- full auto (was a 3-round burst): DPS 135
+		auto = true,
 		magSize = 21,
 		reloadTime = 1.4,
 		spread = 1.4,
@@ -409,7 +408,7 @@ Weapons.List = {
 		reloadTime = 2.2,
 		spread = 0,
 		mode = "projectile",
-		proj = { kind = "tnt", speed = 46, gravity = 70, fuse = 1.0, radius = 15, bounce = 0.12 },
+		proj = { kind = "tnt", speed = 46, gravity = 70, fuse = 1.0, radius = 15, bounce = 0.12, startDrop = 1.1 },
 	}),
 	-- Round 24v: ELEMENTAL. The mag is fuel / charge; every tick (fireRate per second) spends one.
 	def({
@@ -453,7 +452,7 @@ Weapons.List = {
 	}),
 	def({
 		id = "PlasmaCaster",
-		displayName = "Plasma Caster",
+		displayName = "Plasma Gun",
 		archetype = "Elemental",
 		baseDmg = 45,
 		fireRate = 1.6,
@@ -468,7 +467,7 @@ Weapons.List = {
 			maxCost = 6,
 			maxDmgMult = 5,
 			minWidth = 0.25, -- a thin laser uncharged...
-			maxWidth = 3.5, -- ...a thick ray at full charge
+			maxWidth = 1.75, -- ...a thick ray at full charge (Round 25: half the old 3.5)
 			minDur = 0.08, -- seconds the beam holds uncharged (one hit)...
 			maxDur = 1.0, -- ...and at full charge,
 			maxTicks = 6, -- hitting this many times
@@ -680,7 +679,7 @@ Weapons.ArmoryRarity = {
 	Flamethrower = 3,
 	CryoSprayer = 3,
 	ArcGun = 4,
-	PlasmaCaster = 4,
+	PlasmaCaster = 5, -- "Plasma Gun" (id kept)
 	-- Round 24s
 	Python = 2,
 	M93R = 3,

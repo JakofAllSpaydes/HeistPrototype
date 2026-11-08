@@ -90,6 +90,7 @@ type ProjSpec = {
 	bombletRadius: number?,
 	bombletDmgMult: number?,
 	bounce: number?, -- Round 24aa: share of speed kept on each touch after landing (rolling)
+	startDrop: number?, -- Round 25: studs below the head the round leaves from (hand throws)
 }
 
 local LOOK = {
@@ -158,7 +159,8 @@ local launch: (shooter: any, origin: Vector3, velocity: Vector3, spec: ProjSpec,
 
 local function detonate(shooter: any, spec: ProjSpec, pos: Vector3, dmg: number, scale: number)
 	local color = if spec.kind == "plasma" then Color3.fromHex("5BFF9A") else Color3.fromHex("FF8A2A")
-	local radius = spec.radius * scale
+	-- Round 25: BLAST RADIUS (explosive synergy) widens an Explosive gun's blasts too.
+	local radius = spec.radius * scale * (shooter.stats.blastRadiusMult or 1)
 	explode(shooter, pos, radius, dmg, color, if spec.kind == "tnt" or spec.kind == "rocket" then 0.45 else 0.25)
 	-- Cluster: the shell splits and throws bomblets that each blow where they land.
 	local n = spec.bomblets or 0
@@ -418,7 +420,11 @@ lobVelocity = function(from: Vector3, target: Vector3, speed: number, g: number,
 	local y = d.Y
 	local v2 = speed * speed
 	local disc = v2 * v2 - g * (g * x * x + 2 * y * v2)
-	local angle = if disc >= 0 then math.atan((v2 - math.sqrt(disc)) / (g * x)) else math.rad(45)
+	-- Round 25: out of reach used to throw at 45 degrees, straight out of a first-person view (the round fell
+	-- in from the top a second later). Now it throws along the aim's own pitch plus a small loft, capped.
+	local aimPitch = math.deg(math.asin(math.clamp(aimDir.Y, -1, 1)))
+	local fallback = math.rad(math.clamp(aimPitch + Config.LobFallbackLoftDeg, -10, Config.LobFallbackMaxDeg))
+	local angle = if disc >= 0 then math.atan((v2 - math.sqrt(disc)) / (g * x)) else fallback
 	local h = flat.Unit
 	return h * speed * math.cos(angle) + Vector3.yAxis * speed * math.sin(angle)
 end
@@ -429,7 +435,8 @@ function SpecialFire.fire(shooter: any, origin: Vector3, dir: Vector3, extra: an
 	local mode = w.mode
 	if mode == "projectile" then
 		local spec = w.proj :: ProjSpec
-		local start = origin + dir * 1.5
+		-- Round 25: hand-thrown rounds (TNT) leave from hand height, so a first-person view sees them rise.
+		local start = origin + dir * 1.5 - Vector3.yAxis * (spec.startDrop or 0)
 		local vel = dir * spec.speed
 		-- Round 24aa: lobbed rounds land on the crosshair. The client sends its aim point; the launch angle is solved
 		-- (low arc) at the gun's speed so the arc comes down there. Out of reach: the 45-degree max-range throw.

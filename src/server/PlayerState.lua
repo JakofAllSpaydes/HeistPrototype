@@ -68,6 +68,9 @@ export type State = {
 	bledOut: boolean, -- spectator: no character until revived or the run ends
 	bleedEndsAt: number,
 	invulnUntil: number, -- no damage until this server time (just revived)
+	armor: number, -- Round 25 ARMOR: points left (soak hits before HP)
+	armorMax: number, -- the ARMOR total last seen (a new card fills the difference)
+	lastHurtAt: number, -- server time of the last hit (armor refills ArmorRegenDelay after it)
 	reviveProgress: number, -- 0..1 while a teammate holds the revive
 	reviver: Player?,
 	savedJump: { useJumpPower: boolean, jumpPower: number, jumpHeight: number }?,
@@ -136,6 +139,9 @@ local function freshState(player: Player, joinIndex: number): State
 		bledOut = false,
 		bleedEndsAt = 0,
 		invulnUntil = 0,
+		armor = 0,
+		armorMax = 0,
+		lastHurtAt = 0,
 		reviveProgress = 0,
 		reviver = nil,
 		savedJump = nil,
@@ -286,24 +292,51 @@ end
 function PlayerState.buffFor(state: State, id: string): Stats.Buffs
 	local level = PlayerState.abilityLevel(state, id)
 	local b: Stats.Buffs = { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
+	-- Round 25: ABILITY POWER strengthens a buff's bonus too (AbilityPowerBuffShare of it), not only damage / heals.
+	local amp = PlayerState.abilityBuffAmp(state)
 	if id == "stim" then
 		-- INITIATE's Adrenaline (the id stays "stim" for saved levels).
-		b.fireRateMult = 1 + AbilityGrowth.at(id, "FireRatePct", (Config.AdrenalineFireRateMult - 1) * 100, level) / 100
+		b.fireRateMult = 1
+			+ amp * AbilityGrowth.at(id, "FireRatePct", (Config.AdrenalineFireRateMult - 1) * 100, level) / 100
 		b.reloadSpeedMult = 1
-			+ AbilityGrowth.at(id, "ReloadPct", (Config.AdrenalineReloadSpeedMult - 1) * 100, level) / 100
-		b.moveSpeedMult = 1 + AbilityGrowth.at(id, "MovePct", (Config.AdrenalineMoveMult - 1) * 100, level) / 100
+			+ amp * AbilityGrowth.at(id, "ReloadPct", (Config.AdrenalineReloadSpeedMult - 1) * 100, level) / 100
+		b.moveSpeedMult = 1 + amp * AbilityGrowth.at(id, "MovePct", (Config.AdrenalineMoveMult - 1) * 100, level) / 100
 	elseif id == "stimshot" then
-		b.fireRateMult = 1 + AbilityGrowth.at(id, "FireRatePct", (Config.StimShotFireRateMult - 1) * 100, level) / 100
+		b.fireRateMult = 1
+			+ amp * AbilityGrowth.at(id, "FireRatePct", (Config.StimShotFireRateMult - 1) * 100, level) / 100
 		b.reloadSpeedMult = 1
-			+ AbilityGrowth.at(id, "ReloadPct", (Config.StimShotReloadSpeedMult - 1) * 100, level) / 100
+			+ amp * AbilityGrowth.at(id, "ReloadPct", (Config.StimShotReloadSpeedMult - 1) * 100, level) / 100
 	elseif id == "deadeye" then
-		b.damageMult = 1 + AbilityGrowth.at(id, "DmgPct", Config.DeadEyeDmgPct, level) / 100
+		b.damageMult = 1 + amp * AbilityGrowth.at(id, "DmgPct", Config.DeadEyeDmgPct, level) / 100
 		-- Round 19c: tighter spread instead of move speed (AccuracyPct less spread, like the Accuracy upgrade).
-		b.spreadMult = math.max(0.05, 1 - AbilityGrowth.at(id, "AccuracyPct", Config.DeadEyeAccuracyPct, level) / 100)
+		b.spreadMult =
+			math.max(0.05, 1 - amp * AbilityGrowth.at(id, "AccuracyPct", Config.DeadEyeAccuracyPct, level) / 100)
 		-- Fractional pierce is real: 2.2 passes through two more enemies at full damage and a third at 20%.
-		b.pierceAdd = AbilityGrowth.at(id, "Pierce", Config.DeadEyePierce, level)
+		b.pierceAdd = amp * AbilityGrowth.at(id, "Pierce", Config.DeadEyePierce, level)
 	end
 	return b
+end
+
+-- Round 25: ABILITY POWER on effects that aren't damage or healing. Read straight from the upgrades (computed()
+-- calls buffFor, so this can't go through it). Strength: the buff's bonus x this (1 = no Ability Power).
+function PlayerState.abilityBuffAmp(state: State): number
+	local u = state.upgrades.AbilityPower
+	local pw = math.max(0.2, 1 + (if u then u.pct / 100 else 0))
+	return 1 + (pw - 1) * Config.AbilityPowerBuffShare
+end
+
+-- Durations and radii take a smaller share, so a stacked build never turns a slow into a freeze or a radius
+-- into the whole map (AbilityPowerDurationShare / AbilityPowerRadiusShare).
+function PlayerState.abilityDurationAmp(state: State): number
+	local u = state.upgrades.AbilityPower
+	local pw = math.max(0.2, 1 + (if u then u.pct / 100 else 0))
+	return 1 + (pw - 1) * Config.AbilityPowerDurationShare
+end
+
+function PlayerState.abilityRadiusAmp(state: State): number
+	local u = state.upgrades.AbilityPower
+	local pw = math.max(0.2, 1 + (if u then u.pct / 100 else 0))
+	return 1 + (pw - 1) * Config.AbilityPowerRadiusShare
 end
 
 -- A class mastery passive: on while `classId` is the class the run started with at `tier` or better.
@@ -530,6 +563,18 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 		end
 		return
 	end
+	-- Round 25: ARMOR soaks the hit first; whatever is left reaches HP. Any hit restarts the armor refill clock.
+	state.lastHurtAt = Workspace:GetServerTimeNow()
+	if state.armor > 0 then
+		local soak = math.min(state.armor, amount)
+		state.armor -= soak
+		amount -= soak
+		state.dirty = true
+		if amount <= 0 then
+			Remotes.Juice:FireClient(player, "PlayerHit", { amount = soak, source = source, armor = true })
+			return
+		end
+	end
 	local newHP = hum.Health - amount
 	Remotes.Juice:FireClient(player, "PlayerHit", { amount = amount, source = source })
 	if newHP <= 0 then
@@ -643,6 +688,8 @@ function PlayerState.buildSync(state: State): Types.Sync
 		boss = World.bossView,
 		roster = if inParty then World.roster else nil,
 		maxHP = st.maxHP,
+		armor = math.floor(state.armor), -- Round 25 ARMOR (the HP bar's overlay)
+		maxArmor = state.armorMax,
 		dmgPct = PlayerState.damagePct(state), -- the floor-gun tags show guns at your own damage upgrades
 		held = {
 			weaponId = w.id,
@@ -838,6 +885,32 @@ function PlayerState.init()
 			then
 				local st = PlayerState.computed(state)
 				hum.Health = math.min(hum.MaxHealth, hum.Health + st.hpRegen * dt)
+			end
+			-- Round 25: ARMOR. A new card fills its points at once; spent armor refills at ArmorRegenPctPerSec of
+			-- the total once ArmorRegenDelay passes without a hit.
+			local up = state.upgrades.Armor
+			local maxArmor = if up then math.max(0, up.pct) else 0
+			if maxArmor ~= state.armorMax then
+				if maxArmor > state.armorMax then
+					state.armor += maxArmor - state.armorMax
+				end
+				state.armorMax = maxArmor
+				state.armor = math.clamp(state.armor, 0, maxArmor)
+				state.dirty = true
+			end
+			if
+				hum
+				and hum.Health > 0
+				and not state.downed
+				and state.armor < maxArmor
+				and Workspace:GetServerTimeNow() - state.lastHurtAt >= Config.ArmorRegenDelay
+				and not Runs.modOf(player, "Pause").active()
+			then
+				local before = math.floor(state.armor)
+				state.armor = math.min(maxArmor, state.armor + maxArmor * Config.ArmorRegenPctPerSec * dt)
+				if math.floor(state.armor) ~= before then
+					state.dirty = true
+				end
 			end
 		end
 		-- Flush dirty syncs at most 10x per second.

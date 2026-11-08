@@ -66,6 +66,28 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		ZIndex = 3,
 		Parent = health,
 	})
+	healthText.RichText = true
+	-- Round 25 ARMOR: a thin plate bar riding the top of the HP bar (shown only with the card), its points beside
+	-- the HP numbers in the armor colour.
+	local ARMOR = Color3.fromHex(Config.ArmorColor)
+	local armorBack = UI.frame({
+		Name = "Armor",
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.2,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 0, -S(3)),
+		Size = UDim2.new(1, 0, 0, S(7)),
+		Visible = false,
+		Parent = health,
+	})
+	UI.corner(armorBack, S(2))
+	local armorFill = UI.frame({
+		BackgroundColor3 = ARMOR,
+		Size = UDim2.fromScale(1, 1),
+		Parent = armorBack,
+	})
+	UI.corner(armorFill, S(2))
+	local armorNow, armorMax = 0, 0
 
 	-- While downed: GIVE UP and SELF-REVIVE sit side by side above the bar.
 	local btnH = hh + S(20) -- brief 6: room for the token line under the label
@@ -336,7 +358,15 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local frac = if max > 0 then math.clamp(cur / max, 0, 1) else 0
 		fill.Size = UDim2.fromScale(frac, 1)
 		fill.BackgroundColor3 = if frac < 0.3 then Theme.Colors.red else Theme.Colors.health
-		healthText.Text = string.format("%d / %d", math.ceil(cur), math.round(max))
+		healthText.Text = if armorMax > 0
+			then string.format(
+				'%d / %d  <font color="#%s">+%d</font>',
+				math.ceil(cur),
+				math.round(max),
+				ARMOR:Lerp(Color3.new(0, 0, 0), 0.45):ToHex(),
+				armorNow
+			)
+			else string.format("%d / %d", math.ceil(cur), math.round(max))
 		if frac < 0.3 and frac > 0 then
 			UI.punch(health, 1.08, 0.3)
 		end
@@ -517,6 +547,21 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	function component.update(sync: any)
 		maxHP = sync.maxHP
+		-- Round 25 ARMOR.
+		local a, am = tonumber(sync.armor) or 0, tonumber(sync.maxArmor) or 0
+		if a ~= armorNow or am ~= armorMax then
+			if a < armorNow then
+				UI.punch(armorBack, 1.1, 0.2)
+			end
+			armorNow, armorMax = a, am
+			armorBack.Visible = am > 0
+			armorFill.Size = UDim2.fromScale(if am > 0 then math.clamp(a / am, 0, 1) else 0, 1)
+			local char = Players.LocalPlayer.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				setHealth(hum.Health, math.max(hum.MaxHealth, maxHP))
+			end
+		end
 		local held = sync.held
 		local color = Rarity.color(held.rarity)
 		local kind = if typeof(held.archetype) == "string" then string.upper(held.archetype) else ""
