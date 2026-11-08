@@ -1,8 +1,10 @@
 --!strict
 -- Instance.new helpers so every HUD piece is a few lines. All sizes go through UI.S for viewport scaling.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local Theme = require(script.Parent.Theme)
 
 local UI = {}
@@ -171,24 +173,97 @@ function UI.shake(inst: GuiObject, px: number, duration: number)
 	end)
 end
 
+------------------------------------------------------------------ Sound (Round 19d polish pass)
+-- Every sound plays through a SoundGroup (SFX / Music, volumes from Config) so the mix has two faders and the
+-- music can duck. Per Theme.Sounds key: a gain to level the assets (Config.SfxGain), a little pitch variation so
+-- repeats do not machine-gun (Config.SfxPitchJitter), and at most Config.SfxMaxVoices copies of one sound at once
+-- (the oldest stops: full-auto fire stays readable).
+local groups: { [string]: SoundGroup } = {}
+function UI.soundGroup(name: string): SoundGroup
+	local g = groups[name]
+	if g and g.Parent then
+		return g
+	end
+	local found = SoundService:FindFirstChild(name)
+	local made: SoundGroup = if found and found:IsA("SoundGroup") then found else Instance.new("SoundGroup")
+	made.Name = name
+	made.Volume = if name == "Music" then Config.MusicVolume else Config.SfxVolume
+	made.Parent = SoundService
+	groups[name] = made
+	return made
+end
+
+local keyById: { [string]: string }? = nil
+local function keyOf(id: string): string?
+	if not keyById then
+		local map = {}
+		for key, sid in Theme.Sounds do
+			if map[sid] == nil then
+				map[sid] = key
+			end
+		end
+		keyById = map
+	end
+	return (keyById :: { [string]: string })[id]
+end
+
+local voices: { [string]: { Sound } } = {}
+
+-- A Sound for `id` with the gain, jitter and voice cap applied, parented and playing. Gone when it ends.
+local function play(parent: Instance, id: string, pitch: number?, volume: number?): Sound
+	local key = keyOf(id)
+	local gain = if key then (Config.SfxGain :: any)[key] or 1 else 1
+	local jitter = if key then (Config.SfxPitchJitter :: any)[key] or 0 else 0
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.PlaybackSpeed = (pitch or 1) * (1 + (math.random() * 2 - 1) * jitter)
+	s.Volume = (volume or 0.5) * gain
+	s.SoundGroup = UI.soundGroup("SFX")
+	s.Parent = parent
+	local list = voices[id]
+	if not list then
+		list = {}
+		voices[id] = list
+	end
+	local live = list :: { Sound }
+	table.insert(live, s)
+	while #live > Config.SfxMaxVoices do
+		local old = table.remove(live, 1)
+		if old and old.Parent then
+			old:Destroy()
+		end
+	end
+	local function gone()
+		local i = table.find(live, s)
+		if i then
+			table.remove(live, i)
+		end
+		if s.Parent then
+			s:Destroy()
+		end
+	end
+	s.Ended:Once(gone)
+	task.delay(10, gone)
+	s:Play()
+	return s
+end
+
 function UI.sound(id: string, pitch: number?, volume: number?)
 	if id == "" then
 		return
 	end
-	local s = Instance.new("Sound")
-	s.SoundId = id
-	s.PlaybackSpeed = pitch or 1
-	s.Volume = volume or 0.5
-	s.Parent = SoundService
-	s:Play()
-	s.Ended:Once(function()
-		s:Destroy()
-	end)
-	task.delay(5, function()
-		if s.Parent then
-			s:Destroy()
-		end
-	end)
+	play(SoundService, id, pitch, volume)
+end
+
+-- A sound in the world: falls off over `range` studs and pans. `parent` is a part or attachment.
+function UI.soundAt(parent: Instance, id: string, pitch: number, volume: number, range: number)
+	if id == "" then
+		return
+	end
+	local s = play(parent, id, pitch, volume)
+	s.RollOffMode = Enum.RollOffMode.InverseTapered
+	s.RollOffMinDistance = 8
+	s.RollOffMaxDistance = range
 end
 
 -- Shared gun silhouette: body, barrel, grip. Recolored by rarity.

@@ -49,25 +49,35 @@ local function crateById(id: string): Model?
 	return nil
 end
 
+-- Round 19e: the lootbox sting at the crate. A rising arpeggio of bell dings, one note more per rarity tier (C, E,
+-- G, high C, high E), a falling shimmer from Rare, wind chimes from Epic (Legendary also gets the victory sting).
+local ARPEGGIO = { 1.0, 1.26, 1.5, 2.0, 2.52 }
+local soundOn: (BasePart, string, number, number) -> ()
+local function lootSting(part: BasePart, tier: number)
+	local t = math.clamp(tier, 1, 5)
+	for i = 1, t do
+		task.delay((i - 1) * 0.075, function()
+			if part.Parent then
+				soundOn(part, Theme.Sounds.lootDing, ARPEGGIO[i], 0.22 + i * 0.04)
+			end
+		end)
+	end
+	if t >= 3 and part.Parent then
+		soundOn(part, Theme.Sounds.lootShimmer, 1.1, 0.25 + (t - 3) * 0.08)
+	end
+	if t >= 4 then
+		task.delay(t * 0.075, function()
+			if part.Parent then
+				soundOn(part, Theme.Sounds.lootChimes, 1, if t == 5 then 0.5 else 0.35)
+			end
+		end)
+	end
+end
+
 -- 3D sound on the crate so a teammate's roll sounds like it comes from over there.
-local function soundOn(part: BasePart, id: string, pitch: number, volume: number)
-	local s = Instance.new("Sound")
-	s.SoundId = id
-	s.PlaybackSpeed = pitch
-	s.Volume = volume
-	s.RollOffMode = Enum.RollOffMode.InverseTapered
-	s.RollOffMinDistance = 10
-	s.RollOffMaxDistance = 140
-	s.Parent = part
-	s:Play()
-	s.Ended:Once(function()
-		s:Destroy()
-	end)
-	task.delay(6, function()
-		if s.Parent then
-			s:Destroy()
-		end
-	end)
+-- Round 19e: through UI.soundAt (the SFX group, gain, pitch spread, voice cap).
+function soundOn(part: BasePart, id: string, pitch: number, volume: number)
+	UI.soundAt(part, id, pitch, volume, 140)
 end
 
 ------------------------------------------------------------------ The GUN CRATE tag
@@ -294,7 +304,8 @@ local function playReel(data: any)
 		local idx = math.floor((stripW / 2 - row.Position.X.Offset) / cellW + 0.5)
 		if idx > lastIdx then
 			lastIdx = idx
-			soundOn(body, Theme.Sounds.reelTick, 0.7 + (idx / LAND) * 1.1, 0.45)
+			-- Round 19e: a prize-wheel clicker, climbing as the strip slows.
+			soundOn(body, Theme.Sounds.lootTick, 0.85 + (idx / LAND) * 0.6, 0.4)
 			UI.punch(marker, 1.06, 0.1)
 		end
 	end)
@@ -315,9 +326,12 @@ local function playReel(data: any)
 	-- As the viewer would hold it (their own level and upgrades), like the floor tag.
 	local myDmg, myLevelRate = ClientState.gunAsMine(tostring(data.weaponId), rarity)
 	local rate = if w0 then Weapons.effectiveRate(w0, ClientState.rateMult() * myLevelRate) else 0
+	-- Round 19e: the weapon type follows the name.
+	local kind = Weapons.typeName(tostring(data.weaponId))
 	result.Text = string.format(
-		"%s  ·  DMG %s  ·  %s",
+		"%s%s  ·  DMG %s  ·  %s",
 		string.upper(tostring(data.displayName or "")),
+		if kind ~= "" then " " .. kind else "",
 		UI.fmtDmg(myDmg, tonumber(data.pellets) or 1),
 		UI.fmtRate(rate)
 	)
@@ -325,7 +339,8 @@ local function playReel(data: any)
 	local j = Juice.tier(rarity)
 	UI.punch(panel, j.punch, 0.35)
 	UI.punch(result, 1.2 + j.tier * 0.08, 0.4)
-	soundOn(body, Theme.Sounds.reelLand, j.pitch, j.volume)
+	soundOn(body, Theme.Sounds.reelLand, j.pitch, j.volume * 0.6)
+	lootSting(body, j.tier) -- Round 19e
 	if j.tier >= 4 then
 		stroke.Thickness = S(6)
 		UI.tween(stroke, { Thickness = S(3) }, 0.5)
@@ -495,8 +510,9 @@ local function onOpened(data: any)
 	floorRing(pos, gold, 20)
 	nearShake(pos, Config.CrateOpenShake, 0.3)
 	if body then
-		soundOn(body, Theme.Sounds.crate, 1.1, 0.8)
-		soundOn(body, Theme.Sounds.reelLand, 0.7, 0.6)
+		soundOn(body, Theme.Sounds.crate, 1.1, 0.6)
+		soundOn(body, Theme.Sounds.lootRise, 1, 0.4) -- Round 19e: the lid pops and the reel spins up
+		soundOn(body, Theme.Sounds.coins, 1.1, 0.3)
 	end
 	if data.by == player.UserId then
 		ClientState.Juice:Fire("RarityFlash", { color = gold, alpha = 0.15 })
@@ -520,8 +536,8 @@ local function onEject(data: any)
 	local model = crateById(tostring(data.crateId))
 	local body = model and bodyOf(model)
 	if body then
-		soundOn(body, Theme.Sounds.swap, 0.9 + rarity * 0.08, 0.7)
-		soundOn(body, Theme.Sounds.take, 0.8 + rarity * 0.1, 0.5)
+		soundOn(body, Theme.Sounds.swap, 0.9 + rarity * 0.08, 0.6)
+		soundOn(body, Theme.Sounds.lootPop, 0.9 + rarity * 0.08, 0.5) -- Round 19e (was the snap)
 	end
 end
 

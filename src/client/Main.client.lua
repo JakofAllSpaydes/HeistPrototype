@@ -35,6 +35,8 @@ require(script.Parent:WaitForChild("BagChannel")).init()
 require(script.Parent:WaitForChild("CrewCallUI")).init()
 require(script.Parent:WaitForChild("Markers")).init()
 require(script.Parent:WaitForChild("DoorUI")).init()
+require(script.Parent:WaitForChild("LockdownUI")).init() -- Round 19d
+require(script.Parent:WaitForChild("Music")).init() -- Round 19d
 require(script.Parent:WaitForChild("Minigames")).init()
 require(script.Parent:WaitForChild("DownedUI")).init()
 require(script.Parent:WaitForChild("PlayerTags")).init()

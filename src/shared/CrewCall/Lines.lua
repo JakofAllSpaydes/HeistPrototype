@@ -135,6 +135,7 @@ local Lines = {
 			D1 = "Front doors. Make some noise.",
 			D2 = "They chained the stairs. Cut it.",
 			D3 = "Shutters are down. Get them up.",
+			D5 = "Stairwell to the vault is chained off. Cut your way down.",
 			default = "That door's locked. Get it open.",
 		},
 		extraText = "Hold F at it. No clock on this one.",
@@ -173,7 +174,7 @@ local Lines = {
 		vaultSign = "UNLOCKS · VAULT JOB",
 	},
 	-- Round 19c: SILENCE THE ALARM. Every alarm in the building rings and strobes until someone shuts the panel off
-	-- (a hold at the beacon); expiry shuts it off anyway, without the pay.
+	-- (Round 19d: a minigame at the beacon); expiry shuts it off anyway, without the pay.
 	alarm = {
 		name = "SILENCE THE ALARM",
 		crewLead = "MARLOW",
@@ -188,10 +189,50 @@ local Lines = {
 		promptAction = "SILENCE",
 		promptObject = "ALARM PANEL",
 		busyTag = "SILENCING",
+		-- Round 19d: the panel opens a minigame (Config.AlarmJobMinigames); the card's second line says which.
+		panelLines = {
+			Keypad = "Alarm panel's at the blue beacon. Punch in the override code.",
+			Hotwire = "Alarm panel's at the blue beacon. Rewire it dead.",
+			Freq = "Alarm panel's at the blue beacon. Jam its frequency.",
+			Charges = "Alarm panel's at the blue beacon. Blow it off the wall.",
+		},
 		doneTitle = "PEACE AND QUIET",
 		doneText = { "Finally. I can hear myself think.", "Payment's in." },
 		doneByText = { "Alarm's off.", "Payment's coming through." },
 		failText = { "It timed out on its own. No thanks to you.", "Next one, don't dawdle." },
+	},
+	-- Round 19f: RAID THE OFFICE (Offices.lua). Text line 1 takes the office's label; line 2 is the minigame's.
+	office = {
+		name = "RAID THE OFFICE",
+		crewLead = "MARLOW",
+		typeLabel = "SIDE JOB",
+		kind = "job",
+		text = {
+			"The %s is locked up tight. Somebody's been stuffing it with cash.",
+			"Get that door open.",
+		},
+		gameLines = {
+			Lockpick = "Pick the lock on the door. Grab everything, their security gasses the room.",
+			Hotwire = "Short the door's maglock. Grab everything, their security gasses the room.",
+			Charges = "Blow the door off. Grab everything, their security gasses the room.",
+			Cut = "Cut the chain on the handles. Grab everything, their security gasses the room.",
+		},
+		rewardLine = "+$%d CASH · +%d GOLD · BAGS INSIDE",
+		markerHint = "BREAK IN",
+		promptAction = "BREAK IN",
+		busyTag = "BREAKING IN",
+		doneTitle = "OFFICE OPEN",
+		doneText = { "Door's down. Bag it all.", "Their security gasses that room. Don't linger." },
+		doneByText = { "Door's down.", "Bag it before the gas." },
+		failText = { "Too slow. They locked it down.", "Next one." },
+		openToast = "%s OPEN · %ds",
+		warnToast = "OFFICE GAS IN %ds · GET OUT",
+		gasToast = "OFFICE GASSED · GET OUT",
+		sealedToast = "%s SEALED",
+		markerTitle = "OFFICE",
+		markerOpen = "GRAB THE BAGS",
+		markerWarn = "GAS · GET OUT",
+		markerGas = "GASSED",
 	},
 	-- Round 19c: the zone gas event (ZoneGas.lua) on the toast line and the zone's marker.
 	zoneGas = {
@@ -201,6 +242,12 @@ local Lines = {
 		markerTitle = "GAS",
 		markerWarn = "IN %ds · MOVE",
 		markerGas = "GET OUT",
+		-- Round 19d: lockdown gas. A door objective left too long floods the map; only the zone behind it is clean.
+		forceWarnToast = "LOCKDOWN · GAS IN %ds · %s",
+		forceGasToast = "GAS EVERYWHERE · %s",
+		forceClearToast = "AIR CLEARING",
+		forceBanner = "%s", -- the pinned line under the wave bar (the door's ping text)
+		forceBannerSub = "ONLY CLEAN AIR IS PAST THE %s",
 	},
 	-- The boss cutscene call and the kill stamp.
 	boss = {

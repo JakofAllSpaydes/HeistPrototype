@@ -174,7 +174,7 @@ function Cut.open(host: Frame.Host)
 				UI.punch(j, 1.25, 0.2)
 			end
 			host.haptic(0.8)
-			UI.sound(Theme.Sounds.crunch, 1.2 + cut * 0.08, 0.5)
+			UI.sound(Theme.Sounds.snip, 1 + cut * 0.05, 0.4) -- Round 19e: a snip, not the crash
 			fill = 0
 			if cut >= links then
 				done = true

@@ -99,8 +99,14 @@ local function addTag(gun: BasePart)
 	UI.new("UICorner", { CornerRadius = UDim.new(0.15, 0), Parent = frame })
 	UI.stroke(frame, color, 2)
 	local nameText = string.upper(tostring(gun:GetAttribute("DisplayName") or gun:GetAttribute("WeaponId")))
+	-- Round 19e: the weapon type beside the name, dimmed.
+	local kind = Weapons.typeName(tostring(gun:GetAttribute("WeaponId")))
+	if kind ~= "" then
+		nameText ..= string.format(' <font color="#%s">%s</font>', Theme.Colors.textDim:ToHex(), kind)
+	end
 	UI.text({
 		Text = nameText,
+		RichText = true,
 		Font = Theme.Fonts.display,
 		TextScaled = true,
 		TextColor3 = color,

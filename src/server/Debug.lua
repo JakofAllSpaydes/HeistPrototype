@@ -27,6 +27,7 @@ local Heat = require(script.Parent.Heat)
 local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
 local ZoneGas = require(script.Parent.ZoneGas) -- Round 19c
+local Offices = require(script.Parent.Offices) -- Round 19f
 local Boss = require(script.Parent.Boss)
 local Progression = require(script.Parent.Progression)
 local Mastery = require(script.Parent.Mastery)
@@ -405,8 +406,28 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		end
 		ZoneGas.debugNow()
 	end,
+	-- Round 19d: lockdown gas on the called door now (call one first: Open D-row / wait for its wave).
+	LockdownNow = function(player, _state, _args)
+		if World.map == "Arena" or not ZoneGas.debugForce() then
+			toast(player, "NO DOOR CALLED")
+		end
+	end,
 	AlarmJob = function(_player, _state, _args)
 		CrewCall.trigger("alarm")
+	end,
+	-- Round 19f: RAID THE OFFICE now (an office in an open zone), or blow the nearest office open with no job.
+	OfficeJob = function(player, _state, _args)
+		local off = CrewCall.office
+		if not (off and off.available()) then
+			toast(player, "NO OFFICE OPEN TO RAID")
+			return
+		end
+		CrewCall.trigger("office")
+	end,
+	OpenOffice = function(player, _state, _args)
+		if not Offices.debugOpen(player) then
+			toast(player, "NO CLOSED OFFICE")
+		end
 	end,
 	CutJob = function(_player, _state, _args)
 		CrewCall.trigger("Cut")

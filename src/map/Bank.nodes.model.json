@@ -6,7 +6,7 @@
           "attributes": {
             "Depth": 3,
             "Label": "BACK OF BANK",
-            "Links": "lobby@D3,stairs"
+            "Links": "lobby@D3,stairs@D5"
           },
           "children": [
             {
@@ -127,7 +127,7 @@
           "attributes": {
             "Depth": 3,
             "Label": "BACK OF BANK",
-            "Links": "lobby@D3,stairs"
+            "Links": "lobby@D3,stairs@D5"
           },
           "children": [
             {
@@ -248,7 +248,7 @@
           "attributes": {
             "Depth": 3,
             "Label": "BACK OF BANK",
-            "Links": "lobby@D3,stairs"
+            "Links": "lobby@D3,stairs@D5"
           },
           "children": [
             {
@@ -490,7 +490,7 @@
           "attributes": {
             "Depth": 4,
             "Label": "VAULT STAIRS",
-            "Links": "back,vault@D4"
+            "Links": "back@D5,vault@D4"
           },
           "children": [
             {
@@ -611,7 +611,7 @@
           "attributes": {
             "Depth": 4,
             "Label": "VAULT STAIRS",
-            "Links": "back,vault@D4"
+            "Links": "back@D5,vault@D4"
           },
           "children": [
             {
@@ -732,7 +732,7 @@
           "attributes": {
             "Depth": 4,
             "Label": "VAULT STAIRS",
-            "Links": "back,vault@D4"
+            "Links": "back@D5,vault@D4"
           },
           "children": [
             {
@@ -853,7 +853,7 @@
           "attributes": {
             "Depth": 4,
             "Label": "VAULT STAIRS",
-            "Links": "back,vault@D4"
+            "Links": "back@D5,vault@D4"
           },
           "children": [
             {
@@ -2457,7 +2457,7 @@
             "Group": "D3",
             "InteractTime": 3,
             "Label": "SHUTTERS",
-            "Opens": "back,stairs",
+            "Opens": "back",
             "PingText": "RAISE THE SHUTTERS",
             "Priority": 2,
             "TriggerWave": 6
@@ -2584,7 +2584,7 @@
             "Group": "D3",
             "InteractTime": 3,
             "Label": "SHUTTERS",
-            "Opens": "back,stairs",
+            "Opens": "back",
             "PingText": "RAISE THE SHUTTERS",
             "Priority": 2,
             "TriggerWave": 6
@@ -2711,7 +2711,7 @@
             "Group": "D3",
             "InteractTime": 3,
             "Label": "SHUTTERS",
-            "Opens": "back,stairs",
+            "Opens": "back",
             "PingText": "RAISE THE SHUTTERS",
             "Priority": 2,
             "TriggerWave": 6
@@ -3204,6 +3204,264 @@
               3,
               18,
               20
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "chain",
+            "Group": "D5",
+            "InteractTime": 3,
+            "Label": "STAIRWELL CHAINS",
+            "Opens": "stairs",
+            "PingText": "OPEN THE STAIRWELL",
+            "Priority": 4,
+            "TriggerWave": 9,
+            "Interact": "Cut",
+            "SideDepth": 39
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DOOR · D5_stairs_l",
+                    "TextColor3": [
+                      0.91,
+                      0.714,
+                      0.298
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "D5_stairs_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -59.95,
+                  7.5,
+                  -946.4
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.714,
+              0.298
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              19.4,
+              3,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "chain",
+            "Group": "D5",
+            "InteractTime": 3,
+            "Label": "STAIRWELL CHAINS",
+            "Opens": "stairs",
+            "PingText": "OPEN THE STAIRWELL",
+            "Priority": 4,
+            "TriggerWave": 9,
+            "Interact": "Cut",
+            "SideDepth": 39
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DOOR · D5_stairs_r",
+                    "TextColor3": [
+                      0.91,
+                      0.714,
+                      0.298
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "D5_stairs_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  59.95,
+                  7.5,
+                  -946.4
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.714,
+              0.298
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              19.4,
+              3,
+              0.6
             ],
             "Tags": [
               "GHS_Door"
@@ -4083,7 +4341,7 @@
           "attributes": {
             "AllowedTypes": "all",
             "MouthName": "west stair landing",
-            "RequiresDoor": "D3",
+            "RequiresDoor": "D5",
             "Weight": 1,
             "Zone": "stairs"
           },
@@ -4206,7 +4464,7 @@
           "attributes": {
             "AllowedTypes": "all",
             "MouthName": "east stair landing",
-            "RequiresDoor": "D3",
+            "RequiresDoor": "D5",
             "Weight": 1,
             "Zone": "stairs"
           },
@@ -4329,7 +4587,7 @@
           "attributes": {
             "AllowedTypes": "all",
             "MouthName": "west stairwell head",
-            "RequiresDoor": "D3",
+            "RequiresDoor": "D5",
             "Weight": 1,
             "Zone": "stairs"
           },
@@ -4452,7 +4710,7 @@
           "attributes": {
             "AllowedTypes": "all",
             "MouthName": "east stairwell head",
-            "RequiresDoor": "D3",
+            "RequiresDoor": "D5",
             "Weight": 1,
             "Zone": "stairs"
           },
@@ -11364,6 +11622,960 @@
             ],
             "Tags": [
               "GHS_Fence"
+            ],
+            "Transparency": 0.55
+          }
+        }
+      ]
+    },
+    {
+      "className": "Folder",
+      "name": "Offices",
+      "children": [
+        {
+          "attributes": {
+            "Label": "WEST BACK OFFICE",
+            "Zone": "back"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_back_w",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  10.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_back_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -20,
+                  14.75,
+                  -919.4
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              38.4,
+              18.5,
+              34.6
+            ],
+            "Tags": [
+              "GHS_Office"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {},
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_back_w_door",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5.6,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_back_w_door",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -20,
+                  10.1,
+                  -937
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8.4,
+              9.2,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Office"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Label": "EAST BACK OFFICE",
+            "Zone": "back"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_back_e",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  10.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_back_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  20,
+                  14.75,
+                  -919.4
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              38.4,
+              18.5,
+              34.6
+            ],
+            "Tags": [
+              "GHS_Office"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {},
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_back_e_door",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5.6,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_back_e_door",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  20,
+                  10.1,
+                  -937
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8.4,
+              9.2,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Office"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Label": "WEST UPPER OFFICE",
+            "Zone": "upper"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_upper_w",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  9.75,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_upper_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -88.25,
+                  45.25,
+                  -949.1
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              21.2,
+              17.5,
+              54.6
+            ],
+            "Tags": [
+              "GHS_Office"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {},
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_upper_w_door",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5.6,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_upper_w_door",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -77.3,
+                  41.1,
+                  -949
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.2,
+              9.2,
+              8.4
+            ],
+            "Tags": [
+              "GHS_Office"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Label": "EAST UPPER OFFICE",
+            "Zone": "upper"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_upper_e",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  9.75,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_upper_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  88.25,
+                  45.25,
+                  -949.1
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              21.2,
+              17.5,
+              54.6
+            ],
+            "Tags": [
+              "GHS_Office"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {},
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "OFFICE · office_upper_e_door",
+                    "TextColor3": [
+                      0.902,
+                      0.616,
+                      0.369
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5.6,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "office_upper_e_door",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  77.3,
+                  41.1,
+                  -949
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.902,
+              0.616,
+              0.369
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.2,
+              9.2,
+              8.4
+            ],
+            "Tags": [
+              "GHS_Office"
             ],
             "Transparency": 0.55
           }

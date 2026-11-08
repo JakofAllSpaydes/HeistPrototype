@@ -128,27 +128,9 @@ local function tracer(from: Vector3, to: Vector3)
 end
 
 -- A sound that sits in the world (a teammate's gun): quieter with distance, panned.
+-- Round 19d: through UI.soundAt (the SFX group, gain, pitch variation, voice cap).
 local function soundAt(parent: Instance, id: string, pitch: number, volume: number, range: number)
-	if id == "" then
-		return
-	end
-	local s = Instance.new("Sound")
-	s.SoundId = id
-	s.PlaybackSpeed = pitch
-	s.Volume = volume
-	s.RollOffMode = Enum.RollOffMode.InverseTapered
-	s.RollOffMinDistance = 8
-	s.RollOffMaxDistance = range
-	s.Parent = parent
-	s:Play()
-	s.Ended:Once(function()
-		s:Destroy()
-	end)
-	task.delay(5, function()
-		if s.Parent then
-			s:Destroy()
-		end
-	end)
+	UI.soundAt(parent, id, pitch, volume, range)
 end
 
 -- A 3D sound at a world point (an enemy's gun, a shell landing): a throwaway attachment carries it.
@@ -157,7 +139,7 @@ local function soundAtPoint(position: Vector3, id: string, pitch: number, volume
 	att.WorldPosition = position
 	att.Parent = Workspace.Terrain
 	soundAt(att, id, pitch, volume, range)
-	task.delay(5, function()
+	task.delay(10, function() -- long sounds (the shutter, the hiss) play out
 		att:Destroy()
 	end)
 end
@@ -299,11 +281,11 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = gui,
 	})
 	-- Round 19c: the vault's gas and the zone gas both tint; either one keeps it on.
-	local gasOn = { vault = false, zone = false }
+	local gasOn = { vault = false, zone = false, office = false } -- Round 19f: the offices' gas too
 	local function paintGas(key: string, on: boolean)
-		local was = gasOn.vault or gasOn.zone;
+		local was = gasOn.vault or gasOn.zone or gasOn.office;
 		(gasOn :: any)[key] = on
-		local now = gasOn.vault or gasOn.zone
+		local now = gasOn.vault or gasOn.zone or gasOn.office
 		if now ~= was then
 			UI.tween(gasTint, { BackgroundTransparency = if now then 0.55 else 1 }, 0.4)
 			if now then
@@ -343,7 +325,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				alarmStroke.Transparency = 1 - (1 - Config.AlarmScreenAlpha) * k
 				if os.clock() - lastHorn >= Config.AlarmHornEverySec then
 					lastHorn = os.clock()
-					UI.sound(Theme.Sounds.deny, 0.45, Config.AlarmHornVolume)
+					UI.sound(Theme.Sounds.alarm, 1, Config.AlarmHornVolume)
 				end
 				task.wait(1 / 30)
 			end
@@ -395,6 +377,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			wail.RollOffMode = Enum.RollOffMode.InverseTapered
 			wail.RollOffMinDistance = 10
 			wail.RollOffMaxDistance = 70
+			wail.SoundGroup = UI.soundGroup("SFX")
 			wail.Parent = root
 			wail:Play()
 			-- The wail stops with the body: a kill removes the Humanoid.
@@ -566,6 +549,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 					sparks(data.position, Theme.Colors.red, Config.KillSparks, 28)
 				end
 				UI.sound(Theme.Sounds.kill, 1.2, 0.12)
+				UI.sound(Theme.Sounds.body, 0.9, 0.35) -- Round 19d: weight under the tick
 				onKill()
 				if data.cash and data.cash > 0 then
 					floatText(
@@ -614,7 +598,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				sparks(data.from, Color3.fromRGB(255, 210, 140), 4, 10)
 				soundAtPoint(data.from, Theme.Sounds.shot, if data.heavy then 0.55 else 0.8, 0.35, 140)
 				if data.userId == Players.LocalPlayer.UserId and not data.hit then
-					UI.sound(Theme.Sounds.swap, 1.8, 0.35)
+					UI.sound(Theme.Sounds.whiz, 1, 0.5)
 				end
 			end
 		elseif name == "EnemyLaser" and typeof(data.position) == "Vector3" then
@@ -657,12 +641,27 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				4,
 				1.1
 			)
-			UI.sound(Theme.Sounds.take, if gold then 0.9 else 1.3, 0.5)
-			UI.sound(Theme.Sounds.reelLand, 1.2, 0.3)
+			UI.sound(if gold then Theme.Sounds.coins else Theme.Sounds.cash, 1, 0.45)
+			UI.sound(Theme.Sounds.take, if gold then 0.9 else 1.3, 0.25)
 		elseif name == "VaultGasTint" then
 			paintGas("vault", data.on == true)
 		elseif name == "ZoneGasTint" then
 			paintGas("zone", data.on == true)
+		elseif name == "OfficeGasTint" then
+			paintGas("office", data.on == true)
+		elseif name == "OfficeState" and typeof(data.position) == "Vector3" then
+			-- Round 19f: the office door blows (glass, a thump, a shake for whoever is near), its gas hisses in.
+			if data.phase == "open" then
+				blastRing(data.position, 8, Theme.Colors.amber)
+				sparks(data.position, Color3.fromRGB(200, 225, 240), 24, 26)
+				soundAtPoint(data.position, Theme.Sounds.glass, 1, 0.8, 160)
+				soundAtPoint(data.position, Theme.Sounds.crate, 0.8, 0.5, 160)
+				ClientState.Juice:Fire("Shake", { amp = tonumber(data.shake) or 0.4, dur = 0.35 })
+			elseif data.phase == "gas" then
+				soundAtPoint(data.position, Theme.Sounds.hiss, 0.85, 0.7, 120)
+			elseif data.phase == "sealed" then
+				soundAtPoint(data.position, Theme.Sounds.crate, 0.6, 0.4, 120)
+			end
 		elseif name == "Alarm" then
 			setAlarm(data.on == true)
 		elseif name == "VaultOpen" and typeof(data.position) == "Vector3" then
@@ -672,16 +671,20 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			ClientState.Juice:Fire("Shake", { amp = 0.3, dur = 0.35 })
 		elseif name == "VaultGas" then
 			if data.phase == "warn" then
-				-- The alarm: three low blasts.
+				-- The alarm: three low blasts (the building alarm rings on top).
 				task.spawn(function()
-					for i = 1, 3 do
-						UI.sound(Theme.Sounds.deny, 0.5, 0.6)
+					for _ = 1, 3 do
+						UI.sound(Theme.Sounds.alarm, 0.8, 0.5)
 						task.wait(0.35)
 					end
 				end)
 			else
-				UI.sound(Theme.Sounds.swap, 0.35, 0.8)
+				UI.sound(Theme.Sounds.hiss, 0.8, 0.6)
 			end
+		elseif name == "ZoneGas" and data.phase == "gas" then
+			UI.sound(Theme.Sounds.hiss, if data.force then 0.7 else 0.85, 0.55) -- Round 19d
+		elseif name == "WindowBreak" and typeof(data.position) == "Vector3" then
+			soundAtPoint(data.position, Theme.Sounds.glass, 1, 0.7, 140) -- Round 19d
 		elseif name == "VaultSealed" and typeof(data.position) == "Vector3" then
 			UI.sound(Theme.Sounds.crunch, 0.5, 0.6)
 			blastRing(data.position, 8, Theme.Colors.grey)
@@ -689,6 +692,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			gasTint.BackgroundTransparency = 1
 			gasOn.vault = false
 			gasOn.zone = false
+			gasOn.office = false
 			setAlarm(false)
 		elseif name == "BossWallBlow" and typeof(data.position) == "Vector3" then
 			blastRing(data.position, 16, Color3.fromRGB(160, 150, 130))
@@ -826,7 +830,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		elseif name == "Blast" then
 			-- Claymore (red), flashbang (white) and a thrown fire landing (orange).
 			blastRing(data.position, data.radius or 8, data.color or Theme.Colors.red)
-			UI.sound(Theme.Sounds.crate, data.pitch or 1.5, 0.5)
+			UI.sound(Theme.Sounds.crate, data.pitch or 1.5, 0.5) -- Round 19e: the explosion clip is gone game-wide
 			ClientState.Juice:Fire("Shake", { amp = data.shake or 0.15, dur = 0.15 })
 		elseif name == "Heal" then
 			-- Small, quiet green number over the healed player.

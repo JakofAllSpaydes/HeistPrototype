@@ -358,7 +358,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			task.wait()
 		end
 		m.model:PivotTo(restCf)
-		UI.sound(Fx.Sounds.stamp, 1.15, 0.22) -- the crate settles on the pedestal
+		UI.sound(Theme.Sounds.crate, 1.2, 0.3) -- the crate settles on the pedestal (Round 19e: a thud, not the snap)
 		if not pause(0.25) then
 			return false
 		end
@@ -366,6 +366,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		local openSec = Config.CrateOpenSec
 		t0 = os.clock()
 		local nextTick = 0
+		UI.sound(Theme.Sounds.lootRise, math.clamp(1 / math.max(openSec, 0.5), 0.6, 1.2), 0.35) -- Round 19e: the build
 		while os.clock() - t0 < openSec do
 			if not go() then
 				return false
@@ -380,7 +381,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			m.setGlow(color, k * (0.5 + tier * 0.1))
 			if os.clock() >= nextTick then
 				nextTick = os.clock() + (0.16 - k * 0.11)
-				UI.sound(Fx.Sounds.rattle, 1.1 + k * 0.9, 0.08 + k * 0.08)
+				UI.sound(Fx.Sounds.rattle, 1.0 + k * 0.7, 0.14 + k * 0.14)
 			end
 			task.wait()
 		end
@@ -575,7 +576,8 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		end
 		local sc = UI.new("UIScale", { Scale = 1.8, Parent = card })
 		UI.tween(sc, { Scale = 1 }, 0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-		UI.sound(Fx.Sounds.stamp, 0.9 + tier * 0.1, 0.5)
+		UI.sound(Fx.Sounds.pop, 0.9 + tier * 0.08, 0.4) -- Round 19e (was the snap)
+		UI.sound(Fx.Sounds.ding, 1 + tier * 0.12, 0.25)
 		if tier >= 4 then
 			Fx.particles(card, color, 8, 10)
 		end

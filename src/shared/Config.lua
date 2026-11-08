@@ -415,6 +415,7 @@ local Config = {
 		Freq = 1,
 		Cut = 1, -- Round 19c: CUT THE CHAIN (the bolt cutter)
 		alarm = 1, -- Round 19c: SILENCE THE ALARM (every alarm in the building rings until the panel is shut off)
+		office = 1.5, -- Round 19f: RAID THE OFFICE (THE BANK: an office in an open zone, see Offices below)
 		vault = 1, -- CRACK THE VAULT (from VaultJobMinWave, once per run when VaultJobOnce)
 	},
 	SideJobCaptureSec = 6, -- seconds a player must stand in the circle; pauses while nobody is inside (Round 19c: 10 -> 6)
@@ -612,6 +613,72 @@ local Config = {
 	VaultPillTunnelText = "TUNNEL OPEN", -- the vault pill's line while the tunnel is open (the map is a ring)
 	HatchOneWayAfterSeal = true, -- the hatch stays open for the rest of the run once the vault has opened
 
+	------------------------------------------------------------------ Audio (Round 19d; UI.sound, Client/Music.lua)
+	-- Two faders: every sound effect plays through the SFX SoundGroup, the soundtrack through Music.
+	SfxVolume = 1,
+	MusicVolume = 0.32,
+	SfxMaxVoices = 6, -- copies of one sound playing at once; the oldest stops (full-auto fire stays readable)
+	-- Per Theme.Sounds key: a volume trim to level the assets (missing = 1)...
+	SfxGain = { shot = 0.9, glass = 0.9, hiss = 0.7, shutter = 0.6, alarm = 0.9, whiz = 1.1 },
+	-- ...and a random pitch spread (± share) so repeats never sound identical (missing = 0: UI chimes stay in tune).
+	SfxPitchJitter = {
+		shot = 0.05,
+		hit = 0.04,
+		kill = 0.05,
+		body = 0.08,
+		take = 0.03,
+		reloadOut = 0.04,
+		reloadIn = 0.04,
+		crunch = 0.06,
+		glass = 0.08,
+		cash = 0.03,
+		coins = 0.05,
+		lootTick = 0.03,
+		snip = 0.06,
+		whiz = 0.12,
+		hurt = 0.06,
+	},
+	ReloadSeatShare = 0.7, -- the mag-in click lands this far through a magazine reload
+	-- The soundtrack follows the run: hub (yard, menus), run (Round 19e: one track carries on through waves,
+	-- intermissions, the dealer, alarms and gas), boss (TITAN alive, the one deliberate mood shift), summary (run end).
+	-- Each state picks a track from its list (APM library music, public domain on Roblox) and crossfades; a track
+	-- left mid-way resumes where it was when its state comes back within MusicResumeSec. Empty list = silence.
+	MusicEnabled = true,
+	MusicFadeSec = 1.8,
+	MusicResumeSec = 120,
+	MusicDuck = 0.35, -- the music drops to this share of its volume under big moments (boss cutscene, run over)
+	MusicTracks = {
+		hub = { "rbxassetid://9038506583", "rbxassetid://1844258065" }, -- Diamond Heist (b), The Heist (a)
+		-- Round 19e: in the lobby tracks' vein (their sister cuts and the same APM albums), not chase or ambient
+		-- underscore; the second pass dropped the jazzy / lo-fi cuts (Smooth Operator, Half Stepper (b), Diamond
+		-- Heist (c)) for driving heist funk and rock.
+		run = {
+			"rbxassetid://9038505017", -- Diamond Heist (a)
+			"rbxassetid://1844239389", -- The Heist (c)
+			"rbxassetid://1844258008", -- Masterstroke (a)
+			"rbxassetid://1841824912", -- Solid Crew (a)
+			"rbxassetid://1841825236", -- Casino Hustle (a)
+		},
+		boss = { "rbxassetid://1846875833", "rbxassetid://1841825685" }, -- The Shootout (a), Armed Raid (c)
+		summary = { "rbxassetid://9045731376" }, -- Smooth Operator (Round 19e: Casino Hustle moved to the run)
+	},
+
+	------------------------------------------------------------------ Offices (Round 19f; Offices.lua, THE BANK only)
+	-- The four glass offices (Office nodes) are RAID THE OFFICE jobs: a minigame blows the door, bags drop inside,
+	-- then the room's alarm, gas, and the office seals (anyone inside is put out, its bags fizzle) until it resets.
+	OfficeMinigames = { "Lockpick", "Hotwire", "Charges", "Cut" }, -- how a door goes (a random pick per job)
+	OfficeMinWave = 1, -- drawable from this wave (its zone must be open too)
+	OfficeCashBags = 6, -- dropped inside when it opens (scaled with the party like every burst)...
+	OfficeGoldBags = 2, -- ...and gold bags
+	OfficeBagInset = 3, -- studs: bags stay this far off the room's walls
+	OfficeOpenSec = 30, -- the loot window, then...
+	OfficeGasWarnSec = 8, -- ...the room's alarm rings this long...
+	OfficeGasSec = 6, -- ...then gas (OfficeGasDps) this long, then it seals
+	OfficeGasDps = 12,
+	OfficeEjectStuds = 4, -- anyone inside at the seal lands this far outside the door
+	OfficeFrontStuds = 4, -- the job's beacon stands this far outside the door
+	OfficeCooldownWaves = 3, -- a sealed office can be drawn again this many waves later
+
 	------------------------------------------------------------------ Alarms (Round 19c; Alarms.lua)
 	-- THE BANK's alarm fixtures strobe red and every client hears the horn while any source holds the alarm on:
 	-- the vault's gas warning, a whole heat star gained, SILENCE THE ALARM, the zone gas warning.
@@ -622,12 +689,17 @@ local Config = {
 	AlarmHornEverySec = 1.1, -- client: the horn repeats this often while ringing
 	AlarmHornVolume = 0.35,
 	AlarmScreenAlpha = 0.9, -- client: the red edge pulse peaks at this transparency (1 = none)
-	AlarmJobHoldSec = 2, -- SILENCE THE ALARM: hold F at the panel this long
+	-- Round 19d: SILENCE THE ALARM's panel opens one of these minigames (a random pick per job), not a hold.
+	AlarmJobMinigames = { "Keypad", "Freq", "Charges", "Hotwire" }, -- Round 19e: the ones that fit an alarm panel
+	-- Round 19e: THE BANK's first side job of a run (wave SideJobFirstWave, on the street) is always this kind, and for
+	-- SILENCE THE ALARM this minigame ("" = roll as usual).
+	BankFirstJobKind = "alarm",
+	BankFirstJobGame = "Keypad",
 
 	------------------------------------------------------------------ Zone gas (Round 19c; ZoneGas.lua, THE BANK only)
 	-- Every few waves the zone the crew holds is gassed so nobody camps one room: alarm + warning, then gas.
 	ZoneGasEnabled = true,
-	ZoneGasFirstWave = 4, -- the first event can come at this wave...
+	ZoneGasFirstWave = 10, -- the first event can come at this wave (Round 19e: 4 -> 10; a boss wave pushes it on)...
 	ZoneGasEveryWaves = { 3, 5 }, -- ...then the next one this many waves later (a random pick in the range)
 	ZoneGasDelaySec = 12, -- into the wave before the warning (the crew has settled)
 	ZoneGasWarnSec = 10, -- the alarms ring and the toast counts this long before the gas
@@ -636,6 +708,17 @@ local Config = {
 	ZoneGasHeight = 12, -- studs of each zone volume (from its floor) the cloud fills
 	ZoneGasParticlesPerArea = 0.03, -- emitter rate per square stud of zone floor (capped at 400 a volume)
 	ZoneGasSkipZones = { "vault", "tunnel" }, -- never gassed, and not a refuge (the vault has its own gas)
+	-- Round 19d: lockdown gas. A door objective still shut DoorForceAfterWaves waves after the wave it was called for
+	-- floods every zone except the ones that door opens: alarms and a countdown first, then gas until the door is open;
+	-- chevrons from every player, the door's loud beacon and a screen-edge arrow point at it the whole time.
+	DoorForceEnabled = true,
+	DoorForceAfterWaves = 2, -- waves the crew gets (D1 called for wave 3 -> lockdown at wave 5)
+	DoorForceDelaySec = 8, -- into the wave before the warning
+	DoorForceWarnSec = 10, -- the alarms ring and the toast counts this long before the gas
+	DoorForceGasDps = 5, -- lower than ZoneGasDps: the crew crosses the map and plays the door's minigame in it
+	DoorForceLingerSec = 6, -- the gas hangs this long after the door opens (time to step through), then clears
+	DoorForceArrowEverySec = 8, -- the chevrons from each standing player to the door refresh this often
+	DoorForceParticleMult = 0.5, -- the cloud's emitter rate x this (it fills the whole map)
 
 	------------------------------------------------------------------ Progression (account level; Progression.lua, LevelRewards.lua)
 	-- XP per run, per player: XpPerWave x waves cleared + XpPerKill x kills + XpPerJob x jobs + XpPerBoss x boss kills
@@ -800,7 +883,10 @@ local Config = {
 	JobPoolBankEnabled = false, -- true adds JobPool.BankDaily (OPEN 3 DOORS ON THE BANK, ESCAPE THROUGH THE TUNNEL) to the dailies
 
 	------------------------------------------------------------------ Doors (brief 7; per-door numbers live on the Door nodes)
-	DoorTriggerWave = { D1 = 3, D3 = 6, D2 = 8 }, -- overrides a Door node's TriggerWave when set (D4 is the vault draw)
+	-- Overrides a Door node's TriggerWave when set (D4 is the vault draw). Round 19d: D5 chains the vault stairwells
+	-- (the shutters open only the back now), so the vault is reachable once D5 is open.
+	-- Round 19e: spread out (was D1 3, D3 6, D2 8, D5 9); D5 at 14 puts the first forced vault at wave 15.
+	DoorTriggerWave = { D1 = 3, D3 = 7, D2 = 11, D5 = 14 },
 	DoorInteractTime = 3, -- hold length at a door (a node's InteractTime overrides)
 	DoorOpenCashReward = 400, -- per player when a door opens (a node's CashReward overrides)
 	DoorHoldSec = 2, -- a released hold keeps its fill this long, then resets
@@ -812,6 +898,7 @@ local Config = {
 	ZoneOpenGoldBags = 1, -- ...and this many gold bags
 	BagOtherZoneMult = 2, -- bag spots outside the crew zone weigh this much more (bags pull the crew through the map)
 	JobOtherZoneMult = 1.5, -- the same for side-job spots
+	SideJobOutsideZones = { "street" }, -- Round 19d: once a zone inside the bank is open, no side job draws in these
 
 	------------------------------------------------------------------ Nodes (brief 7: THE BANK's Workspace.Bank.Nodes)
 	BreakableNames = { "bankwindow", "bankwindow2" }, -- Round 19: glass panes a shot or a blast breaks (then open)
@@ -819,6 +906,10 @@ local Config = {
 	WindowGroupMaxParts = 12, -- Round 19c: a pane inside a model this small breaks with the whole model (its frame bars)
 	WindowGroupMargin = 1, -- studs: see-through parts this close to a pane's box break with it (the glass sheet)
 	WindowHitboxThickness = 1, -- studs: the invisible hit box over each pane (a shot anywhere on the window lands)
+	-- Round 19e: loose see-through glass sheets of these sizes (studs, any axis order, ±0.3) break like windows too.
+	BreakableGlassSizes = {
+		{ 31.8, 8.3, 0.1 }, -- the teller counter's glass (two sheets, one per half)
+	},
 	EnemyPassNames = { "barrier" }, -- Round 19: THE BANK's geometry parts with these names stop players, not enemies
 	MapLoaderStrict = false, -- true = refuse to start a run on a map with node errors ([GHS Map] ERROR lines)
 	-- Debug Show nodes: the translucent box colour per node type.
@@ -835,6 +926,7 @@ local Config = {
 		Hatch = "9BA0A8",
 		VaultRoom = "8FE3A1",
 		Fences = "C9C4B8", -- Round 19c
+		Offices = "E69D5E", -- Round 19f
 	},
 	-- Round 19c: Fence nodes (the strip behind the bank) become solid site hoardings in these colours.
 	FenceColor = "3B4048",
@@ -1061,6 +1153,21 @@ local Config = {
 	ScoreJobFillSec = 0.35, -- a card's progress bar fills in (on open, and on live progress) over this long
 	-- Upsells (each a one-line nudge, never a blocking popup).
 	CashGlintMinCash = 400, -- the cash + glints when cash is under the next upgrade's price by less than this
+	-- UI art pass: live 3D icons (UI/ModelIcon.lua) for guns, wraps and masks in tiles, wells, the reel and the HUD.
+	ModelIconFov = 24, -- icon camera field of view in degrees (low = flatter, product-shot look)
+	ModelIconPad = 0.07, -- share of the icon left empty on each side of the model
+	ModelIconGunYaw = -18, -- guns lie muzzle-left: degrees the camera swings toward the muzzle (negative) or the stock
+	ModelIconGunPitch = 14, -- degrees the camera looks down on a gun
+	ModelIconBustYaw = 16, -- mask busts: degrees off front-on
+	ModelIconBustPitch = 6, -- degrees the camera looks down on a bust
+	ModelIconAmbient = "A4A8B2", -- the unlit side's light (hex): raise it if dark guns sink into dark wells
+	ModelIconLight = "FFF4E6", -- the key light from the upper left (hex)
+	ModelIconSwayDeg = 26, -- a moving icon (hovered tile, detail well) turns this far either way
+	ModelIconSwaySec = 3.4, -- one full swing
+	ModelIconDimTransparency = 0.35, -- unowned / not-yet icons fade this much
+	ModelIconLockedShade = "5A5C64", -- a locked icon is drawn this dark (multiply, hex)
+	ModelIconWrapGun = "AK-47", -- the gun a wrap icon is shown on
+	ModelIconWellTint = 0.22, -- dark icon wells (held-gun slot, crate reel cells) lean this far toward the rarity colour
 }
 
 return Config

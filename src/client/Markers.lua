@@ -393,6 +393,30 @@ function Markers.init()
 		if name == "DoorState" and typeof(data.doors) == "table" then
 			doorList = data.doors
 			drawDoors()
+		elseif name == "OfficeState" and typeof(data.position) == "Vector3" then
+			-- Round 19f: an open office counts down at its door: the loot window, then the gas.
+			local id = "office_" .. tostring(data.id)
+			local o = Lines.office
+			if data.phase == "open" then
+				Markers.add(
+					id,
+					data.position,
+					Theme.Colors.amber,
+					tostring(data.label or o.markerTitle),
+					o.markerOpen,
+					tonumber(data.endsAt) or 0
+				)
+			elseif data.phase == "warn" or data.phase == "gas" then
+				local m = markers[id]
+				if m then
+					m.endsAt = tonumber(data.endsAt) or 0
+					m.color = Theme.Colors.red
+					m.stroke.Color = Theme.Colors.red
+					Markers.setSub(id, if data.phase == "warn" then o.markerWarn else o.markerGas, Theme.Colors.red)
+				end
+			else
+				Markers.remove(id)
+			end
 		elseif name == "DoorPing" then
 			local sec = tonumber(data.sec) or Config.DoorPingDuration
 			doorPing[tostring(data.group)] = os.clock() + sec

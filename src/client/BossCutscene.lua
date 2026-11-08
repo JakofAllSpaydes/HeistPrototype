@@ -58,6 +58,7 @@ local function finish()
 		gui = nil
 	end
 	ClientState.cameraMode = "gameplay"
+	ClientState.musicDuck = false
 	ClientState.setBlock("cinematic", false)
 	HUD.setMode(HUD.baseMode())
 end
@@ -167,6 +168,7 @@ local function begin(d: any)
 	gunCF = nil
 	ClientState.setAds(false)
 	ClientState.cameraMode = "cinematic"
+	ClientState.musicDuck = true
 	ClientState.setBlock("cinematic", true)
 	HUD.setMode("boss")
 	gui = UI.new("ScreenGui", {

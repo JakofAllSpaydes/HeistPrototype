@@ -103,7 +103,11 @@ function DoorUI.init()
 			if shake > 0 then
 				ClientState.Juice:Fire("Shake", { amp = shake, dur = 0.4 })
 				ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.amber, alpha = 0.18 })
-				UI.sound(Theme.Sounds.crate, 0.8, 0.6)
+				-- Round 19d: shutters roll up. Round 19e: no explosion or chain crash on any door (too loud and jarring).
+				if data.style == "shutter" then
+					UI.sound(Theme.Sounds.shutter, 1.15, 0.5)
+				end
+				UI.sound(Theme.Sounds.crate, 0.8, 0.35)
 			end
 		elseif name == "DoorThud" then
 			UI.sound(Theme.Sounds.crate, 0.45, 0.8)

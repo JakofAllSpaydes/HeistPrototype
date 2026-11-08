@@ -29,6 +29,7 @@ local ClientState = {
 	reviveNearby = false, -- a downed teammate is within ReviveRadius: F means revive, gun prompts step aside
 	downedPlayers = {} :: { [number]: boolean }, -- userId -> currently down (any player)
 	requestCameraYaw = nil :: number?, -- a sequence hands the gameplay camera back facing this yaw
+	musicDuck = false, -- Round 19d: a big moment (the boss cutscene) holds the soundtrack down (Music.lua)
 }
 
 function ClientState.setAds(on: boolean)

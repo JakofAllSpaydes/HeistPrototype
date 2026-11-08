@@ -22,13 +22,17 @@ Fx.Sounds = {
 	press = "rbxasset://sounds/button.wav",
 	chime = "rbxasset://sounds/victory.wav",
 	tick = "rbxasset://sounds/electronicpingshort.wav",
-	whoosh = "rbxasset://sounds/swoosh.wav",
+	whoosh = "rbxassetid://15674975792", -- Round 19d: Roblox_UI_Whoosh_03 (swoosh.wav is blocked)
 	thump = "rbxasset://sounds/bass.wav",
 	lid = "rbxasset://sounds/collide.wav",
 	deny = "rbxasset://sounds/flashbulb.wav",
-	rattle = "rbxasset://sounds/switch3.wav",
+	rattle = "rbxassetid://16480551554", -- Round 19e: Roblox_Pinball_Small_Metal_Click_01 (the prize-wheel clicker)
+	ding = "rbxassetid://9126073001", -- Round 19e: Synth Sparkle Bell Tone Ding (the reveal arpeggio)
+	shimmer = "rbxassetid://9116418035", -- Round 19e: Magic Tone Falling Shimmer (Rare and up)
+	chimes = "rbxassetid://9119447936", -- Round 19e: Sparkle Bell Tree Wind Chimes (Epic and up)
+	pop = "rbxassetid://15675055424", -- Round 19e: Roblox_UI_Cute_Pop (the lid)
 	stamp = "rbxasset://sounds/snap.mp3",
-	tear = "rbxasset://sounds/swoosh.wav",
+	tear = "rbxassetid://15675037413", -- Round 19d: Roblox_UI_Paper_Swipe
 }
 
 -- Stinger per rarity tier: pitch rises with the tier, Legendary gets the victory sting on top.
@@ -39,16 +43,18 @@ local ARPEGGIO = { 1.0, 1.26, 1.5, 2.0, 2.52 }
 function Fx.stinger(tier: number)
 	local t = math.clamp(tier, 1, 5)
 	for i = 1, t do
-		task.delay((i - 1) * 0.07, function()
-			UI.sound(Fx.Sounds.tick, ARPEGGIO[i], 0.16 + i * 0.03)
+		task.delay((i - 1) * 0.075, function()
+			-- Round 19e: bell dings instead of soft pings (juicier, still a chime and never a bang).
+			UI.sound(Fx.Sounds.ding, ARPEGGIO[i], 0.2 + i * 0.04)
 		end)
 	end
-	task.delay(t * 0.07, function()
-		UI.sound(Fx.Sounds.hover, 2.2, 0.12) -- the sparkle
-	end)
+	if t >= 3 then
+		UI.sound(Fx.Sounds.shimmer, 1.1, 0.22 + (t - 3) * 0.08)
+	end
 	if t >= 4 then
-		task.delay(t * 0.07, function()
-			UI.sound(Fx.Sounds.chime, if t == 5 then 1.0 else 1.2, if t == 5 then 0.45 else 0.28)
+		task.delay(t * 0.075, function()
+			UI.sound(Fx.Sounds.chimes, 1, if t == 5 then 0.45 else 0.32)
+			UI.sound(Fx.Sounds.chime, if t == 5 then 1.0 else 1.2, if t == 5 then 0.4 else 0.22)
 		end)
 	end
 end
@@ -56,7 +62,7 @@ end
 -- The crate lid popping (lootbox, not explosion): a soft whoosh up and a pop, then the tier's chime.
 function Fx.lootPop(tier: number)
 	UI.sound(Fx.Sounds.whoosh, 1.5, 0.22)
-	UI.sound(Fx.Sounds.stamp, 1.6, 0.2)
+	UI.sound(Fx.Sounds.pop, 1, 0.35) -- Round 19e (was the snap)
 	Fx.stinger(tier)
 end
 

@@ -289,6 +289,7 @@ function BossBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				s.RollOffMode = Enum.RollOffMode.InverseTapered
 				s.RollOffMinDistance = 15
 				s.RollOffMaxDistance = 160
+				s.SoundGroup = UI.soundGroup("SFX")
 				s.Parent = root3
 				s:Play()
 				s.Ended:Once(function()

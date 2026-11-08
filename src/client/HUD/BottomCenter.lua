@@ -194,6 +194,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	local name = UI.text({
 		Text = "M1911",
+		RichText = true, -- Round 19e: the weapon type sits beside the name, smaller and dimmed
 		Font = Theme.Fonts.display,
 		TextSize = S(18),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -427,7 +428,16 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		maxHP = sync.maxHP
 		local held = sync.held
 		local color = Rarity.color(held.rarity)
-		name.Text = string.upper(held.displayName)
+		local kind = if typeof(held.archetype) == "string" then string.upper(held.archetype) else ""
+		name.Text = if kind ~= ""
+			then string.format(
+				'%s <font size="%d" color="#%s">%s</font>',
+				string.upper(held.displayName),
+				S(11),
+				Theme.Colors.textDim:ToHex(),
+				kind
+			)
+			else string.upper(held.displayName)
 		pill.BackgroundColor3 = color
 		slotStroke.Color = color
 		UI.recolorIcon(icon, color)

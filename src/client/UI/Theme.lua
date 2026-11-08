@@ -55,16 +55,21 @@ Theme.Mobile = {
 }
 
 -- Roblox default library only. Swap ids here.
+-- Round 19d polish pass: real assets where the built-in clip read as a placeholder. Every rbxassetid below is a
+-- Roblox-licensed library sound (ProSoundEffects or Roblox's own UI pack), checked public and approved; per-key
+-- volume trims and pitch variation are Config.SfxGain / Config.SfxPitchJitter. swoosh.wav no longer loads
+-- ("Asset is not approved"), so every swap / whoosh was silent before this pass.
 Theme.Sounds = {
-	shot = "rbxasset://sounds/paintball.wav",
+	shot = "rbxassetid://9114729252", -- Gun Single Shots 11 (was paintball.wav)
 	hit = "rbxasset://sounds/electronicpingshort.wav",
 	kill = "rbxasset://sounds/collide.wav",
 	reelTick = "rbxasset://sounds/switch3.wav",
 	reelLand = "rbxasset://sounds/button.wav",
 	legendary = "rbxasset://sounds/victory.wav",
 	take = "rbxasset://sounds/snap.mp3",
-	reload = "rbxasset://sounds/switch3.wav", -- played twice as a click-clack; swap for a real reload asset here
-	swap = "rbxasset://sounds/swoosh.wav",
+	reloadOut = "rbxassetid://9113104176", -- Ammo Magazine 1: the mag comes out
+	reloadIn = "rbxassetid://9113104208", -- Ammo Magazine 2: the mag seats
+	swap = "rbxassetid://15675024286", -- Roblox_UI_Whoosh_01 (swoosh.wav is blocked)
 	crate = "rbxasset://sounds/bass.wav",
 	call = "rbxasset://sounds/clickfast.wav",
 	hurt = "rbxasset://sounds/uuhhh.mp3",
@@ -79,6 +84,24 @@ Theme.Sounds = {
 	laser = "rbxasset://sounds/switch3.wav",
 	crunch = "rbxasset://sounds/collide.wav",
 	lob = "rbxasset://sounds/Rocket shot.wav",
+	-- Round 19d: world and objective sounds that had none (or borrowed a UI blip).
+	body = "rbxassetid://9113502506", -- Body Hits 8: under the kill tick
+	cash = "rbxassetid://9113728756", -- Cash Register 5: a cash bag banked
+	coins = "rbxassetid://9113849492", -- Coins Or Keys Jingle 6: a gold bag
+	glass = "rbxassetid://9114592245", -- Glass Breaks 3: a bank window shatters
+	hiss = "rbxassetid://9116496074", -- Medium Pressure Air Release 6: gas floods in
+	alarm = "rbxassetid://9113085764", -- Alarm Buzzer 5: the building alarm's horn
+	shutter = "rbxassetid://9119207863", -- Sliding Metal Door 2: shutters roll up
+	whiz = "rbxassetid://9118168320", -- Rico Bullet Whiz 1: an enemy round past your ear
+	click = "rbxassetid://15675032796", -- Roblox_UI_Small_Click
+	snip = "rbxassetid://9119064378", -- Round 19e: Shears Metal Snips: a bolt-cutter link goes (was the collide crash)
+	-- Round 19e: the lootbox (crate reel, store crate scene and reveals).
+	lootTick = "rbxassetid://16480551554", -- Roblox_Pinball_Small_Metal_Click_01: the prize-wheel clicker
+	lootDing = "rbxassetid://9126073001", -- Synth Sparkle Bell Tone Ding: the rarity arpeggio notes
+	lootShimmer = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer: Rare and up
+	lootChimes = "rbxassetid://9119447936", -- Sparkle Bell Tree Wind Chimes: Epic and up
+	lootRise = "rbxassetid://9125805579", -- Rising Whoosh Build Up: the lid pops, the reel starts
+	lootPop = "rbxassetid://15675055424", -- Roblox_UI_Cute_Pop: the prize flies out
 }
 
 return Theme

@@ -29,7 +29,10 @@ the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, master
 rounds 15b–15m, the Round 16 / 16b feedback passes, and the brief 6 build (Round 17: fake purchase flow, store,
 crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c and 18–18d,
 and the brief 7 build (Round 19: THE BANK, doors, the vault ring, spawn boxes, pathfinding; one commit per step)
-with its feedback rounds 19b and 19c (19c adds the building alarms, zone gas and the bolt cutter, unplayed).
+with its feedback rounds 19b, 19c (the building alarms, zone gas and the bolt cutter), 19d (the audio pass and
+soundtrack, the alarm job as a minigame, no street jobs once inside, the vault stairwell chains D5, lockdown gas) and
+19e (feedback on 19d: continuous run music, new run tracks, no explosion clip, a lootbox sound set, zone gas from
+wave 10) and 19f (the glass offices as mini vaults; unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -475,8 +478,10 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
 the terminal, hold F), "HOLD THE FLOOR" (stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is
 inside, a green disc fills on the floor), one of the minigames (the beacon carries an OPEN prompt; a validated done
 finishes the job, fails can retry until the timer; Round 19c adds Cut, CUT THE CHAIN), SILENCE THE ALARM (Round 19c:
-every alarm in the building rings and strobes and the horn plays until someone holds F at the ALARM PANEL for
-`AlarmJobHoldSec`; expiry silences it without the pay), or CRACK THE VAULT (above; forced every `VaultJobEveryWaves`
+every alarm in the building rings and strobes and the horn plays until someone shuts the ALARM PANEL off; Round 19d:
+F at the panel opens one of `AlarmJobMinigames` (Round 19e: Keypad, Freq, Charges, Hotwire), a random pick per job
+named on the card's second line; expiry silences it without the pay; THE BANK's first side job of a run is always
+SILENCE THE ALARM on the Keypad: `BankFirstJobKind` / `BankFirstJobGame`), or CRACK THE VAULT (above; forced every `VaultJobEveryWaves`
 waves, otherwise drawn only when the vault can be). The dialogue card slides in from the right into
 the top-right stack with typewriter text, collapses in place to a timer pill (with a progress bar for capture), and the
 result card expands from that pill. A world marker over the beacon shows name, hint, timer and distance; past
@@ -716,9 +721,12 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   The zone graph is each Zone node's `Links` attribute (`lobby@D1`: neighbour and gate).
 - **Doors.** `Doors.lua` dresses every Door node from its Size and `DoorStyle` under `Workspace.Bank.DoorProps`:
   D1 front doors (panel), D2 stair chains (both stairs), D3 shutters (both passages under the stairs plus a grille over
-  the teller counter), D4 the asset's wheel door onto the vault and its server door; each has an invisible blocker (a
+  the teller counter: they open the back only), D5 stairwell chains (Round 19d: across both vault stairwell heads,
+  their `SideDepth` walls fencing the railings down the opening), D4 the asset's wheel door onto the vault and its
+  server door; each has an invisible blocker (a
   `Door` PathfindingModifier), a sign `UNLOCKS · WAVE N` (`DoorSignText`; D4 `UNLOCKS · VAULT JOB`), an amber ▲ beacon
-  through walls and a LOCKED prompt. Trigger waves `DoorTriggerWave` (D1 3, D3 6, D2 8; D4 is the vault draw). In the
+  through walls and a LOCKED prompt. Trigger waves `DoorTriggerWave` (Round 19e: D1 3, D3 7, D2 11, D5 14; D4 is the vault draw; the config overrides the
+  nodes' own TriggerWave). In the
   intermission before its wave a door rides the crew call as kind `door`: MARLOW's line, blue beacons, floor chevrons
   for `DoorPingDuration`, the pill `OPEN THE BANK` with an ∞ clock. It supersedes that wave's side-job draw and keeps
   the slot until done; a ticking job finishes first; doors due together queue by Priority. Hold F at either part of a
@@ -727,7 +735,29 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   swings), flash and `DoorOpenShake`, `DoorOpenCashReward` to everyone, the opener's NICE WORK card and
   `<NAME> OPENED THE <LABEL>`, HeatJob at the wave end, a Jobs count, `ZoneOpenCashBags` / `ZoneOpenGoldBags` on the
   opened zone's spots, and its boxes and spots come on. `[GHS Door] <group> trigger wave N` / `opened wave N by <name> t=`.
-- **The vault on THE BANK.** CRACK THE VAULT keeps its shell. It is drawn only once D3 has opened the stairwell; F at
+- **The glass offices (Round 19f, `Offices.lua`).** Four rooms behind blinds walls with a double glass door (the
+  pair off the back corridor, the pair at either end of the upper floor) are Office nodes: a room volume `<id>`
+  (`Label`, `Zone`) and its door box `<id>_door`; at load every geometry part inside the door box is the door (2
+  leaves, handles, frame bars, closers) and the wall's blinds mesh (it hangs across the doorway) goes with it. RAID
+  THE OFFICE is a side job kind (`SideJobKindWeights.office`, from `OfficeMinWave`, only for an office in an open zone
+  that is not cooling down): MARLOW names the office and how the door goes, the beacon stands `OfficeFrontStuds`
+  outside its door, and F opens one of `OfficeMinigames` (Lockpick, Hotwire, Charges, Cut). Done: the job pays as
+  usual and the office blows open (the door and blinds vanish, glass shards fly out, a thump and a shake),
+  `OfficeCashBags` + `OfficeGoldBags` drop across its floor and a marker at the door counts `OfficeOpenSec`; then
+  the room's alarm rings `OfficeGasWarnSec` (marker red, `OFFICE GAS IN 8s · GET OUT`), gas fills it for
+  `OfficeGasSec` (`OfficeGasDps`, the gas tint), and it seals: anyone inside lands `OfficeEjectStuds` outside the
+  door, the bags left inside fizzle, door and blinds come back, and the office is drawable again
+  `OfficeCooldownWaves` later. A job that runs out frees its office. `[GHS Office] …`.
+- **Lockdown gas (Round 19d, `ZoneGas.lua` mode force).** A called door still shut `DoorForceAfterWaves` (2) waves
+  after the wave it was called for (D1 called for wave 3 → wave 5) floods the building: `DoorForceDelaySec` into the
+  wave the alarms ring and the toast counts `LOCKDOWN · GAS IN 10s · OPEN THE BANK`, then green gas fills every open
+  zone except the ones that door opens (never the vault or the tunnel) at `DoorForceGasDps`, until the door is open
+  plus `DoorForceLingerSec`. The whole time: floor chevrons re-planned from every standing player to the door every
+  `DoorForceArrowEverySec`, the door's loud beacon, a red pinned line under the pill (`OPEN THE BANK` /
+  `ONLY CLEAN AIR IS PAST THE LOBBY`) and a blue ▲ at the screen edge whenever the door is off screen
+  (`LockdownUI.lua`). It waits out boss waves and the vault window, and a running zone gas yields to it.
+  `[GHS Zone] lockdown …`.
+- **The vault on THE BANK.** CRACK THE VAULT keeps its shell. It is drawn only once D5 has opened the stairwells (Round 19d; D3 before); F at
   the wheel door opens the Safe dial; the wheel spins `VaultWheelSpinSec`, the vault and server doors swing in over
   `VaultDoorSwingSec`, the room's lights come on, the burst drops on the vault room's spots, the hatch opens (and stays
   open: `HatchOneWayAfterSeal`) with a blue TUNNEL beacon, the pill reads `TUNNEL OPEN` (`VaultPillTunnelText`) and the
@@ -748,7 +778,8 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   `PathFailDirectSec`. TITAN's wide agent keeps it out of doorways it does not fit: it holds at the opening and Volleys.
   `[GHS Path] wave N computes/s fail stuck teleports`. `PathfindingEnabled` false is the Round 18d walk.
 - **Per zone.** Bags trickle onto open zones' spots (`BagOtherZoneMult` outside the crew zone, Gold spots for gold);
-  side jobs draw a spot in an open zone and roll their kind from its `Pool` (`JobOtherZoneMult`); TITAN blows the crew
+  side jobs draw a spot in an open zone and roll their kind from its `Pool` (`JobOtherZoneMult`), never in a
+  `SideJobOutsideZones` zone (the street) once any zone inside the bank is open (Round 19d); TITAN blows the crew
   zone's BossWall (the farthest when it has several; none → the nearest zone's); the dealer stall stands on the crew
   zone's DealerSpot, opening along its facing; crates without a spot land on a free spot in the crew zone.
 - **Card, runs, profile.** The Create Match map row lists ARENA and THE BANK (`Maps.lua`; `DefaultMap` THE BANK, colour
@@ -757,6 +788,22 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   facing the bank and ends on the Lineup node (the camera shots turn with the line); members return to the hub spawn.
   Records are `<mapId>:<difficulty>`; profile v4 moved the old `TheBank:*` (the arena's placeholder id) to `Arena:*`.
   The hub tag shows the best top wave across maps with the map's short name (`LV 7 · TOP WAVE 14 ★ BANK`).
+- **Audio (Round 19d, every map).** Sound effects play through an SFX SoundGroup and the soundtrack through a Music
+  one (`SfxVolume`, `MusicVolume`). `UI.sound` / `UI.soundAt` level each `Theme.Sounds` key (`SfxGain`), spread its
+  pitch a little (`SfxPitchJitter`) and cap copies of one clip at `SfxMaxVoices`. Real library clips (ProSoundEffects
+  and Roblox's UI pack, all checked public) for the gunshot, mag out / mag seated (`ReloadSeatShare` through the
+  reload), cash register / coin jingle on bags, a body thud under kills, glass on a window, a gas hiss, the alarm
+  buzzer, the shutter roll, a bullet whiz on a near miss (Round 19e: no explosion or chain-crash clip anywhere; blasts
+  and doors keep the soft bass thump); `swoosh.wav` (blocked by Roblox, so every swap was silent) is a Roblox whoosh.
+  The lootbox (Round 19e): a rising swell and coins as the crate pops, a prize-wheel clicker climbing as the reel
+  slows, a bell-ding arpeggio with one note per rarity tier on the land (a falling shimmer from Rare, wind chimes from
+  Epic, the victory sting on Legendary) and a pop as the gun flies out; the store's crate scene and reveals share the
+  arpeggio, the clicker and the pop (`Store/Fx.lua`). `Music.lua` follows the run: hub, run (Round 19e: one track
+  carries on through waves, intermissions, the dealer, alarms and gas; effects play over it), boss (TITAN alive, the
+  one deliberate shift), summary, silence on the run-over stamp; tracks from `MusicTracks` (APM library music, the run
+  list in the lobby tracks' nu-jazz / funk vein) crossfade over `MusicFadeSec`, resume within `MusicResumeSec`, move
+  to another track when one plays through, and duck to `MusicDuck` under the boss cutscene. Every clip is preloaded at
+  join.
 
 ## Verifying a change
 
@@ -1022,10 +1069,11 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
    `Front doors. Make some noise.`, blue beacons, chevrons along the walking route to the doors, the pill
    `OPEN THE BANK` with ∞, no side job that wave; F at the doors (BREACH) opens the Charges minigame → done: the doors
    swing and fade, the asset's door leaves vanish, flash and shake, +$400 each, your card,
-   `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby, `[GHS Door] D1 opened …`. D3 (wave 6) is a hold
-   at either part (RAISE; release: the bar keeps its fill 2 s); D2 (wave 8) is the bolt cutter at either chain (CUT,
-   Round 19c); the chevrons for D2 climb the stairs to the chains at the top; the counter grille rolls up with the shutters. Debug `Open D1..D3` /
-   `Close all` to jump.
+   `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby, `[GHS Door] D1 opened …`. D3 (wave 7) is a hold
+   at either part (RAISE; release: the bar keeps its fill 2 s); D2 (wave 11) is the bolt cutter at either chain (CUT,
+   Round 19c); the chevrons for D2 climb the stairs to the chains at the top; the counter grille rolls up with the shutters. D5 (wave 14,
+   Round 19d) is the bolt cutter at either stairwell head; the back opens with D3 but the stairwells stay chained (no
+   hopping the railings). Debug `Open D1..D3 / D5 / D4` and `Close all` to jump.
 6. Pathfinding: debug `Pin LOBBY` + `Spawn at:` a box + an archetype; enemies take the stairs, both passages, the
    stairwells; `Path debug` draws their routes (red when stuck). With the vault open, spawn at `tunnel_far`: they climb
    the ladder (lifted) to the pavement. A barricade across a passage: they route round it, or hit it when it is the
@@ -1050,8 +1098,32 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     marker goes. D2's chains open the bolt cutter (hold, let go in the green; over-squeeze slips). Debug MAP row:
     `Zone gas` (alarms + `GAS IN THE LOBBY · 10s · MOVE`, then green gas in the zone, `LOBBY CLEAR` after 25 s; stand
     in it → tint and damage), `Alarm job` (fixtures strobe red, the horn and a faint red screen edge until the panel
-    is held), `Cut job`. A whole heat star gained rings the alarms for 3 s. Jobs board: R on an unfinished sheet swaps
+    is shut off: Round 19d, a minigame), `Cut job`. A whole heat star gained rings the alarms for 3 s. Jobs board: R on an unfinished sheet swaps
     it (free once a day, then the R$ sheet). The summary's CLAIM IN PASS → hub → the pass opens.
+9d. Round 19d / 19e: music from the hub on (a crossfade at Create Match into a run track that keeps playing through
+    waves, intermissions, the dealer, alarms and gas → boss for TITAN, ducked under its cutscene, the run track picking
+    up after → silence on the stamp → summary); the gunshot, reload (out, then seated late), bag cash / coins, kill
+    thud, window glass, gas hiss, alarm buzzer, the shutter roll and a whiz on a Marksman miss; no explosion clip on
+    blasts, the breach or the bolt cutter (each link is a snip); tapping a gun in Weapons is a click only; shoot the
+    teller glass → it shatters and you can hop the counter; the weapon type beside the gun's name on the HUD card,
+    floor tags and the crate result; a crate: swell + coins, clicker
+    climbing, a rarity arpeggio (shimmer from Rare, chimes from Epic), a pop on the eject; zone gas never before wave
+    10; full-auto never stacks into mush. `Alarm job`: F at the panel opens a minigame (the card
+    names it: Keypad, Freq, Charges or Hotwire) and done silences the building; on THE BANK the wave 1 job is always
+    the alarm on the Keypad. After D1 opens, no side job beacon on the street. D3 opens the back but
+    not the stairwells; D5 is called before wave 14 and the vault job only draws once it is open (the first forced vault is wave 15). Lockdown: leave D1
+    shut through waves 3 and 4 → wave 5, 8 s in, `LOCKDOWN · GAS IN 10s`, then gas on the street (tint, damage)
+    with chevrons from you to the doors every 8 s, the red line under the pill and the edge arrow when you look away;
+    open the doors → the lobby is clean, `AIR CLEARING` 6 s later. Debug MAP row `Lockdown` runs it on the called
+    door now.
+9f. Round 19f: the offices: Show nodes draws four OFFICE rooms and their `_door` boxes over the glass doors (the
+    output has `[GHS Office] office_back_w: 11 door parts, 1 blinds` per office, no WARN). Open D3 (debug), then
+    debug MAP `Office job` → MARLOW `The WEST BACK OFFICE is locked up tight…` with the minigame's line, the beacon
+    outside a back office door; F → the minigame (Lockpick / Hotwire / Charges / Cut) → done: the job's card, the
+    door shatters away with the blinds, 6 cash + 2 gold bags inside (solo), the amber marker counts 30 s → red
+    `GAS · GET OUT` with the alarm (the building's fixtures and the horn) for 8 s → gas 6 s (tint, damage) → sealed:
+    stand inside and you land outside the door, leftover bags fizzle, the door and blinds are back. `Open office`
+    blows the nearest one with no job. The upper pair need D2.
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
@@ -1097,7 +1169,8 @@ RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary with the XP ro
 DebugPanel, Juice (rarity tiers), Camera, Gun, Main. Brief 6: PurchaseSheet, `src/client/Store/` (StoreScene, Fx,
 Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, GoldTab, CrateScene),
 `src/client/Pass/` (PassScene, PassSummary), `src/client/Jobs/` (JobBoard, JobSummary), HUD/BoostChips. Brief 7:
-NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the open beat). Tools: `genmap.luau`,
+NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the open beat). Round 19d: Music (the
+soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`,
 `importbank.luau`, `genbanknodes.luau`, `exportnodes.luau`.
 
 ## Changelog (playtest rounds)
@@ -1538,10 +1611,56 @@ NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the
   OUT marker goes with the last vault bag. Alarms (`Alarms.lua`, `Alarm*`): the asset's alarm fixtures strobe red and
   clients hear the horn with a faint red screen edge during the vault's gas warning, for `AlarmHeatUpSec` on a whole
   heat star, during the new SILENCE THE ALARM side job and the zone gas warning. Zone gas (`ZoneGas.lua`,
-  `ZoneGas*`): every 3-5 waves from wave 4 the crew zone is warned then gassed. New minigame Cut (bolt cutter, `Cut*`)
+  `ZoneGas*`): every 3-5 waves from wave 4 (Round 19e: 10) the crew zone is warned then gassed. New minigame Cut (bolt cutter, `Cut*`)
   on D2's chains and as the CUT THE CHAIN side job; a Cut test prop in the yard.
 
+- **Round 19d (7 Nov) — audio pass, BGM, gas as a push.** SFX polish (`UI.sound` / `UI.soundAt`: SFX and Music
+  SoundGroups, `SfxGain`, `SfxPitchJitter`, `SfxMaxVoices`; real library clips for shots, reloads, bags, kills,
+  blasts, glass, gas, the alarm, doors and near misses; the blocked `swoosh.wav` replaced; preload at join) and a
+  soundtrack (`Music.lua`, `Music*`: hub / calm / combat / boss / danger / summary with crossfades, resume and a
+  cutscene duck). SILENCE THE ALARM opens a random minigame from `AlarmJobMinigames` (`AlarmJobHoldSec` dropped).
+  No side jobs on the street once a zone inside the bank is open (`SideJobOutsideZones`). New door D5: chains across
+  both vault stairwell heads (bolt cutter, wave 9, `SideDepth` railing walls); D3 opens the back only, the stairs
+  zone, its boxes, bag spots and the landing job spot wait for D5. Lockdown gas (`DoorForce*`): a door objective left
+  shut two waves past its call gasses every zone but the one behind it, with chevrons from every player, the loud
+  beacon, a pinned line and a screen-edge arrow until it is open (`LockdownUI.lua`, debug `Lockdown`).
+
+- **Round 19e (7 Nov) — audio feedback.** The music no longer drops between waves or under the alarms: one run track
+  (`MusicTracks.run`) carries on through the whole run, only the boss fight and the run end switch (`calm`, `combat`
+  and `danger` dropped). The run list is the lobby tracks' vein (Diamond Heist (a) / (c), The Heist (c), Smooth
+  Operator, Half Stepper (b)) instead of the chase and ambient cues. The explosion clip is gone from the game (blasts,
+  the breach) along with the chain crash on the bolt-cutter doors. The snap on tapping a gun in Weapons is gone. The
+  lootbox got a sound set (`loot*` in `Theme.Sounds`, `ding` / `shimmer` / `chimes` / `pop` in `Store/Fx.lua`). Zone
+  gas starts from wave 10 (`ZoneGasFirstWave` 4 → 10).
+  Second pass: the bank's teller glass shatters like a window (`BreakableGlassSizes`: loose see-through sheets of a
+  listed size become windows of their own in `Windows.lua`). The run playlist drops its jazzy / lo-fi cuts (Smooth
+  Operator moves to the summary) for Masterstroke (a), Solid Crew (a) and Casino Hustle (a). Each bolt-cutter link is
+  a metal snip (`Theme.Sounds.snip`) instead of the collide crash. The weapon type (PISTOL, SMG, RIFLE, ...) sits
+  beside the name on the HUD weapon card, the floor gun tags and the crate reel's result (`Weapons.typeName`). Door
+  waves spread out: D1 3, D3 7, D2 11, D5 14. THE BANK's first side job (wave 1, on the street) is always SILENCE THE
+  ALARM on the Keypad (`BankFirstJobKind`, `BankFirstJobGame`); the alarm's pool is Keypad, Freq, Charges, Hotwire.
+
+- **Round 19f (7 Nov) — the glass offices.** The four empty offices are a mini vault: RAID THE OFFICE (side job kind
+  `office`) plays one of Lockpick / Hotwire / Charges / Cut at the door, the door and blinds blow away, bags drop
+  inside, then alarm, gas, eject and reset (`Offices.lua`, `Office*`, new node type `Offices` with tag `GHS_Office`
+  registered in genbanknodes / exportnodes / nodestyle / NodeOverlay, `Bags.fizzleIn`, debug `Office job` /
+  `Open office`).
+
 ## Open design notes (not built)
+
+- **Round 19f notes.** The office nodes were placed from the asset's geometry (the glass walls at z 63 and x ±77.3,
+  the dividing wall at x 0, the carpet floors), not seen in Studio; a dry run of the door rule against `Bank.rbxm`
+  finds 11 door parts and the blinds for each. The blinds mesh spans the whole glass wall, so the wall's blinds go up
+  while the office is open (the glass sheets either side stay solid). The back offices stand outside every zone
+  volume (their zone is the back by attribute; a player inside counts as the nearest zone). The office's alarm rings
+  the whole building's fixtures (Alarms.lua has no per-room fixtures), under its own source per office.
+- **Round 19d notes.** The music and the new clips were picked from Roblox's library by title and checked public and
+  approved through the toolbox API, but never heard: expect level and taste swaps (every id is one line in
+  `MusicTracks` or `Theme.Sounds`, every level a `SfxGain` / `MusicVolume` number). There is no music volume toggle in
+  the UI yet. D5's chains sit on the top step line (bank z 53.6, between the railings) read from the geometry; the
+  railing walls stand `SideDepth` (39) studs down each opening and stop at 8 studs above the floor. The lockdown counts
+  waves from the wave a door was called for, gasses zones by volume (a player outside every volume counts as gassed),
+  pays nothing extra and never lowers a door's own reward; downed players take no gas damage (as before).
 
 - **Round 19c notes.** Windows: the builder's pane mesh only collides along its centre strip and a separate see-through
   glass sheet sits in front of it; each pane now carries an invisible hit box and breaks with its own model (the bars)

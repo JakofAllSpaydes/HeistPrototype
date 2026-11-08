@@ -639,6 +639,23 @@ function Bags.fizzleVault()
 	end
 end
 
+-- Round 19f: every bag inside a volume (an office as it seals) fizzles.
+function Bags.fizzleIn(cframe: CFrame, size: Vector3)
+	local n = 0
+	for _, b in table.clone(bags) do
+		local p = cframe:PointToObjectSpace(b.position)
+		local h = size / 2
+		if b.active and math.abs(p.X) <= h.X and math.abs(p.Y) <= h.Y and math.abs(p.Z) <= h.Z then
+			remove(b, false)
+			World.fireRun("BagFizzled", { id = b.id })
+			n += 1
+		end
+	end
+	if n > 0 then
+		Log.event("Bags", "%d bag%s fizzled in a sealed room", n, if n == 1 then "" else "s")
+	end
+end
+
 function Bags.clearAll()
 	carry.cash, carry.gold = 0, 0
 	stopAll()

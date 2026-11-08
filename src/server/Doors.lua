@@ -51,6 +51,9 @@ type GroupState = {
 	holders: { [Player]: boolean },
 	lastSent: number,
 	wasHeld: boolean,
+	dueWave: number, -- Round 19d: the wave it was due for (queued)
+	calledFor: number, -- Round 19d: the first wave it was called for (lockdown gas counts from here)
+	target: Vector3?, -- Round 19d: where the guide chevrons end (the near side of the part nearest the crew)
 }
 
 local AMBER = Color3.fromHex("E8B64C")
@@ -82,6 +85,9 @@ local function stateOf(group: string): GroupState
 			holders = {},
 			lastSent = 0,
 			wasHeld = false,
+			dueWave = 0,
+			calledFor = 0,
+			target = nil,
 		}
 		groups[group] = g
 	end
@@ -305,6 +311,29 @@ local function buildProp(dp: MapLoader.DoorPart, door: MapLoader.Door): Prop
 	mod.Label = "Door"
 	mod.PassThrough = false
 	mod.Parent = blocker
+	-- Round 19d: a chain across a stairwell head also walls the railings down the opening (SideDepth), so the
+	-- stairwell cannot be entered by hopping a railing. The walls go with the blocker (children of it).
+	if dp.style == "chain" and dp.sideDepth > 0 then
+		local into = towardZone(dp)
+		local right = into:Cross(Vector3.yAxis).Unit
+		local base = Vector3.new(cf.Position.X, floor + blockSize.Y / 2, cf.Position.Z)
+		for _, sx in { -1, 1 } do
+			local mid = base + right * sx * (size.X / 2) + into * (dp.sideDepth / 2)
+			local wall = part({
+				Name = "SideWall",
+				Size = Vector3.new(0.6, blockSize.Y, dp.sideDepth),
+				CFrame = CFrame.lookAt(mid, mid + into),
+				Transparency = 1,
+				CanCollide = true,
+				CanQuery = false,
+				Parent = blocker,
+			})
+			local m = Instance.new("PathfindingModifier")
+			m.Label = "Door"
+			m.PassThrough = false
+			m.Parent = wall
+		end
+	end
 	if dp.style == "chain" then
 		dressChain(model, cf, size)
 	elseif dp.style == "shutter" then
@@ -473,6 +502,15 @@ local function breakProp(prop: Prop, instant: boolean?)
 	if mod then
 		mod.PassThrough = true
 	end
+	for _, wall in prop.blocker:GetChildren() do
+		if wall:IsA("BasePart") and wall.Name == "SideWall" then
+			wall.CanCollide = false
+			local m = wall:FindFirstChildOfClass("PathfindingModifier")
+			if m then
+				m.PassThrough = true
+			end
+		end
+	end
 	if prop.prompt then
 		prop.prompt.Enabled = false
 	end
@@ -633,6 +671,8 @@ function Doors.open(group: string, by: Player?, mode: string?)
 		position = door.parts[1].cframe.Position,
 		label = door.label,
 		shake = if quiet or mode == "vault" then 0 else Config.DoorOpenShake,
+		style = door.parts[1].style, -- Round 19d: the client picks the open sound (chain, shutter, breach)
+		interact = door.interact,
 	})
 	if not quiet and mode ~= "vault" then
 		-- A freshly opened zone pays for the risk of moving: a burst on its spots, bypassing the cap.
@@ -801,6 +841,7 @@ function Doors.pump()
 	end
 	g.state = "called"
 	g.calledAt = os.clock()
+	g.calledFor = math.max(g.dueWave, World.wave)
 	setPrompts(group, true)
 	-- The chevrons and the beacon point at the part nearest the crew.
 	local crew, n = Vector3.zero, 0
@@ -820,6 +861,7 @@ function Doors.pump()
 		end
 	end
 	local target = Ground.at(pick.cframe.Position - towardZone(pick) * 4)
+	g.target = target
 	CrewCall.triggerDoor({
 		group = group,
 		position = target,
@@ -848,6 +890,7 @@ local function due(wave: number)
 		local g = stateOf(gid)
 		if door.triggerWave > 0 and door.triggerWave <= wave and g.state == "closed" then
 			g.state = "queued"
+			g.dueWave = wave
 			table.insert(added, gid)
 			Log.event("Door", "%s trigger wave %d", gid, wave)
 		end
@@ -868,6 +911,33 @@ function Doors.onIntermission(nextWave: number)
 end
 function Doors.onWaveStart(wave: number)
 	due(wave)
+end
+
+-- Round 19d: the called door objective left unopened DoorForceAfterWaves waves after the wave it was called for
+-- (ZoneGas floods the map round it). Returns the group, the door and where the guide ends.
+function Doors.overdue(wave: number): (string?, MapLoader.Door?, Vector3?)
+	if not onBank() then
+		return nil, nil, nil
+	end
+	for gid, g in groups do
+		local door = MapLoader.doors[gid]
+		if
+			door
+			and door.triggerWave > 0
+			and g.state == "called"
+			and g.calledFor > 0
+			and wave >= g.calledFor + Config.DoorForceAfterWaves
+		then
+			return gid, door, g.target
+		end
+	end
+	return nil, nil, nil
+end
+
+-- Round 19d: a called door's guide target (nil until called).
+function Doors.target(group: string): Vector3?
+	local g = groups[group]
+	return if g then g.target else nil
 end
 
 -- Does a door own (or wait for) the objective slot? Then the wave's side-job draw is skipped.
@@ -1131,6 +1201,9 @@ function Doors.resetRun()
 		g.state = "closed"
 		g.ever = false
 		g.calledAt = 0
+		g.calledFor = 0
+		g.dueWave = 0
+		g.target = nil
 		g.progress = 0
 		g.holders = {}
 		setPrompts(gid, false)

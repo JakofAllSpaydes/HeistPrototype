@@ -39,6 +39,7 @@ type Job = {
 	lastSent: number,
 	reminded: boolean, -- the half-time reminder line went out
 	door: DoorInfo?, -- brief 7: kind "door" (never expires, its own reward and copy)
+	officeId: string?, -- Round 19f: kind "office": the office it claimed (released if the job fails)
 }
 
 -- Brief 7: what Doors hands the crew call for a door objective.
@@ -56,6 +57,15 @@ export type DoorInfo = {
 
 local CrewCall = {}
 
+-- Round 19f: the glass offices (Offices.lua installs this; it requires MapLoader, which requires this module).
+export type OfficeHook = {
+	available: () -> boolean,
+	claim: () -> (string?, string?, Vector3?),
+	release: (string) -> (),
+	open: (string, Player?) -> (),
+}
+CrewCall.office = nil :: OfficeHook?
+
 local effects = Workspace:WaitForChild("Effects")
 local job: Job? = nil
 local nextId = 0
@@ -72,11 +82,26 @@ local function busy(player: Player, label: string, on: boolean)
 end
 
 -- Crew call copy per kind. Minigame kinds build theirs from Lines.minigame with the prop's name.
-local function copyFor(kind: string): any
+local function copyFor(kind: string, alarmGame: string?, officeLabel: string?): any
 	if kind == "capture" then
 		return Lines.capture
+	elseif kind == "office" then
+		-- Round 19f: which office, and how its door goes (the minigame).
+		local c = table.clone(Lines.office) :: any
+		c.text = {
+			string.format(Lines.office.text[1], officeLabel or "the office"),
+			(Lines.office.gameLines :: any)[alarmGame or ""] or Lines.office.text[2],
+		}
+		return c
 	elseif kind == "alarm" then
-		return Lines.alarm
+		-- Round 19d: the card's second line says how this panel is shut off (its minigame).
+		local how = alarmGame and (Lines.alarm.panelLines :: any)[alarmGame]
+		if not how then
+			return Lines.alarm
+		end
+		local c = table.clone(Lines.alarm) :: any
+		c.text = { Lines.alarm.text[1], how }
+		return c
 	elseif kind == "vault" then
 		if World.map ~= "Arena" and Lines.vault.textBank then
 			local c = table.clone(Lines.vault) :: any
@@ -107,7 +132,7 @@ end
 
 -- Does a job spot's pool (nil = every kind) take this kind? The vault is never a spot's: it is its own door.
 local function inPool(pool: { string }?, kind: string): boolean
-	if not pool or kind == "vault" or kind == "alarm" then
+	if not pool or kind == "vault" or kind == "alarm" or kind == "office" then
 		return true -- Round 19c: an alarm panel can stand at any job spot
 	end
 	local k = string.lower(kind)
@@ -122,6 +147,10 @@ end
 -- Weighted roll over Config.SideJobKindWeights ∩ the spot's pool. The vault only when it can be drawn this wave.
 local function rollKind(pool: { string }?): string
 	local function weight(kind: string, w: number): number
+		local off = CrewCall.office
+		if kind == "office" and not (off and off.available()) then
+			return 0
+		end
 		if kind == "vault" and not VaultJob.available(World.wave) then
 			return 0
 		end
@@ -342,8 +371,19 @@ local function spotPosition(spot: Room.JobSpot?, radius: number): Vector3
 	return Ground.at(p)
 end
 
--- `forceKind` skips the roll (the forced vault draw, debug).
-function CrewCall.trigger(forceKind: string?)
+-- Round 19d: SILENCE THE ALARM's minigame, a random pick from AlarmJobMinigames (the ones that exist).
+local function pickAlarmGame(): string
+	local pool = {}
+	for _, name in Config.AlarmJobMinigames do
+		if table.find(Room.PropNames, name) then
+			table.insert(pool, name)
+		end
+	end
+	return if #pool > 0 then pool[math.random(#pool)] else "Keypad"
+end
+
+-- `forceKind` skips the roll (the forced vault draw, debug); `forceGame` picks SILENCE THE ALARM's minigame.
+function CrewCall.trigger(forceKind: string?, forceGame: string?)
 	if job and job.kind == "door" then
 		Log.event("Call", "a door holds the objective slot; no side job drawn")
 		return
@@ -355,9 +395,24 @@ function CrewCall.trigger(forceKind: string?)
 	local forced = if forceKind and (forceKind ~= "vault" or VaultJob.available(World.wave)) then forceKind else nil
 	local spot = CrewCall.pickSpot(forced)
 	local kind = forced or rollKind(spot and spot.pool)
-	local copy = copyFor(kind)
+	local alarmGame = if kind == "alarm" then (forceGame or pickAlarmGame()) else ""
+	-- Round 19f: RAID THE OFFICE claims an office and rolls how its door goes.
+	local officeId: string?, officeLabel: string?, officeFront: Vector3? = nil, nil, nil
+	if kind == "office" then
+		local off = CrewCall.office
+		if off then
+			officeId, officeLabel, officeFront = off.claim()
+		end
+		if officeId then
+			local pool = Config.OfficeMinigames
+			alarmGame = forceGame or pool[math.random(#pool)]
+		else
+			kind = "hack" -- nothing to raid after all
+		end
+	end
+	local copy = copyFor(kind, alarmGame, officeLabel)
 	local radius = if kind == "capture" then Config.SideJobCaptureRadius else Config.SideJobBeaconRadius
-	local position = spotPosition(spot, radius)
+	local position = if officeFront then officeFront else spotPosition(spot, radius)
 	-- Round 18c: CRACK THE VAULT gets its own, longer window.
 	local duration = if kind == "vault" then Config.VaultJobDurationSec else Config.SideJobDurationSec
 	local endsAt = Workspace:GetServerTimeNow() + duration
@@ -375,22 +430,47 @@ function CrewCall.trigger(forceKind: string?)
 		end)
 	elseif kind == "capture" then
 		beacon, fill = buildCaptureBeacon(position)
+	elseif kind == "office" then
+		-- Round 19f: RAID THE OFFICE. F at the office door opens its minigame; done pays the job and blows the door.
+		local game_, id = alarmGame, officeId :: string
+		beacon = buildHackBeacon(position, Lines.office.promptAction, officeLabel or "OFFICE", 0, function(player)
+			if job ~= thisJob or not thisJob.active then
+				return
+			end
+			Minigames.open(player, game_, {
+				position = position,
+				onDone = function(p)
+					if job == thisJob and thisJob.active then
+						Log.event("Call", "%s broke into %s (%s) for Side Job #%d", p.Name, id, game_, thisJob.id)
+						thisJob.officeId = nil -- opened: nothing to release
+						CrewCall.finish(true, nil, { p })
+						local off = CrewCall.office
+						if off then
+							off.open(id, p)
+						end
+					end
+				end,
+			})
+		end)
 	elseif kind == "alarm" then
 		-- Round 19c: SILENCE THE ALARM. The building rings until the panel is shut off (or the job runs out).
+		-- Round 19d: shutting it off is one of the minigames (a random pick from AlarmJobMinigames), not a hold.
 		Alarms.set("job", true)
-		beacon = buildHackBeacon(
-			position,
-			Lines.alarm.promptAction,
-			Lines.alarm.promptObject,
-			Config.AlarmJobHoldSec,
-			function(player)
-				if job == thisJob and thisJob.active and PlayerState.isStanding(PlayerState.get(player)) then
-					Log.event("Call", "%s silenced the alarm for Side Job #%d", player.Name, thisJob.id)
-					CrewCall.finish(true, nil, { player })
-				end
-			end,
-			Lines.alarm.busyTag
-		)
+		local game_ = alarmGame
+		beacon = buildHackBeacon(position, Lines.alarm.promptAction, Lines.alarm.promptObject, 0, function(player)
+			if job ~= thisJob or not thisJob.active then
+				return
+			end
+			Minigames.open(player, game_, {
+				position = position,
+				onDone = function(p)
+					if job == thisJob and thisJob.active then
+						Log.event("Call", "%s silenced the alarm (%s) for Side Job #%d", p.Name, game_, thisJob.id)
+						CrewCall.finish(true, nil, { p })
+					end
+				end,
+			})
+		end)
 	elseif isMinigame(kind) then
 		-- The prompt opens the minigame at the beacon; a validated done finishes the job. Fails can retry.
 		beacon = buildHackBeacon(position, "OPEN", copy.propName, 0, function(player)
@@ -434,6 +514,7 @@ function CrewCall.trigger(forceKind: string?)
 		insideSet = {},
 		lastSent = 0,
 		reminded = false,
+		officeId = officeId,
 	}
 	job = thisJob
 
@@ -476,6 +557,11 @@ function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 	job = nil
 	if j.beacon then
 		j.beacon:Destroy()
+	end
+	-- Round 19f: an office claimed by a job that never opened it is drawable again.
+	local off = CrewCall.office
+	if j.officeId and off then
+		off.release(j.officeId)
 	end
 	updateInsideSet(j, {}) -- nobody is capturing a finished job
 	local copy = copyFor(j.kind)
@@ -646,6 +732,13 @@ function CrewCall.onWaveStart(wave: number)
 	end
 	if vaultDue(wave) then
 		CrewCall.trigger("vault")
+	elseif World.map ~= "Arena" and wave == Config.SideJobFirstWave and Config.BankFirstJobKind ~= "" then
+		-- Round 19e: THE BANK's first side job (out on the street) is always the same one: SILENCE THE ALARM on
+		-- the keypad by default (BankFirstJobKind / BankFirstJobGame).
+		CrewCall.trigger(
+			Config.BankFirstJobKind,
+			if Config.BankFirstJobGame ~= "" then Config.BankFirstJobGame else nil
+		)
 	elseif wave >= Config.SideJobFirstWave and (wave - Config.SideJobFirstWave) % Config.SideJobEveryWaves == 0 then
 		CrewCall.trigger()
 	end

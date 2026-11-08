@@ -130,8 +130,8 @@ local LINKS = {
 	street = "lobby@D1,tunnel@hatch",
 	lobby = "street@D1,upper@D2,back@D3",
 	upper = "lobby@D2",
-	back = "lobby@D3,stairs",
-	stairs = "back,vault@D4",
+	back = "lobby@D3,stairs@D5", -- Round 19d: the stairwells sit behind their own chains (D5)
+	stairs = "back@D5,vault@D4",
 	vault = "stairs@D4,tunnel@D4",
 	tunnel = "vault@D4,street@hatch",
 }
@@ -211,7 +211,7 @@ table.insert(doors, d2r)
 -- D3 shutters: one in each passage under the stairs, and the counter grille (the 4-stud counter is a hop).
 local d3 = attrs({
 	Group = "D3",
-	Opens = "back,stairs",
+	Opens = "back", -- Round 19d: the stairwells are D5's
 	TriggerWave = 6,
 	DoorStyle = "shutter",
 	PingText = "RAISE THE SHUTTERS",
@@ -222,6 +222,22 @@ local d3l, d3r = both("D3_passage", 60, 14.6, -3.5, { 34.6, 18.2, 1 }, 0, d3)
 table.insert(doors, d3l)
 table.insert(doors, d3r)
 door("D3_counter", { 0, 14.6, -3.6 }, { 74.6, 18.2, 0.6 }, 0, table.clone(d3))
+-- Round 19d: D5 chains across each vault stairwell head (z 53.6, between the railings at x ±50 / ±69.9); SideDepth
+-- walls the railings down the 39-stud opening so nobody hops in from the side.
+local d5 = attrs({
+	Group = "D5",
+	Opens = "stairs",
+	TriggerWave = 9,
+	DoorStyle = "chain",
+	PingText = "OPEN THE STAIRWELL",
+	Label = "STAIRWELL CHAINS",
+	Priority = 4,
+	Interact = "Cut",
+	SideDepth = 39,
+})
+local d5l, d5r = both("D5_stairs", 59.95, 7.5, 53.6, { 19.4, 3, 0.6 }, 0, d5)
+table.insert(doors, d5l)
+table.insert(doors, d5r)
 -- D4: the wheel door onto the vault (the vault job's Safe dial) and the server door behind it, same group.
 local d4 = {
 	Group = "D4",
@@ -316,26 +332,26 @@ box(
 	"stairs_top_l",
 	{ -60, 8.5, 57 },
 	{ 16, 6, 5 },
-	{ Zone = "stairs", RequiresDoor = "D3", MouthName = "west stairwell head" }
+	{ Zone = "stairs", RequiresDoor = "D5", MouthName = "west stairwell head" }
 )
 box(
 	"stairs_top_r",
 	{ 60, 8.5, 57 },
 	{ 16, 6, 5 },
-	{ Zone = "stairs", RequiresDoor = "D3", MouthName = "east stairwell head" }
+	{ Zone = "stairs", RequiresDoor = "D5", MouthName = "east stairwell head" }
 )
 -- Round 19: the corner landings halfway down, so the crew in the vault gets pressure from close by.
 box(
 	"stairs_landing_l",
 	{ -60, -17, 112 },
 	{ 14, 6, 14 },
-	{ Zone = "stairs", RequiresDoor = "D3", MouthName = "west stair landing" }
+	{ Zone = "stairs", RequiresDoor = "D5", MouthName = "west stair landing" }
 )
 box(
 	"stairs_landing_r",
 	{ 60, -17, 112 },
 	{ 14, 6, 14 },
-	{ Zone = "stairs", RequiresDoor = "D3", MouthName = "east stair landing" }
+	{ Zone = "stairs", RequiresDoor = "D5", MouthName = "east stair landing" }
 )
 box("vault_vent", { 0, -34.5, 20 }, { 12, 6, 6 }, {
 	Zone = "vault",
@@ -435,6 +451,30 @@ local fences = {
 	node("back_strip_e", { 122.5, 5, 90 }, { 45, 10, 0.6 }, 0, {}),
 	node("back_strip_w", { -122.5, 5, 90 }, { 45, 10, 0.6 }, 0, {}),
 }
+-- Round 19f: the four glass offices (blinds walls, a double glass door each): a room volume and its door box. The
+-- back pair sit behind the corridor's glass wall at z 63 (split at x 0), the upper pair behind the walls at x ±77.3.
+local offices = {
+	node("office_back_w", { -20, 14.75, 80.6 }, { 38.4, 18.5, 34.6 }, 0, { Label = "WEST BACK OFFICE", Zone = "back" }),
+	node("office_back_w_door", { -20, 10.1, 63 }, { 8.4, 9.2, 1.2 }, 0, {}),
+	node("office_back_e", { 20, 14.75, 80.6 }, { 38.4, 18.5, 34.6 }, 0, { Label = "EAST BACK OFFICE", Zone = "back" }),
+	node("office_back_e_door", { 20, 10.1, 63 }, { 8.4, 9.2, 1.2 }, 0, {}),
+	node(
+		"office_upper_w",
+		{ -88.25, 45.25, 50.9 },
+		{ 21.2, 17.5, 54.6 },
+		0,
+		{ Label = "WEST UPPER OFFICE", Zone = "upper" }
+	),
+	node("office_upper_w_door", { -77.3, 41.1, 51 }, { 1.2, 9.2, 8.4 }, 0, {}),
+	node(
+		"office_upper_e",
+		{ 88.25, 45.25, 50.9 },
+		{ 21.2, 17.5, 54.6 },
+		0,
+		{ Label = "EAST UPPER OFFICE", Zone = "upper" }
+	),
+	node("office_upper_e_door", { 77.3, 41.1, 51 }, { 1.2, 9.2, 8.4 }, 0, {}),
+}
 
 local out = {
 	className = "Folder",
@@ -451,6 +491,7 @@ local out = {
 		folder("Hatch", "GHS_Hatch", hatch),
 		folder("VaultRoom", "GHS_VaultRoom", vaultRoom),
 		folder("Fences", "GHS_Fence", fences),
+		folder("Offices", "GHS_Office", offices), -- Round 19f
 	},
 }
 fs.writeFile("src/map/Bank.nodes.model.json", serde.encode("json", out, true))

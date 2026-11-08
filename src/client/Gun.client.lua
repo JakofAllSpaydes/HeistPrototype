@@ -77,11 +77,16 @@ local function reload()
 	reloading = true
 	reloadToken += 1
 	local token = reloadToken
-	-- Mag out, mag in: two clicks.
-	UI.sound(Theme.Sounds.reload, 0.7, 0.45)
-	task.delay(0.16, function()
-		UI.sound(Theme.Sounds.reload, 1.05, 0.45)
-	end)
+	-- Mag out now; Round 19d: the mag seats near the end of the reload (a shell reload clicks per shell instead).
+	UI.sound(Theme.Sounds.reloadOut, 1, 0.45)
+	if not held.shellReload then
+		local seatAt = held.reloadTime * Config.ReloadSeatShare
+		task.delay(seatAt, function()
+			if token == reloadToken and reloading then
+				UI.sound(Theme.Sounds.reloadIn, 1, 0.5)
+			end
+		end)
+	end
 	if held.shellReload then
 		shellReload(token)
 		return

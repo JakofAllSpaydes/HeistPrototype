@@ -481,8 +481,8 @@ local function build()
 	end
 	-- Open a door group (completes its objective) / close every door.
 	local rDoor = row(panel, 30.17, rh)
-	for _, gid in { "D1", "D2", "D3", "D4" } do
-		local b = btn(rDoor, "Open " .. gid, 0.2, function()
+	for _, gid in { "D1", "D2", "D3", "D5", "D4" } do
+		local b = btn(rDoor, "Open " .. gid, 0.16, function()
 			send("OpenDoor", gid)
 		end, Theme.Colors.amber)
 		b.TextSize = S(9)
@@ -503,14 +503,25 @@ local function build()
 	end, Theme.Colors.grey)
 	-- Round 19c: zone gas now, SILENCE THE ALARM, CUT THE CHAIN.
 	local rGas = row(panel, 30.18, rh)
-	btn(rGas, "Zone gas", 1 / 3, function()
+	btn(rGas, "Zone gas", 0.25, function()
 		send("ZoneGasNow")
 	end, Theme.Colors.red)
-	btn(rGas, "Alarm job", 1 / 3, function()
+	btn(rGas, "Lockdown", 0.25, function() -- Round 19d
+		send("LockdownNow")
+	end, Theme.Colors.red)
+	btn(rGas, "Alarm job", 0.25, function()
 		send("AlarmJob")
 	end, Theme.Colors.amber)
-	btn(rGas, "Cut job", 1 / 3, function()
+	btn(rGas, "Cut job", 0.25, function()
 		send("CutJob")
+	end, Theme.Colors.amber)
+	-- Round 19f: RAID THE OFFICE now / blow the nearest office open.
+	local rOffice = row(panel, 30.185, rh)
+	btn(rOffice, "Office job", 0.5, function()
+		send("OfficeJob")
+	end, Theme.Colors.amber)
+	btn(rOffice, "Open office", 0.5, function()
+		send("OpenOffice")
 	end, Theme.Colors.amber)
 	-- Pin the crew zone (or AUTO), and the path overlay.
 	local pinRow: Frame? = nil

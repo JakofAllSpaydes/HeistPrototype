@@ -21,6 +21,7 @@ local Doors = require(script.Parent.Doors)
 local Windows = require(script.Parent.Windows)
 local Alarms = require(script.Parent.Alarms) -- Round 19c
 local ZoneGas = require(script.Parent.ZoneGas) -- Round 19c
+local Offices = require(script.Parent.Offices) -- Round 19f
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
@@ -130,6 +131,7 @@ Doors.init()
 Windows.init()
 Alarms.init()
 ZoneGas.init()
+Offices.init()
 
 local function setState(state: string)
 	World.state = state
@@ -280,6 +282,7 @@ task.spawn(function()
 		Doors.resetRun()
 		Alarms.resetRun()
 		ZoneGas.resetRun()
+		Offices.resetRun()
 		-- Brief 6: back in the hub after a reset, MARLOW announces the new Jobs.
 		for _, p in lastParty do
 			task.delay(2.5, Jobs.announce, p)
@@ -331,6 +334,7 @@ task.spawn(function()
 		Windows.resetRun()
 		Alarms.resetRun()
 		ZoneGas.resetRun()
+		Offices.resetRun()
 		Hub.beginRun()
 		Economy.resetRun(World.partyPlayers())
 		Mastery.beginRun(World.partyPlayers())

@@ -36,6 +36,7 @@ export type DoorPart = {
 	label: string,
 	hide: { string }, -- Round 19: asset part names (prefixes) inside the node that vanish while open
 	hideWall: boolean, -- Round 19: the largest geometry part inside the node (a door painted on a wall) vanishes too
+	sideDepth: number, -- Round 19d: chain doors only: invisible side walls this deep toward the zone (a stairwell's railings)
 }
 export type Door = {
 	group: string,
@@ -82,6 +83,9 @@ MapLoader.lineup = nil :: CFrame?
 MapLoader.hatch = nil :: Hatch?
 MapLoader.vaultRoom = nil :: (Volume & { door: string })?
 MapLoader.hatchOpen = false -- the tunnel's way up (closed until the vault first opens)
+-- Round 19f: the glass offices (Offices.lua): a room volume and its door box each.
+export type Office = { id: string, label: string, zone: string, room: Volume, door: Volume }
+MapLoader.offices = {} :: { Office }
 
 -- Job kinds a JobSpot's Pool may name (the minigame props by their lower-case names).
 local POOL_KINDS = { hack = true, capture = true }
@@ -376,6 +380,7 @@ local function readDoors(nodes: Instance)
 			label = str(p, "Label", d.label),
 			hide = list(str(p, "Hide", "")),
 			hideWall = bool(p, "HideWall"),
+			sideDepth = num(p, "SideDepth", 0),
 		}
 		if part.mesh then
 			local found = MapLoader.meshParts(part.cframe, part.size, part.mesh, part.meshMargin)
@@ -539,6 +544,40 @@ end
 -- Round 19c: Fence nodes close off ground nobody needs (the strip behind the bank). Each node's box becomes a solid
 -- site hoarding (a panel and posts every FencePostSpacing studs) that stops players and enemies; rebuilt on every
 -- read, so a dragged node moves its fence after Recompute nodes.
+-- Round 19f: Office nodes. A room `<id>` (Label, Zone) pairs with its door box `<id>_door`.
+local function readOffices(nodes: Instance)
+	local parts = partsIn(nodes, "Offices")
+	local byName: { [string]: BasePart } = {}
+	for _, p in parts do
+		byName[p.Name] = p
+	end
+	for _, p in parts do
+		if string.sub(p.Name, -5) == "_door" then
+			if not byName[string.sub(p.Name, 1, -6)] then
+				fail(p.Name, "office door with no room node")
+			end
+			continue
+		end
+		local door = byName[p.Name .. "_door"]
+		if not door then
+			fail(p.Name, "office has no '" .. p.Name .. "_door' node")
+			continue
+		end
+		local zone = str(p, "Zone", "")
+		if not zoneKnown(p.Name, zone, "Zone") then
+			continue
+		end
+		table.insert(MapLoader.offices, {
+			id = p.Name,
+			label = str(p, "Label", "OFFICE"),
+			zone = zone,
+			room = { cframe = p.CFrame, size = p.Size },
+			door = { cframe = door.CFrame, size = door.Size },
+		})
+		Log.event("Map", "Office %s in %s", p.Name, zone)
+	end
+end
+
 local function buildFences(nodes: Instance)
 	local bank = MapLoader.bank
 	if not bank then
@@ -634,6 +673,7 @@ function MapLoader.read()
 	MapLoader.lineup = nil
 	MapLoader.hatch = nil
 	MapLoader.vaultRoom = nil
+	MapLoader.offices = {}
 	MapLoader.loaded = false
 	if not nodes then
 		fail("Bank", "no Workspace.Bank.Nodes folder; THE BANK cannot be played")
@@ -669,6 +709,7 @@ function MapLoader.read()
 	readSpots(nodes)
 	readSingles(nodes)
 	buildFences(nodes)
+	readOffices(nodes)
 	if not next(MapLoader.zones) then
 		fail("Zones", "no Zone nodes")
 	end
@@ -971,8 +1012,24 @@ function MapLoader.init()
 	Bags.spotOpen = function(s: Room.BagSpot): boolean
 		return not onBank() or MapLoader.zoneOpen(s.zone)
 	end
+	-- Round 19d: once any zone inside the building is open, side jobs stop drawing at outside spots (a run back out
+	-- to the street for a job felt bad).
+	local function insideOpen(): boolean
+		for id in MapLoader.zones do
+			if not table.find(Config.SideJobOutsideZones, id) and MapLoader.zoneOpen(id) then
+				return true
+			end
+		end
+		return false
+	end
 	CrewCall.spotOpen = function(s: Room.JobSpot): boolean
-		return not onBank() or MapLoader.zoneOpen(s.zone)
+		if not onBank() then
+			return true
+		end
+		if not MapLoader.zoneOpen(s.zone) then
+			return false
+		end
+		return not (table.find(Config.SideJobOutsideZones, s.zone) and insideOpen())
 	end
 	Spawner.boxOpen = function(b: any): boolean
 		return not onBank() or MapLoader.boxOpen(b)

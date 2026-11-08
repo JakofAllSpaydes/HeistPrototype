@@ -458,6 +458,12 @@ Weapons.Showcase = {
 
 -- Armory level math (Config.Upg*Pct): applied to the base stats before rarity and in-run upgrades,
 -- everywhere the weapon appears (starter, rolls, crate deals, floor tags).
+-- Round 19e: the weapon type as the cards print it (PISTOL, SMG, RIFLE, SHOTGUN, SNIPER, LMG); "" for an unknown id.
+function Weapons.typeName(weaponId: string?): string
+	local w = weaponId and Weapons.ById[weaponId]
+	return if w then string.upper(w.archetype) else ""
+end
+
 function Weapons.levelDmgMult(level: number): number
 	return 1 + Config.UpgDmgPct * math.max(0, level)
 end

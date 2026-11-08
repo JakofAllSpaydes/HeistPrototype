@@ -10,6 +10,9 @@
 -- pane now gets an invisible hit box the size of the pane (shots and bodies stop on it anywhere), and its group is
 -- the pane's own window model (WindowGroupMaxParts or fewer parts: the mesh and its bars) plus every see-through
 -- part inside the pane's box. Hitting any of them breaks them all; the opaque trim and the wall stay.
+--
+-- Round 19e: loose glass sheets break too. A see-through part whose size matches Config.BreakableGlassSizes (in
+-- any orientation) is a window of its own (the teller counter's glass is two such sheets, named just "Part").
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -146,6 +149,24 @@ local function inPane(pane: BasePart, part: BasePart): boolean
 	return math.max(part.Size.X, part.Size.Y, part.Size.Z) <= biggest * 1.25
 end
 
+-- Round 19e: does a part's size match a BreakableGlassSizes entry (any axis order, within 0.3 studs)?
+local function sizeListed(size: Vector3): boolean
+	local have = { size.X, size.Y, size.Z }
+	table.sort(have)
+	for _, want in Config.BreakableGlassSizes do
+		local w = { want[1] or 0, want[2] or 0, want[3] or 0 }
+		table.sort(w)
+		if math.abs(have[1] - w[1]) <= 0.3 and math.abs(have[2] - w[2]) <= 0.3 and math.abs(have[3] - w[3]) <= 0.3 then
+			return true
+		end
+	end
+	return false
+end
+
+local hitboxFolder: Folder? = nil
+local grouped = 0
+local register: (BasePart, { [BasePart]: boolean }) -> ()
+
 function Windows.init()
 	local bank = MapLoader.bank
 	local geo = bank and bank:FindFirstChild("Geometry")
@@ -155,7 +176,8 @@ function Windows.init()
 	local folder = Instance.new("Folder")
 	folder.Name = "WindowHitboxes"
 	folder.Parent = bank
-	local grouped = 0
+	hitboxFolder = folder
+	grouped = 0
 	local glass: { BasePart } = {}
 	for _, d in geo:GetDescendants() do
 		if
@@ -193,7 +215,23 @@ function Windows.init()
 				members[c] = true
 			end
 		end
-		-- The hit box: the pane's own box, a touch thicker so a grazing shot still lands on it.
+		register(pane, members)
+	end
+	-- Round 19e: loose glass sheets of a listed size (the teller glass) break on their own.
+	for _, c in glass do
+		if not byPart[c] and sizeListed(c.Size) then
+			register(c, { [c] = true })
+		end
+	end
+	Combat.onWorldHit = Windows.hit
+	Enemy.onWorldHit = Windows.hit
+	Hazards.onBlast = Windows.breakNear
+	Log.event("Map", "%d breakable windows (%d frame / glass parts grouped with them)", #list, grouped)
+end
+
+-- The hit box: the pane's own box, a touch thicker so a grazing shot still lands on it; then the window.
+function register(pane: BasePart, members: { [BasePart]: boolean })
+	do
 		local hitbox = Instance.new("Part")
 		hitbox.Name = "WindowHitbox"
 		hitbox.Anchored = true
@@ -211,7 +249,7 @@ function Windows.init()
 			if s.Z == thin then s.Z + pad else s.Z
 		)
 		hitbox.CFrame = pane.CFrame
-		hitbox.Parent = folder
+		hitbox.Parent = hitboxFolder
 		members[hitbox] = true
 		local w: Window = { pane = pane, hitbox = hitbox, parts = {}, broken = false }
 		for part in members do
@@ -221,10 +259,6 @@ function Windows.init()
 		grouped += #w.parts - 2
 		table.insert(list, w)
 	end
-	Combat.onWorldHit = Windows.hit
-	Enemy.onWorldHit = Windows.hit
-	Hazards.onBlast = Windows.breakNear
-	Log.event("Map", "%d breakable windows (%d frame / glass parts grouped with them)", #list, grouped)
 end
 
 return Windows

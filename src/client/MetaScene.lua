@@ -182,9 +182,6 @@ local preview: Preview = {
 		previewGun = GunPreview.build(c, id, wrapId)
 		previewGunKey = if previewGun then key else nil
 		GunPreview.setServerGunHidden(c, previewGun ~= nil)
-		if previewGun then
-			UI.sound(Theme.Sounds.take, 1.3, 0.25)
-		end
 	end,
 	-- `hex` / `shape` preview a mask (nil restores the worn one); `id` (brief 6) previews a Masks.lua mask with its
 	-- accent through the shared shape builder.
