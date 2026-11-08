@@ -60,8 +60,8 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
-		if ClientState.inHub() then
-			return -- no hotkeys in the hub; the cursor is free there anyway
+		if ClientState.combatOff() then
+			return -- no hotkeys in the hub (the range excepted); the cursor is free there anyway
 		end
 		ClientState.mouseFree = not ClientState.mouseFree
 		HUD.get("toast").show(if ClientState.mouseFree then "CAMERA UNLOCKED" else "CAMERA LOCKED", nil, 0.7)

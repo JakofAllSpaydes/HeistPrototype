@@ -961,6 +961,14 @@ local Config = {
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
 	BoothPromptDistance = 12, -- OPEN at a booth's counter edge reaches this far (the booths stand on a stage)
 	BoardPromptDistance = 12, -- OPEN at MARLOW's board
+	-- The training range (the old helicopter bay): armed inside, nothing pays, scores or persists.
+	RangeAbilities = true, -- all three class abilities live inside the range (cooldowns as in a run)
+	DummyCount = 3, -- dummies standing on the Dummy nodes (at most one per node)
+	DummyScale = 1, -- the dummies' rig scale (1 = Henchman size)
+	DummyHp = 5000, -- a dummy's HP bar (it refills at 0: dummies never die); the plates fall at the Heavy's shares of it
+	DummyHeavyPlates = true, -- the Dummy node marked Plates is the plated sponge (elite look)
+	DummyPlateRegrowSec = 5, -- its plates grow back this long after the last one fell
+	RangeDpsWindowSec = 3, -- the dummy readout's DPS is the damage over the last this many seconds
 	CrewZoneSyncSec = 0.5, -- the crew zone (the zone holding the most standing players) is recomputed this often
 	JobPoolBankEnabled = false, -- true adds JobPool.BankDaily (OPEN 3 DOORS ON THE BANK, ESCAPE THROUGH THE TUNNEL) to the dailies
 

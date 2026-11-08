@@ -56,6 +56,7 @@ local Dealer = require(script.Parent.Dealer)
 local RunEvents = require(script.Parent.Parent.RunEvents)
 local Jobs = require(script.Parent.Parent.Jobs)
 local Squad = require(script.Parent.Squad)
+local Range = require(script.Parent.Range)
 
 local Main = {}
 
@@ -378,30 +379,35 @@ function Main.start()
 	SkipVote.init()
 	Abilities.init()
 	Enemy.init()
-	Enemy.onSpawn = function(d)
-		Heat.onSpawn(d.wave)
-	end
-	Enemy.onDeath = function(d, attacker)
-		Heat.onEnemyDead(d.wave)
-		Mastery.onKill(d.model, attacker)
-		Elements.onKill(d.model, d.root.Position) -- WILDFIRE (synergy): a Fire Ammo burn jumps to the enemies around
-		-- Brief 6 Jobs: kills by archetype and elites for the killer, boss kills for the whole party.
-		if attacker then
-			RunEvents.emit(attacker, "kill", 1, d.row.id)
-			if d.elite then
-				RunEvents.emit(attacker, "elite", 1)
-			end
-		end
-		if d.row.boss then
-			for _, p in World.partyPlayers() do
-				RunEvents.emit(p, "boss", 1)
-			end
-		end
-		-- The boss's last hit: the crew hears who landed it.
-		if d.row.boss and attacker then
-			AllyCallout.send(attacker, "bossKill", d.row.name)
+	-- The run's hooks (heat, mastery, Jobs, wildfire); the hub slot's enemies (the range) score nothing.
+	if not Slot.isHub then
+		Enemy.onSpawn = function(d)
+			Heat.onSpawn(d.wave)
 		end
 	end
+	Enemy.onDeath = if Slot.isHub
+		then nil
+		else function(d, attacker)
+			Heat.onEnemyDead(d.wave)
+			Mastery.onKill(d.model, attacker)
+			Elements.onKill(d.model, d.root.Position) -- WILDFIRE (synergy): a Fire Ammo burn jumps to the enemies around
+			-- Brief 6 Jobs: kills by archetype and elites for the killer, boss kills for the whole party.
+			if attacker then
+				RunEvents.emit(attacker, "kill", 1, d.row.id)
+				if d.elite then
+					RunEvents.emit(attacker, "elite", 1)
+				end
+			end
+			if d.row.boss then
+				for _, p in World.partyPlayers() do
+					RunEvents.emit(p, "boss", 1)
+				end
+			end
+			-- The boss's last hit: the crew hears who landed it.
+			if d.row.boss and attacker then
+				AllyCallout.send(attacker, "bossKill", d.row.name)
+			end
+		end
 	Mastery.init()
 	Pause.init()
 	-- The pause: every party member's character is held where it stands, then let go.
@@ -436,6 +442,7 @@ function Main.start()
 	Alarms.init()
 	ZoneGas.init()
 	Offices.init()
+	Range.init() -- brief 8: the hub slot only
 
 	if Slot.isHub then
 		return

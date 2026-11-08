@@ -118,7 +118,7 @@ function ClientState.movementLocked(): boolean
 end
 
 function ClientState.isMouseFree(): boolean
-	return ClientState.mouseFree or ClientState.mouseFreeHold or ClientState.blocked() or ClientState.inHub()
+	return ClientState.mouseFree or ClientState.mouseFreeHold or ClientState.blocked() or ClientState.combatOff()
 end
 
 function ClientState.serverNow(): number
@@ -157,6 +157,17 @@ end
 function ClientState.inHub(): boolean
 	local sync = ClientState.sync
 	return sync == nil or sync.waveState == "Hub"
+end
+
+-- Brief 8: standing in the hub's training range (armed: fire, reload, ADS, abilities, the camera lock).
+function ClientState.inRange(): boolean
+	local sync = ClientState.sync :: any
+	return sync ~= nil and sync.waveState == "Hub" and sync.inRange == true
+end
+
+-- No combat here: the hub outside the range.
+function ClientState.combatOff(): boolean
+	return ClientState.inHub() and not ClientState.inRange()
 end
 
 -- World point under the aim: the screen center when locked, the cursor when unlocked. Shared by the

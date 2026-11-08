@@ -229,7 +229,12 @@ local burstEndedAt = -math.huge
 RunService.Heartbeat:Connect(function()
 	local h = held
 	-- Downed: the sidearm still fires while crawling (Config.DownedCanShoot); a bled-out spectator never does.
-	if not h or ClientState.blocked() or ClientState.inHub() or (ClientState.downed and not Config.DownedCanShoot) then
+	if
+		not h
+		or ClientState.blocked()
+		or ClientState.combatOff()
+		or (ClientState.downed and not Config.DownedCanShoot)
+	then
 		burstLeft = 0
 		return
 	end

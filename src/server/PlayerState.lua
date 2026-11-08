@@ -70,6 +70,7 @@ export type State = {
 	savedJump: { useJumpPower: boolean, jumpPower: number, jumpHeight: number }?,
 	lastPosition: Vector3, -- where the character was when it bled out
 	pendingSpawnCFrame: CFrame?, -- next LoadCharacter lands here
+	inRange: boolean, -- brief 8: standing in the hub's training range (armed; Run/Range.lua)
 	-- Run stats (reset per run)
 	kills: number,
 	cashCollected: number, -- cash earned this run, not the balance
@@ -134,6 +135,7 @@ local function freshState(player: Player, joinIndex: number): State
 		savedJump = nil,
 		lastPosition = Vector3.zero,
 		pendingSpawnCFrame = nil,
+		inRange = false,
 		kills = 0,
 		cashCollected = 0,
 		revives = 0,
@@ -494,6 +496,14 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 	if not hum or hum.Health <= 0 then
 		return
 	end
+	-- Brief 8: nothing reaches a player in the hub; in the range a debug enemy can hurt you but never down you.
+	if Runs.slotOf(player).isHub then
+		if state.inRange then
+			hum.Health = math.max(1, hum.Health - amount)
+			Remotes.Juice:FireClient(player, "PlayerHit", { amount = amount, source = source })
+		end
+		return
+	end
 	local newHP = hum.Health - amount
 	Remotes.Juice:FireClient(player, "PlayerHit", { amount = amount, source = source })
 	if newHP <= 0 then
@@ -577,6 +587,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		-- Players outside the party only ever see the hub, whatever the arena is doing.
 		waveState = if inParty or not World.inRunCycle() then World.state else "Hub",
 		inParty = inParty,
+		inRange = state.inRange, -- brief 8: the range arms you (HUD.setMode("range"))
 		intermissionEndsAt = World.intermissionEndsAt,
 		heat = World.heat,
 		cash = state.cash,

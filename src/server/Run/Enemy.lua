@@ -18,6 +18,7 @@ local Remotes = require(script.Parent.SlotRemotes)
 local PlayerState = require(script.Parent.Parent.PlayerState)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
+local Slot = require(script.Parent.Slot)
 local Log = require(script.Parent.Parent.Log)
 local Rig = require(script.Parent.Enemies.Rig)
 local Hazards = require(script.Parent.Enemies.Hazards)
@@ -91,6 +92,8 @@ Enemy.onStructureHit = nil :: ((BasePart, number) -> ())?
 -- Heat installs these: called when an enemy enters and when it dies, for the per-wave clear-time clock.
 Enemy.onSpawn = nil :: ((Data) -> ())?
 Enemy.onDeath = nil :: ((Data, Player?) -> ())?
+-- Brief 8: Range installs this: every hit a dummy takes (its DMG / DPS / HS readout).
+Enemy.onDummyHit = nil :: ((Data, number, Player?, Hit?) -> ())?
 -- Boss.lua registers its brain here (`attack = "boss"`).
 Enemy.brains = BRAINS
 
@@ -134,6 +137,10 @@ local function standingRoot(player: Player): BasePart?
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local state = PlayerState.get(player)
+	-- Brief 8: the hub slot's enemies (debug Spawn at range) only ever go for players inside the range.
+	if Slot.isHub and not state.inRange then
+		return nil
+	end
 	-- Downed and bled-out players are dropped from targeting.
 	if root and hum and hum.Health > 0 and not state.downed and not state.bledOut then
 		return root
@@ -469,7 +476,8 @@ local api = {
 }
 
 ------------------------------------------------------------------ Spawn
-export type SpawnOpts = { elite: boolean?, row: Enemies.Row?, brain: any?, box: any? }
+-- Brief 8: `dummy` (the range's targets) never dies, never counts for the run hooks and is never cleared by killAll.
+export type SpawnOpts = { elite: boolean?, row: Enemies.Row?, brain: any?, box: any?, dummy: boolean? }
 
 -- Spawn one `archetype` at a floor point, scaled for `wave` and the party size. opts.row / opts.brain let the
 -- boss supply its own row and brain.
@@ -522,7 +530,7 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		headColor = head.Color,
 		lastFlinch = -math.huge,
 		markUntil = 0,
-		mem = {},
+		mem = { dummy = if opts and opts.dummy then true else nil },
 		box = opts and opts.box,
 		path = EnemyPath.new(),
 	}
@@ -532,7 +540,7 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		d.brain.init(d, api)
 	end
 	local hook = Enemy.onSpawn
-	if hook then
+	if hook and not d.mem.dummy then
 		hook(d)
 	end
 	return model
@@ -782,6 +790,10 @@ function Enemy.kill(model: Model, attacker: Player?, hit: Hit?, overkill: number
 	if not d or d.dead then
 		return 0
 	end
+	-- Brief 8: the range (the hub slot) pays nothing and counts no kills.
+	if Slot.isHub then
+		attacker = nil
+	end
 	local cash = if attacker then Enemy.cashFor(model) else 0
 	d.dead = true
 	active[model] = nil
@@ -833,6 +845,7 @@ function Enemy.damage(model: Model, amount: number, attacker: Player?, hit: Hit?
 	if not d or d.dead then
 		return false, 0
 	end
+	-- (Brief 8: Enemy.onDummyHit is the range's tally.)
 	-- A brain can scale incoming damage (the staggered boss takes more).
 	if d.brain.damageMult then
 		amount *= d.brain.damageMult(d)
@@ -840,6 +853,24 @@ function Enemy.damage(model: Model, amount: number, attacker: Player?, hit: Hit?
 	local before = d.hp
 	d.hp -= amount
 	model:SetAttribute("HP", d.hp)
+	if d.mem.dummy then
+		-- Brief 8: a range dummy takes the hit (numbers, flinch, statuses, plates) and never dies.
+		local tally = Enemy.onDummyHit
+		if tally then
+			tally(d, amount, attacker, hit)
+		end
+		if d.brain.onDamaged then
+			d.brain.onDamaged(d, api)
+		end
+		if d.hp <= 0 then
+			d.hp = d.maxHP
+			model:SetAttribute("HP", d.hp)
+		end
+		if hit and not hit.tick then
+			flinch(d, hit)
+		end
+		return false, 0
+	end
 	if d.hp <= 0 then
 		local cash = Enemy.kill(model, attacker, hit, (amount - math.max(before, 0)) / math.max(d.maxHP, 1))
 		return true, cash
@@ -855,8 +886,10 @@ end
 
 function Enemy.killAll()
 	Enemy.frozen = false
-	for model in table.clone(active) do
-		Enemy.kill(model, nil)
+	for model, d in table.clone(active) do
+		if not d.mem.dummy then
+			Enemy.kill(model, nil)
+		end
 	end
 	for model in table.clone(corpses) do
 		model:Destroy()

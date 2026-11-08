@@ -93,6 +93,19 @@ local MODES: { [string]: { hide: { [string]: boolean }?, only: { [string]: boole
 		},
 	},
 	cinematic = { only = { WaveBar = true } },
+	-- Brief 8: the training range: the hub layout plus the gun (held slot, ammo and reload ring, crosshair, hit
+	-- markers, the camera lock chip), the ability column and the mobile fire / ADS / reload buttons; no buy column,
+	-- wave bar, heat, cash or Banked rows, boost chips or side job.
+	range = {
+		hide = {
+			WaveBar = true,
+			CallSlot = true,
+			TopRight = true,
+			BuyColumn = true,
+			Currency = true,
+			BoostChips = true,
+		},
+	},
 	-- The boss cutscene: MARLOW's call in the top-right stack, nothing else.
 	boss = { only = { TopRight = true, Toast = true } },
 	none = { only = {} },
@@ -101,7 +114,10 @@ local MODES: { [string]: { hide: { [string]: boolean }?, only: { [string]: boole
 -- The mode the HUD rests in when nothing special is on: the hub layout in the hub, the match HUD in a run.
 function HUD.baseMode(): string
 	local sync = ClientState.sync
-	return if sync and sync.waveState == "Hub" then "hub" else "gameplay"
+	if sync and sync.waveState == "Hub" then
+		return if ClientState.inRange() then "range" else "hub"
+	end
+	return "gameplay"
 end
 
 -- Show or hide HUD pieces for a mode (downed, spectating, the run start / end sequences).
@@ -206,9 +222,13 @@ function HUD.update(sync: any)
 	end
 	-- Hub <-> match: the resting mode follows the sync; sequences and overlays set their own modes on top.
 	local hubNow = sync.waveState == "Hub"
-	if hubNow and HUD.mode == "gameplay" then
-		HUD.setMode("hub")
-	elseif not hubNow and HUD.mode == "hub" then
+	local rangeNow = ClientState.inRange()
+	if hubNow and (HUD.mode == "gameplay" or HUD.mode == "hub" or HUD.mode == "range") then
+		local want = if rangeNow then "range" else "hub"
+		if HUD.mode ~= want then
+			HUD.setMode(want)
+		end
+	elseif not hubNow and (HUD.mode == "hub" or HUD.mode == "range") then
 		HUD.setMode("gameplay")
 	end
 end

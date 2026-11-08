@@ -635,7 +635,8 @@ local function step(rig: Rig, dt: number, isLocal: boolean)
 	local want = Config.GunAnimEnabled
 		and rig.gun ~= nil
 		and joint ~= nil
-		and not ClientState.inHub()
+		-- Brief 8: in the hub only a character in the training range holds its gun up.
+		and (not ClientState.inHub() or rig.char:GetAttribute("InRange") == true)
 		and rig.hum.Health > 0
 		and not actionTrackPlaying(rig)
 	rig.weight = approach(rig.weight, if want then 1 else 0, Config.GunPoseBlendSec, dt)
@@ -997,7 +998,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 					warn("[GunAnim] " .. tostring(err))
 					releaseRig(rig)
 				end
-				if p == player and not ClientState.inHub() then
+				if p == player and not ClientState.combatOff() then
 					broadcast(rig)
 				end
 			end

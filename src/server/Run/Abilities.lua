@@ -27,6 +27,7 @@ local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Parent.Log)
 local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
+local Slot = require(script.Parent.Slot)
 local Boosts = require(script.Parent.Parent.Boosts)
 
 -- Brief 8: the players this run slot looks after (its party; the hub slot: everyone not in a run).
@@ -1501,8 +1502,8 @@ function Abilities.use(player: Player, id: any, aim: any, origin: any, hit: any)
 		or state.downed
 		or state.bledOut
 		or Pause.active()
-		or not World.inRun()
-		or not World.isInParty(player)
+		-- Brief 8: in a run with your party, or (the hub slot) inside the training range.
+		or not ((World.inRun() and World.isInParty(player)) or (Slot.isHub and state.inRange and Config.RangeAbilities))
 	then
 		return
 	end
@@ -1638,6 +1639,24 @@ function Abilities.clearWhere(inside: (Vector3) -> boolean, reason: string): num
 	for _, f in table.clone(fields) do
 		if inside(f.position) then
 			removeField(f, reason)
+			n += 1
+		end
+	end
+	return n
+end
+
+-- Brief 8: leaving the range takes your placeables and fields with you. Returns how many went.
+function Abilities.clearOwner(player: Player): number
+	local n = 0
+	for _, s in table.clone(structures) do
+		if s.owner == player then
+			destroyStructure(s, "left the range")
+			n += 1
+		end
+	end
+	for _, f in table.clone(fields) do
+		if f.owner == player then
+			removeField(f, "left the range")
 			n += 1
 		end
 	end

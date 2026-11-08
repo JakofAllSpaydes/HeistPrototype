@@ -18,6 +18,7 @@ local Elements = require(script.Parent.Elements)
 local Mastery = require(script.Parent.Mastery)
 local Pause = require(script.Parent.Pause)
 local World = require(script.Parent.World)
+local Slot = require(script.Parent.Slot)
 
 local Combat = {}
 
@@ -90,11 +91,13 @@ local function dealDamage(
 		blast = info.blast == true,
 		blastT = info.blastT,
 	})
-	if info.headshot == true then
+	-- Brief 8: the range (the hub slot) scores nothing: no Jobs, no cash, no mastery.
+	local scoring = not Slot.isHub
+	if info.headshot == true and scoring then
 		RunEvents.emit(shooter.player, "headshot", 1) -- brief 6 Jobs
 	end
 	local cash = 0
-	if killed then
+	if killed and scoring then
 		RunEvents.emit(shooter.player, "weapon", 1, shooter.weapon.archetype)
 		-- The archetype's cash (x wave, x elite, x heat) x CASH GAIN.
 		cash = math.round(killCash * shooter.stats.cashGain)
@@ -309,6 +312,10 @@ function Combat.init()
 			-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire; nobody
 			-- fires while the run is paused.
 			if state.bledOut or (state.downed and not Config.DownedCanShoot) or Pause.active() then
+				return
+			end
+			-- Brief 8: in the hub only the training range is live.
+			if Slot.isHub and not state.inRange then
 				return
 			end
 			local st = PlayerState.computed(state)
