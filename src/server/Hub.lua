@@ -84,7 +84,8 @@ end
 -- best top wave). The server only publishes the numbers as Player attributes; Plate = false hides it (runs).
 function Hub.refreshTag(player: Player)
 	local state = PlayerState.get(player)
-	if Runs.inRunCycle(player) then
+	-- In a run, or (brief 8) in the training range: no plate.
+	if Runs.inRunCycle(player) or state.inRange then
 		player:SetAttribute("Plate", false)
 		return
 	end

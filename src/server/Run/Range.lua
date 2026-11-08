@@ -54,6 +54,12 @@ local function hubMap(): any
 end
 
 ------------------------------------------------------------------ Presence
+-- The hub nameplate follows the range (Hub.refreshTag hides it inside).
+local function refreshPlate(player: Player)
+	local Hub = require(script.Parent.Parent:FindFirstChild("Hub") :: ModuleScript) :: any
+	Hub.refreshTag(player)
+end
+
 function Range.isIn(player: Player): boolean
 	return PlayerState.get(player).inRange
 end
@@ -71,6 +77,7 @@ local function enter(player: Player)
 	state.held = PlayerState.starterHeld(state)
 	PlayerState.refreshHeldVisual(state)
 	PlayerState.applyCharacterStats(state) -- run walk speed inside (the hub's is HubWalkSpeedMult)
+	refreshPlate(player) -- the hub nameplate is off in the range
 	state.dirty = true
 	Log.event("Range", "%s enter", player.Name)
 end
@@ -93,6 +100,7 @@ local function leave(player: Player, why: string?)
 		hum.Health = hum.MaxHealth
 	end
 	state.dirty = true
+	refreshPlate(player)
 	Log.event(
 		"Range",
 		"%s leave%s%s",
