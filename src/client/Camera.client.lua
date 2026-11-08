@@ -42,19 +42,30 @@ end
 
 -- Cursor unlocked: holding RMB drags the camera round like default Roblox, so RMB still aims and turns.
 local rmbHeld = false
-UserInputService.InputBegan:Connect(function(input: InputObject)
+local function dragging(): boolean
+	return rmbHeld and ClientState.isMouseFree() and not ClientState.blocked()
+end
+
+-- Round 22: only touches that started on the right 60% of the screen drive the camera. The left side is the
+-- movement thumbstick; without this filter, dragging the joystick rotates the camera too.
+local cameraTouches: { [InputObject]: boolean } = {}
+UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		rmbHeld = true
+	elseif input.UserInputType == Enum.UserInputType.Touch and not gameProcessed then
+		local vp = camera.ViewportSize
+		if input.Position.X > vp.X * 0.4 then
+			cameraTouches[input] = true
+		end
 	end
 end)
 UserInputService.InputEnded:Connect(function(input: InputObject)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		rmbHeld = false
+	elseif input.UserInputType == Enum.UserInputType.Touch then
+		cameraTouches[input] = nil
 	end
 end)
-local function dragging(): boolean
-	return rmbHeld and ClientState.isMouseFree() and not ClientState.blocked()
-end
 
 UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed: boolean)
 	if input.UserInputType == Enum.UserInputType.MouseWheel then
@@ -72,7 +83,12 @@ UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed
 	if input.UserInputType == Enum.UserInputType.MouseMovement then
 		yaw -= input.Delta.X * Config.MouseSensitivity * sens
 		pitch = math.clamp(pitch - input.Delta.Y * Config.MouseSensitivity * sens, PITCH_MIN, PITCH_MAX)
-	elseif input.UserInputType == Enum.UserInputType.Touch and not gameProcessed and not pinching then
+	elseif
+		input.UserInputType == Enum.UserInputType.Touch
+		and not gameProcessed
+		and not pinching
+		and cameraTouches[input]
+	then
 		yaw -= input.Delta.X * Config.TouchSensitivity * sens
 		pitch = math.clamp(pitch - input.Delta.Y * Config.TouchSensitivity * sens, PITCH_MIN, PITCH_MAX)
 	end

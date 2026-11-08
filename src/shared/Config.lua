@@ -145,8 +145,8 @@ local Config = {
 	-- to the first waypoint CatchUpLead studs (along the route) short of the target that no player can see.
 	CatchUpDistance = 90,
 	CatchUpSec = 6, -- 0 = off
-	CatchUpLead = 60, -- Round 19c: 40 -> 60
-	CatchUpMinPlayerDistance = 55, -- Round 19c: the landing waypoint is at least this far (straight line) from every standing player
+	CatchUpLead = 80, -- Round 22: 60 -> 80 (enemies were landing too close after a catch-up warp)
+	CatchUpMinPlayerDistance = 70, -- Round 22: 55 -> 70 (the landing waypoint is at least this far straight-line from every standing player)
 	CatchUpMinGain = 20, -- ...and at least this far from where the enemy stood (no tiny hops)
 	CatchUpCameraLift = 9, -- ...and hidden from a point this far above each player too (the third-person camera)
 	-- Round 21 stragglers: more than this many studs above / below its target counts as far too (another floor)...
@@ -616,6 +616,7 @@ local Config = {
 	VaultSafeTierMax = 3, -- the vault's Safe dial follows the wave bracket up to this tier (SafeNumbersByTier: 3 / 4 / 5)
 	VaultJobOnce = false, -- true: at most once per run (a failed draw can come back); false: a sealed vault resets for the next draw
 	VaultJobEveryWaves = 5, -- testing: the vault job is forced at every multiple of this wave (0 = random draws only)
+	VaultJobForceAfterUnlock = true, -- Round 22: the first side-job draw after the vault area opens is always the vault job
 	VaultBurstCash = 6, -- bags dropped inside when it opens
 	VaultBurstGold = 4,
 	VaultOpenSec = 60, -- the loot window from the door opening
@@ -990,7 +991,7 @@ local Config = {
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
 	PremiumSetAmbient = "4A4552", -- the ambient while a premium scene (pass, store, crate room) is up (was near-black)
-	PremiumWindowScale = 0.8, -- Round 21: the premium SHOP window and the JOBS board take this share of the screen each way (was 1)
+	PremiumWindowScale = 0.84, -- Round 22: 0.8 -> 0.84 (the premium SHOP window and the JOBS board take this share of the screen each way)
 	-- Round 21 day / night (client/DayNight.lua): wave 1 at RunClockStart, each wave RunClockPerWave hours later
 	-- (20:00, 20:30, ... 06:00 dawn at wave 21), eased over RunClockTweenSec as the wave starts. The hub keeps the
 	-- place's own Lighting.ClockTime. Jumps bigger than RunClockMaxTweenHours (debug wave skips) snap.

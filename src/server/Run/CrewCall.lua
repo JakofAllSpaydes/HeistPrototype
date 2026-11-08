@@ -69,6 +69,7 @@ CrewCall.office = nil :: OfficeHook?
 local effects = Workspace:WaitForChild("Effects")
 local job: Job? = nil
 local nextId = 0
+local vaultOfferedSinceUnlock = false -- Round 22: tracks whether the vault has been offered since it became available
 local BLUE = Color3.fromHex("4D9FE8")
 local GREEN = Color3.fromHex("8FE3A1")
 
@@ -445,6 +446,9 @@ function CrewCall.trigger(forceKind: string?, forceGame: string?)
 	local forced = if forceKind and (forceKind ~= "vault" or VaultJob.available(World.wave)) then forceKind else nil
 	local spot = CrewCall.pickSpot(forced)
 	local kind = forced or rollKind(spot and spot.pool)
+	if kind == "vault" then
+		vaultOfferedSinceUnlock = true
+	end
 	local alarmGame = if kind == "alarm" then (forceGame or pickAlarmGame()) else ""
 	-- Round 19f: RAID THE OFFICE claims an office and rolls how its door goes.
 	local officeId: string?, officeLabel: string?, officeFront: Vector3? = nil, nil, nil
@@ -801,6 +805,10 @@ function CrewCall.onWaveStart(wave: number)
 	end
 	if vaultDue(wave) then
 		CrewCall.trigger("vault")
+		vaultOfferedSinceUnlock = true
+	elseif Config.VaultJobForceAfterUnlock and not vaultOfferedSinceUnlock and VaultJob.available(wave) then
+		CrewCall.trigger("vault")
+		vaultOfferedSinceUnlock = true
 	elseif World.map ~= "Arena" and wave == Config.SideJobFirstWave and Config.BankFirstJobKind ~= "" then
 		-- Round 19e: THE BANK's first side job (out on the street) is always the same one: SILENCE THE ALARM on
 		-- the keypad by default (BankFirstJobKind / BankFirstJobGame).

@@ -1,6 +1,11 @@
 --!strict
--- Mobile landscape: fire + ADS toggle bottom-right, reload tap button beside the weapon slot.
--- The joystick is Roblox's default dynamic thumbstick.
+-- Mobile landscape: fire + ADS toggle bottom-right, reload tap button beside the weapon slot,
+-- swap button above fire (visible only with a second weapon). The joystick is Roblox's default dynamic thumbstick.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
@@ -97,6 +102,30 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		ClientState.Juice:Fire("LocalReload", {})
 		UI.punch(reload, 0.9, 0.15)
 	end)
+
+	-- Round 22: SWAP button above fire, visible only when the player has a second weapon.
+	local swap = UI.button({
+		Name = "SwapButton",
+		BackgroundColor3 = Theme.Colors.panel,
+		BackgroundTransparency = 0.25,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -S(40), 1, -S(200)),
+		Size = UDim2.fromOffset(S(56), S(56)),
+		Text = "SWAP",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(13),
+		Visible = false,
+		Parent = gui,
+	})
+	UI.corner(swap, S(12))
+	UI.stroke(swap, Theme.Colors.text, S(2))
+	swap.Activated:Connect(function()
+		Remotes.SwitchWeapon:FireServer()
+		UI.punch(swap, 0.9, 0.15)
+	end)
+	_track(ClientState.Changed:Connect(function(sync: any)
+		swap.Visible = sync and sync.offhand ~= nil
+	end))
 
 	component.fire = fire
 	return component
