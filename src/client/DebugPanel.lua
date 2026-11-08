@@ -13,6 +13,7 @@ local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
+local NodeOverlay = require(script.Parent:WaitForChild("NodeOverlay"))
 
 local DebugPanel = {}
 
@@ -427,6 +428,41 @@ local function build()
 	btn(r11, "Stats", 0.4, function()
 		send("MinigameStats")
 	end, Theme.Colors.gold)
+	-- Brief 7: MAP (THE BANK's nodes and doors).
+	UI.text({
+		Text = "MAP",
+		Font = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.amber,
+		Size = UDim2.new(1, 0, 0, S(16)),
+		LayoutOrder = 30,
+		Parent = panel,
+	})
+	local rMap1 = row(panel, 30.1, rh)
+	toggles.nodes = btn(rMap1, if NodeOverlay.on then "Show nodes ON" else "Show nodes", 0.5, function()
+		NodeOverlay.setOn(not NodeOverlay.on)
+		local b = toggles.nodes
+		b.Text = if NodeOverlay.on then "Show nodes ON" else "Show nodes"
+		b.TextColor3 = if NodeOverlay.on then Theme.Colors.gold else Theme.Colors.text
+	end, Theme.Colors.amber)
+	btn(rMap1, "Recompute nodes", 0.5, function()
+		send("RecomputeNodes")
+		task.delay(0.5, NodeOverlay.refresh)
+	end)
+	-- Per-type toggles, four to a row.
+	local typeRow: Frame? = nil
+	for i, typeName in NodeOverlay.TYPES do
+		if (i - 1) % 4 == 0 then
+			typeRow = row(panel, 30.2 + math.floor((i - 1) / 4) * 0.01, rh)
+		end
+		local b: TextButton
+		b = btn(typeRow :: Frame, typeName, 0.25, function()
+			NodeOverlay.setType(typeName, not NodeOverlay.shown[typeName])
+			b.TextColor3 = if NodeOverlay.shown[typeName] then Theme.Colors.gold else Theme.Colors.grey
+		end)
+		b.TextSize = S(9)
+		b.TextColor3 = if NodeOverlay.shown[typeName] then Theme.Colors.gold else Theme.Colors.grey
+	end
 end
 
 local function refreshToggles()

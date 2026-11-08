@@ -13,6 +13,9 @@ local Maps = require(Shared.Maps)
 
 local Room = require(script.Parent.Room)
 Room.build()
+-- Brief 7: THE BANK's nodes (Workspace.Bank.Nodes) become Room.forMap("TheBank").
+local MapLoader = require(script.Parent.MapLoader)
+MapLoader.init()
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)

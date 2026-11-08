@@ -1,0 +1,4884 @@
+{
+  "children": [
+    {
+      "children": [
+        {
+          "attributes": {
+            "Depth": 1,
+            "Label": "STREET"
+          },
+          "className": "Part",
+          "name": "street",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  19,
+                  -1212
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              300,
+              42,
+              224
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 1,
+            "Label": "STREET"
+          },
+          "className": "Part",
+          "name": "street",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -129.5,
+                  19,
+                  -1000
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              41,
+              42,
+              200
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 1,
+            "Label": "STREET"
+          },
+          "className": "Part",
+          "name": "street",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  129.5,
+                  19,
+                  -1000
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              41,
+              42,
+              200
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 1,
+            "Label": "STREET"
+          },
+          "className": "Part",
+          "name": "street",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  19,
+                  -885
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              300,
+              42,
+              30
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 2,
+            "Label": "LOBBY"
+          },
+          "className": "Part",
+          "name": "lobby",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  33,
+                  -1051.85
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              199,
+              58,
+              96.3
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 3,
+            "Label": "UPPER FLOOR"
+          },
+          "className": "Part",
+          "name": "upper",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  47.5,
+                  -962.85
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              199,
+              25,
+              81.7
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 3,
+            "Label": "BACK OF BANK"
+          },
+          "className": "Part",
+          "name": "back",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  19.75,
+                  -971.35
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              199,
+              28.5,
+              64.7
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 3,
+            "Label": "BACK OF BANK"
+          },
+          "className": "Part",
+          "name": "back",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -69.75,
+                  19.75,
+                  -919.5
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              59.5,
+              28.5,
+              39
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 3,
+            "Label": "BACK OF BANK"
+          },
+          "className": "Part",
+          "name": "back",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  69.75,
+                  19.75,
+                  -919.5
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              59.5,
+              28.5,
+              39
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 4,
+            "Label": "VAULT STAIRS"
+          },
+          "className": "Part",
+          "name": "stairs",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -60,
+                  -8.3,
+                  -912
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              22,
+              27.4,
+              70
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 4,
+            "Label": "VAULT STAIRS"
+          },
+          "className": "Part",
+          "name": "stairs",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  60,
+                  -8.3,
+                  -912
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              22,
+              27.4,
+              70
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 4,
+            "Label": "VAULT STAIRS"
+          },
+          "className": "Part",
+          "name": "stairs",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -27.5,
+                  -888.5
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              142,
+              25,
+              23
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 4,
+            "Label": "VAULT STAIRS"
+          },
+          "className": "Part",
+          "name": "stairs",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -20,
+                  -923
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              100,
+              40,
+              49
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 5,
+            "Label": "VAULT"
+          },
+          "className": "Part",
+          "name": "vault",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -28.5,
+                  -966
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              33,
+              21,
+              38
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 6,
+            "Label": "TUNNEL"
+          },
+          "className": "Part",
+          "name": "tunnel",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  12,
+                  -28.5,
+                  -1008
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              57,
+              21,
+              38
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 6,
+            "Label": "TUNNEL"
+          },
+          "className": "Part",
+          "name": "tunnel",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  94,
+                  -19.5,
+                  -1012
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              108,
+              39,
+              30
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 6,
+            "Label": "TUNNEL"
+          },
+          "className": "Part",
+          "name": "tunnel",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  132,
+                  4,
+                  -1011
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              12,
+              8,
+              12
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "Zones"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "panel",
+            "Group": "D1",
+            "InteractTime": 3,
+            "Label": "FRONT DOORS",
+            "Opens": "lobby",
+            "PingText": "OPEN THE BANK",
+            "Priority": 1,
+            "TriggerWave": 3
+          },
+          "className": "Part",
+          "name": "D1_front",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  14.3,
+                  -1100.9
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              16,
+              17.5,
+              1
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "chain",
+            "Group": "D2",
+            "InteractTime": 3,
+            "Label": "STAIR CHAINS",
+            "Opens": "upper",
+            "PingText": "CUT THE CHAINS",
+            "Priority": 3,
+            "TriggerWave": 8
+          },
+          "className": "Part",
+          "name": "D2_stair_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -60.2,
+                  38,
+                  -1003.6
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              16,
+              3,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "chain",
+            "Group": "D2",
+            "InteractTime": 3,
+            "Label": "STAIR CHAINS",
+            "Opens": "upper",
+            "PingText": "CUT THE CHAINS",
+            "Priority": 3,
+            "TriggerWave": 8
+          },
+          "className": "Part",
+          "name": "D2_stair_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  60.2,
+                  38,
+                  -1003.6
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              16,
+              3,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "shutter",
+            "Group": "D3",
+            "InteractTime": 3,
+            "Label": "SHUTTERS",
+            "Opens": "back,stairs",
+            "PingText": "RAISE THE SHUTTERS",
+            "Priority": 2,
+            "TriggerWave": 6
+          },
+          "className": "Part",
+          "name": "D3_passage_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -60,
+                  14.6,
+                  -1003.5
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              34.6,
+              18.2,
+              1
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "shutter",
+            "Group": "D3",
+            "InteractTime": 3,
+            "Label": "SHUTTERS",
+            "Opens": "back,stairs",
+            "PingText": "RAISE THE SHUTTERS",
+            "Priority": 2,
+            "TriggerWave": 6
+          },
+          "className": "Part",
+          "name": "D3_passage_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  60,
+                  14.6,
+                  -1003.5
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              34.6,
+              18.2,
+              1
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 400,
+            "DoorStyle": "shutter",
+            "Group": "D3",
+            "InteractTime": 3,
+            "Label": "SHUTTERS",
+            "Opens": "back,stairs",
+            "PingText": "RAISE THE SHUTTERS",
+            "Priority": 2,
+            "TriggerWave": 6
+          },
+          "className": "Part",
+          "name": "D3_counter",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  14.6,
+                  -1003.6
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              74.6,
+              18.2,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 0,
+            "DoorStyle": "wheel",
+            "Group": "D4",
+            "Label": "VAULT DOOR",
+            "Mesh": "vault",
+            "Opens": "vault",
+            "Priority": 4,
+            "TriggerWave": 0
+          },
+          "className": "Part",
+          "name": "D4_vault",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -0.038739013671875044,
+                  -28.57342529296875,
+                  -945.6209106445312
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              20,
+              18,
+              3
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "CashReward": 0,
+            "DoorStyle": "wheel",
+            "Group": "D4",
+            "Label": "SERVER ROOM",
+            "Mesh": "vault",
+            "Opens": "tunnel",
+            "Priority": 4,
+            "TriggerWave": 0
+          },
+          "className": "Part",
+          "name": "D4_server",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -0.038739013671875044,
+                  -28.373428344726562,
+                  -986.6209106445312
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              20,
+              18,
+              3
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "DoorStyle": "wheel",
+            "Group": "T1",
+            "Label": "TUNNEL DOOR",
+            "Mesh": "vault",
+            "Opens": "tunnel",
+            "TriggerWave": -1
+          },
+          "className": "Part",
+          "name": "T1_tunnel",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  38.11396789550781,
+                  -28.373428344726562,
+                  -1011.1887329101562
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              3,
+              18,
+              20
+            ],
+            "Tags": [
+              "GHS_Door"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "Doors"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "west fence",
+            "RequiresDoor": "",
+            "Weight": 1,
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_west",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -165,
+                  3.5,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              20,
+              6,
+              60
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "east fence",
+            "RequiresDoor": "",
+            "Weight": 1,
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_east",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  165,
+                  3.5,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              20,
+              6,
+              60
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "front doors",
+            "RequiresDoor": "D1",
+            "Weight": 1,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_front",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  3.5,
+                  -1130
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              30,
+              6,
+              14
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "west bay window",
+            "RequiresDoor": "D1",
+            "Weight": 1,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_win_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -104,
+                  8.5,
+                  -1060
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              6,
+              6,
+              36
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "east bay window",
+            "RequiresDoor": "D1",
+            "Weight": 1,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_win_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  104,
+                  8.5,
+                  -1060
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              6,
+              6,
+              36
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "Henchman,Runner,Marksman",
+            "MouthName": "west mezzanine window",
+            "RequiresDoor": "D2",
+            "Weight": 1,
+            "Zone": "upper"
+          },
+          "className": "Part",
+          "name": "upper_win_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -104,
+                  39.5,
+                  -950
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              6,
+              6,
+              36
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "Henchman,Runner,Marksman",
+            "MouthName": "east mezzanine window",
+            "RequiresDoor": "D2",
+            "Weight": 1,
+            "Zone": "upper"
+          },
+          "className": "Part",
+          "name": "upper_win_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  104,
+                  39.5,
+                  -950
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              6,
+              6,
+              36
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "service corner",
+            "RequiresDoor": "D3",
+            "Weight": 1,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_service",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -86,
+                  8.5,
+                  -908
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              18,
+              6,
+              10
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "west back bay",
+            "RequiresDoor": "D3",
+            "Weight": 1,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_win_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -104,
+                  8.5,
+                  -950
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              6,
+              6,
+              36
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "east back bay",
+            "RequiresDoor": "D3",
+            "Weight": 1,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_win_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  104,
+                  8.5,
+                  -950
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              6,
+              6,
+              36
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "west stairwell head",
+            "RequiresDoor": "D3",
+            "Weight": 1,
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "stairs_top_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -60,
+                  8.5,
+                  -943
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              16,
+              6,
+              5
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "east stairwell head",
+            "RequiresDoor": "D3",
+            "Weight": 1,
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "stairs_top_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  60,
+                  8.5,
+                  -943
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              16,
+              6,
+              5
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "Henchman,Runner",
+            "MouthName": "vault vent",
+            "RequiresDoor": "D4",
+            "Weight": 1,
+            "WhileVault": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_vent",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -34.5,
+                  -980
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              12,
+              6,
+              6
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "tunnel end",
+            "RequiresDoor": "D4",
+            "Weight": 1,
+            "WhileVault": true,
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "tunnel_far",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  141,
+                  -21.5,
+                  -1020
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              8,
+              6,
+              10
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "DoorEver": true,
+            "MouthName": "hatch",
+            "RequiresDoor": "D4",
+            "Weight": 1,
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "hatch_yard",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  128.5,
+                  3.5,
+                  -1011
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              3,
+              6,
+              10
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "SpawnBoxes"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_grass_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -70,
+                  1.5,
+                  -1265
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_grass_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  70,
+                  1.5,
+                  -1265
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_steps_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -90,
+                  1.5,
+                  -1130
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_steps_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  90,
+                  1.5,
+                  -1130
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_pavement_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  125,
+                  1.5,
+                  -960
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_bay_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -80,
+                  6.5,
+                  -1085
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_bay_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  80,
+                  6.5,
+                  -1085
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_stairs",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  6.5,
+                  -1030
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_counter",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -60,
+                  6.5,
+                  -1015
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_side_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  88,
+                  6.5,
+                  -1025
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "upper"
+          },
+          "className": "Part",
+          "name": "upper_rail_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -20,
+                  37.5,
+                  -994
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "upper"
+          },
+          "className": "Part",
+          "name": "upper_rail_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  20,
+                  37.5,
+                  -994
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "upper"
+          },
+          "className": "Part",
+          "name": "upper_room_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -70,
+                  37.5,
+                  -950
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "upper"
+          },
+          "className": "Part",
+          "name": "upper_room_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  70,
+                  37.5,
+                  -950
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_hall_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -70,
+                  6.5,
+                  -990
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_hall_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  70,
+                  6.5,
+                  -990
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_corridor_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -88,
+                  6.5,
+                  -955
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_corridor_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  88,
+                  6.5,
+                  -955
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_teller",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  6.5,
+                  -986
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "stairs_landing_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -30,
+                  -37.5,
+                  -925
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "stairs_landing_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  30,
+                  -37.5,
+                  -925
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "stairs_lower",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -37.5,
+                  -888
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle1",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -8,
+                  -36.5,
+                  -980
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle2",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  8,
+                  -36.5,
+                  -980
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle3",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -8,
+                  -36.5,
+                  -971
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle4",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  8,
+                  -36.5,
+                  -971
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle5",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -8,
+                  -36.5,
+                  -962
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle6",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  8,
+                  -36.5,
+                  -962
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle7",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -8,
+                  -36.5,
+                  -953
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "vault"
+          },
+          "className": "Part",
+          "name": "vault_aisle8",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  8,
+                  -36.5,
+                  -953
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "tunnel_server",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -36.5,
+                  -1015
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "tunnel_server_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  25,
+                  -36.5,
+                  -1020
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": false,
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "tunnel_ramp",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  100,
+                  -27,
+                  -1011
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Gold": true,
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "tunnel_end",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  140,
+                  -23.5,
+                  -1020
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_BagSpot"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "BagSpots"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "Label": "TELLER COUNTER",
+            "Pool": "keypad,hack",
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "teller_counter",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  6.5,
+                  -1014
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_JobSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Label": "OFFICE",
+            "Pool": "lockpick,charges",
+            "Zone": "upper"
+          },
+          "className": "Part",
+          "name": "mezzanine_office",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  37.5,
+                  -950
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_JobSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Label": "ELECTRICAL",
+            "Pool": "hotwire,freq",
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "electrical_panel",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -90,
+                  6.5,
+                  -955
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_JobSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Label": "VAULT LANDING",
+            "Pool": "capture",
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "vault_landing",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -37.5,
+                  -920
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_JobSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Label": "SERVER ROOM",
+            "Pool": "hack,freq",
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "server_room",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  10,
+                  -36.5,
+                  -1010
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_JobSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Label": "THE STREET",
+            "Pool": "capture",
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_road",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  1.5,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_JobSpot"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "JobSpots"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "street_fence_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -142,
+                  6.5,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              12,
+              30
+            ],
+            "Tags": [
+              "GHS_BossWall"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "lobby_side_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -99,
+                  14.5,
+                  -1020
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              18,
+              20
+            ],
+            "Tags": [
+              "GHS_BossWall"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "back_corridor",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  14.5,
+                  -939.5
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              30,
+              18,
+              2
+            ],
+            "Tags": [
+              "GHS_BossWall"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "stairs_blank",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -49.5,
+                  -30,
+                  -925
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              16,
+              20
+            ],
+            "Tags": [
+              "GHS_BossWall"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "tunnel_end",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  147,
+                  -18,
+                  -1011
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              2,
+              12,
+              20
+            ],
+            "Tags": [
+              "GHS_BossWall"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "BossWalls"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "Zone": "street"
+          },
+          "className": "Part",
+          "name": "dealer_grass",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  1.5,
+                  -1270
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              4,
+              2,
+              4
+            ],
+            "Tags": [
+              "GHS_DealerSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Zone": "lobby"
+          },
+          "className": "Part",
+          "name": "dealer_lobby",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  6.5,
+                  -1046
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              4,
+              2,
+              4
+            ],
+            "Tags": [
+              "GHS_DealerSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Zone": "back"
+          },
+          "className": "Part",
+          "name": "dealer_corridor",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  6.5,
+                  -955
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              4,
+              2,
+              4
+            ],
+            "Tags": [
+              "GHS_DealerSpot"
+            ],
+            "Transparency": 1
+          }
+        },
+        {
+          "attributes": {
+            "Zone": "stairs"
+          },
+          "className": "Part",
+          "name": "dealer_landing",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -37.5,
+                  -928
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              4,
+              2,
+              4
+            ],
+            "Tags": [
+              "GHS_DealerSpot"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "DealerSpots"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "LineupOffset": 12
+          },
+          "className": "Part",
+          "name": "van",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  3.5,
+                  -1262
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              8,
+              6,
+              14
+            ],
+            "Tags": [
+              "GHS_Van"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "Van"
+    },
+    {
+      "children": [
+        {
+          "attributes": {},
+          "className": "Part",
+          "name": "lineup",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  1.5,
+                  -1238
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              20,
+              2,
+              4
+            ],
+            "Tags": [
+              "GHS_Lineup"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "Lineup"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "LadderBottom": {
+              "Vector3": [
+                2.7495178222656307,
+                -25.2,
+                0
+              ]
+            },
+            "LadderTop": {
+              "Vector3": [
+                -5.5,
+                0,
+                0
+              ]
+            },
+            "Mesh": "Part",
+            "MeshMargin": 0,
+            "Zone": "tunnel"
+          },
+          "className": "Part",
+          "name": "hatch",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  134,
+                  0.7,
+                  -1011.15
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              8,
+              1.2,
+              7.8
+            ],
+            "Tags": [
+              "GHS_Hatch"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "Hatch"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "Door": "D4"
+          },
+          "className": "Part",
+          "name": "vault_room",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  -28.5,
+                  -966
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": false,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Size": [
+              33,
+              21,
+              38
+            ],
+            "Tags": [
+              "GHS_VaultRoom"
+            ],
+            "Transparency": 1
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "VaultRoom"
+    }
+  ],
+  "className": "Folder"
+}

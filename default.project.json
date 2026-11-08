@@ -16,7 +16,13 @@
     },
     "Workspace": {
       "$ignoreUnknownInstances": true,
-      "Room": { "$path": "src/map/Room.model.json" }
+      "Room": { "$path": "src/map/Room.model.json" },
+      "Bank": {
+        "$className": "Model",
+        "$ignoreUnknownInstances": true,
+        "Geometry": { "$path": "src/map/Bank.rbxm" },
+        "Nodes": { "$path": "src/map/Bank.nodes.model.json" }
+      }
     }
   }
 }

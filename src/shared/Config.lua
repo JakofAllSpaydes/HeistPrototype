@@ -725,8 +725,28 @@ local Config = {
 	CrewZoneSyncSec = 0.5, -- the crew zone (the zone holding the most standing players) is recomputed this often
 
 	------------------------------------------------------------------ Doors (brief 7; per-door numbers live on the Door nodes)
+	DoorTriggerWave = { D1 = 3, D3 = 6, D2 = 8 }, -- overrides a Door node's TriggerWave when set (D4 is the vault draw)
+	DoorInteractTime = 3, -- hold length at a door (a node's InteractTime overrides)
+	DoorOpenCashReward = 400, -- per player when a door opens (a node's CashReward overrides)
 	BagOtherZoneMult = 2, -- bag spots outside the crew zone weigh this much more (bags pull the crew through the map)
 	JobOtherZoneMult = 1.5, -- the same for side-job spots
+
+	------------------------------------------------------------------ Nodes (brief 7: THE BANK's Workspace.Bank.Nodes)
+	MapLoaderStrict = false, -- true = refuse to start a run on a map with node errors ([GHS Map] ERROR lines)
+	-- Debug Show nodes: the translucent box colour per node type.
+	NodeShowColor = {
+		Zones = "4D9FE8",
+		Doors = "E8B64C",
+		SpawnBoxes = "E8554D",
+		BagSpots = "F2C14E",
+		JobSpots = "6FB8FF",
+		BossWalls = "8A2A2A",
+		DealerSpots = "9BA0A8",
+		Van = "9BA0A8",
+		Lineup = "9BA0A8",
+		Hatch = "9BA0A8",
+		VaultRoom = "8FE3A1",
+	},
 
 	------------------------------------------------------------------ Queue zone / Create Match
 	QueueZoneCount = 1, -- zones in the hub (QueueZone1..N parts in the map); the code never assumes 1

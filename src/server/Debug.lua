@@ -35,6 +35,7 @@ local Purchases = require(script.Parent.Purchases)
 local CrateOpen = require(script.Parent.CrateOpen)
 local Pass = require(script.Parent.Pass)
 local Jobs = require(script.Parent.Jobs)
+local MapLoader = require(script.Parent.MapLoader)
 
 local Debug = {}
 
@@ -43,6 +44,14 @@ local function toast(player: Player, text: string)
 end
 
 local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
+	-- Brief 7 MAP: re-read Workspace.Bank.Nodes after a Studio drag, without restarting.
+	RecomputeNodes = function(player, _state, _args)
+		MapLoader.read()
+		toast(
+			player,
+			string.format("NODES RE-READ · %d ERROR%s", MapLoader.errors, if MapLoader.errors == 1 then "" else "S")
+		)
+	end,
 	AddCash = function(_player, state, args)
 		Economy.addCash(state, tonumber(args) or 0)
 	end,

@@ -1,0 +1,565 @@
+--!strict
+-- THE BANK's runtime tables (brief 7), read from the node parts under Workspace.Bank.Nodes: zones, doors,
+-- spawn boxes, bag and job spots, boss walls, dealer spots, the van, the lineup, the hatch and the vault room.
+-- Nothing reads src/map/Bank.nodes.model.json directly; this module reads the parts (so a node moved in Studio
+-- moves here), validates every reference and prints one `[GHS Map] <type> <name> ...` line per node and one
+-- `[GHS Map] ERROR <name>: <reason>` per bad reference. A map with errors still loads (Config.MapLoaderStrict
+-- refuses a run on it instead). It also registers THE BANK's Room.forMap view and answers "which zone is this
+-- point in" for everything that follows the crew.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage.Shared
+local Config = require(Shared.Config)
+local Enemies = require(Shared.Enemies)
+local Room = require(script.Parent.Room)
+local Log = require(script.Parent.Log)
+
+export type Volume = { cframe: CFrame, size: Vector3 }
+export type Zone = { id: string, depth: number, label: string, parts: { Volume } }
+export type DoorPart = {
+	name: string,
+	node: BasePart,
+	cframe: CFrame,
+	size: Vector3,
+	style: string, -- chain | shutter | wheel | panel
+	mesh: string?, -- name prefix of the asset parts to animate (wheel doors)
+	meshMargin: number,
+	opens: string?, -- the zone this part leads into (its own Opens)
+	label: string,
+}
+export type Door = {
+	group: string,
+	parts: { DoorPart },
+	opens: { string }, -- every zone the group opens
+	triggerWave: number, -- 0 = the vault draw, -1 = open from the start
+	interactTime: number,
+	cashReward: number,
+	pingText: string,
+	label: string,
+	priority: number,
+}
+export type Box = Room.SpawnBox & { doorEver: boolean?, standsIn: string? }
+export type Hatch = {
+	cframe: CFrame,
+	size: Vector3,
+	mesh: string?,
+	meshMargin: number,
+	zone: string,
+	ladderBottom: Vector3,
+	ladderTop: Vector3,
+}
+
+local MapLoader = {}
+
+MapLoader.MAP_ID = "TheBank"
+MapLoader.loaded = false
+MapLoader.bank = nil :: Model?
+MapLoader.nodesFolder = nil :: Folder?
+MapLoader.errors = 0
+MapLoader.zones = {} :: { [string]: Zone }
+MapLoader.zoneOrder = {} :: { Zone } -- deepest first (ties in a lookup go to the deeper zone)
+MapLoader.doors = {} :: { [string]: Door }
+MapLoader.boxes = {} :: { Box }
+MapLoader.bagSpots = {} :: { Room.BagSpot }
+MapLoader.jobSpots = {} :: { Room.JobSpot }
+MapLoader.bossWalls = {} :: { Room.BossWall }
+MapLoader.dealerSpots = {} :: { Room.DealerSpot }
+MapLoader.van = nil :: CFrame?
+MapLoader.vanLineupOffset = 12
+MapLoader.lineup = nil :: CFrame?
+MapLoader.hatch = nil :: Hatch?
+MapLoader.vaultRoom = nil :: (Volume & { door: string })?
+
+-- Job kinds a JobSpot's Pool may name (the minigame props by their lower-case names).
+local POOL_KINDS = { hack = true, capture = true }
+for _, name in Room.PropNames do
+	POOL_KINDS[string.lower(name)] = true
+end
+
+local function fail(name: string, reason: string)
+	MapLoader.errors += 1
+	Log.event("Map", "ERROR %s: %s", name, reason)
+end
+
+local function str(p: Instance, key: string, default: string): string
+	local v = p:GetAttribute(key)
+	return if typeof(v) == "string" then v else default
+end
+
+local function num(p: Instance, key: string, default: number): number
+	local v = p:GetAttribute(key)
+	return if typeof(v) == "number" then v else default
+end
+
+local function bool(p: Instance, key: string): boolean
+	return p:GetAttribute(key) == true
+end
+
+local function list(s: string): { string }
+	local out = {}
+	for item in string.gmatch(s, "[^,]+") do
+		local t = string.gsub(item, "^%s*(.-)%s*$", "%1")
+		if t ~= "" then
+			table.insert(out, t)
+		end
+	end
+	return out
+end
+
+local function partsIn(folder: Instance?, name: string): { BasePart }
+	local f = folder and folder:FindFirstChild(name)
+	local out = {}
+	if f then
+		for _, c in f:GetChildren() do
+			if c:IsA("BasePart") then
+				table.insert(out, c)
+			end
+		end
+	end
+	return out
+end
+
+-- Is a point inside an oriented box (plus `margin` studs on every side)?
+function MapLoader.inVolume(cframe: CFrame, size: Vector3, point: Vector3, margin: number?): boolean
+	local m = margin or 0
+	local p = cframe:PointToObjectSpace(point)
+	return math.abs(p.X) <= size.X / 2 + m and math.abs(p.Y) <= size.Y / 2 + m and math.abs(p.Z) <= size.Z / 2 + m
+end
+
+-- The zone a point stands in (the deepest one when volumes overlap), or nil outside every zone.
+function MapLoader.zoneAt(point: Vector3): string?
+	for _, z in MapLoader.zoneOrder do
+		for _, v in z.parts do
+			if MapLoader.inVolume(v.cframe, v.size, point) then
+				return z.id
+			end
+		end
+	end
+	return nil
+end
+
+-- The zone nearest a point (for points between volumes: a player mid-jump, a spot just outside a wall).
+function MapLoader.nearestZone(point: Vector3): string?
+	local inside = MapLoader.zoneAt(point)
+	if inside then
+		return inside
+	end
+	local best, bestDist = nil, math.huge
+	for _, z in MapLoader.zoneOrder do
+		for _, v in z.parts do
+			local p = v.cframe:PointToObjectSpace(point)
+			local h = v.size / 2
+			local d = Vector3.new(
+				math.max(0, math.abs(p.X) - h.X),
+				math.max(0, math.abs(p.Y) - h.Y),
+				math.max(0, math.abs(p.Z) - h.Z)
+			).Magnitude
+			if d < bestDist then
+				bestDist = d
+				best = z.id
+			end
+		end
+	end
+	return best
+end
+
+-- Asset parts a door or hatch animates: geometry parts whose name starts with `prefix` and whose center lies in
+-- the node's volume (+ margin).
+function MapLoader.meshParts(cframe: CFrame, size: Vector3, prefix: string, margin: number): { BasePart }
+	local out = {}
+	local bank = MapLoader.bank
+	local geo = bank and bank:FindFirstChild("Geometry")
+	if not geo then
+		return out
+	end
+	for _, d in geo:GetDescendants() do
+		if
+			d:IsA("BasePart")
+			and string.sub(d.Name, 1, #prefix) == prefix
+			and MapLoader.inVolume(cframe, size, d.Position, margin)
+		then
+			table.insert(out, d)
+		end
+	end
+	return out
+end
+
+local function canonicalArchetype(name: string): string?
+	local low = string.lower(name)
+	for _, row in Enemies.List do
+		if string.lower(row.id) == low then
+			return row.id
+		end
+	end
+	return nil
+end
+
+-- Brief 7: the import baked THE BANK at Config.BankOrigin; when BankOrigin changes the whole model (geometry and
+-- nodes together) moves at load, so nodes always sit on the geometry.
+local function placeBank(bank: Model)
+	local geo = bank:FindFirstChild("Geometry")
+	if not geo or not geo:IsA("Model") then
+		return
+	end
+	local baked = geo.WorldPivot
+	local target = Config.BankOrigin
+	if baked.Position:FuzzyEq(target.Position, 0.01) and baked.LookVector:FuzzyEq(target.LookVector, 0.001) then
+		return
+	end
+	local delta = target * baked:Inverse()
+	bank:PivotTo(delta * bank:GetPivot())
+	geo.WorldPivot = target
+	Log.event("Map", "TheBank moved to BankOrigin (%d, %d, %d)", target.X, target.Y, target.Z)
+end
+
+-- Map geometry never moves on its own: everything the builder left unanchored is anchored.
+local function anchorAll(bank: Model)
+	local geo = bank:FindFirstChild("Geometry")
+	if not geo then
+		return
+	end
+	local n = 0
+	for _, d in geo:GetDescendants() do
+		if d:IsA("BasePart") and not d.Anchored then
+			d.Anchored = true
+			n += 1
+		end
+	end
+	if n > 0 then
+		Log.event("Map", "anchored %d loose geometry parts", n)
+	end
+end
+
+------------------------------------------------------------------ Reading
+local function readZones(nodes: Instance)
+	for _, p in partsIn(nodes, "Zones") do
+		local id = p.Name
+		local z = MapLoader.zones[id]
+		if not z then
+			z = {
+				id = id,
+				depth = math.floor(num(p, "Depth", 0)),
+				label = str(p, "Label", string.upper(id)),
+				parts = {},
+			}
+			MapLoader.zones[id] = z
+		end
+		table.insert(z.parts, { cframe = p.CFrame, size = p.Size })
+		Log.event("Map", "Zone %s depth %d %q (%d x %d x %d)", id, z.depth, z.label, p.Size.X, p.Size.Y, p.Size.Z)
+	end
+	for _, z in MapLoader.zones do
+		table.insert(MapLoader.zoneOrder, z)
+	end
+	table.sort(MapLoader.zoneOrder, function(a, b)
+		return a.depth > b.depth
+	end)
+end
+
+local function zoneKnown(name: string, zoneId: string, what: string): boolean
+	if MapLoader.zones[zoneId] then
+		return true
+	end
+	fail(name, string.format("unknown %s zone '%s'", what, zoneId))
+	return false
+end
+
+local function readDoors(nodes: Instance)
+	for _, p in partsIn(nodes, "Doors") do
+		local group = str(p, "Group", p.Name)
+		local style = str(p, "DoorStyle", "panel")
+		if style ~= "chain" and style ~= "shutter" and style ~= "wheel" and style ~= "panel" then
+			fail(p.Name, "unknown DoorStyle '" .. style .. "' (chain / shutter / wheel / panel)")
+			style = "panel"
+		end
+		local d = MapLoader.doors[group]
+		if not d then
+			local override = (Config.DoorTriggerWave :: any)[group]
+			d = {
+				group = group,
+				parts = {},
+				opens = {},
+				triggerWave = if typeof(override) == "number" then override else math.floor(num(p, "TriggerWave", 0)),
+				interactTime = num(p, "InteractTime", Config.DoorInteractTime),
+				cashReward = num(p, "CashReward", Config.DoorOpenCashReward),
+				pingText = str(p, "PingText", "OPEN THE DOOR"),
+				label = str(p, "Label", group),
+				priority = num(p, "Priority", 1),
+			}
+			MapLoader.doors[group] = d
+		end
+		local opens = list(str(p, "Opens", ""))
+		for _, zid in opens do
+			if zoneKnown(p.Name, zid, "Opens") and not table.find(d.opens, zid) then
+				table.insert(d.opens, zid)
+			end
+		end
+		local mesh = str(p, "Mesh", "")
+		local part: DoorPart = {
+			name = p.Name,
+			node = p,
+			cframe = p.CFrame,
+			size = p.Size,
+			style = style,
+			mesh = if mesh ~= "" then mesh else nil,
+			meshMargin = num(p, "MeshMargin", 2),
+			opens = opens[1],
+			label = str(p, "Label", d.label),
+		}
+		if part.mesh then
+			local found = MapLoader.meshParts(part.cframe, part.size, part.mesh, part.meshMargin)
+			if #found == 0 then
+				fail(p.Name, "Mesh '" .. part.mesh .. "' matches no geometry part inside the node")
+				part.mesh = nil
+			end
+		end
+		table.insert(d.parts, part)
+		Log.event(
+			"Map",
+			"Door %s group %s %s opens %s trigger %s",
+			p.Name,
+			group,
+			style,
+			table.concat(opens, ","),
+			if d.triggerWave == 0 then "vault" elseif d.triggerWave < 0 then "start" else "wave " .. d.triggerWave
+		)
+	end
+end
+
+local function readBoxes(nodes: Instance)
+	for _, p in partsIn(nodes, "SpawnBoxes") do
+		local zid = str(p, "Zone", "")
+		zoneKnown(p.Name, zid, "Zone")
+		local req = str(p, "RequiresDoor", "")
+		if req ~= "" and not MapLoader.doors[req] then
+			fail(p.Name, "RequiresDoor names unknown door group '" .. req .. "'")
+		end
+		local allowedRaw = str(p, "AllowedTypes", "all")
+		local allowed: { [string]: boolean }? = nil
+		if string.lower(allowedRaw) ~= "all" then
+			local set = {}
+			for _, a in list(allowedRaw) do
+				local id = canonicalArchetype(a)
+				if id then
+					set[id] = true
+				else
+					fail(p.Name, "AllowedTypes names unknown archetype '" .. a .. "'")
+				end
+			end
+			allowed = set
+		end
+		local b: Box = {
+			name = p.Name,
+			zone = zid,
+			cframe = p.CFrame,
+			size = p.Size,
+			weight = num(p, "Weight", 1),
+			allowed = allowed,
+			requiresDoor = if req ~= "" then req else nil,
+			mouth = str(p, "MouthName", p.Name),
+			whileVault = bool(p, "WhileVault"),
+			doorEver = bool(p, "DoorEver"),
+			standsIn = MapLoader.zoneAt(p.Position),
+		}
+		table.insert(MapLoader.boxes, b)
+		Log.event(
+			"Map",
+			"SpawnBox %s zone %s stands in %s door %s types %s weight %.2f mouth %q",
+			p.Name,
+			zid,
+			b.standsIn or "-",
+			req ~= "" and req or "-",
+			allowedRaw,
+			b.weight,
+			b.mouth
+		)
+	end
+end
+
+local function readSpots(nodes: Instance)
+	for _, p in partsIn(nodes, "BagSpots") do
+		local zid = str(p, "Zone", "")
+		zoneKnown(p.Name, zid, "Zone")
+		table.insert(MapLoader.bagSpots, { name = p.Name, position = p.Position, zone = zid, gold = bool(p, "Gold") })
+		Log.event("Map", "BagSpot %s zone %s%s", p.Name, zid, if bool(p, "Gold") then " gold" else "")
+	end
+	for _, p in partsIn(nodes, "JobSpots") do
+		local zid = str(p, "Zone", "")
+		zoneKnown(p.Name, zid, "Zone")
+		local pool = list(str(p, "Pool", ""))
+		for _, k in pool do
+			if not POOL_KINDS[string.lower(k)] then
+				fail(p.Name, "Pool names unknown job kind '" .. k .. "'")
+			end
+		end
+		table.insert(MapLoader.jobSpots, {
+			name = p.Name,
+			cframe = p.CFrame,
+			zone = zid,
+			pool = if #pool > 0 then pool else nil,
+			label = str(p, "Label", string.upper(p.Name)),
+		})
+		Log.event("Map", "JobSpot %s zone %s pool %s %q", p.Name, zid, table.concat(pool, ","), str(p, "Label", ""))
+	end
+	for _, p in partsIn(nodes, "BossWalls") do
+		local zid = str(p, "Zone", "")
+		zoneKnown(p.Name, zid, "Zone")
+		table.insert(MapLoader.bossWalls, { name = p.Name, cframe = p.CFrame, size = p.Size, zone = zid })
+		Log.event("Map", "BossWall %s zone %s", p.Name, zid)
+	end
+	for _, p in partsIn(nodes, "DealerSpots") do
+		local zid = str(p, "Zone", "")
+		zoneKnown(p.Name, zid, "Zone")
+		table.insert(MapLoader.dealerSpots, { name = p.Name, cframe = p.CFrame, zone = zid })
+		Log.event("Map", "DealerSpot %s zone %s", p.Name, zid)
+	end
+end
+
+local function readSingles(nodes: Instance)
+	local van = partsIn(nodes, "Van")[1]
+	if van then
+		MapLoader.van = van.CFrame
+		MapLoader.vanLineupOffset = num(van, "LineupOffset", 12)
+		Log.event("Map", "Van %s zone %s", van.Name, MapLoader.zoneAt(van.Position) or "-")
+	else
+		fail("Van", "no Van node: the run starts at the arena fallback")
+	end
+	local lineup = partsIn(nodes, "Lineup")[1]
+	if lineup then
+		MapLoader.lineup = lineup.CFrame
+		Log.event("Map", "Lineup %s zone %s", lineup.Name, MapLoader.zoneAt(lineup.Position) or "-")
+	end
+	local hatch = partsIn(nodes, "Hatch")[1]
+	if hatch then
+		local zid = str(hatch, "Zone", "tunnel")
+		zoneKnown(hatch.Name, zid, "Zone")
+		local bottom = hatch:GetAttribute("LadderBottom")
+		local top = hatch:GetAttribute("LadderTop")
+		local mesh = str(hatch, "Mesh", "")
+		MapLoader.hatch = {
+			cframe = hatch.CFrame,
+			size = hatch.Size,
+			mesh = if mesh ~= "" then mesh else nil,
+			meshMargin = num(hatch, "MeshMargin", 0),
+			zone = zid,
+			ladderBottom = hatch.CFrame:PointToWorldSpace(
+				if typeof(bottom) == "Vector3" then bottom else Vector3.new(0, -25, 0)
+			),
+			ladderTop = hatch.CFrame:PointToWorldSpace(if typeof(top) == "Vector3" then top else Vector3.new(-5, 0, 0)),
+		}
+		if mesh ~= "" and #MapLoader.meshParts(hatch.CFrame, hatch.Size, mesh, MapLoader.hatch.meshMargin) == 0 then
+			fail(hatch.Name, "Mesh '" .. mesh .. "' matches no geometry part inside the node")
+		end
+		Log.event("Map", "Hatch %s zone %s", hatch.Name, zid)
+	end
+	local vr = partsIn(nodes, "VaultRoom")[1]
+	if vr then
+		local door = str(vr, "Door", "D4")
+		if not MapLoader.doors[door] then
+			fail(vr.Name, "VaultRoom Door names unknown door group '" .. door .. "'")
+		end
+		MapLoader.vaultRoom = { cframe = vr.CFrame, size = vr.Size, door = door }
+		Log.event("Map", "VaultRoom %s door %s", vr.Name, door)
+	else
+		fail("VaultRoom", "no VaultRoom node: the vault job is never drawn on this map")
+	end
+end
+
+-- THE BANK as Room.forMap hands it out. Door gating sits on top (spotOpen / box filters).
+local function buildView(): Room.MapView?
+	if not MapLoader.loaded then
+		return nil
+	end
+	local vaultSpots = {}
+	for _, s in MapLoader.bagSpots do
+		local vr = MapLoader.vaultRoom
+		if s.zone == "vault" or (vr and MapLoader.inVolume(vr.cframe, vr.size, s.position)) then
+			table.insert(vaultSpots, s.position)
+		end
+	end
+	local van = MapLoader.van
+	return {
+		id = MapLoader.MAP_ID,
+		floorTop = Config.FloorTop,
+		spawnBoxes = MapLoader.boxes :: any,
+		bagSpots = MapLoader.bagSpots,
+		vaultSpots = vaultSpots,
+		jobSpots = MapLoader.jobSpots,
+		dealerSpots = MapLoader.dealerSpots,
+		bossWalls = MapLoader.bossWalls,
+		van = van,
+		lineup = if van then van * CFrame.new(0, 0, -MapLoader.vanLineupOffset) else nil,
+		runEndLine = MapLoader.lineup,
+	}
+end
+
+-- (Re)read every node. Debug Recompute nodes calls this again after a Studio drag.
+function MapLoader.read()
+	local bank = MapLoader.bank
+	local nodes = bank and bank:FindFirstChild("Nodes")
+	MapLoader.errors = 0
+	MapLoader.zones = {}
+	MapLoader.zoneOrder = {}
+	MapLoader.doors = {}
+	MapLoader.boxes = {}
+	MapLoader.bagSpots = {}
+	MapLoader.jobSpots = {}
+	MapLoader.bossWalls = {}
+	MapLoader.dealerSpots = {}
+	MapLoader.van = nil
+	MapLoader.lineup = nil
+	MapLoader.hatch = nil
+	MapLoader.vaultRoom = nil
+	MapLoader.loaded = false
+	if not nodes then
+		fail("Bank", "no Workspace.Bank.Nodes folder; THE BANK cannot be played")
+		Room.invalidate(MapLoader.MAP_ID)
+		return
+	end
+	MapLoader.nodesFolder = nodes :: Folder
+	readZones(nodes)
+	readDoors(nodes)
+	readBoxes(nodes)
+	readSpots(nodes)
+	readSingles(nodes)
+	if not next(MapLoader.zones) then
+		fail("Zones", "no Zone nodes")
+	end
+	MapLoader.loaded = next(MapLoader.zones) ~= nil
+	local doorCount = 0
+	for _ in MapLoader.doors do
+		doorCount += 1
+	end
+	Log.event(
+		"Map",
+		"TheBank: %d zones, %d door groups, %d spawn boxes, %d bag spots, %d job spots, %d error%s",
+		#MapLoader.zoneOrder,
+		doorCount,
+		#MapLoader.boxes,
+		#MapLoader.bagSpots,
+		#MapLoader.jobSpots,
+		MapLoader.errors,
+		if MapLoader.errors == 1 then "" else "s"
+	)
+	Room.invalidate(MapLoader.MAP_ID)
+end
+
+-- Can a run start on THE BANK? (MapLoaderStrict refuses one on a map with node errors.)
+function MapLoader.playable(): boolean
+	return MapLoader.loaded and (not Config.MapLoaderStrict or MapLoader.errors == 0)
+end
+
+function MapLoader.init()
+	local bank = Workspace:FindFirstChild("Bank")
+	if not bank or not bank:IsA("Model") then
+		Log.event("Map", "no Workspace.Bank model (sync src/map/Bank.rbxm with Rojo); THE BANK is off")
+		return
+	end
+	MapLoader.bank = bank
+	placeBank(bank)
+	anchorAll(bank)
+	MapLoader.read()
+	Room.registerMap(MapLoader.MAP_ID, buildView)
+end
+
+return MapLoader
