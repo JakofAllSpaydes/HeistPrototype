@@ -380,7 +380,20 @@ beamHits = function(
 		if not model then
 			break
 		end
-		table.insert(out, { model = model, part = hit.Instance :: BasePart, pos = hit.Position })
+		-- Round 24ah: any part of the beam touching the head is a headshot, not only a first contact on it: the head
+		-- counts when its centre lies within the beam's radius (plus the head's own half-size) of the beam line.
+		local part = hit.Instance :: BasePart
+		local head = model:FindFirstChild("Head")
+		if head and head:IsA("BasePart") and part ~= head then
+			local rel = head.Position - origin
+			local along = rel:Dot(dir)
+			local off = (rel - dir * along).Magnitude
+			local hs = head.Size
+			if along > 0 and off <= r + math.max(hs.X, hs.Y, hs.Z) / 2 then
+				part = head
+			end
+		end
+		table.insert(out, { model = model, part = part, pos = hit.Position })
 		table.insert(ex, model)
 		local travelled = math.max(0, (hit.Position - from):Dot(dir) - r)
 		from += dir * travelled
