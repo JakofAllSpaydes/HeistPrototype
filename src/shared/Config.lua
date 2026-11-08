@@ -961,6 +961,8 @@ local Config = {
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
+	PremiumSetAmbient = "4A4552", -- the ambient while a premium scene (pass, store, crate room) is up (was near-black)
+	PassDragTurn = 0.012, -- radians per pixel when you drag the battle pass mannequin
 	BoothWalkIn = true, -- walking onto a booth's orange half-circle opens the customization scene on its tab
 	BoothPromptDistance = 12, -- only with BoothWalkIn off: OPEN (F) at a booth reaches this far
 	BoardPromptDistance = 12, -- OPEN at MARLOW's board

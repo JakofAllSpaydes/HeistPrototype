@@ -1593,6 +1593,37 @@ function PassScene.init()
 			PassScene.close()
 		end
 	end)
+	-- Drag on the stage (not on a panel) turns the mannequin.
+	local dragging = false
+	local lastX = 0
+	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+		if not open or gameProcessed then
+			return
+		end
+		local t = input.UserInputType
+		if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+			dragging = true
+			lastX = input.Position.X
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		local t = input.UserInputType
+		if not open or not dragging or (t ~= Enum.UserInputType.MouseMovement and t ~= Enum.UserInputType.Touch) then
+			return
+		end
+		local dx = input.Position.X - lastX
+		lastX = input.Position.X
+		local m = mannequin
+		if m and dx ~= 0 then
+			m.turn(dx * Config.PassDragTurn)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		local t = input.UserInputType
+		if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
 end
 
 return PassScene

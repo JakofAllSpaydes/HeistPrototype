@@ -303,14 +303,14 @@ local function buildPassStage(): Set
 	local frontPos = (origin * CFrame.new(1.5, 5, 9)).Position
 	local front = part(m, Vector3.new(1, 1, 1), CFrame.lookAt(frontPos, heroAt), orange, Enum.Material.Neon)
 	local top = part(m, Vector3.new(1, 1, 1), origin * CFrame.new(0, 11, 0.5), orange, Enum.Material.Neon)
-	local frontLight = light(front, "spot", Color3.fromHex("FFF1E0"), 3 * Config.PassStageLight, 24, 55)
+	local frontLight = light(front, "spot", Color3.fromHex("FFF1E0"), 6 * Config.PassStageLight, 26, 60)
 	local frontSpot: any = frontLight
 	frontSpot.Face = Enum.NormalId.Front
 	local lights = {
 		light(key, "spot", Color3.fromHex("FFC890"), 6, 40, 60),
 		light(fill, "point", Color3.fromHex("7FB8FF"), 1.2, 16),
 		frontLight,
-		light(top, "spot", Color3.fromHex("FFD8A8"), 2.5 * Config.PassStageLight, 18, 50),
+		light(top, "spot", Color3.fromHex("FFD8A8"), 4 * Config.PassStageLight, 18, 55),
 	}
 	key.Transparency = 1
 	fill.Transparency = 1
@@ -388,10 +388,11 @@ function Sets.dimWorld(on: boolean)
 			atmo.Haze = 0
 			atmo.Glare = 0
 		end
-		Lighting.Ambient = Color3.fromRGB(18, 16, 20)
-		Lighting.OutdoorAmbient = Color3.fromRGB(18, 16, 20)
+		local ambient = Color3.fromHex(Config.PremiumSetAmbient)
+		Lighting.Ambient = ambient
+		Lighting.OutdoorAmbient = ambient
 		Lighting.ExposureCompensation = 0.3
-		Lighting.EnvironmentDiffuseScale = 0.2
+		Lighting.EnvironmentDiffuseScale = 0.5
 		Lighting.EnvironmentSpecularScale = 0.6
 		local e = Instance.new("ColorCorrectionEffect")
 		e.Name = "PremiumGrade"
