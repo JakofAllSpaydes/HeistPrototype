@@ -83,7 +83,7 @@ local function nearestModel(name: string, near: Vector3, maxDist: number): Model
 	local bestD = maxDist
 	for _, d in geo:GetDescendants() do
 		if d:IsA("Model") and d.Name == name then
-			local d2 = (d:GetPivot().Position - near).Magnitude
+			local d2 = (d:GetBoundingBox().Position - near).Magnitude
 			if d2 < bestD then
 				bestD = d2
 				best = d
@@ -139,21 +139,25 @@ local function door(p: BasePart): Door
 	return { part = p, mesh = mesh, openSec = num(p, "OpenSec", Config.HubDoorRollSec) }
 end
 
--- The import baked the hub at Config.HubOrigin; when HubOrigin changes the whole model moves at load (like THE BANK).
+-- The import baked the hub with its floor logo (the star) on Config.HubOrigin; when HubOrigin changes the whole model
+-- (geometry and nodes) slides at load so the star is on it again. The logo is the reference, not the model's
+-- WorldPivot: Lune does not write WorldPivot into the .rbxm, so Studio makes one up.
 local function place(hub: Model)
 	local geo = hub:FindFirstChild("Geometry")
 	if not geo or not geo:IsA("Model") then
 		return
 	end
-	local baked = geo.WorldPivot
-	local target = Config.HubOrigin
-	if baked.Position:FuzzyEq(target.Position, 0.01) and baked.LookVector:FuzzyEq(target.LookVector, 0.001) then
+	local logo = geo:FindFirstChild("logo", true)
+	if not logo or not logo:IsA("BasePart") then
 		return
 	end
-	local delta = target * baked:Inverse()
-	hub:PivotTo(delta * hub:GetPivot())
-	geo.WorldPivot = target
-	Log.event("Map", "hub moved to HubOrigin (%d, %d, %d)", target.X, target.Y, target.Z)
+	local target = Config.HubOrigin.Position
+	local delta = Vector3.new(target.X - logo.Position.X, 0, target.Z - logo.Position.Z)
+	if delta.Magnitude < 0.05 then
+		return
+	end
+	hub:PivotTo(hub:GetPivot() + delta)
+	Log.event("Map", "hub moved so the star sits on HubOrigin (%d, %d, %d)", target.X, target.Y, target.Z)
 end
 
 function HubMap.read()
@@ -256,6 +260,11 @@ function HubMap.read()
 	if van then
 		view.van = van
 		local m = nearestModel(str(van, "Mesh", "Van"), van.Position, 60)
+		if not m then
+			local geo = HubMap.model and HubMap.model:FindFirstChild("Geometry")
+			local any = geo and geo:FindFirstChild(str(van, "Mesh", "Van"), true)
+			m = if any and any:IsA("Model") then any else nil
+		end
 		view.vanModel = m
 		Log.event("Map", "hub Van %s model %s", van.Name, if m then m:GetFullName() else "none")
 		if not m then
@@ -356,6 +365,13 @@ function HubMap.init()
 			if d:IsA("BasePart") then
 				d.Anchored = true
 			end
+		end
+		-- The main floor has the star cut out of it and the star logo filling the hole is not collidable in the
+		-- asset: without this the spawn drops straight through.
+		local logo = geo:FindFirstChild("logo", true)
+		if logo and logo:IsA("BasePart") and not logo.CanCollide then
+			logo.CanCollide = true
+			Log.event("Map", "hub: the floor star made solid (it fills a hole in the floor)")
 		end
 	end
 	HubMap.read()

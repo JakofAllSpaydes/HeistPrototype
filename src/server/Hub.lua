@@ -342,7 +342,7 @@ local function buildShutter(name: string, door: HubMap.Door?, open: boolean): Ba
 	p.Name = name
 	p.Anchored = true
 	p.CastShadow = true
-	p.Material = Enum.Material.CorrugatedPlate
+	p.Material = Enum.Material.DiamondPlate
 	p.Color = Color3.fromRGB(92, 96, 104)
 	p.Size = Vector3.new(node.Size.X, node.Size.Y, 0.4)
 	p.CFrame = node.CFrame
