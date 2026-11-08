@@ -341,6 +341,10 @@ end)
 local saved: { [string]: any }? = nil
 local cc: ColorCorrectionEffect? = nil
 local holders = 0
+-- The place's own look (night time, its post effects, its atmosphere) is set aside while a set is up: the sets are
+-- lit for daytime and their own lights.
+local pausedEffects: { [PostEffect]: boolean } = {}
+local savedAtmo: { [string]: any }? = nil
 
 -- Dark, warm, contrasty while any set is up. Reference counted so nested scenes restore once.
 function Sets.dimWorld(on: boolean)
@@ -356,7 +360,22 @@ function Sets.dimWorld(on: boolean)
 			ExposureCompensation = Lighting.ExposureCompensation,
 			EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
 			EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+			ClockTime = Lighting.ClockTime,
 		}
+		Lighting.ClockTime = 14
+		for _, e in Lighting:GetChildren() do
+			if e:IsA("PostEffect") and e.Enabled then
+				pausedEffects[e] = true
+				e.Enabled = false
+			end
+		end
+		local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
+		if atmo then
+			savedAtmo = { Density = atmo.Density, Haze = atmo.Haze, Glare = atmo.Glare }
+			atmo.Density = 0.25
+			atmo.Haze = 0
+			atmo.Glare = 0
+		end
 		Lighting.Ambient = Color3.fromRGB(18, 16, 20)
 		Lighting.OutdoorAmbient = Color3.fromRGB(18, 16, 20)
 		Lighting.Brightness = 0.4
@@ -386,6 +405,20 @@ function Sets.dimWorld(on: boolean)
 			cc:Destroy()
 			cc = nil
 		end
+		for e in pausedEffects do
+			if e.Parent then
+				e.Enabled = true
+			end
+		end
+		pausedEffects = {}
+		local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
+		local a = savedAtmo
+		if atmo and a then
+			atmo.Density = a.Density
+			atmo.Haze = a.Haze
+			atmo.Glare = a.Glare
+		end
+		savedAtmo = nil
 	end
 end
 
