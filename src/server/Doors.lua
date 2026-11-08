@@ -6,7 +6,7 @@
 -- ProximityPrompt that only says LOCKED until the door is called. Nothing opens on a wave alone.
 --
 -- At its TriggerWave (the intermission before that wave; the vault draw for D4, step 6) the door rides the crew
--- call shell as kind `door`: MARLOW's card, the blue beacon, the floor chevrons for DoorPingDuration, the pill
+-- call shell as kind `door`: MARLOW's card, the blue beacon, the floor chevrons for DoorGuideSec, the pill
 -- with no clock. It supersedes that wave's side-job draw and holds the one objective slot until done; a side job
 -- already ticking finishes first; two doors due at once queue by Priority. Hold F (any member, either part of a
 -- group) for InteractTime: progress pauses on release and keeps its fill DoorHoldSec. Done: the prop breaks with a
@@ -65,6 +65,7 @@ local props: { Prop } = {}
 local actionVerb: (MapLoader.Door, MapLoader.DoorPart) -> string
 local actionHint: (MapLoader.Door, MapLoader.DoorPart) -> string
 local buildVaultRoom: (Folder) -> ()
+local guideTo: (string, Vector3) -> ()
 local groups: { [string]: GroupState } = {}
 local queue: { string } = {}
 local folder: Folder? = nil
@@ -828,6 +829,29 @@ local function setPrompts(group: string, called: boolean)
 	end
 end
 
+-- Round 19g: a door just called guides the crew there. Every DoorGuideRefreshSec for DoorGuideSec (stopping as it
+-- opens, the run ends or a lockdown takes over the guide) the floor chevrons are re-planned from each standing
+-- player to the door; the door's beacon stays loud and clients point a screen-edge arrow at it while off screen.
+function guideTo(group: string, target: Vector3)
+	local sec = Config.DoorGuideSec
+	World.fireRun("DoorPing", { group = group, sec = sec })
+	World.fireRun("DoorGuide", { group = group, position = target, sec = sec })
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < sec and stateOf(group).state == "called" and World.inRun() and not World.runOver do
+			local left = sec - (os.clock() - t0)
+			local span = math.min(Config.DoorGuideRefreshSec + 0.5, left)
+			for _, p in World.runAudience() do
+				local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if root and PlayerState.isStanding(PlayerState.get(p)) then
+					GuidePath.arrows(root.Position, target, span)
+				end
+			end
+			task.wait(Config.DoorGuideRefreshSec)
+		end
+	end)
+end
+
 -- Start the next queued door when the objective slot is free.
 function Doors.pump()
 	if not onBank() or not World.inRun() or CrewCall.busy() or #queue == 0 then
@@ -873,10 +897,7 @@ function Doors.pump()
 		cashReward = door.cashReward,
 		opens = zoneLabels(door),
 	})
-	if n > 0 then
-		GuidePath.arrows(crew, target, Config.DoorPingDuration)
-	end
-	World.fireRun("DoorPing", { group = group, sec = Config.DoorPingDuration })
+	guideTo(group, target)
 	Doors.sendState()
 end
 

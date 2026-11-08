@@ -32,7 +32,7 @@ and the brief 7 build (Round 19: THE BANK, doors, the vault ring, spawn boxes, p
 with its feedback rounds 19b, 19c (the building alarms, zone gas and the bolt cutter), 19d (the audio pass and
 soundtrack, the alarm job as a minigame, no street jobs once inside, the vault stairwell chains D5, lockdown gas) and
 19e (feedback on 19d: continuous run music, new run tracks, no explosion clip, a lootbox sound set, zone gas from
-wave 10) and 19f (the glass offices as mini vaults; unplayed).
+wave 10), 19f (the glass offices as mini vaults) and 19g (door waves 2 / 5 / 8 / 12, the door guide; unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -725,10 +725,11 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   their `SideDepth` walls fencing the railings down the opening), D4 the asset's wheel door onto the vault and its
   server door; each has an invisible blocker (a
   `Door` PathfindingModifier), a sign `UNLOCKS · WAVE N` (`DoorSignText`; D4 `UNLOCKS · VAULT JOB`), an amber ▲ beacon
-  through walls and a LOCKED prompt. Trigger waves `DoorTriggerWave` (Round 19e: D1 3, D3 7, D2 11, D5 14; D4 is the vault draw; the config overrides the
+  through walls and a LOCKED prompt. Trigger waves `DoorTriggerWave` (Round 19g: D1 2, D2 5, D3 8, D5 12; D4 is the vault draw; the config overrides the
   nodes' own TriggerWave). In the
-  intermission before its wave a door rides the crew call as kind `door`: MARLOW's line, blue beacons, floor chevrons
-  for `DoorPingDuration`, the pill `OPEN THE BANK` with an ∞ clock. It supersedes that wave's side-job draw and keeps
+  intermission before its wave a door rides the crew call as kind `door`: MARLOW's line, blue beacons, the guide (Round 19g:
+  floor chevrons from every standing player re-planned every `DoorGuideRefreshSec` for `DoorGuideSec` or until it
+  opens, the loud beacon, a blue ▲ at the screen edge while the door is off screen), the pill `OPEN THE BANK` with an ∞ clock. It supersedes that wave's side-job draw and keeps
   the slot until done; a ticking job finishes first; doors due together queue by Priority. Hold F at either part of a
   group for `InteractTime` (`OPENING · 2.1s` bar for the holder, `OPENING` tag for the crew; the fill keeps
   `DoorHoldSec` after a release). Done: the prop breaks (chain falls, shutter rolls up, doors swing, the wheel spins and
@@ -749,7 +750,7 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   door, the bags left inside fizzle, door and blinds come back, and the office is drawable again
   `OfficeCooldownWaves` later. A job that runs out frees its office. `[GHS Office] …`.
 - **Lockdown gas (Round 19d, `ZoneGas.lua` mode force).** A called door still shut `DoorForceAfterWaves` (2) waves
-  after the wave it was called for (D1 called for wave 3 → wave 5) floods the building: `DoorForceDelaySec` into the
+  after the wave it was called for (D1 called for wave 2 → wave 4) floods the building: `DoorForceDelaySec` into the
   wave the alarms ring and the toast counts `LOCKDOWN · GAS IN 10s · OPEN THE BANK`, then green gas fills every open
   zone except the ones that door opens (never the vault or the tunnel) at `DoorForceGasDps`, until the door is open
   plus `DoorForceLingerSec`. The whole time: floor chevrons re-planned from every standing player to the door every
@@ -1065,13 +1066,13 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
 4. Run start: the van drives onto the grass, the crew steps out facing the bank and the camera hands back facing it
    too, no free crate (Round 19c), WAVE 1 on the street. Spawns come
    from behind the fence ends; the scoreboard header reads `· STREET`; amber ▲ beacons and signs on every door.
-5. Doors: only the next unlock has a beacon (later doors keep their signs). The intermission before wave 3 → MARLOW
+5. Doors: only the next unlock has a beacon (later doors keep their signs). The intermission before wave 2 → MARLOW
    `Front doors. Make some noise.`, blue beacons, chevrons along the walking route to the doors, the pill
    `OPEN THE BANK` with ∞, no side job that wave; F at the doors (BREACH) opens the Charges minigame → done: the doors
    swing and fade, the asset's door leaves vanish, flash and shake, +$400 each, your card,
-   `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby, `[GHS Door] D1 opened …`. D3 (wave 7) is a hold
-   at either part (RAISE; release: the bar keeps its fill 2 s); D2 (wave 11) is the bolt cutter at either chain (CUT,
-   Round 19c); the chevrons for D2 climb the stairs to the chains at the top; the counter grille rolls up with the shutters. D5 (wave 14,
+   `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby, `[GHS Door] D1 opened …`. D3 (wave 8) is a hold
+   at either part (RAISE; release: the bar keeps its fill 2 s); D2 (wave 5) is the bolt cutter at either chain (CUT,
+   Round 19c); the chevrons for D2 climb the stairs to the chains at the top; the counter grille rolls up with the shutters. D5 (wave 12,
    Round 19d) is the bolt cutter at either stairwell head; the back opens with D3 but the stairwells stay chained (no
    hopping the railings). Debug `Open D1..D3 / D5 / D4` and `Close all` to jump.
 6. Pathfinding: debug `Pin LOBBY` + `Spawn at:` a box + an archetype; enemies take the stairs, both passages, the
@@ -1111,8 +1112,8 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     10; full-auto never stacks into mush. `Alarm job`: F at the panel opens a minigame (the card
     names it: Keypad, Freq, Charges or Hotwire) and done silences the building; on THE BANK the wave 1 job is always
     the alarm on the Keypad. After D1 opens, no side job beacon on the street. D3 opens the back but
-    not the stairwells; D5 is called before wave 14 and the vault job only draws once it is open (the first forced vault is wave 15). Lockdown: leave D1
-    shut through waves 3 and 4 → wave 5, 8 s in, `LOCKDOWN · GAS IN 10s`, then gas on the street (tint, damage)
+    not the stairwells; D5 is called before wave 12 and the vault job only draws once it is open (the first forced vault is wave 15). Lockdown: leave D1
+    shut through waves 2 and 3 → wave 4, 8 s in, `LOCKDOWN · GAS IN 10s`, then gas on the street (tint, damage)
     with chevrons from you to the doors every 8 s, the red line under the pill and the edge arrow when you look away;
     open the doors → the lobby is clean, `AIR CLEARING` 6 s later. Debug MAP row `Lockdown` runs it on the called
     door now.
@@ -1639,6 +1640,12 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
   beside the name on the HUD weapon card, the floor gun tags and the crate reel's result (`Weapons.typeName`). Door
   waves spread out: D1 3, D3 7, D2 11, D5 14. THE BANK's first side job (wave 1, on the street) is always SILENCE THE
   ALARM on the Keypad (`BankFirstJobKind`, `BankFirstJobGame`); the alarm's pool is Keypad, Freq, Charges, Hotwire.
+
+- **Round 19g (7 Nov) — zone waves and the door guide.** Door waves: front doors 2, upper floor (D2) 5, back of the
+  ground floor (D3) 8, the vault stairwells (D5) 12. A door called for the first time guides the crew there:
+  chevrons from every standing player re-planned every `DoorGuideRefreshSec` (5) for `DoorGuideSec` (20) or until it
+  opens, the loud beacon for as long, and the lockdown's screen-edge arrow (`LockdownUI.lua`, event `DoorGuide`)
+  whenever the door is off screen (`DoorPingDuration` dropped).
 
 - **Round 19f (7 Nov) — the glass offices.** The four empty offices are a mini vault: RAID THE OFFICE (side job kind
   `office`) plays one of Lockpick / Hotwire / Charges / Cut at the door, the door and blinds blow away, bags drop

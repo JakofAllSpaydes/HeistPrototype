@@ -3,6 +3,8 @@
 -- floods; this pins a short red line under the objective pill (the door's name and where the clean air is) and,
 -- whenever the door is off screen, a blue arrow at the screen edge pointing at it. The floor chevrons and the
 -- door's loud beacon come from the server (VaultArrows / DoorPing). Everything goes on the clear (or the hub).
+-- Round 19g: a door called for the first time (DoorGuide) gets the same edge arrow, no banner, for its guide window
+-- or until it opens; a lockdown's target wins while both run.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,6 +21,9 @@ local LockdownUI = {}
 
 local player = Players.LocalPlayer
 local target: Vector3? = nil
+local guideTarget: Vector3? = nil -- Round 19g: a newly called door
+local guideGroup: string? = nil
+local guideUntil = 0
 local gui: ScreenGui
 local banner: Frame
 local title: TextLabel
@@ -84,19 +89,34 @@ local function build()
 	local _ = glyph
 end
 
+local function disconnectIfIdle()
+	if target == nil and guideTarget == nil and conn then
+		conn:Disconnect()
+		conn = nil
+		arrow.Visible = false
+	end
+end
+
 local function stop()
 	target = nil
 	banner.Visible = false
 	arrow.Visible = false
-	if conn then
-		conn:Disconnect()
-		conn = nil
-	end
+	disconnectIfIdle()
+end
+
+local function stopGuide()
+	guideTarget = nil
+	guideGroup = nil
+	disconnectIfIdle()
 end
 
 -- Off screen (or behind the camera): the arrow sits on an inset ellipse round the screen centre, pointing out.
 local function step()
-	local t = target
+	if guideTarget and os.clock() > guideUntil then
+		stopGuide()
+		return
+	end
+	local t = target or guideTarget
 	local cam = Workspace.CurrentCamera
 	if not t or not cam then
 		arrow.Visible = false
@@ -149,8 +169,18 @@ function LockdownUI.init()
 			else
 				start(data)
 			end
+		elseif name == "DoorGuide" and typeof(data.position) == "Vector3" then
+			guideTarget = data.position
+			guideGroup = tostring(data.group)
+			guideUntil = os.clock() + (tonumber(data.sec) or 20)
+			if not conn then
+				conn = RunService.RenderStepped:Connect(step)
+			end
+		elseif name == "DoorOpened" and guideGroup and tostring(data.group) == guideGroup then
+			stopGuide()
 		elseif name == "HubEnter" then
 			stop()
+			stopGuide()
 		end
 	end)
 end

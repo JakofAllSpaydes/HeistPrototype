@@ -343,7 +343,7 @@ function Markers.setProgress(id: string, progress: number, active: boolean)
 end
 
 -- Brief 7: door beacons on THE BANK. Closed: amber, the door's label and its UNLOCKS line, a ▲ badge far off.
--- Called: job blue with the objective's name and HOLD F (a turning diamond for DoorPingDuration). Open: gone.
+-- Called: job blue with the objective's name and HOLD F (a turning diamond for DoorGuideSec). Open: gone.
 local doorPing: { [string]: number } = {} -- group -> os.clock() the loud pulse ends
 local doorList: { any } = {}
 
@@ -418,7 +418,7 @@ function Markers.init()
 				Markers.remove(id)
 			end
 		elseif name == "DoorPing" then
-			local sec = tonumber(data.sec) or Config.DoorPingDuration
+			local sec = tonumber(data.sec) or Config.DoorGuideSec
 			doorPing[tostring(data.group)] = os.clock() + sec
 			drawDoors()
 			task.delay(sec + 0.05, drawDoors)

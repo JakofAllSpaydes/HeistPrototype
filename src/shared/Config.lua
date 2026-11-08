@@ -885,12 +885,17 @@ local Config = {
 	------------------------------------------------------------------ Doors (brief 7; per-door numbers live on the Door nodes)
 	-- Overrides a Door node's TriggerWave when set (D4 is the vault draw). Round 19d: D5 chains the vault stairwells
 	-- (the shutters open only the back now), so the vault is reachable once D5 is open.
-	-- Round 19e: spread out (was D1 3, D3 6, D2 8, D5 9); D5 at 14 puts the first forced vault at wave 15.
-	DoorTriggerWave = { D1 = 3, D3 = 7, D2 = 11, D5 = 14 },
+	-- Round 19g: front doors 2, upper floor 5, back of the ground floor 8, the vault stairwells 12 (the first forced
+	-- vault is then wave 15, VaultJobEveryWaves). Was D1 3, D3 7, D2 11, D5 14.
+	DoorTriggerWave = { D1 = 2, D2 = 5, D3 = 8, D5 = 12 },
+	-- Round 19g: a door called for the first time guides the crew there: floor chevrons from every standing player,
+	-- re-planned every DoorGuideRefreshSec for DoorGuideSec (or until it opens), its loud beacon, and a screen-edge
+	-- arrow whenever the door is off screen.
+	DoorGuideSec = 20,
+	DoorGuideRefreshSec = 5,
 	DoorInteractTime = 3, -- hold length at a door (a node's InteractTime overrides)
 	DoorOpenCashReward = 400, -- per player when a door opens (a node's CashReward overrides)
 	DoorHoldSec = 2, -- a released hold keeps its fill this long, then resets
-	DoorPingDuration = 15, -- the called door's loud beacon and floor chevrons last this long
 	DoorOpenShake = 0.6, -- camera shake when a door opens
 	DoorSignText = "UNLOCKS · WAVE %d", -- the sign board on a closed door
 	DoorBeaconRange = 150, -- Round 19: a closed door's beacon shows within this many studs (only the next unlock has one)
