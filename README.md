@@ -42,10 +42,10 @@ cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
 screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade), 19m (the premium scene sets moved under the arena so the pass lights up at once) 19n (the hub nameplate: level badge, name, class block, best wave) and 19o (the game-wide style pass: Oswald / Builder Sans, sharp corners, bigger text, fuller HUD tiles; seen by Jack in Studio), and the
 brief 8 build (Round 20: the warehouse hub, concurrent runs, the departure beat, the training range; one commit per
-step), then Rounds 20b–20t from Jack's first plays of it (the load fixes, walk-in booths, R15 dummies, the range HUD,
+step), then Rounds 20b–20u from Jack's first plays of it (the load fixes, walk-in booths, R15 dummies, the range HUD,
 a clean customization shot, hub walk speed, the place's own lighting, the pass stage spotlight, the van cutscene,
 doors taking the objective slot, smaller pad boards, MARLOW at his board, the upper doors gone from THE BANK, and map
-dressing as a Workspace file: `Workspace.Hub.Dressing`).
+dressing as a Workspace file: `Workspace.Hub.Dressing`, and minigame anti-cheat floors a fast player clears).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list" and the "Brief 8 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -682,7 +682,7 @@ and camera come back that frame and the panel slides off over `MinigameExitSec`.
 the session: the prompt opens it, the client sends done / fail / cancel with its miss count, anything faster than
 `MinigameMinSec[name]` is logged as a fail, and every close prints
 `minigame <name> tier <n> done in <sec>s, <fails> fails` (or `… fail|cancel <sec>s <misses> misses`). The debug panel's
-`Stats` button prints per-game averages. Tier (1–3, `MinigameTier`) is session-wide from the pad or the debug panel:
+`Stats` button prints per-game averages. Tier (1–3, `MinigameTier`) is session-wide from the tier pad (brief 8: in the range) or the debug panel:
 Lockpick (tap: zone width and points needed), Hotwire (drag: wires; a COLORBLIND toggle on the panel, saved to the
 account as `options.hotwireSymbols` via `SetOption`, swaps to the Okabe-Ito palette and letters each wire and socket),
 Keypad (tap: digits; typing early hides the code), Arm charges (tap: caps), Safe dial (drag: numbers; a number only
@@ -1901,6 +1901,8 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothManneq
 - **Round 20b (7 Nov) — first look at the hub.** The server stopped on load (TITAN's module still required `Log` / `PlayerState` / `Economy` from `Run/`; and the run modules waited on `Workspace.Effects` before anything made it), so nothing in the hub worked: both fixed. The builder's invisible collidable panels in the garage and range doorways are made passable at load (`[GHS Map] hub … invisible blocker`). Walking onto a booth's orange half-circle opens the customization scene on its tab (`BoothWalkIn`; the Station nodes now cover the half-circles; F still works). The range dummies are default R15 rigs (the plated one with a chest and a shoulder plate).
 
 - **Round 20t (7 Nov) — hub dressing lives in Workspace.** Placed props are a real file now: `src/map/Hub.dressing.rbxmx` → `Workspace.Hub.Dressing` (visible and editable in edit mode). The range streetlight moved there (no longer built at runtime; its RangeLamp* Config keys are gone: edit the lamp and its SpotLight in Studio). To keep edits: select `Workspace.Hub.Dressing` > Save to File over `src/map/Hub.dressing.rbxmx` (restart `rojo serve` once for the new tree entry).
+
+- **Round 20u (7 Nov) — minigame floors.** A tier 1 Keypad solved in 1.48 s (server clock, from the open) was failed by the 1.5 s `MinigameMinSec` floor, so the alarm job had to be redone. The floors are halved or less (Keypad 0.6, Freq 0.5, Cut 0.4, Safe 1, the others 0.7): still faster than a person plays.
 
 ## Open design notes (not built)
 
