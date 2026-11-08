@@ -997,7 +997,9 @@ Written and built (`stylua`, `luau-lsp`, `rojo build`) one commit per step, not 
 authored from the geometry offline, so the first pass is a node review. Done-line: one solo run and one 2-player Local
 Server run on THE BANK from the hub to a summary, through every door, one vault window, one TITAN.
 
-1. Nodes: Play, debug MAP > `Show nodes` (zones are off by default: toggle `Zones`). Every node draws in its type
+1. Nodes: in edit mode every node is a translucent box in its type colour with a label (select `Workspace.Bank` in
+   the Explorer and press F to fly there; zones are Locked so clicks reach the nodes inside them, pick a zone in the
+   Explorer). In Play they are hidden; debug MAP > `Show nodes` draws them (zones are off by default: toggle `Zones`). Every node draws in its type
    colour with `TAG · name · key attributes`; the output has one `[GHS Map]` line per node and no `ERROR`. Review the
    D2 chains (placed at the stair tops, between the newel posts), the D3 shutters and counter grille, the spawn boxes
    and the boss walls against the building. To move one: stop, select it under `Workspace.Bank.Nodes` in edit mode,

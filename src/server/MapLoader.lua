@@ -542,6 +542,18 @@ function MapLoader.read()
 		return
 	end
 	MapLoader.nodesFolder = nodes :: Folder
+	-- In Studio's edit mode nodes are translucent, labelled and clickable (tools/nodestyle.luau); in a running game
+	-- nobody sees them and nothing hits them (debug Show nodes draws them locally).
+	for _, d in nodes:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Transparency = 1
+			d.CanQuery = false
+			d.CanCollide = false
+			d.CanTouch = false
+		elseif d:IsA("BillboardGui") then
+			d.Enabled = false
+		end
+	end
 	readZones(nodes)
 	readDoors(nodes)
 	-- The zone graph's references: neighbours must be zones, gates door groups or "hatch".

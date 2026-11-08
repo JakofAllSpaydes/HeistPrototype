@@ -97,9 +97,12 @@ local function node(name: string, pos: { number }, size: { number }, facing: num
 	}
 end
 
+local style = require("./nodestyle")
+
 local function folder(name: string, tag: string, children: { any }): any
 	for _, c in children do
 		c.properties.Tags = { tag }
+		style(name, c)
 	end
 	return { name = name, className = "Folder", children = children }
 end

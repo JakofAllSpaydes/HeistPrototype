@@ -14,6 +14,8 @@ local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local serde = require("@lune/serde")
 
+local style = require("./nodestyle")
+
 local TAGS = {
 	Zones = "GHS_Zone",
 	Doors = "GHS_Door",
@@ -122,7 +124,7 @@ for _, folderName in ORDER do
 	if f then
 		for _, p in f:GetChildren() do
 			if p:IsA("BasePart") then
-				table.insert(children, exportPart(p, TAGS[folderName]))
+				table.insert(children, style(folderName, exportPart(p, TAGS[folderName])))
 			end
 		end
 		table.sort(children, function(a, b)
