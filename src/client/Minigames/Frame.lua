@@ -56,6 +56,7 @@ type Active = {
 	closed: boolean,
 	connections: { RBXScriptConnection },
 	origin: Vector3?, -- the prop; walking past MinigameCloseDistance from it closes the panel
+	leavingAt: number?, -- Round 19i: when the player first went out of range (the cancel waits MinigameWalkAwayGraceSec)
 }
 
 local Frame = {}
@@ -446,15 +447,24 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 			return
 		end
 		timer.Text = string.format("%.1fs", os.clock() - a.startedAt)
-		-- Walked away from the prop: the panel closes as a cancel.
+		-- Walked away from the prop: the panel closes as a cancel. Round 19i: only after MinigameWalkAwayGraceSec out
+		-- of range, so a game already on its winning beat (the short success animation before DONE) still completes
+		-- when you start walking off as you solve it; stepping back in range keeps it open.
 		local from = a.origin
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		if from and root and root:IsA("BasePart") then
 			if (root.Position - from).Magnitude > Config.MinigameCloseDistance then
-				hint.Text = "TOO FAR FROM THE PROP"
-				hint.TextColor3 = Theme.Colors.malus
-				Frame.close("cancel")
+				local leftAt = a.leavingAt
+				if not leftAt then
+					a.leavingAt = os.clock()
+					hint.Text = "TOO FAR FROM THE PROP"
+					hint.TextColor3 = Theme.Colors.malus
+				elseif os.clock() - leftAt >= Config.MinigameWalkAwayGraceSec then
+					Frame.close("cancel")
+				end
+			else
+				a.leavingAt = nil
 			end
 		end
 	end))

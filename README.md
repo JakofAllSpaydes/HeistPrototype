@@ -36,7 +36,7 @@ wave 10), 19f (the glass offices as mini vaults), 19g (door waves 2 / 5 / 8 / 12
 pass (stand-in gun models, a procedural hold / aim / fire / reload animation, 3D viewport icons for guns and
 cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h (feedback on it: the gun-only
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
-screen overlay, softer kill sounds, the door guide up until the door opens; unplayed).
+screen overlay, softer kill sounds, the door guide up until the door opens) and 19i (a minigame solved as you walk off still counts; unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -1167,6 +1167,8 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     alarm jobs in a row never use the same minigame (nor two of any job type); no HACK-hold terminal jobs, door
     shutters still hold F. The crate reel shows gun models (it now draws on a screen overlay that follows the crate).
     A kill is a light tick and a soft thud. A called door's chevrons, loud beacon and edge arrow stay until it opens.
+    Round 19i: solve a minigame and walk off on the last input → it still stamps DONE and pays; walk off mid-game →
+    TOO FAR, then the cancel after `MinigameWalkAwayGraceSec` (step back in range within it and it stays open).
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
@@ -1714,6 +1716,10 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
   crate reel draws on a ScreenGui that follows the crate (ViewportFrame models don't render in a BillboardGui).
   Kill sounds: a UI bright click tick and a soft body-fall thud (`KillBodyVolume`) instead of the collide crash and
   Body Hits 8. A called door's guide stays up until it opens (`DoorGuideSec` 0).
+
+- **Round 19i (7 Nov) — minigames finish as you walk off.** Each game plays a short success beat (up to 0.35 s)
+  before it reports DONE; walking past `MinigameCloseDistance` during it closed the panel as a cancel and the DONE was
+  dropped. The walk-away cancel now waits `MinigameWalkAwayGraceSec` (0.75) out of range (back in range resets it).
 
 ## Open design notes (not built)
 
