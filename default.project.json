@@ -45,6 +45,9 @@
         },
         "Nodes": {
           "$path": "src/map/Hub.nodes.model.json"
+        },
+        "Dressing": {
+          "$path": "src/map/Hub.dressing.rbxmx"
         }
       }
     }

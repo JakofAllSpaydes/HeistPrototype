@@ -1897,6 +1897,8 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothManneq
 
 - **Round 20b (7 Nov) — first look at the hub.** The server stopped on load (TITAN's module still required `Log` / `PlayerState` / `Economy` from `Run/`; and the run modules waited on `Workspace.Effects` before anything made it), so nothing in the hub worked: both fixed. The builder's invisible collidable panels in the garage and range doorways are made passable at load (`[GHS Map] hub … invisible blocker`). Walking onto a booth's orange half-circle opens the customization scene on its tab (`BoothWalkIn`; the Station nodes now cover the half-circles; F still works). The range dummies are default R15 rigs (the plated one with a chest and a shoulder plate).
 
+- **Round 20t (7 Nov) — hub dressing lives in Workspace.** Placed props are a real file now: `src/map/Hub.dressing.rbxmx` → `Workspace.Hub.Dressing` (visible and editable in edit mode). The range streetlight moved there (no longer built at runtime; its RangeLamp* Config keys are gone: edit the lamp and its SpotLight in Studio). To keep edits: select `Workspace.Hub.Dressing` > Save to File over `src/map/Hub.dressing.rbxmx` (restart `rojo serve` once for the new tree entry).
+
 ## Open design notes (not built)
 
 - **Brief 8 notes and deviations (Round 20, unplayed).** The hub's nodes were authored from the asset read in Lune
