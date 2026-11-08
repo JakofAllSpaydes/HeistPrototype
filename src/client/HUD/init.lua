@@ -121,8 +121,21 @@ function HUD.baseMode(): string
 end
 
 -- Show or hide HUD pieces for a mode (downed, spectating, the run start / end sequences).
+-- Brief 8: in the training range the hub layout keeps PLAY, SHOP, Gold and the level card; the dock, the boost chips
+-- and PASS / JOBS go (they sat on the gun HUD).
+local RANGE_HIDES_HUB = { "Dock", "Boosts", "TopButtons" }
+
 function HUD.setMode(mode: string)
 	HUD.mode = mode
+	local hubFrame = HUD.components.hub and HUD.components.hub.frame
+	if hubFrame then
+		for _, name in RANGE_HIDES_HUB do
+			local piece = hubFrame:FindFirstChild(name)
+			if piece and piece:IsA("GuiObject") then
+				piece.Visible = mode ~= "range"
+			end
+		end
+	end
 	local spec = MODES[mode] or MODES.gameplay
 	local gui = HUD.gui
 	if not gui then

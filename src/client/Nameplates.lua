@@ -36,6 +36,7 @@ local plates: { [Player]: Plate } = {}
 local lastLevel: { [Player]: number } = {}
 local pending: { [Player]: boolean } = {}
 local localHidden = false
+local othersHidden = false -- brief 8: the customization scene hides everyone else's plate (SceneIsolation)
 
 local function text(props: { [string]: any }, font: Font): TextLabel
 	local label = UI.text(props)
@@ -318,6 +319,9 @@ local function refresh(p: Player)
 	local head = char and char:FindFirstChild("Head")
 	if head and head:IsA("BasePart") then
 		plates[p] = build(p, head)
+		if othersHidden and p ~= player then
+			plates[p].gui.Enabled = false
+		end
 	end
 end
 
@@ -339,6 +343,16 @@ function Nameplates.setLocalHidden(hidden: boolean)
 	local plate = plates[player]
 	if plate then
 		plate.gui.Enabled = not hidden
+	end
+end
+
+-- Brief 8: everyone else's plate off while the customization scene is up.
+function Nameplates.setOthersHidden(hidden: boolean)
+	othersHidden = hidden
+	for p, plate in plates do
+		if p ~= player then
+			plate.gui.Enabled = not hidden
+		end
 	end
 end
 

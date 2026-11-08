@@ -25,6 +25,7 @@ local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
 local Nameplates = require(script.Parent:WaitForChild("Nameplates"))
+local SceneIsolation = require(script.Parent:WaitForChild("SceneIsolation"))
 local MetaFolder = script.Parent:WaitForChild("Meta")
 local GunPreview = require(MetaFolder:WaitForChild("GunPreview"))
 
@@ -918,6 +919,7 @@ function MetaScene.open(tab: string?)
 	ClientState.Juice:Fire("CameraZoomReset", {})
 	showCharacter()
 	setHubTagVisible(false)
+	SceneIsolation.set(true) -- brief 8: no prompts, nobody else in the shot
 	dragYaw = 0
 	dragging = false
 	faceCamera()
@@ -968,6 +970,7 @@ function MetaScene.close()
 	clearStage()
 	previewWeaponId = nil
 	setHubTagVisible(true)
+	SceneIsolation.set(false)
 	if gui then
 		gui:Destroy()
 		gui = nil
