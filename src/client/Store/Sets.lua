@@ -369,7 +369,6 @@ function Sets.dimWorld(on: boolean)
 		saved = {
 			Ambient = Lighting.Ambient,
 			OutdoorAmbient = Lighting.OutdoorAmbient,
-			Brightness = Lighting.Brightness,
 			ExposureCompensation = Lighting.ExposureCompensation,
 			EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
 			EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
@@ -391,7 +390,6 @@ function Sets.dimWorld(on: boolean)
 		end
 		Lighting.Ambient = Color3.fromRGB(18, 16, 20)
 		Lighting.OutdoorAmbient = Color3.fromRGB(18, 16, 20)
-		Lighting.Brightness = 0.4
 		Lighting.ExposureCompensation = 0.3
 		Lighting.EnvironmentDiffuseScale = 0.2
 		Lighting.EnvironmentSpecularScale = 0.6
