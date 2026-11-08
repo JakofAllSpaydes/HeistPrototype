@@ -924,13 +924,7 @@ local function slotButton(
 		UI.stroke(tag, Color3.new(0, 0, 0), S(1), 0.3)
 	end
 	local function fadeArt(t: number)
-		for _, d in art:GetDescendants() do
-			if d:IsA("Frame") then
-				d.BackgroundTransparency = math.max(d.BackgroundTransparency, t)
-			elseif d:IsA("TextLabel") then
-				d.TextTransparency = math.max(d.TextTransparency, t)
-			end
-		end
+		ItemArt.fade(art, t) -- drawn art and model icons alike
 	end
 	if state == "claimed" then
 		-- Settled: the tile goes quiet and a big check sits over the art.

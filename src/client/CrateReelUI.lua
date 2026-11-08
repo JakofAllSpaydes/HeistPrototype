@@ -21,6 +21,7 @@ local CrateReel = require(Shared:WaitForChild("CrateReel"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local ModelIcon = require(script.Parent:WaitForChild("UI"):WaitForChild("ModelIcon"))
 local Juice = require(script.Parent:WaitForChild("Juice"))
 
 local CrateReelUI = {}
@@ -160,16 +161,39 @@ local function playReel(data: any)
 	end
 	local w = S(340)
 	local h = S(128)
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "CrateReel"
-	gui.Adornee = body
-	gui.AlwaysOnTop = true
-	gui.Size = UDim2.fromOffset(w + S(160), h + S(160)) -- room for the rays round the panel
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 7, 0)
-	gui.MaxDistance = 160
-	gui.LightInfluence = 0
-	gui.ClipsDescendants = false
-	gui.Parent = body
+	-- Round 19h: a ScreenGui frame that follows the crate instead of a BillboardGui (the reel's ViewportFrame gun
+	-- models don't render in a billboard). The billboard was a fixed pixel size too, so it reads the same; the HUD
+	-- ScreenGuis still draw over it.
+	local screen = Instance.new("ScreenGui")
+	screen.Name = "CrateReel"
+	screen.IgnoreGuiInset = true
+	screen.ResetOnSpawn = false
+	screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screen.DisplayOrder = 0
+	screen.Parent = player:WaitForChild("PlayerGui")
+	local gui = UI.frame({
+		Name = "Follow",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(w + S(160), h + S(160)), -- room for the rays round the panel
+		Parent = screen,
+	})
+	local function follow()
+		local cam = Workspace.CurrentCamera
+		if not cam or not body.Parent then
+			gui.Visible = false
+			return
+		end
+		local world = body.Position + Vector3.new(0, 7, 0)
+		local p, onScreen = cam:WorldToViewportPoint(world)
+		gui.Visible = onScreen and (cam.CFrame.Position - world).Magnitude <= 160
+		gui.Position = UDim2.fromOffset(p.X, p.Y)
+	end
+	follow()
+	local followConn = RunService.RenderStepped:Connect(follow)
+	screen.Destroying:Connect(function()
+		followConn:Disconnect()
+	end)
 
 	local panel = UI.frame({
 		Name = "ReelPanel",
@@ -259,7 +283,7 @@ local function playReel(data: any)
 			Parent = row,
 		})
 		local frame = UI.frame({
-			BackgroundColor3 = Theme.Colors.panel2,
+			BackgroundColor3 = Theme.Colors.panel2:Lerp(color, Config.ModelIconWellTint),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.new(1, -S(8), 1, -S(10)),
@@ -268,16 +292,17 @@ local function playReel(data: any)
 		})
 		UI.corner(frame, S(8))
 		UI.stroke(frame, color, S(2), if isLast then 0 else 0.4)
-		local icon = UI.gunIcon(frame, color, math.floor(stripH * 0.72))
+		-- UI art pass: real gun models (rarity strips in the cell's rarity); the fillers are random guns, the landed
+		-- cell is the rolled one. Built once per gun id, cloned per cell, static (no per-frame work).
+		local gunId = if isLast or #Weapons.List == 0
+			then tostring(data.weaponId)
+			else Weapons.List[math.random(1, #Weapons.List)].id
+		local icon =
+			ModelIcon.weapon(frame, gunId, UDim2.new(1, -S(4), 1, -S(4)), { rarity = r, zIndex = 4, pad = 0.05 })
 		icon.AnchorPoint = Vector2.new(0.5, 0.5)
 		icon.Position = UDim2.fromScale(0.5, 0.5)
-		for _, c in icon:GetChildren() do
-			if c:IsA("GuiObject") then
-				c.ZIndex = 4
-				if not isLast and c:IsA("Frame") then
-					c.BackgroundTransparency = 0.3
-				end
-			end
+		if not isLast then
+			ModelIcon.tint(icon, Color3.new(1, 1, 1), 0.3)
 		end
 	end
 	panel.Size = UDim2.fromOffset(w, 0)
@@ -390,7 +415,7 @@ local function playReel(data: any)
 		Enum.EasingDirection.In
 	)
 	close.Completed:Wait()
-	gui:Destroy()
+	screen:Destroy()
 end
 
 ------------------------------------------------------------------ Open / eject juice

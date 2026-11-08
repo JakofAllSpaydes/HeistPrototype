@@ -16,6 +16,7 @@ local MasteryCopy = require(Shared:WaitForChild("MasteryCopy"))
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 local MetaUI = require(script.Parent:WaitForChild("MetaUI"))
 
 local ClassesTab = {}
@@ -196,14 +197,15 @@ local function classPill(
 	})
 	UI.corner(circle, 999)
 	UI.stroke(circle, Theme.Colors.bg, S(1.5), 0.3)
-	UI.text({
-		Text = c.glyph,
-		Font = Theme.Fonts.display,
-		TextSize = S(17),
-		TextColor3 = if own then Theme.Colors.bg else Theme.Colors.grey,
-		Size = UDim2.fromScale(1, 1),
-		Parent = circle,
-	})
+	-- The class emblem (Icons.lua, keyed by class id); its cut-outs take the circle's colour.
+	Icons.fit(
+		circle,
+		c.id,
+		0.64,
+		if own then Theme.Colors.bg else Theme.Colors.grey,
+		if own then Color3.fromHex(c.color) else Theme.Colors.panel2,
+		c.glyph
+	)
 	if equipped then
 		local check = MetaUI.check(circle, S(18), 4)
 		check.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -270,15 +272,19 @@ local function abilityRow(
 		Parent = row,
 	})
 	UI.corner(well, S(8))
-	UI.text({
-		Text = a.icon,
-		Font = Theme.Fonts.display,
-		TextSize = math.floor(wellSize * 0.3),
-		TextColor3 = Theme.Colors.bg,
-		Position = UDim2.fromOffset(0, -S(6)),
-		Size = UDim2.fromScale(1, 1),
-		Parent = well,
-	})
+	-- The ability's pictogram (Icons.lua, keyed by Classes.lua `icon`), a little above centre to clear the price.
+	-- Cut-outs take the well's colour (as it reads over the row when dimmed).
+	local classColor = Color3.fromHex(class.color)
+	local ic = Icons.draw(
+		well,
+		a.icon,
+		math.floor(wellSize * 0.56),
+		Theme.Colors.bg,
+		if isOwned then classColor else classColor:Lerp(Theme.Colors.panel, 0.45),
+		a.icon
+	)
+	ic.AnchorPoint = Vector2.new(0.5, 0.5)
+	ic.Position = UDim2.new(0.5, 0, 0.5, -S(8))
 	local pricePill, priceLabel = UI.pill(well, "$" .. a.price, Theme.Colors.bg, Theme.Colors.cash, S(20), S(12))
 	pricePill.AnchorPoint = Vector2.new(0.5, 1)
 	pricePill.Position = UDim2.new(0.5, 0, 1, -S(6))
@@ -413,7 +419,7 @@ function ClassesTab.render(scene: any)
 
 	-- Detail: a shorter well (the equipped check on it, a dim well + padlock when locked), name, the kit, the class
 	-- mastery (bar + three tier cards), action. State is the check / lock / dimming, never a word.
-	local ic = MetaUI.well(card, 1, Color3.fromHex(class.color), "class", class.glyph, Theme.Colors.white)
+	local ic = MetaUI.well(card, 1, Color3.fromHex(class.color), "class", class.id, Theme.Colors.white)
 	local well = ic.Parent :: Frame
 	well.Size = UDim2.new(1, 0, 0, S(scene.mobile and 96 or 130))
 	ic.Size = UDim2.fromOffset(S(scene.mobile and 92 or 120), S(scene.mobile and 92 or 120))

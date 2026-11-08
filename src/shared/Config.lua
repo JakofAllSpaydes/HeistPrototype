@@ -405,7 +405,7 @@ local Config = {
 	-- Job type is rolled per job from these weights. hack | capture | one of the six minigames (played at the beacon
 	-- at the session tier; retry until the timer runs out).
 	SideJobKindWeights = {
-		hack = 1,
+		hack = 0, -- Round 19h: the plain hold-F terminal is out (door shutters keep their hold); minigames instead
 		capture = 1,
 		Lockpick = 1,
 		Hotwire = 1,
@@ -638,7 +638,83 @@ local Config = {
 		whiz = 0.12,
 		hurt = 0.06,
 	},
-	ReloadSeatShare = 0.7, -- the mag-in click lands this far through a magazine reload
+	ReloadSeatShare = 0.7, -- the mag-in click lands this far through a magazine reload (and the reload animation seats the mag)
+	-- Art pass: stand-in gun models (GunModels.lua) and the procedural hold / aim / fire / reload animation
+	-- (GunAnim.client.lua). Every client poses every crew member's arms and gun; nothing here is an uploaded asset.
+	GunModelScale = 1, -- every gun's size (held, floor, store, icons)
+	GunAnimEnabled = true, -- false: guns hang from the hand like the old block
+	GunPoseBlendSec = 0.18, -- arms ease into / out of the gun pose (emotes, the downed crawl and cutscenes take the arms)
+	GunAdsBlendSec = 0.12, -- hip <-> aimed raise
+	GunAimPitchMax = 40, -- degrees the gun tilts up / down toward the aim point
+	GunAimYawMax = 25, -- degrees it turns left / right of the body toward the aim point
+	GunTorsoAimShare = 0.35, -- share of the aim pitch the upper body leans into
+	GunPoseSendHz = 10, -- how often your aim pitch / ADS / reload state goes out so teammates see your pose
+	-- Per gun kind (GunModels kinds): `blade` = the stance twist (degrees the chest turns right so the left hand
+	-- reaches the handguard; the head turns back). hip / ads: which gun point is placed (butt = the stock's pad,
+	-- grip = the pistol grip, sight = the sight line at the rear) and where, relative to the middle of the shoulders
+	-- facing the aim (x right, y up, z back, studs), plus the gun's tilt (pitch up, yaw left, roll, degrees).
+	GunPoses = {
+		pistol = {
+			blade = 15,
+			hip = { anchor = "grip", pos = Vector3.new(0.3, -0.4, -0.95), rot = Vector3.new(-4, 2, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.55, -0.85), rot = Vector3.new(0, 0, 0) },
+		},
+		smg = {
+			blade = 40,
+			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.3, 0.55), rot = Vector3.new(-3, 4, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.55, 0.6), rot = Vector3.new(0, 0, 0) },
+		},
+		rifle = {
+			blade = 45,
+			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.3, 0.6), rot = Vector3.new(-3, 4, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.55, 0.65), rot = Vector3.new(0, 0, 0) },
+		},
+		bullpup = {
+			blade = 40,
+			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.3, 0.8), rot = Vector3.new(-3, 4, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.55, 0.85), rot = Vector3.new(0, 0, 0) },
+		},
+		shotgun = {
+			blade = 45,
+			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.3, 0.6), rot = Vector3.new(-4, 4, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.5, 0.65), rot = Vector3.new(0, 0, 0) },
+		},
+		sniper = {
+			blade = 45,
+			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.3, 0.65), rot = Vector3.new(-4, 4, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.5, 0.7), rot = Vector3.new(0, 0, 0) },
+		},
+		lmg = {
+			blade = 45,
+			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.4, 0.6), rot = Vector3.new(2, 5, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.5, 0.7), rot = Vector3.new(0, 0, 0) },
+		},
+	},
+	-- Recoil per kind: kick = studs the gun jumps back, rise = degrees the muzzle flips up (each shot; a spring pulls
+	-- it home). Aimed shots kick GunAdsRecoilMult as hard.
+	GunRecoil = {
+		pistol = { kick = 0.16, rise = 10 },
+		smg = { kick = 0.07, rise = 3 },
+		rifle = { kick = 0.11, rise = 4.5 },
+		bullpup = { kick = 0.09, rise = 3.5 },
+		shotgun = { kick = 0.3, rise = 14 },
+		sniper = { kick = 0.35, rise = 12 },
+		lmg = { kick = 0.09, rise = 3 },
+	},
+	GunAdsRecoilMult = 0.6,
+	GunRecoilSpring = 260, -- stiffness of the return (higher = snappier)
+	GunRecoilMaxStack = 2.5, -- full-auto kick stacks up to this many single kicks
+	GunSlideTravel = 0.3, -- studs a pistol slide runs back per shot (it locks back on an empty mag)
+	GunCycleDelay = 0.08, -- seconds after a shot before a pump / bolt / lever gun cycles
+	GunCycleSec = 0.4, -- longest a pump / bolt / lever cycle takes (shorter on fast-firing guns)
+	GunReloadTilt = Vector3.new(14, 8, -30), -- the gun's tilt during a reload (pitch up, yaw left, roll) in degrees
+	GunReloadPull = Vector3.new(-0.15, -0.15, -0.1), -- and how far it comes in toward the chest (x right, y up, z back)
+	GunPouchOffset = Vector3.new(-0.75, -1.15, -0.25), -- the left hand's mag / shell pouch on the belt (torso space)
+	GunMuzzleFlash = true,
+	GunMuzzleFlashSec = 0.05,
+	GunMuzzleFlashColor = "FFD27A",
+	GunShellCasings = true, -- brass flies out of the port
+	GunCasingLifeSec = 1.2,
 	-- The soundtrack follows the run: hub (yard, menus), run (Round 19e: one track carries on through waves,
 	-- intermissions, the dealer, alarms and gas), boss (TITAN alive, the one deliberate mood shift), summary (run end).
 	-- Each state picks a track from its list (APM library music, public domain on Roblox) and crossfades; a track
@@ -891,7 +967,7 @@ local Config = {
 	-- Round 19g: a door called for the first time guides the crew there: floor chevrons from every standing player,
 	-- re-planned every DoorGuideRefreshSec for DoorGuideSec (or until it opens), its loud beacon, and a screen-edge
 	-- arrow whenever the door is off screen.
-	DoorGuideSec = 20,
+	DoorGuideSec = 0, -- Round 19h: 0 = the guide (chevrons, loud beacon, edge arrow) stays up until the door opens
 	DoorGuideRefreshSec = 5,
 	DoorInteractTime = 3, -- hold length at a door (a node's InteractTime overrides)
 	DoorOpenCashReward = 400, -- per player when a door opens (a node's CashReward overrides)
@@ -974,7 +1050,18 @@ local Config = {
 	MetaCameraAim = -1.6, -- the camera aims this far below the character's center, so the avatar sits high in the frame (head near the top)
 	MetaDragSensitivity = 0.012, -- radians per pixel when dragging the avatar round in the scene
 	MetaCameraTweenSec = 0.45,
-	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE pushes the camera in on the gun to this distance
+	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE camera distance when no showcase gun could be built (fallback)
+	-- Round 19h: CUSTOMIZE shows the gun alone, side-on (the avatar hides), spinning in as it opens.
+	MetaGunStageForward = 3, -- studs in front of the avatar the showcase gun floats
+	MetaGunStageHeight = 1.3, -- studs above the avatar's root
+	MetaGunStagePad = 1.95, -- framing margin (1 = the gun's length fills the screen width); Round 19h: 1.3 -> 1.95
+	MetaGunStageMinDistance = 1.8, -- the camera never gets closer than this (pistols)
+	MetaGunStageLift = 0.12, -- share of the screen the gun sits above centre (clear of the bottom strip)
+	MetaGunSpinSec = 0.9, -- the opening spin
+	MetaGunSpinTurns = 1, -- full turns in the opening spin
+	MetaGunStageBob = 0.03, -- studs of slow up / down float
+	UpgradeTakeVolume = 0.8, -- Round 19h: the power-up rise on picking an upgrade card (times the tier's juice volume)
+	KillBodyVolume = 0.22, -- Round 19h: the soft body drop under the kill tick
 	MetaWeaponPreview = true, -- tapping a gun in the Weapons tab puts it in the avatar's hand (local only; the real one comes back on leaving the tab or closing)
 	MetaTileHoverScale = 1.05, -- customization tiles grow this much under the cursor (scale only, they never move)
 	MetaSelectPopScale = 1.1, -- the tile you just tapped pops from this scale back to 1

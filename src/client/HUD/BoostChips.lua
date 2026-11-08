@@ -1,5 +1,5 @@
 --!strict
--- Brief 6: the boost chips. Every active boost as a chip (Round 18: just the 3-letter glyph, with the live mm:ss
+-- Brief 6: the boost chips. Every active boost as a chip (Round 18: just the pictogram, with the live mm:ss
 -- under it; no name or amount) plus VIP's permanent chip; a chip pulses in its last Config.BoostChipWarnSec and pops out on expiry with a toast. Used
 -- twice: the hub HUD's BOOSTS corner (bottom-right, with the VIP daily gift chip and a + into the store) and the
 -- match HUD (small, under the heat stars; below the boss bar while one is up).
@@ -13,11 +13,15 @@ local Clock = require(Shared:WaitForChild("Clock"))
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 
 local BoostChips = {}
 
 local VIP_GOLD = Color3.fromHex("F2C14E")
+
+-- Chip ids whose Icons.lua pictogram has another name (the rest use their own id).
+local CHIP_ICONS: { [string]: string } = { tokens = "revive" }
 
 export type Opts = {
 	size: number, -- chip size, px (already scaled)
@@ -68,14 +72,11 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 		chip.Parent = holder
 		UI.corner(chip, math.floor(size * 0.2))
 		UI.stroke(chip, color, S(1.5), 0)
-		UI.text({
-			Text = glyph,
-			Font = Theme.Fonts.display,
-			TextSize = math.floor(size * (if #glyph <= 1 then 0.6 else 0.4)),
-			TextColor3 = color,
-			Size = UDim2.fromScale(1, 1),
-			Parent = chip,
-		})
+		-- The chip's pictogram (UI/Icons.lua, keyed by the chip id: BoostDefs ids, vip, gift, plus, tokens -> revive);
+		-- `glyph` is the text fallback.
+		local icon = Icons.draw(chip, CHIP_ICONS[id] or id, math.floor(size * 0.66), color, Theme.Colors.panel, glyph)
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
 		local timer = UI.text({
 			Text = "",
 			Font = Theme.Fonts.display,

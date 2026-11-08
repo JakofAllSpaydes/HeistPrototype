@@ -549,7 +549,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 					sparks(data.position, Theme.Colors.red, Config.KillSparks, 28)
 				end
 				UI.sound(Theme.Sounds.kill, 1.2, 0.12)
-				UI.sound(Theme.Sounds.body, 0.9, 0.35) -- Round 19d: weight under the tick
+				UI.sound(Theme.Sounds.body, 1, Config.KillBodyVolume) -- Round 19d: weight under the tick
 				onKill()
 				if data.cash and data.cash > 0 then
 					floatText(

@@ -32,7 +32,11 @@ and the brief 7 build (Round 19: THE BANK, doors, the vault ring, spawn boxes, p
 with its feedback rounds 19b, 19c (the building alarms, zone gas and the bolt cutter), 19d (the audio pass and
 soundtrack, the alarm job as a minigame, no street jobs once inside, the vault stairwell chains D5, lockdown gas) and
 19e (feedback on 19d: continuous run music, new run tracks, no explosion clip, a lootbox sound set, zone gas from
-wave 10), 19f (the glass offices as mini vaults) and 19g (door waves 2 / 5 / 8 / 12, the door guide; unplayed).
+wave 10), 19f (the glass offices as mini vaults), 19g (door waves 2 / 5 / 8 / 12, the door guide), the weapon art
+pass (stand-in gun models, a procedural hold / aim / fire / reload animation, 3D viewport icons for guns and
+cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h (feedback on it: the gun-only
+CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
+screen overlay, softer kill sounds, the door guide up until the door opens; unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -260,6 +264,30 @@ bracketed by wave and tuned high for testing; pity floor (per player, on the rol
 archetype (`FalloffByArchetype`; snipers never). Common paper DPS sits at 128–180 across archetypes and rarity
 multiplies damage by 1 / 1.3 / 1.7 / 2.3 / 3.0, so a legendary of anything beats an epic of anything. Tube-fed guns
 (`shellReload`, the SPAS-12) load one shell at a time and firing stops the reload where it is.
+
+**Gun models and animation (art pass, `GunModels.lua`, `GunAnim.client.lua`).** Every gun the game shows (held,
+floor, store, crate, icons) comes from one procedural builder: a per-gun spec on top of its kind (pistol, SMG, rifle,
+bullpup, shotgun, sniper, LMG) picks receiver, handguard, barrel, stock, mag (stick, banana, drum, belt box, top,
+tube, in the grip), sight (irons, red dot, scope, carry handle) and action (slide, bolt, pump, lever, break, charging
+handle), so the AK reads wood and banana mag, the M4 tube stock and red dot, the P90 a top mag, the Barrett a brake
+and bipod. Rarity colours strips on the receiver (neon from Epic); the wrap paints the furniture (every `Wrap` part).
+`GunModelScale` sizes them all. The held gun hangs off the right hand on a `GunJoint` Motor6D (a hand-carry rest pose,
+which is what the hub and store mannequins show); floor guns lie on their side on the old invisible handle Part.
+In a run every client poses every crew member procedurally (no uploaded animations): a stance per kind
+(`GunPoses`: where the butt / grip / sight line sits for hip and aimed, the chest twist), aim pitch toward the cursor
+(teammates' pitch, ADS and reload state ride on character attributes via `Remotes.GunPose`), two-bone IK putting the
+right hand on the grip and the left on the foregrip (R15, Motor6D or the AnimationConstraint avatar joints; R6 swings
+the arms straight), recoil springs (`GunRecoil`), the slide (locked back on empty), pump / bolt / lever cycling with
+ejected brass or shells, mag reloads (the mag drops, a fresh one comes from the belt pouch and seats on
+`ReloadSeatShare`, the charging handle on an empty reload), shell-by-shell loading, the break-action opening, a
+muzzle flash with a light. Any Action-priority track except the class idles (the downed crawl, line-up poses, emotes)
+and the hub hand the arms back. A character it cannot pose prints one `[GunAnim] can't pose …` line with its joints.
+
+**Icons (art pass).** Weapons, masks and wraps show live 3D ViewportFrame icons of the real models
+(`UI/ModelIcon.lua`: auto-framed, a slow sway on hover, dim / locked states, `ModelIcon*` in Config) on the Weapons
+and Avatar tabs, store and pass cards, the crate reel and the HUD weapon slot. Abilities, class emblems, boosts,
+upgrade stats and the hub dock draw pictograms built from frames (`UI/Icons.lua`, keyed by the existing ids; an
+unknown id falls back to its old text).
 
 **Arms crate (brief 5, `BigCrate.lua`, `CrateReelUI.lua`, timing in `CrateReel.lua`).** The only in-run weapon source.
 One drops at the intro, one after every completed side job (not the vault), one on TITAN's body (its first roll a
@@ -1125,6 +1153,20 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     `GAS · GET OUT` with the alarm (the building's fixtures and the horn) for 8 s → gas 6 s (tint, damage) → sealed:
     stand inside and you land outside the door, leftover bags fizzle, the door and blinds are back. `Open office`
     blows the nearest one with no job. The upper pair need D2.
+9g. Art pass: every gun in Weapons, the crate reel and on the floor is its own model (AK wood and banana mag, P90 top
+    mag, Barrett brake and bipod, the sawed-off's two barrels); the rarity strips glow from Epic; a wrap paints the
+    grip / handguard / stock. In a run the arms hold the gun (rifles shouldered with the chest turned, pistols
+    two-handed), the gun follows the cursor up and down, RMB raises it to the cheek; firing kicks it with a flash and
+    brass (pistol slides cycle and lock back on empty, the SPAS pumps, the AWP / Mosin bolt, the 1887 levers); R drops
+    the mag, the left hand fetches one from the belt and seats it on the click; the SPAS loads shell by shell and the
+    sawed-off breaks open. A teammate (2-player Local Server) shows the same, aim pitch and reloads included. No
+    `[GunAnim] can't pose` line in the output. Icons: Weapons / Avatar tiles, store cards and the HUD slot show the
+    3D models; ability wells, class circles, boost chips and upgrade cards show pictograms.
+9h. Round 19h: CUSTOMIZE on a gun → the avatar disappears, the gun alone spins in side-on (muzzle left), drag turns
+    it, a wrap paints it, BACK brings the avatar back. Picking an upgrade card plays a rising power-up, not a snap. Two
+    alarm jobs in a row never use the same minigame (nor two of any job type); no HACK-hold terminal jobs, door
+    shutters still hold F. The crate reel shows gun models (it now draws on a screen overlay that follows the crate).
+    A kill is a light tick and a soft thud. A called door's chevrons, loud beacon and edge arrow stay until it opens.
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
@@ -1652,6 +1694,26 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
   inside, then alarm, gas, eject and reset (`Offices.lua`, `Office*`, new node type `Offices` with tag `GHS_Office`
   registered in genbanknodes / exportnodes / nodestyle / NodeOverlay, `Bags.fizzleIn`, debug `Office job` /
   `Open office`).
+
+- **Art pass (7 Nov) — stand-in weapon art and icons.** `GunModels.lua` builds every gun (held, floor, store and crate
+  models, icons) from a per-gun spec; the held gun rides a `GunJoint` Motor6D on the right hand and floor guns lie on
+  their side on the invisible handle. `GunAnim.client.lua` poses every crew member's arms and gun procedurally:
+  stances per kind (`GunPoses`), aim pitch, two-bone IK onto the grip and foregrip, recoil springs (`GunRecoil`),
+  slide / pump / bolt / lever cycling, mag and shell reloads, muzzle flash and casings (`Gun*` in Config; teammates'
+  state through the new `GunPose` remote and character attributes). 3D viewport icons for weapons, masks and wraps
+  (`UI/ModelIcon.lua`, `ModelIcon*`) and frame-drawn pictograms for abilities, class emblems, boosts, upgrade stats
+  and the dock (`UI/Icons.lua`). The wrap preview and the store mannequin paint every Wrap part (`GunModels.paint` /
+  `snapshot` / `restore`); `HeldGunWrap` is gone.
+
+- **Round 19h (7 Nov) — feedback on the art pass.** CUSTOMIZE hides the avatar and shows the gun alone, side-on and
+  close, spinning in on open (`MetaGunStage*`, `MetaGunSpin*`; framing pulled back twice, pad 1.95). Picking an
+  upgrade plays `Theme.Sounds.upgrade` (ProSoundEffects synth power-up rise, `UpgradeTakeVolume`). No minigame twice
+  in a row: side jobs skip the last minigame overall and the last for their type (alarm, office, plain). The
+  hold-to-HACK side job is out (`SideJobKindWeights.hack` 0); door shutters keep their hold. The gun pose now finds
+  AnimationConstraint avatar joints and R6 rigs and ignores the looping class idles (it was not posing in play). The
+  crate reel draws on a ScreenGui that follows the crate (ViewportFrame models don't render in a BillboardGui).
+  Kill sounds: a UI bright click tick and a soft body-fall thud (`KillBodyVolume`) instead of the collide crash and
+  Body Hits 8. A called door's guide stays up until it opens (`DoorGuideSec` 0).
 
 ## Open design notes (not built)
 

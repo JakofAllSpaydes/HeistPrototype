@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Ground = require(Shared.Ground)
 local Weapons = require(Shared.Weapons)
+local GunModels = require(Shared.GunModels)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 local Types = require(Shared.Types)
@@ -110,6 +111,18 @@ function WeaponRoll.spawnGun(opts: SpawnOpts): BasePart
 	if opts.mag ~= nil then
 		gun:SetAttribute("Mag", opts.mag)
 	end
+	-- Art pass: the Part stays as the invisible handle everything keys on (prompt, tag, beam, arcs, lifetime); the
+	-- weapon's GunModels model lies on its side on it, rarity strips lit.
+	gun.Transparency = 1
+	local model = GunModels.build(opts.weaponId, { rarity = opts.rarity })
+	model.Name = "Model"
+	GunModels.pivot(model, gun.CFrame * CFrame.new(0, -0.15, 0) * CFrame.Angles(0, 0, math.rad(90)))
+	local hold = Instance.new("Weld")
+	hold.Part0 = gun
+	hold.Part1 = model
+	hold.C0 = gun.CFrame:ToObjectSpace(model.CFrame)
+	hold.Parent = model
+	model.Parent = gun
 
 	local a0 = Instance.new("Attachment")
 	a0.Name = "BeamBottom"

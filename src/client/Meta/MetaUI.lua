@@ -14,8 +14,20 @@ local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Ra
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
+local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 
 local MetaUI = {}
+
+-- UI art pass: the item a gun / mask / wrap icon shows as a live model (UI/ModelIcon). `id` is the weapon, mask or
+-- wrap id; a gun's wrap and rarity, and a showcase gun's archetype, ride along.
+export type IconModel = {
+	id: string,
+	wrapId: string?,
+	rarity: number?,
+	archetype: string?,
+	motion: string?, -- ModelIcon motion: "hover" (default) | "always" | "none"
+}
 
 MetaUI.Prices = Prices
 
@@ -30,7 +42,8 @@ export type TileOpts = {
 	equipped: boolean?, -- big check over the art + green outline
 	icon: string, -- gun | mask | wrap | class
 	iconColor: Color3?,
-	glyph: string?, -- for icon = "class": the letter in the circle
+	iconModel: IconModel?, -- gun / mask / wrap: the item, drawn as a live 3D model icon
+	glyph: string?, -- for icon = "class": a class id (its Icons.lua emblem) or the letter in the circle
 	size: number, -- tile width; height = size x 1.18
 	order: number,
 	nameTag: string?, -- gold text after the name in the top bar ("LV 2" on an owned weapon)
@@ -269,7 +282,30 @@ function MetaUI.sourceButton(scene: any, card: Instance, order: number, kind: st
 end
 
 -- Icon drawn into a parent: gun silhouette, mask, wrap swatch or class circle. Returns the icon root.
-function MetaUI.icon(kind: string, parent: Instance, size: number, color: Color3, glyph: string?): GuiObject
+function MetaUI.icon(
+	kind: string,
+	parent: Instance,
+	size: number,
+	color: Color3,
+	glyph: string?,
+	model: IconModel?
+): GuiObject
+	if model and (kind == "gun" or kind == "mask" or kind == "wrap") then
+		-- UI art pass: the real model, turning while hovered (a detail well's turns all the time). The drawn
+		-- shapes below stay as the fallback when no item is known.
+		local o: ModelIcon.Opts = {
+			rarity = model.rarity,
+			wrapId = model.wrapId,
+			archetype = model.archetype,
+			motion = model.motion or "hover",
+		}
+		if kind == "gun" then
+			return ModelIcon.weapon(parent, model.id, size, o)
+		elseif kind == "mask" then
+			return ModelIcon.mask(parent, model.id, size, o)
+		end
+		return ModelIcon.wrap(parent, model.id, size, o)
+	end
 	if kind == "gun" then
 		return UI.gunIcon(parent, color, size)
 	end
@@ -310,14 +346,19 @@ function MetaUI.icon(kind: string, parent: Instance, size: number, color: Color3
 		})
 		UI.corner(circle, 999)
 		UI.stroke(circle, Theme.Colors.bg, 2, 0.3)
-		UI.text({
-			Text = glyph or "?",
-			Font = Theme.Fonts.display,
-			TextSize = math.floor(size * 0.34),
-			TextColor3 = Theme.Colors.bg,
-			Size = UDim2.fromScale(1, 1),
-			Parent = circle,
-		})
+		if glyph and Icons.has(glyph) then
+			-- A class id: its emblem (Icons.lua) in the circle, cut-outs in the circle's colour.
+			Icons.fit(circle, glyph, 0.64, Theme.Colors.bg, color)
+		else
+			UI.text({
+				Text = glyph or "?",
+				Font = Theme.Fonts.display,
+				TextSize = math.floor(size * 0.34),
+				TextColor3 = Theme.Colors.bg,
+				Size = UDim2.fromScale(1, 1),
+				Parent = circle,
+			})
+		end
 	end
 	f.Parent = parent
 	return f
@@ -575,12 +616,20 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 		ZIndex = 2,
 		Parent = b,
 	})
-	local ic = MetaUI.icon(o.icon, b, math.floor(w * 0.74), o.iconColor or Theme.Colors.white, o.glyph)
+	local ic = MetaUI.icon(o.icon, b, math.floor(w * 0.74), o.iconColor or Theme.Colors.white, o.glyph, o.iconModel)
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.new(0.5, 0, 0.5, S(3))
-	if not o.owned then
+	if ic:IsA("ViewportFrame") then
+		-- A model icon: guns get the tile's width (inside its padding), same height as the old square.
+		if o.icon ~= "mask" then
+			ic.Size = UDim2.fromOffset(w - S(10), math.floor(w * 0.74))
+		end
+		if not o.owned then
+			ModelIcon.setState(ic, "dim")
+		end
+	elseif not o.owned then
 		for _, c in ic:GetDescendants() do
-			if c:IsA("Frame") then
+			if c:IsA("Frame") and c.BackgroundTransparency < 1 then -- holders and outline rings stay clear
 				c.BackgroundTransparency = 0.35
 			end
 		end
@@ -879,7 +928,8 @@ function MetaUI.well(
 	color: Color3,
 	icon: string,
 	glyph: string?,
-	iconColor: Color3?
+	iconColor: Color3?,
+	iconModel: IconModel? -- gun / mask / wrap: the item as a live model, turning slowly in the well
 ): GuiObject
 	local S = UI.S
 	local well = UI.frame({
@@ -898,9 +948,18 @@ function MetaUI.well(
 		Rotation = 90,
 		Parent = well,
 	})
-	local ic = MetaUI.icon(icon, well, S(130), iconColor or Theme.Colors.white, glyph)
+	local model: IconModel? = nil
+	if iconModel then
+		model = table.clone(iconModel);
+		(model :: IconModel).motion = iconModel.motion or "always"
+	end
+	local ic = MetaUI.icon(icon, well, S(130), iconColor or Theme.Colors.white, glyph, model)
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
 	ic.Position = UDim2.fromScale(0.5, 0.52)
+	if ic:IsA("ViewportFrame") then
+		-- A model fills the well (inside a small margin) rather than a square in its middle.
+		ic.Size = UDim2.new(1, -S(16), 1, -S(12))
+	end
 	return ic
 end
 

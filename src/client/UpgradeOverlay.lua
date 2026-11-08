@@ -17,6 +17,7 @@ local Types = require(Shared:WaitForChild("Types"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local Juice = require(script.Parent:WaitForChild("Juice"))
 local CardFace = require(script.Parent:WaitForChild("UI"):WaitForChild("CardFace"))
@@ -83,14 +84,17 @@ local function buildTrackerTile(
 	})
 	UI.corner(tile, S(10))
 	UI.stroke(tile, if item.highestTier > 0 then tierColor(item.highestTier) else Theme.Colors.grey, S(2))
-	UI.text({
-		Text = Upgrades.shortName(statId),
-		Font = Theme.Fonts.display,
-		TextSize = math.floor(size * 0.3),
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 3,
-		Parent = tile,
-	})
+	-- The stat's pictogram (Icons.lua, keyed by stat id; the short name is the text fallback).
+	local icon = Icons.draw(
+		tile,
+		statId,
+		math.floor(size * 0.64),
+		Theme.Colors.text,
+		Theme.Colors.panel,
+		Upgrades.shortName(statId)
+	)
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
 	-- Elements show the proc chance, utility stats the running total, gun stats the count.
 	local badge, badgeLabel =
 		UI.pill(tile, Upgrades.badgeText(statId, item), Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
@@ -657,7 +661,7 @@ function UpgradeOverlay.take(index: number)
 	local center = inner.AbsolutePosition + inner.AbsoluteSize / 2
 	local j = Juice.burst(card.tier, color, center)
 	UI.punch(inner, j.punch + 0.06, 0.2)
-	UI.sound(Theme.Sounds.take, j.pitch, j.volume)
+	UI.sound(Theme.Sounds.upgrade, j.pitch, j.volume * Config.UpgradeTakeVolume)
 
 	-- Fly a ghost from the card to its tracker tile, or to where a new tile will appear.
 	local S = UI.S

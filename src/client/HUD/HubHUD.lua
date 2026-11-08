@@ -15,6 +15,7 @@ local LevelRewards = require(Shared:WaitForChild("LevelRewards"))
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 local LevelCard = require(script.Parent.LevelCard)
 local BoostChips = require(script.Parent.BoostChips)
@@ -24,6 +25,9 @@ local Clock = require(Shared:WaitForChild("Clock"))
 local HubHUD = {}
 
 local GREEN = Color3.fromHex("2FD46A")
+
+-- Text an icon tile falls back to if Icons.lua has no pictogram for its id.
+local TILE_FALLBACK: { [string]: string } = { shop = "$", classes = "CLS", avatar = "MSK" }
 
 -- Icon tile with a label under it. Returns the button.
 local function iconTile(
@@ -56,14 +60,10 @@ local function iconTile(
 		icon.AnchorPoint = Vector2.new(0.5, 0.5)
 		icon.Position = UDim2.fromScale(0.5, 0.5)
 	else
-		UI.text({
-			Text = glyph,
-			Font = Theme.Fonts.display,
-			TextSize = math.floor(size * (if #glyph > 1 then 0.34 else 0.6)),
-			TextColor3 = fg,
-			Size = UDim2.fromScale(1, 1),
-			Parent = b,
-		})
+		-- A pictogram (UI/Icons.lua); cut-outs take the tile's colour.
+		local icon = Icons.draw(b, glyph, math.floor(size * 0.62), fg, bg, TILE_FALLBACK[glyph])
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
 	end
 	local l = UI.text({
 		Text = label,
@@ -210,7 +210,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Size = UDim2.fromOffset(shopSize, shopSize + S(16)),
 		Parent = root,
 	})
-	local shop = iconTile(shopHolder, 1, "Shop", "$", Theme.Colors.amber, Theme.Colors.bg, shopSize)
+	local shop = iconTile(shopHolder, 1, "Shop", "shop", Theme.Colors.amber, Theme.Colors.bg, shopSize)
 	-- Round 18: the breadcrumb. A red dot when the store holds something free to take (banked crate opens, the VIP
 	-- daily gift); the store then opens on that section.
 	local shopDot = UI.frame({
@@ -320,7 +320,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	UI.list(dock, Enum.FillDirection.Horizontal, S(12), Enum.HorizontalAlignment.Center)
 	local tiles: { [string]: TextButton } = {}
-	local glyphs = { WEAPONS = "gun", CLASSES = "CLS", AVATAR = "MSK" }
+	local glyphs = { WEAPONS = "gun", CLASSES = "classes", AVATAR = "avatar" }
 	local colors = { WEAPONS = Theme.Colors.blue, CLASSES = Theme.Colors.grey, AVATAR = Theme.Colors.gold }
 	local labels = { WEAPONS = "Weapons", CLASSES = "Classes", AVATAR = "Avatar" }
 	for i, tab in { "WEAPONS", "CLASSES", "AVATAR" } do

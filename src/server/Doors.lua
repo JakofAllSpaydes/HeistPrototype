@@ -833,7 +833,8 @@ end
 -- opens, the run ends or a lockdown takes over the guide) the floor chevrons are re-planned from each standing
 -- player to the door; the door's beacon stays loud and clients point a screen-edge arrow at it while off screen.
 function guideTo(group: string, target: Vector3)
-	local sec = Config.DoorGuideSec
+	-- Round 19h: DoorGuideSec 0 = the guide stays up until the door is opened (the clients drop it on DoorOpened).
+	local sec = if Config.DoorGuideSec > 0 then Config.DoorGuideSec else 1e6
 	World.fireRun("DoorPing", { group = group, sec = sec })
 	World.fireRun("DoorGuide", { group = group, position = target, sec = sec })
 	task.spawn(function()

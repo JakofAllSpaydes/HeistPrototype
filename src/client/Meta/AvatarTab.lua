@@ -100,6 +100,7 @@ local function renderMasks(scene: any, panel: Frame)
 				equipped = isEq,
 				icon = "mask",
 				iconColor = Color3.fromHex(m.color),
+				iconModel = { id = m.id }, -- the mask on its bust
 				size = tileW,
 				order = i,
 				price = if not own and m.saleType == "Direct" then (m.price or Prices.mask) else nil,
@@ -120,7 +121,8 @@ local function renderMasks(scene: any, panel: Frame)
 	tilesFor(unownedList, "UNOWNED", 10)
 
 	-- Detail: the art box (rarity on it, the equipped check), name, the accessory type, where it comes from.
-	local ic = MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color))
+	local ic =
+		MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color), { id = mask.id })
 	local well = ic.Parent :: Frame
 	MetaUI.rarityChip(well, mask.rarity)
 	if equipped == mask.id then

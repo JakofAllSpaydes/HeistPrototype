@@ -20,6 +20,7 @@ local JobPool = require(Shared:WaitForChild("JobPool"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
 local Fx = require(script.Parent:WaitForChild("Store"):WaitForChild("Fx"))
 
 local Scoreboard = {}
@@ -577,7 +578,7 @@ local function paint()
 		end
 		local class = Classes.ById[tostring(row.classId)] or Classes.ById[Classes.Default]
 		local x = 0
-		-- Name cell: state dot, class circle with the initial, LV n NAME.
+		-- Name cell: state dot, class circle with the class emblem, LV n NAME.
 		local dot = UI.frame({
 			BackgroundColor3 = if row.state == "standing"
 				then Theme.Colors.cash
@@ -597,14 +598,7 @@ local function paint()
 			Parent = frame,
 		})
 		UI.corner(circle, S(8))
-		UI.text({
-			Text = class.glyph,
-			Font = Theme.Fonts.display,
-			TextSize = S(11),
-			TextColor3 = Theme.Colors.bg,
-			Size = UDim2.fromScale(1, 1),
-			Parent = circle,
-		})
+		Icons.fit(circle, class.id, 0.74, Theme.Colors.bg, Color3.fromHex(class.color), class.glyph)
 		UI.text({
 			Text = UI.vipName(
 				string.format("LV %d  %s", tonumber(row.level) or 1, string.upper(tostring(row.name))),

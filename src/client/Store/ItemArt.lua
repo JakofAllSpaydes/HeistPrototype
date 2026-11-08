@@ -3,10 +3,11 @@
 -- wrap, pose, class, Gold, tokens, crate opens, boost, mastery, XP) or a product icon (cash, pass, skip, restock,
 -- Robux). Built from frames in the house style (shapes plus 3-letter caps or a letter in a circle), sized to fit
 -- a square `size`. ItemArt.draw returns the root frame (transparent background, centered by the caller).
+-- UI art pass: weapons, masks and wraps are live 3D icons of the real models (UI/ModelIcon: the gun, the mask on
+-- its bust, a gun wearing the wrap) filling the same square; currencies, tokens, crates, boosts and badges keep
+-- their drawn art (a coin model reads worse than the drawn gold bars at these sizes).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Weapons = require(Shared:WaitForChild("Weapons"))
-local Masks = require(Shared:WaitForChild("Masks"))
-local Wraps = require(Shared:WaitForChild("Wraps"))
 local Emotes = require(Shared:WaitForChild("Emotes"))
 local Classes = require(Shared:WaitForChild("Classes"))
 local Crates = require(Shared:WaitForChild("Crates"))
@@ -16,6 +17,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 
 local ItemArt = {}
 
@@ -63,7 +65,7 @@ local function glyph(parent: Instance, text: string, color: Color3, size: number
 	return l
 end
 
--- A gun drawn from its look (or the generic silhouette).
+-- A gun drawn from its look (or the generic silhouette): only for a tinted weapon or one with no id now.
 local function weaponArt(root: Frame, id: string, size: number, z: number, tint: Color3?)
 	local w = Weapons.ById[id]
 	local look = w and w.look
@@ -104,86 +106,6 @@ local function weaponArt(root: Frame, id: string, size: number, z: number, tint:
 	end
 	if look.scope then
 		block(root, Color3.fromHex("1A1A20"), x + bodyW * 0.55, 0.34, bodyW * 0.5, 0.07, z + 1, 0.4)
-	end
-end
-
--- A head with the mask's shape drawn flat.
-local function maskArt(root: Frame, id: string, z: number)
-	local m = Masks.ById[id]
-	if not m then
-		return
-	end
-	local main = Color3.fromHex(m.color)
-	local accent = if m.accent then Color3.fromHex(m.accent) else main
-	-- The head takes the mask color in-game, so the art does too.
-	block(root, main, 0.5, 0.52, 0.62, 0.62, z, 0.5)
-	local s = m.shape
-	if s == "visor" or s == "mono" then
-		block(root, if s == "mono" then main else main, 0.5, 0.46, 0.66, 0.16, z + 1, 0.4)
-		if s == "mono" or m.accent then
-			block(root, accent, 0.5, 0.46, 0.5, 0.05, z + 2, 0.5)
-		end
-	elseif s == "bandana" then
-		block(root, main, 0.5, 0.64, 0.64, 0.24, z + 1, 0.3)
-		if m.accent then
-			for i = -1, 1 do
-				local st = block(root, accent, 0.5 + i * 0.16, 0.64, 0.05, 0.24, z + 2)
-				st.Rotation = 18
-			end
-		end
-	elseif s == "goggles" then
-		block(root, main, 0.5, 0.44, 0.66, 0.07, z + 1)
-		for _, x in { 0.38, 0.62 } do
-			block(root, accent, x, 0.44, 0.2, 0.2, z + 2, 0.5)
-		end
-	elseif s == "skull" then
-		block(root, main, 0.5, 0.52, 0.5, 0.56, z + 1, 0.35)
-		for _, x in { 0.4, 0.6 } do
-			block(root, accent, x, 0.46, 0.12, 0.09, z + 2, 0.3)
-		end
-		for i = -2, 2 do
-			block(root, accent, 0.5 + i * 0.05, 0.66, 0.025, 0.06, z + 2)
-		end
-	elseif s == "halfmask" then
-		block(root, main, 0.5, 0.64, 0.56, 0.22, z + 1, 0.3)
-		block(root, accent, 0.5, 0.64, 0.36, 0.035, z + 2)
-	elseif s == "horns" then
-		for _, side in { -1, 1 } do
-			local h = block(root, accent, 0.5 + side * 0.26, 0.2, 0.09, 0.3, z + 1, 0.4)
-			h.Rotation = -side * 30
-		end
-	elseif s == "helmet" then
-		block(root, main, 0.5, 0.46, 0.72, 0.6, z + 1, 0.5)
-		block(root, accent, 0.5, 0.5, 0.5, 0.12, z + 2, 0.4)
-	elseif s == "crown" then
-		block(root, accent, 0.5, 0.24, 0.5, 0.1, z + 1)
-		for i = -2, 2 do
-			local p = block(root, accent, 0.5 + i * 0.1, 0.16, 0.08, 0.08, z + 1)
-			p.Rotation = 45
-		end
-	elseif s == "hood" then
-		block(root, main, 0.5, 0.48, 0.76, 0.74, z - 1, 0.45)
-		block(root, accent, 0.5, 0.6, 0.48, 0.14, z + 1, 0.3)
-	end
-end
-
-local function wrapArt(root: Frame, id: string, z: number)
-	local w = Wraps.ById[id]
-	local c = if w then Color3.fromHex(w.color) else Theme.Colors.grey
-	local sw = block(root, c, 0.5, 0.5, 0.62, 0.62, z, 0.18)
-	sw.Rotation = 8
-	UI.stroke(sw, Color3.new(1, 1, 1), 1, 0.6)
-	local shine = block(root, Color3.new(1, 1, 1), 0.42, 0.4, 0.3, 0.06, z + 1, 0.5)
-	shine.BackgroundTransparency = 0.6
-	shine.Rotation = -30
-	if w and w.material == "Neon" then
-		UI.new("UIGradient", {
-			Color = ColorSequence.new(c, Color3.fromHex("FFE08A")),
-			Rotation = 45,
-			Parent = sw,
-		})
-	elseif w and w.material == "Glass" then
-		sw.BackgroundTransparency = 0.25
 	end
 end
 
@@ -300,12 +222,11 @@ function ItemArt.draw(
 		ZIndex = zz,
 	})
 	local k, id, n = r.kind, r.id or "", r.amount or 0
-	if k == "weapon" then
+	if ModelIcon.canShow(r) and not (k == "weapon" and tint) then
+		-- The real model, filling the square; it turns while the pointer is over the art.
+		ModelIcon.item(root, r, UDim2.fromScale(1, 1), { zIndex = zz, motion = "hover" })
+	elseif k == "weapon" then
 		weaponArt(root, id, size, zz, tint)
-	elseif k == "mask" then
-		maskArt(root, id, zz)
-	elseif k == "wrap" then
-		wrapArt(root, id, zz)
 	elseif k == "emote" then
 		emoteArt(root, id, zz, size)
 	elseif k == "class" then
@@ -341,6 +262,19 @@ function ItemArt.draw(
 		root.Parent = parent
 	end
 	return root
+end
+
+-- Fade drawn art and model icons alike to at least `t` transparency (owned / claimed / locked tiles).
+function ItemArt.fade(art: Instance, t: number)
+	for _, d in art:GetDescendants() do
+		if d:IsA("ViewportFrame") then
+			d.ImageTransparency = math.max(d.ImageTransparency, t)
+		elseif d:IsA("Frame") then
+			d.BackgroundTransparency = math.max(d.BackgroundTransparency, t)
+		elseif d:IsA("TextLabel") then
+			d.TextTransparency = math.max(d.TextTransparency, t)
+		end
+	end
 end
 
 return ItemArt

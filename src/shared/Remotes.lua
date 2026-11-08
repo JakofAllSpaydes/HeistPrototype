@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DEFS: { [string]: string } = {
 	FireShot = "RemoteEvent", -- client -> server: origin, direction, clientTime, rounds left in the mag after the shot
 	AmmoReport = "RemoteEvent", -- client -> server: rounds in the held gun's mag (after a reload); the gun remembers it
+	GunPose = "RemoteEvent", -- client -> server: { pitch, ads, reload (seconds, 0 = none), shell }; mirrored to character attributes so every client poses the gun
 	BuyUpgrade = "RemoteFunction", -- client -> server: none; returns { ok, cards | reason }
 	TakeUpgrade = "RemoteEvent", -- client -> server: cardIndex
 	SwapWeapon = "RemoteEvent", -- client -> server: ground gun Part

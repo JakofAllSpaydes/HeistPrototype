@@ -5,6 +5,8 @@ local UserInputService = game:GetService("UserInputService")
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
+local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 
 export type Tile = {
@@ -31,36 +33,30 @@ export type Opts = {
 	name: string,
 	hotkey: string,
 	order: number,
-	iconKind: string, -- gun | plus | air | turret | wall | boom | melee
+	iconKind: string, -- gun | plus | an ability's Icons.lua id (Classes.lua `icon`)
 	stub: boolean?,
 	showPrice: boolean?,
+	weaponId: string?, -- iconKind "gun": the gun to show as a live model (else the generic glyph)
 }
 
 local Tile = {}
 
-local function makeIcon(kind: string, parent: Frame, size: number): GuiObject
-	local S = UI.S
+-- Text a kind falls back to when Icons.lua has no pictogram for it.
+local FALLBACK: { [string]: string } =
+	{ plus = "+", air = "AIR", turret = "TRT", wall = "WAL", boom = "BOM", stim = "STM", melee = "V" }
+
+local function makeIcon(kind: string, parent: Frame, size: number, weaponId: string?): GuiObject
 	if kind == "gun" then
+		-- A known gun is its live model (UI art pass); without one, the generic weapons glyph.
+		if weaponId then
+			return ModelIcon.weapon(parent, weaponId, UDim2.new(1, -4, 1, -4))
+		end
 		return UI.gunIcon(parent, Theme.Colors.grey, size)
 	end
-	local glyph = if kind == "plus"
-		then "+"
-		elseif kind == "air" then "AIR"
-		elseif kind == "turret" then "TRT"
-		elseif kind == "wall" then "WAL"
-		elseif kind == "boom" then "BOM"
-		elseif kind == "stim" then "STM"
-		elseif kind == "melee" then "V"
-		else string.upper(string.sub(kind, 1, 3)) -- ability icons come straight from Classes.lua
-	local label = UI.text({
-		Text = glyph,
-		Font = Theme.Fonts.display,
-		TextSize = if #glyph > 1 then S(16) else S(34),
-		TextColor3 = Theme.Colors.grey,
-		Size = UDim2.fromOffset(size, size),
-		Parent = parent,
-	})
-	return label
+	-- A pictogram (UI/Icons.lua): "plus", or an ability's icon id straight from Classes.lua; cut-outs take the
+	-- well's colour.
+	local fallback = FALLBACK[kind] or string.upper(string.sub(kind, 1, 3))
+	return Icons.draw(parent, kind, math.floor(size * 0.78), Theme.Colors.grey, Theme.Colors.panel2, fallback)
 end
 
 function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: boolean): Tile
@@ -121,7 +117,7 @@ function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: 
 		Parent = button,
 	})
 	UI.corner(well, S(8))
-	local icon = makeIcon(opts.iconKind, well, wellSize)
+	local icon = makeIcon(opts.iconKind, well, wellSize, opts.weaponId)
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 

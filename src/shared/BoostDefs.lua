@@ -6,7 +6,7 @@ export type Duration = { id: string, label: string, sec: number, price: number }
 export type Boost = {
 	id: string, -- power | cash | lucky
 	name: string,
-	glyph: string, -- the chip's 3-letter house-style glyph
+	glyph: string, -- 3-letter text fallback; chips draw the client/UI/Icons.lua pictogram keyed by `id`
 	color: string,
 	desc: string,
 	short: string, -- the chip's short label

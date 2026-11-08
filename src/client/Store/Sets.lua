@@ -14,6 +14,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Masks = require(Shared:WaitForChild("Masks"))
 local MaskShapes = require(Shared:WaitForChild("MaskShapes"))
 local Wraps = require(Shared:WaitForChild("Wraps"))
+local GunModels = require(Shared:WaitForChild("GunModels"))
 local Emotes = require(Shared:WaitForChild("Emotes"))
 local Classes = require(Shared:WaitForChild("Classes"))
 
@@ -428,9 +429,10 @@ function Sets.mannequin(at: CFrame, facing: Vector3): Mannequin?
 	local previewMask: BasePart? = nil
 	local head = model:FindFirstChild("Head") :: BasePart?
 	local wornHead = if head then head.Color else Color3.new(1, 1, 1)
-	local grip = model:FindFirstChild("HeldGunWrap") :: BasePart?
-	local wornGrip = if grip then grip.Color else nil
-	local wornGripMat = if grip then grip.Material else nil
+	-- Art pass: the wrap paints every Wrap part of the cloned held gun (GunModels); the worn look is the baseline.
+	local heldGun = model:FindFirstChild("HeldGun")
+	local gunRoot: BasePart? = if heldGun and heldGun:IsA("BasePart") then heldGun else nil
+	local wornWrap = if gunRoot then GunModels.snapshot(gunRoot) else nil
 	local m: Mannequin
 	m = {
 		model = model,
@@ -488,16 +490,14 @@ function Sets.mannequin(at: CFrame, facing: Vector3): Mannequin?
 			end
 		end,
 		wrap = function(id: string?)
-			if not grip then
+			if not gunRoot then
 				return
 			end
 			local w = id and Wraps.ById[id]
 			if w then
-				grip.Color = Color3.fromHex(w.color)
-				grip.Material = Wraps.material(w)
-			elseif wornGrip then
-				grip.Color = wornGrip
-				grip.Material = wornGripMat or Enum.Material.Metal
+				GunModels.paint(gunRoot, Color3.fromHex(w.color), Wraps.material(w))
+			elseif wornWrap then
+				GunModels.restore(wornWrap)
 			end
 		end,
 		turn = function(delta: number)

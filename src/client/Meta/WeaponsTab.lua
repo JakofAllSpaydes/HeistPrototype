@@ -87,10 +87,11 @@ local function wrapOwnedOn(profile: any, wrapId: string, weaponId: string): bool
 	return profile.wraps.owned[wrapId] == true
 end
 
-local function wrapColorOf(profile: any, id: string): Color3?
+-- The wrap applied to an owned gun (its model icon wears it).
+local function wrapIdOf(profile: any, id: string): string?
 	local e = profile and profile.weapons and profile.weapons[id]
 	local wrapId = e and e.wrap
-	return if wrapId and Wraps.ById[wrapId] then Color3.fromHex(Wraps.ById[wrapId].color) else nil
+	return if typeof(wrapId) == "string" and Wraps.ById[wrapId] then wrapId else nil
 end
 
 local function fmtReload(t: number): string
@@ -136,15 +137,17 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 	local level = if w then levelOf(profile, w.id) else 0
 	-- Art box in the rarity color, the rarity on it top-left, the equipped check top-right.
 	local rarity = if w then w.rarity else (show and show.rarity or 1)
-	local ic = MetaUI.well(card, 1, Rarity.color(rarity), "gun")
+	-- The gun itself (wearing its wrap), turning slowly in the well.
+	local ic = MetaUI.well(card, 1, Rarity.color(rarity), "gun", nil, nil, {
+		id = id,
+		rarity = rarity,
+		wrapId = if w then wrapIdOf(profile, w.id) else nil,
+		archetype = if show then show.archetype else nil,
+	})
 	local well = ic.Parent :: Frame
 	well.Size = UDim2.new(1, 0, 0, S(if scene.mobile then 100 else 116))
-	ic.Size = UDim2.fromOffset(S(if scene.mobile then 96 else 110), S(if scene.mobile then 96 else 110))
-	if w then
-		local wc = wrapColorOf(profile, w.id)
-		if wc then
-			UI.recolorIcon(ic :: Frame, wc)
-		end
+	if not ic:IsA("ViewportFrame") then
+		ic.Size = UDim2.fromOffset(S(if scene.mobile then 96 else 110), S(if scene.mobile then 96 else 110))
 	end
 	MetaUI.rarityChip(well, rarity)
 	if equipped then
@@ -681,7 +684,12 @@ function WeaponsTab.render(scene: any)
 				selected = selected == id,
 				equipped = equipped,
 				icon = "gun",
-				iconColor = (w and wrapColorOf(profile, w.id)) or Theme.Colors.white,
+				iconModel = {
+					id = id,
+					rarity = rarity,
+					wrapId = if w then wrapIdOf(profile, w.id) else nil,
+					archetype = if s then s.archetype else nil,
+				},
 				size = tileW,
 				order = i,
 				-- Owned: the level rides in the top bar next to the name; the bottom is the mastery bar.

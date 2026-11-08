@@ -16,6 +16,7 @@ local Types = require(Shared.Types)
 local Masks = require(Shared.Masks)
 local Emotes = require(Shared.Emotes)
 local Wraps = require(Shared.Wraps)
+local GunModels = require(Shared.GunModels)
 local MaskShapes = require(Shared.MaskShapes)
 local Classes = require(Shared.Classes)
 local AbilityGrowth = require(Shared.AbilityGrowth)
@@ -330,8 +331,10 @@ function PlayerState.damagePct(state: State): number
 end
 
 ------------------------------------------------------------------ Character dressing
--- Held gun visual: a Part welded to the right hand so tracers have a muzzle. Body = rarity color,
--- grip = the equipped wrap (or dark).
+-- Held gun visual (art pass): the weapon's GunModels stand-in model, joined to the right hand by the "GunJoint"
+-- Motor6D in a hand-carry rest pose. Every client's GunAnim poses the arms and the gun from there during a run;
+-- anything that doesn't animate it (the hub, mannequin clones) sees the gun carried in the hand. Rarity colours the
+-- receiver strips, the equipped wrap paints the furniture (grip / handguard / stock).
 function PlayerState.refreshHeldVisual(state: State)
 	local char = state.player.Character
 	if not char then
@@ -341,113 +344,21 @@ function PlayerState.refreshHeldVisual(state: State)
 	if old then
 		old:Destroy()
 	end
-	local oldGrip = char:FindFirstChild("HeldGunWrap")
+	local oldGrip = char:FindFirstChild("HeldGunWrap") -- pre-art-pass band, if a character still has one
 	if oldGrip then
 		oldGrip:Destroy()
 	end
-	local hand = (char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")) :: BasePart?
-	if not hand then
+	local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+	if not hand or not hand:IsA("BasePart") then
 		return
 	end
-	-- Brief 6 guns carry their own silhouette (Weapons.Look): body length, barrel, stock, mag, scope, accent color.
-	local w = Weapons.ById[state.held.weaponId]
-	local look = w and w.look
-	local bodyLen = if look then look.body else 1.6
-	local gun = Instance.new("Part")
+	local gun = GunModels.build(state.held.weaponId, {
+		rarity = state.held.rarity,
+		wrapId = PlayerState.wrapOf(state, state.held.weaponId),
+	})
 	gun.Name = "HeldGun"
-	gun.Size = Vector3.new(0.35, 0.5, bodyLen)
-	gun.Color = Rarity.color(state.held.rarity)
-	gun.Material = Enum.Material.Metal
-	gun.CanCollide = false
-	gun.CanQuery = false
-	gun.CanTouch = false
-	gun.Massless = true
-	gun.CFrame = hand.CFrame * CFrame.new(0, -0.25, -0.1 - bodyLen / 2)
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = hand
-	weld.Part1 = gun
-	weld.Parent = gun
-	local muzzle = Instance.new("Attachment")
-	muzzle.Name = "Muzzle"
-	muzzle.Position = Vector3.new(0, 0, -bodyLen / 2 - (if look then look.barrel else 0))
-	muzzle.Parent = gun
-	if look then
-		local accent = Color3.fromHex(look.color)
-		local function bit(name: string, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material)
-			local p = Instance.new("Part")
-			p.Name = name
-			p.Size = size
-			p.Color = color
-			p.Material = material
-			p.CanCollide = false
-			p.CanQuery = false
-			p.CanTouch = false
-			p.Massless = true
-			p.CFrame = gun.CFrame * offset
-			local wc = Instance.new("WeldConstraint")
-			wc.Part0 = gun
-			wc.Part1 = p
-			wc.Parent = p
-			p.Parent = gun
-		end
-		if look.barrel > 0 then
-			bit(
-				"Barrel",
-				Vector3.new(0.14, 0.14, look.barrel),
-				CFrame.new(0, 0.08, -bodyLen / 2 - look.barrel / 2),
-				accent,
-				Enum.Material.Metal
-			)
-		end
-		if look.stock then
-			bit(
-				"Stock",
-				Vector3.new(0.26, 0.4, 0.5),
-				CFrame.new(0, -0.05, bodyLen / 2 + 0.25),
-				accent,
-				Enum.Material.Wood
-			)
-		end
-		if look.scope then
-			bit(
-				"Scope",
-				Vector3.new(0.16, 0.16, bodyLen * 0.45),
-				CFrame.new(0, 0.33, -0.05),
-				Color3.fromRGB(26, 26, 32),
-				Enum.Material.Metal
-			)
-		end
-		if look.mag == "box" then
-			bit("Mag", Vector3.new(0.18, 0.42, 0.22), CFrame.new(0, -0.42, -bodyLen * 0.1), accent, Enum.Material.Metal)
-		elseif look.mag == "tube" then
-			bit(
-				"Tube",
-				Vector3.new(0.12, 0.12, bodyLen * 0.8),
-				CFrame.new(0, -0.12, -0.15),
-				accent,
-				Enum.Material.Metal
-			)
-		end
-	end
+	GunModels.mountToHand(gun, hand)
 	gun.Parent = char
-	-- Wrappable part: the grip / stock band under the body.
-	local wrapId = PlayerState.wrapOf(state, state.held.weaponId)
-	local wrap = wrapId and Wraps.ById[wrapId]
-	local grip = Instance.new("Part")
-	grip.Name = "HeldGunWrap"
-	grip.Size = Vector3.new(0.38, 0.22, 0.7)
-	grip.Color = if wrap then Color3.fromHex(wrap.color) else Color3.fromRGB(40, 40, 46)
-	grip.Material = if wrap then Wraps.material(wrap) else Enum.Material.Metal
-	grip.CanCollide = false
-	grip.CanQuery = false
-	grip.CanTouch = false
-	grip.Massless = true
-	grip.CFrame = gun.CFrame * CFrame.new(0, -0.3, 0.3)
-	local weld2 = Instance.new("WeldConstraint")
-	weld2.Part0 = gun
-	weld2.Part1 = grip
-	weld2.Parent = grip
-	grip.Parent = char
 end
 
 -- Mask: head recolor plus a simple accessory Part welded to the head (visor or bandana), from the profile.

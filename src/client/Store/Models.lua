@@ -7,6 +7,7 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local Masks = require(Shared:WaitForChild("Masks"))
 local MaskShapes = require(Shared:WaitForChild("MaskShapes"))
 local Wraps = require(Shared:WaitForChild("Wraps"))
+local GunModels = require(Shared:WaitForChild("GunModels"))
 local Crates = require(Shared:WaitForChild("Crates"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 
@@ -143,62 +144,17 @@ function Models.crate(crateId: string, at: CFrame): CrateModel
 	}
 end
 
--- A gun from its look (generic rifle shape without one), centered on the origin, muzzle toward -X.
+-- A gun (art pass: the shared GunModels stand-in), centred on the origin, muzzle toward -X. `bodyColor` tints the
+-- rarity strips; `wrapId` paints the furniture.
 function Models.gun(weaponId: string, bodyColor: Color3?, wrapId: string?): Model
-	local w = Weapons.ById[weaponId]
-	local look = w and w.look
-	local m = Instance.new("Model")
-	m.Name = "Gun"
-	local body = bodyColor or Rarity.color(if w then w.rarity else 1)
-	local accent = if look then Color3.fromHex(look.color) else Color3.fromRGB(40, 40, 46)
-	local len = if look then look.body * 1.6 else 2.4
-	local barrel = if look then look.barrel * 1.6 else 0.9
-	local o = CFrame.new()
-	part(m, "Body", Vector3.new(len, 0.5, 0.32), o, body, Enum.Material.Metal)
-	part(
-		m,
-		"Barrel",
-		Vector3.new(barrel, 0.16, 0.16),
-		o * CFrame.new(-len / 2 - barrel / 2, 0.08, 0),
-		accent,
-		Enum.Material.Metal
-	)
-	local wrap = wrapId and Wraps.ById[wrapId]
-	part(
-		m,
-		"Grip",
-		Vector3.new(0.28, 0.6, 0.26),
-		o * CFrame.new(len * 0.22, -0.48, 0) * CFrame.Angles(0, 0, math.rad(-12)),
-		if wrap then Color3.fromHex(wrap.color) else accent,
-		if wrap then Wraps.material(wrap) else Enum.Material.Metal
-	)
-	if not look or look.stock then
-		part(
-			m,
-			"Stock",
-			Vector3.new(0.7, 0.46, 0.28),
-			o * CFrame.new(len / 2 + 0.35, -0.05, 0),
-			if wrap then Color3.fromHex(wrap.color) else accent,
-			if wrap then Wraps.material(wrap) else Enum.Material.Wood
-		)
+	local m = GunModels.model(weaponId, { wrapId = wrapId })
+	if bodyColor and m.PrimaryPart then
+		for _, p in GunModels.parts(m.PrimaryPart) do
+			if p:GetAttribute("Rarity") == true then
+				p.Color = bodyColor
+			end
+		end
 	end
-	if look and look.scope then
-		part(
-			m,
-			"Scope",
-			Vector3.new(len * 0.5, 0.2, 0.2),
-			o * CFrame.new(-0.05, 0.38, 0),
-			Color3.fromRGB(26, 26, 32),
-			Enum.Material.Metal,
-			Enum.PartType.Cylinder
-		)
-	end
-	if not look or look.mag == "box" then
-		part(m, "Mag", Vector3.new(0.24, 0.55, 0.2), o * CFrame.new(-len * 0.08, -0.5, 0), accent, Enum.Material.Metal)
-	elseif look.mag == "tube" then
-		part(m, "Tube", Vector3.new(len * 0.8, 0.14, 0.14), o * CFrame.new(-0.2, -0.16, 0), accent, Enum.Material.Metal)
-	end
-	m.PrimaryPart = m:FindFirstChild("Body") :: BasePart
 	return m
 end
 

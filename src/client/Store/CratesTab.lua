@@ -286,11 +286,7 @@ function CratesTab.render(ctx: any)
 			a.Position = UDim2.fromScale(0.5, 0.5)
 			if owned then
 				box.BackgroundTransparency = 0.7
-				for _, d in a:GetDescendants() do
-					if d:IsA("Frame") then
-						d.BackgroundTransparency = 0.65
-					end
-				end
+				ItemArt.fade(a, 0.65)
 			end
 		end
 		-- Pity line and ODDS.

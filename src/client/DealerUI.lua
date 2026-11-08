@@ -20,6 +20,7 @@ local Upgrades = require(Shared:WaitForChild("Upgrades"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local CardFace = require(script.Parent:WaitForChild("UI"):WaitForChild("CardFace"))
 
@@ -163,14 +164,9 @@ local function standCard(it: Item, statId: string, tier: number)
 		})
 	end
 	UI.new("UICorner", { CornerRadius = UDim.new(0.18, 0), Parent = icon })
-	UI.text({
-		Text = Upgrades.shortName(statId),
-		Font = Theme.Fonts.display,
-		TextScaled = true,
-		TextColor3 = Theme.Colors.bg,
-		Size = UDim2.fromScale(1, 1),
-		Parent = icon,
-	})
+	-- The stat's pictogram (Icons.lua; the short name is the text fallback), sized to the tile so it scales with
+	-- the billboard.
+	Icons.fit(icon, statId, 0.86, Theme.Colors.bg, color, Upgrades.shortName(statId))
 	local pill = UI.frame({
 		BackgroundColor3 = Theme.Colors.cash,
 		AnchorPoint = Vector2.new(0.5, 1),

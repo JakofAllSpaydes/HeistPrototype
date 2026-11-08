@@ -10,10 +10,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 
 -- Brief 6: GET TOKENS opens the purchase sheet (required lazily: PurchaseSheet loads the store kit).
@@ -189,7 +191,8 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = slot,
 	})
 	UI.corner(iconWell, S(8))
-	local icon = UI.gunIcon(iconWell, Theme.Colors.grey, slotH - S(14))
+	-- UI art pass: the held gun's real model (its rarity strips and wrap), swapped when the held gun changes.
+	local icon = ModelIcon.weapon(iconWell, Weapons.Starter, UDim2.new(1, -S(4), 1, -S(4)), { pad = 0.04 })
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	local name = UI.text({
@@ -440,7 +443,13 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			else string.upper(held.displayName)
 		pill.BackgroundColor3 = color
 		slotStroke.Color = color
-		UI.recolorIcon(icon, color)
+		iconWell.BackgroundColor3 = Theme.Colors.panel2:Lerp(color, Config.ModelIconWellTint)
+		if typeof(held.weaponId) == "string" then
+			ModelIcon.setWeapon(icon, held.weaponId, {
+				rarity = held.rarity,
+				wrapColor = if held.wrapColor then tostring(held.wrapColor) else nil,
+			})
+		end
 		local dps = math.round(held.dps or 0)
 		if lastDps >= 0 and dps ~= lastDps then
 			floatDps(dps - lastDps)
@@ -453,9 +462,6 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		levelLabel.Text = string.format("LV %d", level)
 		sidearmPill.Visible = held.sidearm == true
 		levelPill.Visible = not sidearmPill.Visible and level > 0
-		if held.wrapColor then
-			UI.recolorIcon(icon, Color3.fromHex(tostring(held.wrapColor)))
-		end
 		local profile = sync.profile
 		local t = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
 		local cost = if sync.revive and typeof(sync.revive.selfCost) == "number" then sync.revive.selfCost else 1

@@ -13,9 +13,10 @@ export type Ability = {
 	price: number, -- in-match $ label
 	description: string,
 	vars: { Var },
-	icon: string, -- short glyph for the tile
+	icon: string, -- the ability's pictogram id in client/UI/Icons.lua (also its text fallback)
 }
--- glyph: the class icon in its colored circle (pills, wells, the hub tag, the scoreboard).
+-- The class emblem in its colored circle (pills, wells, the scoreboard) is the Icons.lua pictogram keyed by the
+-- class id; glyph is the letter shown where no pictogram is drawn (the fallback, store art).
 export type Class = {
 	id: string,
 	name: string,

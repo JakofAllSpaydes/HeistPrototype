@@ -11,6 +11,7 @@ local Upgrades = require(Shared:WaitForChild("Upgrades"))
 
 local UI = require(script.Parent:WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("Theme"))
+local Icons = require(script.Parent:WaitForChild("Icons"))
 
 local CardFace = {}
 
@@ -18,7 +19,8 @@ function CardFace.tierColor(tier: number): Color3
 	return Rarity.color(math.clamp(tier, 1, 5))
 end
 
--- Stat icon: a rounded tile in a tier color with the short name. Shared by cards, reels and tracker.
+-- Stat icon: a rounded tile in a tier color with the stat's pictogram (Icons.lua, keyed by the Upgrades.lua stat id;
+-- the short name is the text fallback). Shared by cards, reels and tracker.
 function CardFace.statIcon(parent: Instance, statId: string, color: Color3, size: number, ghost: boolean): Frame
 	local S = UI.S
 	local tile = UI.frame({
@@ -31,15 +33,14 @@ function CardFace.statIcon(parent: Instance, statId: string, color: Color3, size
 	})
 	UI.corner(tile, math.floor(size * 0.18))
 	UI.stroke(tile, color, S(2), if ghost then 0.6 else 0)
-	UI.text({
-		Text = Upgrades.shortName(statId),
-		Font = Theme.Fonts.display,
-		TextSize = math.floor(size * 0.34),
-		TextColor3 = Theme.Colors.bg,
-		TextTransparency = if ghost then 0.3 else 0,
-		Size = UDim2.fromScale(1, 1),
-		Parent = tile,
-	})
+	-- Cut-outs take the tile's colour as it reads over the card (the tile is slightly see-through).
+	local detail = color:Lerp(Theme.Colors.panel, if ghost then 0.55 else 0.1)
+	local icon = Icons.draw(tile, statId, math.floor(size * 0.72), Theme.Colors.bg, detail, Upgrades.shortName(statId))
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	if ghost then
+		Icons.setTransparency(icon, 0.3)
+	end
 	return tile
 end
 

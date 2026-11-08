@@ -17,6 +17,7 @@ local Classes = require(Shared:WaitForChild("Classes"))
 local Masks = require(Shared:WaitForChild("Masks"))
 local MaskShapes = require(Shared:WaitForChild("MaskShapes"))
 local Wraps = require(Shared:WaitForChild("Wraps"))
+local GunModels = require(Shared:WaitForChild("GunModels"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -73,10 +74,19 @@ local customize = false
 local idleTrack: AnimationTrack? = nil
 local previewMask: BasePart? = nil
 local savedHeadColor: Color3? = nil
-local savedWrapColor: Color3? = nil
-local savedWrapMaterial: Enum.Material? = nil
+local savedWrap: GunModels.Snapshot? = nil -- the target gun's worn wrap, while a wrap preview is painted on it
 local previewGun: Model? = nil -- GunPreview model in the hand while a different gun than the held one is selected
 local previewGunKey: string? = nil -- weapon id | applied wrap the preview was built for
+-- Round 19h: CUSTOMIZE shows the gun alone (the avatar hides locally), close and side-on, spinning in as it opens.
+local stage: Model? = nil -- the local showcase gun (anchored, parented to the camera)
+local stageId: string? = nil
+local stageCenter = CFrame.identity -- its bounding-box centre, in root space
+local stageSize = Vector3.one
+local stageAt = Vector3.zero -- where it floats: in front of the avatar
+local stageForward = Vector3.zAxis -- from the gun toward the camera (flat)
+local stageT0 = 0
+local stageYaw = 0 -- the player's drag spin
+local previewWeaponId: string? = nil -- the gun the Weapons tab last previewed (the one CUSTOMIZE shows)
 
 local TABS = { "WEAPONS", "CLASSES", "AVATAR" }
 local PANEL_W = 0.58 -- share of the viewport the panel takes (62% on mobile)
@@ -93,26 +103,29 @@ local function stopIdle()
 	end
 end
 
--- The wrappable band the wrap preview paints: the preview gun's grip when one is in the hand, else the real one.
+-- The gun the wrap preview paints (art pass: every Wrap part of it): the preview gun when one is in the hand, else
+-- the real held one.
 local function wrapTarget(): BasePart?
-	local pg = previewGun
-	local grip = if pg and pg.Parent then pg:FindFirstChild("Grip") else nil
-	if not grip then
-		local c = char()
-		grip = c and c:FindFirstChild("HeldGunWrap")
+	local st = stage
+	if st and st.PrimaryPart then
+		return st.PrimaryPart -- CUSTOMIZE: the showcase gun
 	end
-	return if grip and grip:IsA("BasePart") then grip else nil
+	local pg = previewGun
+	local root = if pg and pg.Parent then pg.PrimaryPart else nil
+	if not root then
+		local c = char()
+		local held = c and c:FindFirstChild("HeldGun")
+		root = if held and held:IsA("BasePart") then held else nil
+	end
+	return root
 end
 
--- Put the band back to its worn color / material and forget the baseline (before the target band changes).
+-- Put the gun back to its worn wrap and forget the baseline (before the target gun changes).
 local function restoreWrap()
-	local grip = wrapTarget()
-	if grip and savedWrapColor then
-		grip.Color = savedWrapColor
-		grip.Material = savedWrapMaterial or Enum.Material.Metal
+	if savedWrap then
+		GunModels.restore(savedWrap)
 	end
-	savedWrapColor = nil
-	savedWrapMaterial = nil
+	savedWrap = nil
 end
 
 local function heldWeaponId(): string?
@@ -136,32 +149,35 @@ end
 
 local preview: Preview = {
 	wrap = function(hex: string?)
-		local grip = wrapTarget()
-		if grip then
-			if not savedWrapColor then
-				savedWrapColor = grip.Color
-				savedWrapMaterial = grip.Material
-			end
-			grip.Color = if hex then Color3.fromHex(hex) else savedWrapColor :: Color3
-			-- Brief 6: a wrap with its own material (the Legendary pass wraps glow) previews in it.
-			local wrapDef: Wraps.Wrap? = nil
-			if hex then
-				for _, w in Wraps.List do
-					if w.color == hex then
-						wrapDef = w
-						break
-					end
-				end
-			end
-			grip.Material = if wrapDef
-				then Wraps.material(wrapDef)
-				elseif hex then Enum.Material.SmoothPlastic
-				else savedWrapMaterial or Enum.Material.Metal
+		local root = wrapTarget()
+		if not root then
+			return
 		end
+		if not savedWrap then
+			savedWrap = GunModels.snapshot(root)
+		end
+		if not hex then
+			GunModels.restore(savedWrap :: GunModels.Snapshot)
+			return
+		end
+		-- Brief 6: a wrap with its own material (the Legendary pass wraps glow) previews in it.
+		local wrapDef: Wraps.Wrap? = nil
+		for _, w in Wraps.List do
+			if w.color == hex then
+				wrapDef = w
+				break
+			end
+		end
+		GunModels.paint(
+			root,
+			Color3.fromHex(hex),
+			if wrapDef then Wraps.material(wrapDef) else Enum.Material.SmoothPlastic
+		)
 	end,
 	-- Round 18c: the selected gun in the avatar's hand, like the mask preview. The gun already held needs no copy
 	-- (the real model is exact); any other gets a local GunPreview model with the real one hidden.
 	weapon = function(id: string?)
+		previewWeaponId = id
 		local c = char()
 		if not Config.MetaWeaponPreview or not id or not c or id == heldWeaponId() then
 			clearGunPreview()
@@ -257,20 +273,121 @@ local preview: Preview = {
 			p.LocalTransparencyModifier = 0
 		end
 		savedHeadColor = nil
-		savedWrapColor = nil
-		savedWrapMaterial = nil
+		savedWrap = nil
 	end,
 }
 
 ------------------------------------------------------------------ Camera
 -- Hub shot: the character on the left third, facing the camera, with the panel side free. Customize shot:
 -- the gun dead center, close, so the wrap reads.
+------------------------------------------------------------------ Customize showcase
+local function hideCharacter()
+	local c = char()
+	if not c then
+		return
+	end
+	for _, d in c:GetDescendants() do
+		if (d:IsA("BasePart") or d:IsA("Decal")) and d.LocalTransparencyModifier < 1 then
+			d.LocalTransparencyModifier = 1
+		end
+	end
+end
+
+local function clearStage()
+	if stage then
+		stage:Destroy()
+		stage = nil
+		savedWrap = nil -- it pointed at the showcase gun
+	end
+	stageId = nil
+end
+
+local function stageWeaponId(): string?
+	return previewWeaponId or heldWeaponId()
+end
+
+-- The showcase gun for the selected weapon (wearing its wrap): local, anchored, floating in front of the avatar.
+local function buildStage()
+	clearStage()
+	local id = stageWeaponId()
+	local c = char()
+	local root = c and c:FindFirstChild("HumanoidRootPart")
+	if not id or not root or not root:IsA("BasePart") then
+		return
+	end
+	local sync = ClientState.sync
+	local weapons = sync and sync.profile and sync.profile.weapons
+	local entry = weapons and weapons[id]
+	local gun = GunModels.build(id, { wrapId = if entry then entry.wrap else nil })
+	local m = Instance.new("Model")
+	m.Name = "CustomizeGun"
+	gun.Parent = m
+	m.PrimaryPart = gun
+	for _, p in GunModels.parts(gun) do
+		p.Anchored = true
+	end
+	m.Parent = camera
+	local bb, size = m:GetBoundingBox()
+	stageCenter = bb -- the root sits at the origin, so this is in root space
+	stageSize = size
+	local base = root.CFrame
+	local flat = Vector3.new(base.LookVector.X, 0, base.LookVector.Z)
+	stageForward = if flat.Magnitude > 0.01 then flat.Unit else Vector3.zAxis
+	stageAt = base.Position + stageForward * Config.MetaGunStageForward + Vector3.new(0, Config.MetaGunStageHeight, 0)
+	stageT0 = os.clock()
+	stageYaw = 0
+	stage = m
+	stageId = id
+end
+
+-- Side-on and as close as the gun's length allows (MetaGunStagePad of margin), the gun lifted above the strip.
+local function stageCamera(): CFrame
+	local fov = math.rad(camera.FieldOfView)
+	local vp = camera.ViewportSize
+	local aspect = if vp.Y > 0 then vp.X / vp.Y else 16 / 9
+	local pad = Config.MetaGunStagePad
+	local halfV = math.tan(fov / 2)
+	local halfH = halfV * aspect
+	local length = stageSize.Z
+	local height = math.max(stageSize.Y, stageSize.X)
+	local dist = math.max(length / 2 * pad / halfH, height / 2 * pad / halfV, Config.MetaGunStageMinDistance)
+	local pos = stageAt + stageForward * dist
+	return CFrame.lookAt(pos, stageAt - Vector3.yAxis * (dist * halfV * Config.MetaGunStageLift))
+end
+
+-- Every frame in CUSTOMIZE: rebuild on a gun change, keep the avatar hidden, spin the gun in, then hold it side-on
+-- (muzzle to the left) with a slow bob and whatever the player has dragged it round by.
+-- Returns true when it rebuilt (the caller re-frames the camera).
+local function updateStage(): boolean
+	local rebuilt = false
+	if stageWeaponId() ~= stageId then
+		buildStage()
+		rebuilt = stage ~= nil
+	end
+	local m = stage
+	if not m or not m.PrimaryPart then
+		return rebuilt
+	end
+	hideCharacter()
+	local s = math.clamp((os.clock() - stageT0) / Config.MetaGunSpinSec, 0, 1)
+	local e = 1 - (1 - s) ^ 3
+	local spin = (1 - e) * math.pi * 2 * Config.MetaGunSpinTurns
+	local bob = math.sin(os.clock() * 1.6) * Config.MetaGunStageBob
+	local rest = CFrame.lookAt(Vector3.zero, stageForward:Cross(Vector3.yAxis))
+	local centre = CFrame.new(stageAt + Vector3.new(0, bob, 0)) * CFrame.Angles(0, spin + stageYaw, 0) * rest
+	m:PivotTo(centre * stageCenter:Inverse())
+	return rebuilt
+end
+
 local function shot(push: boolean): CFrame
 	local c = char()
 	local root = c and c:FindFirstChild("HumanoidRootPart")
 	local base = if root and root:IsA("BasePart") then root.CFrame else CFrame.new(0, 3, 150)
 	local forward = base.LookVector
 	local right = base.RightVector
+	if push and stage then
+		return stageCamera()
+	end
 	if push then
 		local pg = previewGun
 		local gun = if pg and pg.Parent then pg.PrimaryPart else (c and c:FindFirstChild("HeldGun"))
@@ -482,6 +599,14 @@ local function setCustomize(on: boolean)
 		end
 	end
 
+	-- Round 19h: the gun alone. In: the avatar hides and the showcase gun spins in; out: back to the avatar.
+	restoreWrap()
+	if on then
+		buildStage()
+	else
+		clearStage()
+		showCharacter()
+	end
 	tweenCamera(shot(on), Config.MetaCameraTweenSec)
 end
 
@@ -551,15 +676,13 @@ local function dockTile(
 			end
 		end
 	else
-		UI.text({
-			Text = glyph,
-			Font = Theme.Fonts.display,
-			TextSize = math.floor(size * (if #glyph > 1 then 0.34 else 0.6)),
-			TextColor3 = fg,
-			Size = UDim2.fromScale(1, 1),
-			ZIndex = 7,
-			Parent = b,
-		})
+		-- A pictogram (UI/Icons.lua) for the dock's glyph ids (X / CLS / MSK); the glyph is the text fallback.
+		-- Cut-outs take the tile's colour; the icon's ZIndex follows the button (7 and up).
+		local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
+		local ids = { X = "close", CLS = "classes", MSK = "avatar" } :: { [string]: string }
+		local icon = Icons.draw(b, ids[glyph] or glyph, math.floor(size * 0.62), fg, bg, glyph)
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
 	end
 	local l = UI.text({
 		Text = label,
@@ -818,9 +941,11 @@ function MetaScene.open(tab: string?)
 					pg:Destroy()
 					previewGun = nil
 					previewGunKey = nil
-					savedWrapColor = nil
-					savedWrapMaterial = nil
+					savedWrap = nil
 				end
+			end
+			if customize and updateStage() then
+				tweenCamera(stageCamera(), Config.MetaCameraTweenSec)
 			end
 			stepCamera()
 		end
@@ -844,6 +969,8 @@ function MetaScene.close()
 	customize = false
 	dragging = false
 	preview.reset()
+	clearStage()
+	previewWeaponId = nil
 	setHubTagVisible(true)
 	if gui then
 		gui:Destroy()
@@ -1021,7 +1148,11 @@ function MetaScene.init()
 		then
 			local dx = input.Position.X - dragLastX
 			dragLastX = input.Position.X
-			dragYaw -= dx * Config.MetaDragSensitivity
+			if customize then
+				stageYaw -= dx * Config.MetaDragSensitivity -- CUSTOMIZE: the drag turns the gun
+			else
+				dragYaw -= dx * Config.MetaDragSensitivity
+			end
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input: InputObject)

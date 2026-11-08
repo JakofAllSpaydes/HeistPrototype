@@ -14,6 +14,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local PurchaseSheet = require(script.Parent:WaitForChild("PurchaseSheet"))
 local BoostDefs = require(Shared:WaitForChild("BoostDefs"))
@@ -390,7 +391,7 @@ local function openCreate(v: any)
 	end)
 
 	-- Round 18: the boosts row is live. POWER / CASH / LUCKY (BoostDefs) and REVIVE TOKENS, drawn like the hub's
-	-- chips: the glyph, then either the live timer (active, in the boost's color) or the cheapest price; tokens show
+	-- chips: the pictogram, then either the live timer (active, in the boost's color) or the cheapest price; tokens show
 	-- the count you hold. A tap opens the purchase sheet on that boost's durations (or the token packs); the card
 	-- stays open behind it.
 	local boosts = UI.frame({
@@ -412,15 +413,10 @@ local function openCreate(v: any)
 		b.Name = id
 		UI.corner(b, S(6))
 		UI.stroke(b, color, S(1.5), 0)
-		UI.text({
-			Text = glyph,
-			Font = Theme.Fonts.display,
-			TextSize = S(18),
-			TextColor3 = color,
-			Position = UDim2.fromOffset(0, S(4)),
-			Size = UDim2.new(1, 0, 0, S(22)),
-			Parent = b,
-		})
+		-- The boost's pictogram (UI/Icons.lua, keyed by the BoostDefs id; tokens -> revive); `glyph` is the fallback.
+		local icon = Icons.draw(b, if id == "tokens" then "revive" else id, S(22), color, Theme.Colors.panel, glyph)
+		icon.AnchorPoint = Vector2.new(0.5, 0)
+		icon.Position = UDim2.new(0.5, 0, 0, S(4))
 		local sub = UI.text({
 			Text = "",
 			Font = Theme.Fonts.display,

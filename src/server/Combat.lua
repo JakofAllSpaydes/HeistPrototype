@@ -263,6 +263,30 @@ function Combat.init()
 		rememberMag(PlayerState.get(player), mag)
 	end)
 
+	-- Art pass: the shooter's aim pitch / ADS / reload, as character attributes every client's GunAnim reads.
+	-- Cosmetic only; values are clamped and nothing reads them for gameplay.
+	Remotes.GunPose.OnServerEvent:Connect(function(player: Player, pose: any)
+		local char = player.Character
+		if not char or typeof(pose) ~= "table" then
+			return
+		end
+		local pitch = tonumber(pose.pitch)
+		if pitch then
+			char:SetAttribute("GunPitch", math.clamp(math.round(pitch), -90, 90))
+		end
+		char:SetAttribute("GunAds", pose.ads == true)
+		local reload = tonumber(pose.reload)
+		if reload then
+			if reload > 0 then
+				char:SetAttribute("GunReloadSec", math.clamp(reload, 0.05, 10))
+				char:SetAttribute("GunReloadShell", pose.shell == true)
+				char:SetAttribute("GunReloadAt", Workspace:GetServerTimeNow())
+			else
+				char:SetAttribute("GunReloadAt", nil)
+			end
+		end
+	end)
+
 	Remotes.FireShot.OnServerEvent:Connect(
 		function(player: Player, origin: any, direction: any, _clientTime: any, mag: any)
 			if typeof(origin) ~= "Vector3" or typeof(direction) ~= "Vector3" then

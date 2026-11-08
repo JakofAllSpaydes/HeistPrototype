@@ -144,9 +144,46 @@ local function inPool(pool: { string }?, kind: string): boolean
 	return false
 end
 
+-- Round 19h: no minigame twice in a row. `lastGame` is the last minigame any job used; `lastFor` the last one per
+-- job type (SILENCE THE ALARM, RAID THE OFFICE, a plain minigame job), so the next alarm is never the same panel.
+local lastGame: string? = nil
+local lastFor: { [string]: string } = {}
+
+local function rememberGame(game_: string, category: string)
+	lastGame = game_
+	lastFor[category] = game_
+end
+
+-- A random pick from `pool` avoiding the last minigame overall and the last for `category` (falls back to avoiding
+-- just the category's last, then to anything, when the pool is too small).
+local function pickFresh(pool: { string }, category: string): string?
+	if #pool == 0 then
+		return nil
+	end
+	for pass = 1, 3 do
+		local options = {}
+		for _, g in pool do
+			local repeatAny = pass == 1 and g == lastGame
+			local repeatHere = pass <= 2 and g == lastFor[category]
+			if not repeatAny and not repeatHere then
+				table.insert(options, g)
+			end
+		end
+		if #options > 0 then
+			return options[math.random(#options)]
+		end
+	end
+	return pool[math.random(#pool)]
+end
+
 -- Weighted roll over Config.SideJobKindWeights ∩ the spot's pool. The vault only when it can be drawn this wave.
+-- A minigame kind that was the last minigame played sits out this roll (Round 19h).
 local function rollKind(pool: { string }?): string
+	local avoid = true
 	local function weight(kind: string, w: number): number
+		if avoid and isMinigame(kind) and (kind == lastGame or kind == lastFor.minigame) then
+			return 0
+		end
 		local off = CrewCall.office
 		if kind == "office" and not (off and off.available()) then
 			return 0
@@ -163,6 +200,12 @@ local function rollKind(pool: { string }?): string
 	for kind, w in Config.SideJobKindWeights do
 		total += weight(kind, w)
 	end
+	if total <= 0 then
+		avoid = false
+		for kind, w in Config.SideJobKindWeights do
+			total += weight(kind, w)
+		end
+	end
 	local r = math.random() * total
 	for kind, w in Config.SideJobKindWeights do
 		r -= weight(kind, w)
@@ -170,7 +213,14 @@ local function rollKind(pool: { string }?): string
 			return kind
 		end
 	end
-	return "hack"
+	-- Round 19h: the plain hold-to-HACK job is out of the rotation; a spot whose pool rolls nothing gets a minigame.
+	local games = {}
+	for _, name in Room.PropNames do
+		if (Config.SideJobKindWeights :: any)[name] and (Config.SideJobKindWeights :: any)[name] > 0 then
+			table.insert(games, name)
+		end
+	end
+	return pickFresh(games, "minigame") or "capture"
 end
 
 local function cylinder(
@@ -379,7 +429,7 @@ local function pickAlarmGame(): string
 			table.insert(pool, name)
 		end
 	end
-	return if #pool > 0 then pool[math.random(#pool)] else "Keypad"
+	return pickFresh(pool, "alarm") or "Keypad"
 end
 
 -- `forceKind` skips the roll (the forced vault draw, debug); `forceGame` picks SILENCE THE ALARM's minigame.
@@ -404,11 +454,21 @@ function CrewCall.trigger(forceKind: string?, forceGame: string?)
 			officeId, officeLabel, officeFront = off.claim()
 		end
 		if officeId then
-			local pool = Config.OfficeMinigames
-			alarmGame = forceGame or pool[math.random(#pool)]
+			alarmGame = forceGame or pickFresh(Config.OfficeMinigames, "office") or "Lockpick"
 		else
-			kind = "hack" -- nothing to raid after all
+			kind = rollKind(spot and spot.pool) -- nothing to raid after all
+			if kind == "office" or kind == "alarm" then
+				kind = "capture"
+			end
 		end
+	end
+	-- Round 19h: remember which minigame this job uses so the next one differs.
+	if kind == "alarm" and alarmGame ~= "" then
+		rememberGame(alarmGame, "alarm")
+	elseif kind == "office" and alarmGame ~= "" then
+		rememberGame(alarmGame, "office")
+	elseif isMinigame(kind) then
+		rememberGame(kind, "minigame")
 	end
 	local copy = copyFor(kind, alarmGame, officeLabel)
 	local radius = if kind == "capture" then Config.SideJobCaptureRadius else Config.SideJobBeaconRadius
