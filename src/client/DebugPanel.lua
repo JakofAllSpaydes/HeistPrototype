@@ -447,6 +447,57 @@ local function build()
 	btn(r11, "Stats", 0.4, function()
 		send("MinigameStats")
 	end, Theme.Colors.gold)
+	-- Brief 8: HUB (the warehouse: teleports, the range's dummies and moving targets, the garage, the pads).
+	UI.text({
+		Text = "HUB",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.amber,
+		Size = UDim2.new(1, 0, 0, S(16)),
+		LayoutOrder = 29,
+		Parent = panel,
+	})
+	local rHub1 = row(panel, 29.1, rh)
+	btn(rHub1, "To hub", 0.25, function()
+		send("TeleportHub")
+	end, Theme.Colors.blue)
+	btn(rHub1, "To range", 0.25, function()
+		send("TeleportRange")
+	end, Theme.Colors.blue)
+	btn(rHub1, "Reset dummies", 0.25, function()
+		send("ResetDummies")
+	end)
+	btn(rHub1, "Open garage", 0.25, function()
+		send("OpenGarage")
+	end, Theme.Colors.amber)
+	local rHub2 = row(panel, 29.2, rh)
+	for pad = 1, 4 do
+		local b = btn(rHub2, "Force pad " .. pad, 0.25, function()
+			send("ForcePad", pad)
+		end, Theme.Colors.gold)
+		b.TextSize = S(9)
+	end
+	-- Spawn at range: the archetype row, ELITE and the boss (a moving target that stays in the range).
+	local rangeElite = false
+	local rHub3 = row(panel, 29.3, rh)
+	local rHub4 = row(panel, 29.4, rh)
+	for i, e in Enemies.List do
+		local b = btn(if i <= 4 then rHub3 else rHub4, e.name, 0.25, function()
+			send("RangeSpawn", (if rangeElite then "elite:" else "") .. e.id)
+		end, Color3.fromHex(e.color):Lerp(Theme.Colors.text, 0.45))
+		b.TextSize = S(9)
+	end
+	local rHub5 = row(panel, 29.5, rh)
+	toggles.rangeElite = btn(rHub5, "ELITE", 0.5, function()
+		rangeElite = not rangeElite
+		local b = toggles.rangeElite
+		if b then
+			b.TextColor3 = if rangeElite then Theme.Colors.gold else Theme.Colors.text
+		end
+	end)
+	btn(rHub5, "Range boss", 0.5, function()
+		send("RangeSpawn", "boss")
+	end, Theme.Colors.red)
 	-- Brief 7: MAP (THE BANK's nodes and doors).
 	UI.text({
 		Text = "MAP",

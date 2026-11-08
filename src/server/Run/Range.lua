@@ -393,6 +393,24 @@ function Range.spawnEnemy(archetype: string, elite: boolean): Model?
 	return model
 end
 
+-- TITAN in the range (debug Spawn at range > Boss): the same moving-target rules.
+function Range.spawnBoss(): Model?
+	local view = hubMap().view
+	local r = view and view.range
+	if not r then
+		return nil
+	end
+	local p = r.cframe.Position
+	local at = Vector3.new(p.X, Ground.y(p + Vector3.new(0, 4, 0), p.Y - r.size.Y / 2), p.Z)
+	local Boss = require(script.Parent:FindFirstChild("Boss") :: ModuleScript) :: any
+	local model = Boss.spawn(Config.BossId, 1, at)
+	if model then
+		spawned[model] = true
+		Log.event("Range", "debug spawned the boss in the range")
+	end
+	return model
+end
+
 local function anyoneIn(): boolean
 	for _, p in Players:GetPlayers() do
 		if PlayerState.get(p).inRange then

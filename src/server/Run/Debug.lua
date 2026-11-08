@@ -50,6 +50,8 @@ local MapLoader = require(script.Parent.MapLoader)
 local Doors = require(script.Parent.Doors)
 local Spawner = require(script.Parent.Spawner)
 local EnemyPath = require(script.Parent.EnemyPath)
+local Runs = require(script.Parent.Parent.Runs)
+local HubMap = require(script.Parent.Parent.HubMap)
 
 local Debug = {}
 
@@ -59,7 +61,63 @@ local function toast(player: Player, text: string)
 	Remotes.Juice:FireClient(player, "Toast", { text = text })
 end
 
+-- Brief 8: the hub slot's range (the debug range commands always act on the hub's range).
+local function range(): any
+	return Runs.mod(Runs.hub, "Range")
+end
+
 local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
+	-- Brief 8 HUB: teleports, the dummies, the garage, the pads, a moving target in the range.
+	TeleportHub = function(player, _state, _args)
+		if Runs.inRunCycle(player) then
+			toast(player, "IN A RUN")
+			return
+		end
+		local cf = Hub.spawnCFrame(player)
+		if cf and player.Character then
+			player.Character:PivotTo(cf)
+		end
+	end,
+	TeleportRange = function(player, _state, _args)
+		if Runs.inRunCycle(player) then
+			toast(player, "IN A RUN")
+			return
+		end
+		local r = HubMap.view and HubMap.view.range
+		if not r or not player.Character then
+			toast(player, "NO RANGE NODE")
+			return
+		end
+		-- Just inside the door, facing the dummies.
+		local door = HubMap.view and HubMap.view.rangeDoor
+		local at = if door then door.part.Position + door.part.CFrame.LookVector * 8 else r.cframe.Position
+		local floor = r.cframe.Position.Y - r.size.Y / 2
+		local p = Vector3.new(at.X, floor + 3, at.Z)
+		local look = if door then door.part.CFrame.LookVector else Vector3.new(-1, 0, 0)
+		player.Character:PivotTo(CFrame.lookAt(p, p + look * Vector3.new(1, 0, 1)))
+	end,
+	ResetDummies = function(player, _state, _args)
+		range().resetAll(player.Name)
+	end,
+	OpenGarage = function(_player, _state, _args)
+		Hub.openGarage()
+	end,
+	ForcePad = function(_player, _state, args)
+		Queue.forcePad(math.clamp(math.floor(tonumber(args) or 1), 1, 4))
+	end,
+	RangeSpawn = function(player, _state, args)
+		local s = tostring(args)
+		local model: Model? = nil
+		if s == "boss" then
+			model = range().spawnBoss()
+		else
+			local elite = string.sub(s, 1, 6) == "elite:"
+			model = range().spawnEnemy(if elite then string.sub(s, 7) else s, elite)
+		end
+		if not model then
+			toast(player, "NO RANGE NODE")
+		end
+	end,
 	-- Brief 7 MAP: re-read Workspace.Bank.Nodes after a Studio drag, without restarting.
 	-- Brief 7 MAP: stand on the zone's first bag spot (THE BANK; works in the hub or a run on any map).
 	TeleportZone = function(player, _state, args)

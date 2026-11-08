@@ -19,6 +19,10 @@ where `MarketplaceService` goes later.
 Brief 7 adds THE BANK as map 2 beside the arena: a builder-made bank with seven zones that open on door objectives,
 the vault job on its real wheel door with a tunnel ring, spawn boxes that follow the crew and `PathfindingService`
 navigation on every map.
+Brief 8 replaces the generated yard with a builder-made warehouse hub: four queue pads with four independent parties
+(runs on different maps play at the same time on one server), the three customization booths with mannequins in your
+own loadout, MARLOW's board on the wall, the van leaving through a roll-up garage on run start, and a walled training
+range where the helicopter bay was.
 
 State as of **7 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
@@ -36,9 +40,11 @@ wave 10), 19f (the glass offices as mini vaults), 19g (door waves 2 / 5 / 8 / 12
 pass (stand-in gun models, a procedural hold / aim / fire / reload animation, 3D viewport icons for guns and
 cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h (feedback on it: the gun-only
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
-screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade), 19m (the premium scene sets moved under the arena so the pass lights up at once) 19n (the hub nameplate: level badge, name, class block, best wave) and 19o (the game-wide style pass: Oswald / Builder Sans, sharp corners, bigger text, fuller HUD tiles; seen by Jack in Studio).
+screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade), 19m (the premium scene sets moved under the arena so the pass lights up at once) 19n (the hub nameplate: level badge, name, class block, best wave) and 19o (the game-wide style pass: Oswald / Builder Sans, sharp corners, bigger text, fuller HUD tiles; seen by Jack in Studio), and the
+brief 8 build (Round 20: the warehouse hub, concurrent runs, the departure beat, the training range; one commit per
+step, built unplayed: the hub's nodes were authored from the asset's geometry offline, so expect drags).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
-list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
+list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list" and the "Brief 8 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
 where those changes came from); the full verify lists have not been walked end to end.
 
@@ -47,6 +53,8 @@ where those changes came from); the full verify lists have not been walked end t
 1. `aftman install` (once) so `rojo`, `stylua` and `luau-lsp` resolve.
 2. `rojo serve` in this folder.
 3. In Studio: Rojo plugin → Connect. Delete the default `Baseplate` once in edit mode (the server also removes it). Press Play.
+   Brief 8 adds `Workspace.Hub` to `default.project.json`: restart `rojo serve` once after pulling it (a running serve
+   keeps the old tree).
 
 Everything the designer tunes lives in `src/shared/Config.lua`. Change a number, Rojo syncs it, play again.
 The map is a Rojo-synced model (`src/map/Room.model.json`, regenerate with `lune run tools/genmap.luau`; `lune` is in
@@ -55,14 +63,20 @@ THE BANK (brief 7) is `src/map/Bank.rbxm` (geometry, `lune run tools/importbank.
 `src/map/Bank.nodes.model.json` (the nodes). `lune run tools/genbanknodes.luau` wrote the first node set and is not
 run again; after moving nodes in Studio, save `Workspace.Bank.Nodes` as `.rbxmx` and run
 `lune run tools/exportnodes.luau Nodes.rbxmx`.
+The hub (brief 8) is `src/map/Hub.rbxm` (`lune run tools/importhub.luau <place>`; Studio's zstd saves go through
+`node tools/rbxl-uncompress.js <in.rbxl> <out.rbxl>` first) plus `src/map/Hub.nodes.model.json` (written once by
+`lune run tools/genhubnodes.luau`). After moving hub nodes, save `Workspace.Hub.Nodes` as `.rbxmx` and run
+`lune run tools/exportnodes.luau Nodes.rbxmx hub` (a whole `.rbxlx` place exports both maps).
 
-You spawn in the **hub** (the yard south of the arena) with the hub HUD, 10,000 Gold on a fresh profile, the M1911 as
-starter, INITIATE equipped and the plain mask, plus (brief 6) a fake `R$ 100,000` balance and 3 revive tokens.
-MARLOW's job board stands by a planning table west of the spawn. Profiles need `Enable Studio Access to API Services` on the place
-(Game Settings → Security); without it the server warns once and keeps an in-memory profile for the session. Walk onto
-the blue queue pad in front of the arena door (or press PLAY) to create a match. The three customization stations stand
-along the west wall, the six minigame props and the tier pad along the east wall. Party and downed / revive lines need
-Studio's Local Server with 2–4 players; everything else works solo.
+You spawn in the **hub** (the warehouse, baked at `HubOrigin` (0, 0, 1000)) on the floor star facing the four yellow
+queue pads, with the hub HUD, 10,000 Gold on a fresh profile, the M1911 as starter, INITIATE equipped and the plain
+mask, plus (brief 6) a fake `R$ 100,000` balance and 3 revive tokens. MARLOW's job board is the bulletin board on the
+north wall between pads 2 and 3. Profiles need `Enable Studio Access to API Services` on the place (Game Settings →
+Security); without it the server warns once and keeps an in-memory profile for the session. Walk onto any pad (or
+press PLAY) to create a match. The WEAPONS booth is on the west wall, CLASSES on the east, AVATAR on the south behind
+the spawn; the van waits in the north-east garage; the north-west door opens onto the training range with the
+dummies, the seven minigame props and the tier pad. Party and downed / revive lines need Studio's Local Server with
+2–4 players; everything else works solo.
 
 ## Controls
 
@@ -77,12 +91,13 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Q / E / Z | The equipped class's three abilities, all fifteen live (INITIATE frag / adrenaline / claymore, ENGINEER turret / barricade / overclock, DOC stim shot / med bag / healing turret, SHARPSHOOTER eagle vision / dead eye / flashbang, TORCH molotov / flame turret / oil drum). Cooldowns in `AbilityCooldown` (less ABILITY COOLDOWN). Thrown ones (frag, molotov, flashbang) land where the cursor points up to `ThrowMaxRange` (100), locking on and homing to the enemy under the cursor (or the one the camera ray just missed, or the one nearest the point: `ThrowAssist*`); placeables stand `StructurePlaceDistance` ahead. A `x2` on a tile is a second charge (INITIATE mastery II). |
 | P | Vote to pause (in a wave, the intermission or the dealer break; solo pauses at once). Also on the dealer card and the scoreboard. RESUME on the overlay (anyone). |
 | T / V / F at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
-| F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
+| F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` at a booth's counter edge (WEAPONS / CLASSES / AVATAR, `BoothPromptDistance`) or at MARLOW's board; in the range `OPEN` on a minigame prop, `TIER n` on the tier pad. |
+| (walk into the range) | Brief 8: the north-west door of the warehouse. Inside you are armed with your starter gun (fire, reload, ADS, abilities, Ctrl camera lock) and the HUD switches to the range layout; walking out stows it. Nothing pays or scores. `R` at a dummy's sign (`RESET`) zeroes its `DMG · DPS · HS` tag. |
 | (walk up to a bag) | No button: stand within `BagStartRadius` of a cash or gold bag and it fills over `BagChannelSec`, then it is yours (cash to everyone / the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
 | F at the vault door | `CRACK` the vault while CRACK THE VAULT is the open side job: opens the Safe dial at the wave bracket's tier. |
 | Tab (hold) | The scoreboard: WAVE · TIME · stars · BANKED · CASH and one row per member in MVP order; the game keeps running behind it. Mobile: tap the wave bar (the `≡` chip beside N LEFT), tap again or anywhere outside to close. |
-| Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
-| PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
+| Walk onto a queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. Brief 8: four pads, one party each; a pad whose party is in a run refuses entry; a party whose map is busy waits on its pad (`MAP BUSY · <name> IS INSIDE`). |
+| PLAY (hub HUD) | Walks you to the nearest open pad (no party, or a party with room). Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
 | SHOP tile / Gold + (hub HUD) | Brief 6: the store window over a dark dim, scrolled to FEATURED (the Gold + scrolls to GOLD). The rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD) scrolls the one page to that section; LEAVE, Esc or a tap outside the window closes it (Esc closes an open detail sheet first). A red dot on the SHOP tile means banked crate opens or the VIP gift wait; the tile then opens on that section. VIEW CRATE / VIEW BUNDLE / VIEW VIP on customization tiles open it on that item. |
 | PASS / JOBS (hub HUD, right-center) | The battle pass scene and the JOBS board. F at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item opens the pass; CLAIM IN PASS on the summary takes you back to the hub first and opens it there (Round 19c). Esc / LEAVE / BACK closes either. |
 | $ + (match HUD cash row) | Brief 6: the cash-pack sheet (+$5,000 / +$20,000 / +$100,000 for fake Robux); the game keeps running behind it. Short of cash at the dealer, the same sheet opens (REROLL offers the R$ RESTOCK). |
@@ -94,7 +109,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
 | Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
-| Backtick | Debug panel (brief 7 adds MAP: Show nodes with per-type toggles, Recompute nodes, Teleport to zone, Open D1–D4, Close all doors, Open / Gas / Seal vault, Spawn at a chosen box (with the archetype row and ELITE), Pin the crew zone / AUTO, Path debug; Stats adds the MAP block; Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
+| Backtick | Debug panel (brief 8 adds HUB: To hub / To range, Reset dummies, Open garage (the departure beat with nobody in the van), Force pad 1–4, Spawn at range (the archetype row, ELITE, Range boss); brief 7 adds MAP: Show nodes with per-type toggles, Recompute nodes, Teleport to zone, Open D1–D4, Close all doors, Open / Gas / Seal vault, Spawn at a chosen box (with the archetype row and ELITE), Pin the crew zone / AUTO, Path debug; Stats adds the MAP block; Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
 Hub HUD on mobile landscape: dock tiles 76×68, PLAY 44px, SHOP and INVITE as icon tiles, queue card at 80%; the
@@ -836,6 +851,56 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   to another track when one plays through, and duck to `MusicDuck` under the boss cutscene. Every clip is preloaded at
   join.
 
+**The warehouse hub (brief 8).** The generated yard is gone; the hub is the builder's warehouse, `src/map/Hub.rbxm`
+(`Workspace.Hub.Geometry`, `tools/importhub.luau`: the helicopter dropped by `HubImportDrop`, the rigs' Animate
+scripts stripped, the parked van named `Van`, everything moved so the floor star sits on `HubOrigin`), plus its
+nodes (`src/map/Hub.nodes.model.json` → `Workspace.Hub.Nodes`, the brief 7 spec: Spawn, QueuePads ×4, Stations ×3,
+Board, Van, GarageDoor, RangeDoor, Range, Dummies ×3, PropSpots ×7, TierPad). `HubMap.lua` reads them (one
+`[GHS Map] hub …` line each, `ERROR` lines for a broken one) into `Room.forMap("Hub")`; debug Show nodes draws
+them (Range is a volume, off by default like Zones). The arena is a standalone room now (no yard, no door): its
+`Workspace.Room.Nodes` hold a Van (`DriveIn` 50) and a Lineup node just inside the south wall.
+- **Concurrent runs (`Runs.lua`, `Run/`).** Every run-scoped server module lives in `src/server/Run/`; `Runs` clones
+  that folder once per live map at startup (`Run_Arena`, `Run_TheBank`), so each map has its own World, spawner,
+  heat, bags, boss, dealer, pause, doors, vault and run loop (`Run/Main`, the old GameLoop body). The `Run/` template
+  is the hub slot (World.state Hub forever; the range runs there). `RemoteRouter` + `Run/SlotRemotes` send each
+  client call to the player's slot (the one whose party holds them, else the hub); `PlayerState` syncs each player
+  from their own run's World; run events, line-ups, votes, the pause and the scoreboard go to that party only. Shared
+  modules (profiles, store, pass, Jobs, Hub, Queue, PlayerState) stay single. Runs on different maps overlap freely;
+  the same map is capped by `MapInstancesPerMap` (1: the geometry is one copy; above 1 is logged and capped).
+- **Four queue pads (`Queue.lua`).** One party per pad (the Round 11 zone logic per pad): the billboard over each
+  pad's back edge reads `PAD 2 · THE BANK · NORMAL`, the slots, the countdown, then `MATCH IN PROGRESS · WAVE 7`
+  (the run's wave). A party whose map is busy waits on its pad with `MapBusyText` (`MAP BUSY · <name> IS INSIDE`)
+  and starts the moment the map frees (`MapBusyAutoStart`; false: its countdown restarts). The party card under
+  PLAY and the join toasts name the pad; PLAY AGAIN re-forms the party on its pad. Logs: `[GHS Queue] pad N create
+  <map> <difficulty> owner <name>` / `start` / `busy-wait` / `reset`.
+- **Booths, board, garage.** OPEN at each booth's counter edge (the Station node) opens the customization scene on
+  that tab. Each booth's rig is replaced, on each client, by a copy of that player's own character (`BoothMannequins`:
+  mask, class idle, starter gun and wrap; re-dressed on every equip; `BoothMannequin`). MARLOW's board is the
+  warehouse's bulletin board (the Board node): a beacon strip over it pulses until today's board is seen, F (OPEN)
+  opens the Jobs board with the camera push. The garage and the range door are roll-up shutters the hub builds in the
+  asset's openings (the garage down, the range up: `RangeDoorOpen`; the RANGE prompt at the door is only a sign).
+- **Run start from the hub (`Hub.depart`).** `HubDepartSec` (2.5) before the map's drive-in: the party fades into the
+  asset's van in the garage, the shutter rolls up (everyone in the hub hears it), the van pulls out `HubVanDriveStuds`
+  with a dust ring under a short chase cam (party only), then the cut to the map's own drive-in (`IntroSec` and
+  `RunStartBeats` now count from the cut). The map's van is a copy of the hub van riding in `DriveIn` /
+  `VanDriveInStuds` from behind the map's Van node. The garage rolls back down `GarageCloseSec` after the van has gone
+  and the van is parked again; two parties leaving close together keep the door up. Run end: TO LOBBY lands on the
+  star, PLAY AGAIN on the pad.
+- **The training range (`Run/Range.lua`, the hub slot).** Step over the bay's threshold (the Range node) and the server
+  arms you: the starter gun at Common at its Armory level with a full mag, all three abilities (`RangeAbilities`);
+  the HUD goes to the range layout (`HUD.setMode("range")`: held slot, ammo, crosshair, hit markers, the camera lock,
+  the ability column, the mobile fire / ADS / reload buttons; no buy column, wave bar, heat, cash, Banked or boost
+  chips). Step out: the gun is stowed, your placeables and fields go, HP refills. Nothing in the range scores (the hub
+  slot pays no cash, counts no kills, feeds no Jobs or mastery) and nothing reaches a hub player outside it. Three
+  dummies at the far end face the door (Enemy rigs flagged `dummy`: every hit flinches, sparks, shows its number and
+  the element statuses; they never die, move or attack), each with `DMG 1,240 · DPS 312 · HS 40%` over it (total
+  since reset, DPS over `RangeDpsWindowSec`, headshot share of bullet hits) and a RESET prompt (R) on its sign. The
+  middle one is the plated sponge (`DummyHeavyPlates`, elite look): plates fly off at the Heavy's shares of
+  `DummyHp` and regrow `DummyPlateRegrowSec` after the last one fell. The seven minigame props and the tier pad stand
+  along the bay's north and south walls and work as before. Debug Spawn at range puts in a moving target that only
+  goes for players in the range, is pulled back if it wanders out and is cleared when the range empties. Logs:
+  `[GHS Range] <name> enter / leave / reset dummy N`.
+
 ## Verifying a change
 
 ```
@@ -1188,11 +1253,53 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
     prompt holds with a touch, the truss climbs with touch, the debug MAP group sits in the DBG panel.
 
+### Brief 8 verify list
+
+Written and built (`stylua`, `luau-lsp`, `rojo build`) one commit per step, not yet run in Studio. Restart `rojo serve`
+first (the project tree gained `Workspace.Hub`). Done-line: a fresh join lands in the warehouse; two parties on two
+pads run the arena and THE BANK at the same time on a 2-player Local Server and both come back to the hub; a solo
+player shoots every owned gun at a dummy in the range and plays every test prop there.
+
+1. Nodes: in edit mode `Workspace.Hub.Nodes` shows every node as a translucent box (select `Workspace.Hub`, F to fly
+   there). Check the pads on the yellow squares, the booth prompts on the stage fronts, the board on the corkboard,
+   the van node inside the garage (nose to the door), the garage and range door boxes in the openings, the dummies at
+   the west end of the bay, the props along its north wall and the tier pad by its south wall. Drag, save the Nodes
+   folder as `.rbxmx`, `lune run tools/exportnodes.luau Nodes.rbxmx hub`. The output has `[GHS Map] hub …` lines,
+   `[GHS Runs] 2 run slots: Arena, TheBank`, `[GHS Queue] 4 queue pads`, `[GHS Range] 3 dummies` and no `ERROR`.
+2. Fresh join: on the star facing the pads, hub HUD, `[GHS Profile] … loaded`, the nameplate, the board's beacon
+   pulsing on the north wall, hub music. No yard, no arena door, no `Baseplate`.
+3. Pads: PLAY walks you onto the nearest open pad; walking onto any pad opens Create Match for it; the billboard reads
+   `PAD N · MAP · DIFFICULTY`, the countdown, then `MATCH IN PROGRESS · WAVE N` while its party plays; walking onto a
+   pad in progress pushes you off. Local Server, 2 players: P1 creates THE BANK on pad 1 (party of 1), P2 creates the
+   ARENA on pad 3 → both runs play at once (`[GHS Queue] pad 1 start TheBank`, `pad 3 start Arena`); each sees only
+   its own wave bar, banners, scoreboard and pause. P2 creates THE BANK while P1 is inside → `MAP BUSY · P1 IS
+   INSIDE` and `busy-wait`; it starts the moment P1's summary closes.
+4. Booths: F (OPEN) at each booth's front opens the scene on its tab; each booth's rig wears your mask, plays your
+   class idle and holds your starter gun (equip another mask / class / gun → it re-dresses); P2 sees their own.
+5. Board: F at the bulletin board opens the Jobs board with the camera push onto it; JOBS on the HUD does the same.
+6. Run start: the party fades, the garage shutter rolls up with the shutter sound, the van pulls out under a chase cam,
+   cut to THE BANK's (or the arena's: in through the room's south strip, braking by the line) drive-in; a player in the
+   hub sees the van leave and the door come down 3 s later, the van back in place. Run end: TO LOBBY → the star.
+7. Range: walk through the north-west door → armed (held slot, ammo, crosshair, abilities, CAMERA LOCKED chip; no buy
+   column, wave bar, cash or heat), `[GHS Range] <name> enter`; shoot a dummy → numbers, flinch, `DMG · DPS · HS`;
+   headshots on the red head raise HS; the middle dummy's plates fly
+   off and come back 5 s later; R at a sign zeroes it (`reset dummy N`); Q / E / Z work, placeables vanish when you
+   walk out; walk out → the gun stowed, the hub HUD back, `leave`. The seven props and the tier pad open as before.
+   Debug HUB: To range, Spawn at range (Henchman, ELITE, Range boss) → it chases you inside only; Kill all clears it.
+8. Debug HUB: To hub / To range, Reset dummies, Open garage, Force pad N (an open party on that pad starts now).
+9. Mobile (emulator, landscape): pads, booths, the board and the RANGE sign prompt with a tap; the fire / ADS / reload
+   and ability buttons appear only inside the range.
+
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
 `src/client` → StarterPlayerScripts.Client, `src/assets` → ReplicatedStorage.Assets, `src/map` → Workspace.Room
-(`Room.model.json`) and Workspace.Bank (`Bank.rbxm` as Geometry, `Bank.nodes.model.json` as Nodes).
+(`Room.model.json`, with the arena's Van / Lineup nodes) and Workspace.Bank (`Bank.rbxm` as Geometry,
+`Bank.nodes.model.json` as Nodes); brief 8 adds Workspace.Hub (`Hub.rbxm` as Geometry, `Hub.nodes.model.json` as
+Nodes). Brief 8: `src/server/Run/` holds every run-scoped module and is cloned per map at startup (`Runs.lua`); the
+shared modules (below, unmarked) sit in `src/server/`: GameLoop (the entry), Runs, RemoteRouter, HubMap, Hub, Queue,
+PlayerState, Profiles, Economy, RunEvents, Purchases, Grants, Shop, CrateOpen, Boosts, Vip, Pass, Jobs, Meta,
+Progression, Stats, Log. `Run/` also has Main (a slot's loop), Slot (its id and map), SlotRemotes and Range.
 
 Server modules: World (run state, the party, `fireRun`, payout accumulators, heat effects, the run clock, the boss
 view and the roster), Room (map refs including `Room.vault`), Stats, Profiles (DataStore), PlayerState (per-player run
@@ -1205,7 +1312,7 @@ Elements (element procs and statuses), Mastery (XP, tiers, kill passives), Deale
 entry point and kind registry), Grants (applies rewards, dupes), Shop (Remotes.Shop actions, bundles, boosts), CrateOpen,
 Boosts, Vip, Pass, Jobs, RunEvents (the run event bus), and brief 7: MapLoader (THE BANK's nodes, zones, the crew zone, the hatch
 and ladder link), Doors (door props, objectives, zone gates, the vault site), EnemyPath (pathfinding),
-Hub (yard dressing, stations, tier pad, resets, the nameplate attributes), Queue (zones, Create Match, party, countdown,
+Hub (brief 8: the warehouse: spawn, booth prompts and rig tags, the board, the shutters, the van and the departure beat, the range props and tier pad, the nameplate attributes), Queue (the four pads, Create Match, one party per pad, countdown, MAP BUSY,
 PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions), Minigames (sessions, log, stats, a tier override), Downed
 (down / revive / bleed-out / game over / sidearm), AllyCallout (teammate radio lines), RunStart, RunEnd (payout, XP award, summary), Squad (dummy crew for
 the sequences), Debug, Log; `GameLoop.server.lua` is the entry. All cash, Gold, HP, spawns, rolls, loot, minigame
@@ -1229,8 +1336,9 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main. Brief 6: PurchaseSheet, `sr
 Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, GoldTab, CrateScene),
 `src/client/Pass/` (PassScene, PassSummary), `src/client/Jobs/` (JobBoard, JobSummary), HUD/BoostChips. Brief 7:
 NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the open beat). Round 19d: Music (the
-soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`,
-`importbank.luau`, `genbanknodes.luau`, `exportnodes.luau`.
+soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothMannequins. Tools: `genmap.luau`,
+`importbank.luau`, `genbanknodes.luau`, `importhub.luau`, `genhubnodes.luau`, `exportnodes.luau`, `nodestyle.luau`,
+`rbxl-uncompress.js` (node).
 
 ## Changelog (playtest rounds)
 
@@ -1773,7 +1881,37 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
   class headers 20, boost timers, controls hint and camera chips up; `Theme.Desktop.tile` 80x90; the buy tile reads
   UPGRADE. Readability first: Jack rejected the first pass for tiny text.
 
+- **Round 20 (7 Nov) — brief 8 build: the warehouse hub.** One commit per step. (1) Concurrent runs: `src/server/Run/`
+  cloned per map by `Runs.lua`, client calls routed by `RemoteRouter` / `Run/SlotRemotes`, per-player sync from the
+  player's own World, four independent pad parties with the MAP BUSY wait (`MapInstancesPerMap`, `MapBusyAutoStart`,
+  `MapBusyText`). (2) The warehouse imported (`importhub.luau`, `HubOrigin`, `HubImportDrop`) with its first node set
+  (`genhubnodes.luau`), `HubMap.lua` → `Room.forMap("Hub")`, spawn on the star, the pads, booth prompts, the board,
+  the shutters; `exportnodes` serves both maps, Show nodes draws the hub. (3) The yard goes (`genmap`, the arena's
+  Van / Lineup nodes, removed `YardWidth`, `YardDepth`, `DoorWidth`, `StationSpacing`, `PropSpacing`,
+  `QueueZoneSize`, `QueueZoneCount`, `JobBoardPosition`), the departure beat (`HubDepartSec`, `GarageCloseSec`,
+  `HubDoorRollSec`, `HubVanDriveStuds`, `VanDriveInStuds`), the arrival van as a copy of the hub van, the booth
+  mannequins (`BoothMannequin`), the props and tier pad on their nodes. (4) The training range (`Run/Range.lua`:
+  arming, `HUD.setMode("range")`, `ClientState.combatOff`, no scoring in the hub slot, immortal dummies with the
+  readout and RESET, the plated dummy; `RangeAbilities`, `DummyCount`, `DummyScale`, `DummyHp`, `DummyHeavyPlates`,
+  `DummyPlateRegrowSec`, `RangeDpsWindowSec`). (5) Debug HUB group, the RANGE sign prompt, README.
+
 ## Open design notes (not built)
+
+- **Brief 8 notes and deviations (Round 20, unplayed).** The hub's nodes were authored from the asset read in Lune
+  (no Studio look), so expect drags. North is −Z in the warehouse: the pads and the board are on the north wall, the
+  garage opening is in the east wall (the brief's "north-east corner"), the range door in the west wall. The asset's
+  openings have no door panel, so the garage and range "roll-up doors" are shutters the hub builds (GarageDoor /
+  RangeDoor `Mesh` is empty: set it to a model name to use an asset part instead). The van was parked straddling the
+  garage opening; its node moves it fully inside, nose to the door, so the shutter can close. The dummies stand at the
+  far (west) end of the bay facing the door rather than on the striped pad by the door (that pad is the firing
+  line); the props stand along the bay's north wall, the tier pad by its south wall. Seven PropSpots (the seven
+  minigames, Cut included), not eight. Shutters and the van move on the server (everyone sees them) rather than as a
+  client-side animation. The arena's drive-in now uses a Van node inside the room (`DriveIn` 50) since there is no door
+  to drive through. `IntroSec` counts from the cut, so a run start is `HubDepartSec` longer. `MapInstancesPerMap`
+  above 1 is capped (the geometry is one copy). Range enemies are pulled back to the bay's centre when they wander
+  out (no PathfindingModifier wall). The booth mannequins are copies of your character (the store's mannequin way),
+  so the arms are not posed on the gun. The 105 CollectionService tags in the builder's place were dropped on import
+  (Lune cannot read them; nothing reads them). The Lighting of the builder's place (5 children) is not imported.
 
 - **Round 19f notes.** The office nodes were placed from the asset's geometry (the glass walls at z 63 and x ±77.3,
   the dividing wall at x 0, the carpet floors), not seen in Studio; a dry run of the door rule against `Bank.rbxm`
