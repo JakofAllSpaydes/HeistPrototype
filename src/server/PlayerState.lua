@@ -441,7 +441,9 @@ function PlayerState.applyCharacterStats(state: State)
 	else
 		hum.Health = math.clamp(hum.Health, 1, st.maxHP)
 	end
-	hum.WalkSpeed = if state.downed then Config.DownedWalkSpeed else st.moveSpeed
+	-- Brief 8: the warehouse is big; the hub (outside the range) walks at HubWalkSpeedMult.
+	local hubMult = if Runs.slotOf(state.player).isHub and not state.inRange then Config.HubWalkSpeedMult else 1
+	hum.WalkSpeed = if state.downed then Config.DownedWalkSpeed else st.moveSpeed * hubMult
 end
 
 -- Installed by Hub: where a freshly loaded character goes (nil = the SpawnLocation).

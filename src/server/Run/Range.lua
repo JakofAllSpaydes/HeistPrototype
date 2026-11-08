@@ -70,6 +70,7 @@ local function enter(player: Player)
 	-- The run start's record: the starter at Common at its Armory level, a full mag.
 	state.held = PlayerState.starterHeld(state)
 	PlayerState.refreshHeldVisual(state)
+	PlayerState.applyCharacterStats(state) -- run walk speed inside (the hub's is HubWalkSpeedMult)
 	state.dirty = true
 	Log.event("Range", "%s enter", player.Name)
 end

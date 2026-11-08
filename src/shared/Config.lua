@@ -959,6 +959,7 @@ local Config = {
 	GarageCloseSec = 3, -- the garage rolls back down this long after the van has gone (everyone sees it)
 	HubDoorRollSec = 1.2, -- a roll-up door's travel time
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
+	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	BoothWalkIn = true, -- walking onto a booth's orange half-circle opens the customization scene on its tab
 	BoothPromptDistance = 12, -- OPEN at a booth's counter edge reaches this far (the booths stand on a stage)
 	BoardPromptDistance = 12, -- OPEN at MARLOW's board
