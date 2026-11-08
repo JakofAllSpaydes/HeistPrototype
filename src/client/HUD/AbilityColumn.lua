@@ -44,6 +44,7 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = gui,
 	})
+	UI.mobileGrow(root, ClientState.isMobile) -- Round 24
 	UI.list(root, Enum.FillDirection.Vertical, S(profile.tilePad), Enum.HorizontalAlignment.Center)
 	local header = UI.text({
 		Text = "ABILITIES",

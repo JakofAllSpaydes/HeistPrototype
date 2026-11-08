@@ -38,6 +38,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Size = UDim2.fromOffset(S(360), hh + S(10) + slotH),
 		Parent = gui,
 	})
+	UI.mobileGrow(root, ClientState.isMobile) -- Round 24: the gun slots are buttons too
 
 	-- Health
 	local health = UI.frame({

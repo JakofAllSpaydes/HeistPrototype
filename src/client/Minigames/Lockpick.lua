@@ -144,7 +144,7 @@ function Lockpick.open(host: Frame.Host)
 		ZIndex = 8,
 		Parent = host.content,
 	})
-	Frame.press(host, tapArea, function()
+	Frame.press(host, { tapArea, host.zone }, function()
 		if os.clock() < stunUntil then
 			return
 		end

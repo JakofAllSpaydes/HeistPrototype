@@ -22,6 +22,7 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Parent = gui,
 	})
+	UI.mobileGrow(root, ClientState.isMobile) -- Round 24
 	UI.list(root, Enum.FillDirection.Vertical, S(profile.tilePad), Enum.HorizontalAlignment.Center)
 	UI.text({
 		Text = "BUY",

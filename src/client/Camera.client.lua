@@ -48,13 +48,17 @@ end
 
 -- Round 22: only touches that started on the right 60% of the screen drive the camera. The left side is the
 -- movement thumbstick; without this filter, dragging the joystick rotates the camera too.
-local cameraTouches: { [InputObject]: boolean } = {}
+-- Round 24: the filter runs once, when the touch begins. After that a tracked touch turns the camera whatever
+-- it slides over (gameProcessed is ignored on move), so a thumb on the stick, one on FIRE and a drag all work
+-- together. The hub turns too (touch never waited on RMB).
+local cameraTouches = ClientState.cameraTouches
+local assistFriction = 1 -- Round 24 aim assist: look sensitivity multiplier while the crosshair is on a target
 UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		rmbHeld = true
 	elseif input.UserInputType == Enum.UserInputType.Touch and not gameProcessed then
 		local vp = camera.ViewportSize
-		if input.Position.X > vp.X * 0.4 then
+		if input.Position.X > vp.X * Config.TouchCameraStartX then
 			cameraTouches[input] = true
 		end
 	end
@@ -67,10 +71,19 @@ UserInputService.InputEnded:Connect(function(input: InputObject)
 	end
 end)
 
-UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed: boolean)
+UserInputService.InputChanged:Connect(function(input: InputObject)
 	if input.UserInputType == Enum.UserInputType.MouseWheel then
 		if not ClientState.blocked() then
 			zoomStep(input.Position.Z)
+		end
+		return
+	end
+	local sens = (if ClientState.ads then Config.AdsSensitivityMult else 1) * assistFriction
+	if input.UserInputType == Enum.UserInputType.Touch then
+		-- Touch turns the camera in the hub and in combat alike; only a menu (blocked) holds it.
+		if cameraTouches[input] and not pinching and not ClientState.blocked() then
+			yaw -= input.Delta.X * Config.TouchSensitivity * sens
+			pitch = math.clamp(pitch - input.Delta.Y * Config.TouchSensitivity * sens, PITCH_MIN, PITCH_MAX)
 		end
 		return
 	end
@@ -79,18 +92,9 @@ UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed
 	if ClientState.isMouseFree() and not dragging() then
 		return
 	end
-	local sens = if ClientState.ads then Config.AdsSensitivityMult else 1
 	if input.UserInputType == Enum.UserInputType.MouseMovement then
 		yaw -= input.Delta.X * Config.MouseSensitivity * sens
 		pitch = math.clamp(pitch - input.Delta.Y * Config.MouseSensitivity * sens, PITCH_MIN, PITCH_MAX)
-	elseif
-		input.UserInputType == Enum.UserInputType.Touch
-		and not gameProcessed
-		and not pinching
-		and cameraTouches[input]
-	then
-		yaw -= input.Delta.X * Config.TouchSensitivity * sens
-		pitch = math.clamp(pitch - input.Delta.Y * Config.TouchSensitivity * sens, PITCH_MIN, PITCH_MAX)
 	end
 end)
 
@@ -171,6 +175,146 @@ local function setHidden(char: Model?, hidden: boolean)
 	end
 end
 
+-- Round 24 aim assist (touch / gamepad; mouse too with Config.AimAssistMouse). The enemy nearest the crosshair
+-- inside AimAssistConeDeg pulls the camera toward its torso; with the crosshair held above AimAssistHeadBias of
+-- the way from torso to head on screen, the pull goes to the head instead. Near a target, look input slows
+-- (AimAssistFriction) so the crosshair sticks. Firing and ADS pull harder.
+local assistParams = RaycastParams.new()
+assistParams.FilterType = Enum.RaycastFilterType.Exclude
+local assistModel: Model? = nil
+local assistHead = false
+local firingUntil = 0
+ClientState.Juice:Connect(function(name: string)
+	if name == "LocalFire" then
+		firingUntil = os.clock() + 0.25
+	end
+end)
+
+local function assistWanted(): boolean
+	if not Config.AimAssistEnabled then
+		return false
+	end
+	if ClientState.blocked() or ClientState.combatOff() or ClientState.isMouseFree() or ClientState.downed then
+		return false
+	end
+	if ClientState.isMobile or Config.AimAssistMouse then
+		return true
+	end
+	local last = UserInputService:GetLastInputType()
+	return last == Enum.UserInputType.Touch or string.find(last.Name, "Gamepad") ~= nil
+end
+
+local function wrapAngle(a: number): number
+	return (a + math.pi) % (2 * math.pi) - math.pi
+end
+
+local function aimAssist(dt: number, char: Model)
+	assistFriction = 1
+	if not assistWanted() then
+		assistModel = nil
+		return
+	end
+	local folder = Workspace:FindFirstChild("Enemies")
+	if not folder then
+		return
+	end
+	local camCf = camera.CFrame
+	local camPos = camCf.Position
+	local look = camCf.LookVector
+	local ads = ClientState.ads
+	local cone = math.rad(if ads then Config.AimAssistAdsConeDeg else Config.AimAssistConeDeg)
+	local range = Config.AimAssistRange
+	local vp = camera.ViewportSize
+	local centreY = vp.Y / 2
+
+	-- Nearest enemy to the crosshair by angle (to its torso or head, whichever is closer); the current target
+	-- gets a little slack so two enemies side by side don't flicker.
+	local best: Model?, bestAngle = nil, math.huge
+	local bestRoot: BasePart?, bestHead: BasePart? = nil, nil
+	for _, model in folder:GetChildren() do
+		if not model:IsA("Model") then
+			continue
+		end
+		local hp = model:GetAttribute("HP")
+		if typeof(hp) == "number" and hp <= 0 then
+			continue
+		end
+		local root = model:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local head = model:FindFirstChild("Head") :: BasePart?
+		if not root then
+			continue
+		end
+		local toRoot = root.Position - camPos
+		if toRoot.Magnitude > range then
+			continue
+		end
+		local a = math.acos(math.clamp(look:Dot(toRoot.Unit), -1, 1))
+		if head then
+			local toHead = head.Position - camPos
+			a = math.min(a, math.acos(math.clamp(look:Dot(toHead.Unit), -1, 1)))
+		end
+		if model == assistModel then
+			a *= 0.8
+		end
+		if a < cone and a < bestAngle then
+			best, bestAngle, bestRoot, bestHead = model, a, root, head
+		end
+	end
+	if not best or not bestRoot then
+		assistModel = nil
+		return
+	end
+
+	-- Torso or head: where the crosshair sits between them on screen.
+	local aimHead = false
+	if bestHead then
+		local rs = camera:WorldToViewportPoint(bestRoot.Position)
+		local hs = camera:WorldToViewportPoint(bestHead.Position)
+		local bias = Config.AimAssistHeadBias
+		if best == assistModel and assistHead then
+			bias *= 0.6 -- hysteresis: once on the head it stays there unless you pull clearly down
+		end
+		local switchY = rs.Y + (hs.Y - rs.Y) * bias
+		aimHead = centreY < switchY
+	end
+	local part = if aimHead and bestHead then bestHead else bestRoot
+	local point = part.Position
+
+	-- Only through a clear line.
+	local filter: { Instance } = { char }
+	for _, name in { "GroundLoot", "Effects" } do
+		local f = Workspace:FindFirstChild(name)
+		if f then
+			table.insert(filter, f)
+		end
+	end
+	assistParams.FilterDescendantsInstances = filter
+	local hit = Workspace:Raycast(camPos, point - camPos, assistParams)
+	if hit and not hit.Instance:IsDescendantOf(best) then
+		assistModel = nil
+		return
+	end
+	assistModel, assistHead = best, aimHead
+
+	local d = (point - camPos).Unit
+	local angle = math.acos(math.clamp(look:Dot(d), -1, 1))
+	local falloff = math.clamp(1 - angle / cone, 0, 1)
+	local pull = if ads then Config.AimAssistAdsPull else Config.AimAssistPull
+	if os.clock() < firingUntil or ClientState.touchFire then
+		pull *= Config.AimAssistFiringMult
+	end
+	local k = (1 - math.exp(-pull * dt)) * math.sqrt(falloff)
+	local wantYaw = math.atan2(-d.X, -d.Z)
+	local wantPitch = math.asin(math.clamp(d.Y, -1, 1))
+	yaw += wrapAngle(wantYaw - yaw) * k
+	pitch = math.clamp(pitch + (wantPitch - pitch) * k, PITCH_MIN, PITCH_MAX)
+
+	local frictionCone = math.rad(Config.AimAssistFrictionDeg)
+	if angle < frictionCone then
+		assistFriction = 1 - (1 - Config.AimAssistFriction) * (1 - angle / frictionCone)
+	end
+end
+
 local pivotYNow = 1.5
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
@@ -232,6 +376,7 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 		end
 	end
 
+	aimAssist(dt, char)
 	local rot = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)
 	-- Downed: the pivot drops to DownedCameraHeight above the floor (the root sits 3 studs up). It eases there and
 	-- back, so a revive lifts the camera with the stand-up instead of snapping.

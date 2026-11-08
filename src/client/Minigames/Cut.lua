@@ -204,7 +204,7 @@ function Cut.open(host: Frame.Host)
 		ZIndex = 8,
 		Parent = host.content,
 	})
-	Frame.drag(host, area, function()
+	Frame.drag(host, { area, host.zone }, function()
 		if os.clock() >= stunUntil and not done then
 			holding = true
 		end

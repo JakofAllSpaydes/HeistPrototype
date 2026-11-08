@@ -33,6 +33,9 @@ export type Host = {
 	alive: () -> boolean,
 	track: (RBXScriptConnection) -> RBXScriptConnection,
 	onClose: (() -> ())?,
+	-- Round 24 (mobile only): an invisible band around the panel, clear of the screen's left / right edges, that
+	-- whole-area games pass to Frame.press / Frame.drag as an extra handle so a thumb need not land inside the box.
+	zone: GuiObject?,
 }
 
 export type GameSpec = {
@@ -98,34 +101,57 @@ local function isPress(input: InputObject): boolean
 	return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
 end
 
--- Tap: fires on press (not release) so timing games feel immediate. Touch and mouse share it.
-function Frame.press(host: Host, gui: GuiObject, fn: (Vector2) -> ())
-	gui.Active = true
-	host.track(gui.InputBegan:Connect(function(input: InputObject)
-		if isPress(input) and host.alive() then
-			fn(Vector2.new(input.Position.X, input.Position.Y))
+local function handleList(h: GuiObject | { GuiObject? }): { GuiObject }
+	if typeof(h) == "Instance" then
+		return { h :: GuiObject }
+	end
+	local out: { GuiObject } = {}
+	for _, g in pairs(h :: { GuiObject? }) do
+		if g then
+			table.insert(out, g)
 		end
-	end))
+	end
+	return out
+end
+
+-- Tap: fires on press (not release) so timing games feel immediate. Touch and mouse share it.
+-- `gui` may be a list (the play area plus host.zone); one press counts once even if two of them see it.
+function Frame.press(host: Host, gui: GuiObject | { GuiObject? }, fn: (Vector2) -> ())
+	local last: InputObject? = nil
+	for _, g in handleList(gui) do
+		g.Active = true
+		host.track(g.InputBegan:Connect(function(input: InputObject)
+			if input == last and input.UserInputType == Enum.UserInputType.Touch then
+				return
+			end
+			if isPress(input) and host.alive() then
+				last = input
+				fn(Vector2.new(input.Position.X, input.Position.Y))
+			end
+		end))
+	end
 end
 
 -- Drag: press on `handle`, move anywhere, release. One path for touch and mouse. Returns a release function
 -- that drops the current hold (no onEnd), so a game can make the player press again (Freq after a lock).
 function Frame.drag(
 	host: Host,
-	handle: GuiObject,
+	handle: GuiObject | { GuiObject? },
 	onStart: (Vector2) -> (),
 	onMove: (Vector2) -> (),
 	onEnd: (Vector2) -> ()
 ): () -> ()
-	handle.Active = true
 	local current: InputObject? = nil
-	host.track(handle.InputBegan:Connect(function(input: InputObject)
-		if current or not isPress(input) or not host.alive() then
-			return
-		end
-		current = input
-		onStart(Vector2.new(input.Position.X, input.Position.Y))
-	end))
+	for _, g in handleList(handle) do
+		g.Active = true
+		host.track(g.InputBegan:Connect(function(input: InputObject)
+			if current or not isPress(input) or not host.alive() then
+				return
+			end
+			current = input
+			onStart(Vector2.new(input.Position.X, input.Position.Y))
+		end))
+	end
 	host.track(UserInputService.InputChanged:Connect(function(input: InputObject)
 		local c = current
 		if not c then
@@ -350,9 +376,27 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 		Parent = panel,
 	})
 
+	-- Round 24: the mobile touch band, behind the panel (Sibling ZIndex 0) so the panel's own buttons win.
+	local zone: GuiObject? = nil
+	if ClientState.isMobile then
+		local edge = Config.MinigameTouchEdgePct
+		local top = Config.MinigameTouchTopPct
+		zone = UI.button({
+			Name = "TouchZone",
+			Text = "",
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
+			Position = UDim2.fromScale(edge, top),
+			Size = UDim2.fromScale(1 - edge * 2, 1 - top),
+			ZIndex = 0,
+			Parent = gui,
+		})
+	end
+
 	local connections: { RBXScriptConnection } = {}
 	local a: Active
 	local host: Host = {
+		zone = zone,
 		content = content,
 		panel = panel,
 		width = width,

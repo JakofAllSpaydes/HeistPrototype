@@ -279,6 +279,22 @@ local Config = {
 	PlayerHPRegenPerSec = 1, -- base regen, scaled by the HP Regen upgrade
 	MouseSensitivity = 0.0022, -- radians per mouse pixel
 	TouchSensitivity = 0.006, -- radians per touch pixel
+	TouchCameraStartX = 0.4, -- Round 24: a touch that begins right of this share of the screen width turns the camera (left = thumbstick)
+	-- Round 24 aim assist (touch / gamepad). The enemy nearest the crosshair inside the cone pulls the camera to its
+	-- torso; hold the crosshair above AimAssistHeadBias of the way from torso to head (on screen) and it pulls to the head.
+	AimAssistEnabled = true,
+	AimAssistMouse = false, -- true: mouse aim gets it too (off: a mouse player aims on their own)
+	AimAssistConeDeg = 11, -- hip fire: enemies within this many degrees of the crosshair pull
+	AimAssistAdsConeDeg = 15, -- ADS: a wider cone
+	AimAssistRange = 180, -- studs
+	AimAssistPull = 7, -- how fast the camera closes on the target (per second; higher = stronger)
+	AimAssistAdsPull = 10,
+	AimAssistFiringMult = 1.4, -- pull multiplier while shooting
+	AimAssistHeadBias = 0.55, -- 0 = torso centre, 1 = head centre: crosshair above this switches the pull to the head
+	AimAssistFrictionDeg = 5, -- inside this cone look input slows down...
+	AimAssistFriction = 0.5, -- ...to this share of normal sensitivity on the target's centre
+	-- Round 24 mobile: every HUD button (combat + hub) is scaled by this on phones / tablets.
+	MobileButtonScale = 1.3,
 	-- Cursor unlocked (Ctrl / Alt): the camera stays put and the character turns to face the cursor's
 	-- world point, so you can aim all the way around. Shots go where the cursor is.
 	CameraFov = 70,
@@ -1127,7 +1143,7 @@ local Config = {
 	MetaCameraSideShare = 0.72, -- the camera sits this x distance to the character's left, so the avatar reads about a fifth in from the left edge
 	MetaCameraHeight = 0.2, -- camera height relative to the character's center in the scene
 	MetaCameraAim = -1.6, -- the camera aims this far below the character's center, so the avatar sits high in the frame (head near the top)
-	MetaDragSensitivity = 0.012, -- radians per pixel when dragging the avatar round in the scene
+	MetaDragSensitivity = 0.012, -- radians per pixel when dragging the avatar round in the scene (Round 24: drag right turns it right)
 	MetaCameraTweenSec = 0.45,
 	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE camera distance when no showcase gun could be built (fallback)
 	-- Round 19h: CUSTOMIZE shows the gun alone, side-on (the avatar hides), spinning in as it opens.
@@ -1176,6 +1192,11 @@ local Config = {
 	------------------------------------------------------------------ Minigames (test props in the yard)
 	MinigameTier = 1, -- starting tier for every game (1..3); the tier pad and the debug panel change it per session
 	MinigamePanelPct = 0.55, -- panel width as a share of the shorter screen edge
+	-- Round 24 mobile: tap / drag games also take input on a band around the panel, between these screen-width
+	-- margins (left and right edges stay free for the thumbstick and the buttons) and below the top bar.
+	MinigameTouchEdgePct = 0.24,
+	MinigameTouchTopPct = 0.1,
+	SafeTouchGain = 0.55, -- mobile: the dial turns this much per degree your finger turns round it (1 = one to one)
 	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
 	-- A result faster than this (server clock, from the open) is treated as a script, not a player, and fails. Round 20u:
 	-- halved or less (a fast tier 1 Keypad measured 1.48 s against the old 1.5 floor and was failed).

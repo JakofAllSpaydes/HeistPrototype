@@ -1154,9 +1154,9 @@ function MetaScene.init()
 			local dx = input.Position.X - dragLastX
 			dragLastX = input.Position.X
 			if customize then
-				stageYaw -= dx * Config.MetaDragSensitivity -- CUSTOMIZE: the drag turns the gun
+				stageYaw += dx * Config.MetaDragSensitivity -- CUSTOMIZE: the drag turns the gun (Round 24: was reversed)
 			else
-				dragYaw -= dx * Config.MetaDragSensitivity
+				dragYaw += dx * Config.MetaDragSensitivity
 			end
 		end
 	end)

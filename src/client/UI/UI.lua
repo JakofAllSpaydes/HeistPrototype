@@ -14,6 +14,15 @@ function UI.S(n: number): number
 	return math.round(n * UI.scale)
 end
 
+-- Round 24: mobile HUD groups grow by Config.MobileButtonScale around their anchor point. Goes on a container,
+-- never on a button that UI.punch scales (one UIScale per object).
+function UI.mobileGrow(inst: GuiObject, mobile: boolean)
+	local k = Config.MobileButtonScale or 1
+	if mobile and k ~= 1 then
+		UI.new("UIScale", { Name = "MobileGrow", Scale = k, Parent = inst })
+	end
+end
+
 -- Upper-cases text outside rich-text tags (<font ...>) and entities (&lt;), which must keep their case.
 local function upperText(s: string): string
 	local out = {}

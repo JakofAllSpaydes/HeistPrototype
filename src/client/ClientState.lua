@@ -20,6 +20,9 @@ local ClientState = {
 	ammo = { mag = 0, max = 0, reloading = false, shell = false, reloadStartedAt = 0, reloadEndsAt = 0 },
 	blocks = {} :: { [string]: boolean }, -- reasons the gun is held and the mouse is free
 	touchFire = false, -- mobile fire button held
+	-- Round 24: touches that turn the camera (a drag that began on open screen right of the thumbstick, or on
+	-- the FIRE button: drag from FIRE to aim while shooting). Camera.client reads it, MobileControls adds to it.
+	cameraTouches = {} :: { [InputObject]: boolean },
 	ads = false, -- aiming down sights (RMB held, or mobile ADS toggle)
 	isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled,
 	downed = false, -- the local player is down: crawl, no fire, no buys

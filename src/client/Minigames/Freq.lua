@@ -185,7 +185,7 @@ function Freq.open(host: Frame.Host)
 		ZIndex = 6,
 		Parent = host.content,
 	})
-	local releaseDrag = Frame.drag(host, dragArea, function(p: Vector2)
+	local releaseDrag = Frame.drag(host, { dragArea, host.zone }, function(p: Vector2)
 		t0 = t
 		p0 = p
 		UI.punch(knob, 1.2, 0.15)

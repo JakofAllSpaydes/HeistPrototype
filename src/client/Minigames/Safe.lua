@@ -218,14 +218,17 @@ function Safe.open(host: Frame.Host)
 		ZIndex = 8,
 		Parent = host.content,
 	})
-	Frame.drag(host, dragArea, function(p: Vector2)
+	-- Round 24: on mobile the band around the panel takes the drag too, and the dial turns SafeTouchGain per
+	-- degree the finger turns (a small dial under a thumb was far too twitchy one to one).
+	local gain = if host.zone then Config.SafeTouchGain else 1
+	Frame.drag(host, { dragArea, host.zone }, function(p: Vector2)
 		lastAngle = pointerAngle(p)
 	end, function(p: Vector2)
 		if done then
 			return
 		end
 		local a = pointerAngle(p)
-		local delta = (a - lastAngle + 540) % 360 - 180
+		local delta = ((a - lastAngle + 540) % 360 - 180) * gain
 		lastAngle = a
 		rot += delta
 		dial.Rotation = rot

@@ -29,6 +29,11 @@ local GREEN = Color3.fromHex("2FD46A")
 -- Text an icon tile falls back to if Icons.lua has no pictogram for its id.
 local TILE_FALLBACK: { [string]: string } = { shop = "$", classes = "CLS", avatar = "MSK" }
 
+-- Round 24: on mobile every hub size and edge offset grows by Config.MobileButtonScale (buttons were too small).
+local function hubS(n: number): number
+	return UI.S(n * (if ClientState.isMobile then Config.MobileButtonScale else 1))
+end
+
 -- Icon tile with a label under it. Returns the button.
 local function iconTile(
 	parent: Instance,
@@ -39,7 +44,7 @@ local function iconTile(
 	fg: Color3,
 	size: number
 ): TextButton
-	local S = UI.S
+	local S = hubS
 	local holder = UI.frame({
 		BackgroundTransparency = 1,
 		Size = UDim2.fromOffset(size, size + S(16)),
@@ -84,7 +89,7 @@ local function iconTile(
 end
 
 function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
-	local S = UI.S
+	local S = hubS
 	local mobile = ClientState.isMobile
 	local component: { [string]: any } = {}
 	local root = UI.frame({
