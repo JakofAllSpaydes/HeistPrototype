@@ -120,6 +120,18 @@ local function finish()
 	HUD.setMode(HUD.baseMode())
 end
 
+-- Brief 7: the line's own frame. The arena's line faces -Z at floor height (the plain world frame, so nothing
+-- moves there); a map that sends `facing` (THE BANK: the crew faces the bank) turns every shot with it.
+local function lineFrame(d: any, line: { CFrame }, center: Vector3): CFrame
+	local floorY = (if #line > 0 then line[1].Position.Y else Config.FloorTop + 3) - (Config.FloorTop + 3)
+	local p = Vector3.new(center.X, floorY, center.Z)
+	local f = d.facing
+	if typeof(f) == "Vector3" and Vector3.new(f.X, 0, f.Z).Magnitude > 0.1 then
+		return CFrame.lookAt(p, p + Vector3.new(f.X, 0, f.Z))
+	end
+	return CFrame.new(p)
+end
+
 local function step(_dt: number)
 	local d = data
 	if not d then
@@ -134,7 +146,12 @@ local function step(_dt: number)
 		end
 		return
 	end
-	local lineZ = line[1].Position.Z
+	local lineCenter = Vector3.zero
+	for _, l in line do
+		lineCenter += l.Position
+	end
+	lineCenter /= #line
+	local F = lineFrame(d, line, lineCenter)
 	local myIndex = 1
 	for i, entry in d.players do
 		if entry.userId == player.UserId then
@@ -145,8 +162,9 @@ local function step(_dt: number)
 	local myChar = player.Character
 	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local myPos = if myRoot and t >= beats.doors then myRoot.Position else myCF.Position
-	-- The pan starts on whoever stands farthest from you in the line.
-	local farX = if myIndex <= #line / 2 then line[#line].Position.X else line[1].Position.X
+	-- The pan starts on whoever stands farthest from you in the line (x along the line, in its frame).
+	local farX = F:PointToObjectSpace(if myIndex <= #line / 2 then line[#line].Position else line[1].Position).X
+	local myL = F:PointToObjectSpace(myPos)
 
 	local cf: CFrame
 	if t < beats.doors then
@@ -154,10 +172,10 @@ local function step(_dt: number)
 		local door: Vector3 = d.door
 		local body = vanBody()
 		local target = if body then body.Position else door
-		local want = target + Vector3.new(2, 6, 14)
+		local want = target + F:VectorToWorldSpace(Vector3.new(2, 6, 14))
 		local prev = chasePos
 		chasePos = if prev then prev:Lerp(want, 0.25) else want
-		cf = CFrame.lookAt(chasePos, target + Vector3.new(0, 1.5, -4))
+		cf = CFrame.lookAt(chasePos, target + F:VectorToWorldSpace(Vector3.new(0, 1.5, -4)))
 	elseif t < beats.orbit then
 		once("doors", function()
 			UI.sound(Theme.Sounds.take, 0.8, 0.6)
@@ -187,21 +205,26 @@ local function step(_dt: number)
 		end
 		-- One slow pan from the farthest crew member to you, pushing in as it lands on you.
 		local s = smooth((t - beats.doors) / math.max(beats.orbit - beats.doors, 0.01))
-		local x = farX + (myPos.X - farX) * s
+		local x = farX + (myL.X - farX) * s
 		local dist = PAN_FAR + (PAN_NEAR - PAN_FAR) * s
 		local height = PAN_HEIGHT + (EYE_LINE + 0.4 - PAN_HEIGHT) * s
-		cf = CFrame.lookAt(Vector3.new(x, height, lineZ - dist), Vector3.new(x, EYE_LINE, lineZ))
+		cf = CFrame.lookAt(
+			F:PointToWorldSpace(Vector3.new(x, height, -dist)),
+			F:PointToWorldSpace(Vector3.new(x, EYE_LINE, 0))
+		)
 	elseif t < d.introSec then
 		-- Orbit 180 degrees from the tight front shot to behind you, widening into the gameplay camera.
 		local s = easeOut((t - beats.orbit) / math.max(d.introSec - beats.orbit, 0.01))
 		local theta = math.pi * (1 - s)
 		local r = PAN_NEAR + (Config.CameraZoomDefault - PAN_NEAR) * s
-		local offset = Vector3.new(
-			math.sin(theta) * r + Config.CameraShoulder.X * s,
-			(EYE_LINE + 0.4) + (1.5 + Config.CameraShoulder.Y - (EYE_LINE + 0.4)) * s,
-			math.cos(theta) * r
+		local offset = F:VectorToWorldSpace(
+			Vector3.new(
+				math.sin(theta) * r + Config.CameraShoulder.X * s,
+				(EYE_LINE + 0.4) + (1.5 + Config.CameraShoulder.Y - (EYE_LINE + 0.4)) * s,
+				math.cos(theta) * r
+			)
 		)
-		local look = Vector3.new(myPos.X, EYE_LINE - 1.1 * s, myPos.Z - 8 * s)
+		local look = F:PointToWorldSpace(Vector3.new(myL.X, EYE_LINE - 1.1 * s, myL.Z - 8 * s))
 		cf = CFrame.lookAt(myPos + offset, look)
 	else
 		finish()

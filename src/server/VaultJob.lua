@@ -180,7 +180,7 @@ end
 
 -- Can CRACK THE VAULT be drawn this wave?
 function VaultJob.available(wave: number): boolean
-	if not Room.vault then
+	if not Room.vault or World.map ~= "Arena" then
 		return false
 	end
 	-- Closed, or sealed from an earlier draw when the vault may come back (VaultJobOnce false).

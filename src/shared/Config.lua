@@ -740,7 +740,7 @@ local Config = {
 	HubCash = 0, -- Match Cash shown in the hub (nothing to buy there)
 
 	------------------------------------------------------------------ Maps (brief 7; the rows live in src/shared/Maps.lua)
-	DefaultMap = "Arena", -- the map a fresh Create Match card picks (and the fallback for an unknown id)
+	DefaultMap = "TheBank", -- the map a fresh Create Match card picks (and the fallback for an unknown id)
 	BankOrigin = CFrame.new(0, 0, -1000), -- where THE BANK model is pivoted on load (the import baked it here)
 	CrewZoneSyncSec = 0.5, -- the crew zone (the zone holding the most standing players) is recomputed this often
 

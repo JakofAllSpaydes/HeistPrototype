@@ -63,9 +63,24 @@ local function proximity(point: Vector3): number
 		else Config.FarWeightMult
 end
 
+-- Brief 7: the door system installs this on THE BANK (a box behind a closed door, or in the closed vault,
+-- never draws). nil: every box is open (the arena).
+Spawner.boxOpen = nil :: ((any) -> boolean)?
+
 -- A spawn box weighted by how close the crew is: enemies mostly arrive from where the action is.
-function Spawner.pickBox(_archetype: string?): Room.SpawnBox?
-	local boxes = Room.current().spawnBoxes
+function Spawner.pickBox(archetype: string?): Room.SpawnBox?
+	local all = Room.current().spawnBoxes
+	local open = Spawner.boxOpen
+	local boxes = {}
+	for _, box in all do
+		if open and not open(box) then
+			continue
+		end
+		if archetype and box.allowed and not box.allowed[archetype] then
+			continue
+		end
+		table.insert(boxes, box)
+	end
 	if #boxes == 0 then
 		return nil
 	end

@@ -14,6 +14,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Ground = require(Shared.Ground)
 local Remotes = require(Shared.Remotes)
 local Classes = require(Shared.Classes)
 local AbilityGrowth = require(Shared.AbilityGrowth)
@@ -152,7 +153,7 @@ local function placementCFrame(char: Model, distance: number): CFrame
 	local _, yaw = base:ToEulerAnglesYXZ()
 	local flat = CFrame.new(base.Position) * CFrame.Angles(0, yaw, 0)
 	local pos = (flat * CFrame.new(0, 0, -distance)).Position
-	return CFrame.new(pos.X, Config.FloorTop, pos.Z) * CFrame.Angles(0, yaw, 0)
+	return CFrame.new(pos.X, Ground.y(pos), pos.Z) * CFrame.Angles(0, yaw, 0)
 end
 
 local function part(props: { [string]: any }): Part
@@ -586,7 +587,7 @@ placeField = function(
 		Name = "Disc",
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.2, radius * 2, radius * 2),
-		CFrame = CFrame.new(position.X, Config.FloorTop + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
+		CFrame = CFrame.new(position.X, Ground.y(position) + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		CanCollide = false,
 		CanQuery = false,
 		Color = color,
@@ -606,7 +607,7 @@ placeField = function(
 			Size = Vector3.new(rimW, 0.12, segLen),
 			CFrame = CFrame.new(
 				position.X + math.cos(a) * radius,
-				Config.FloorTop + 0.14,
+				Ground.y(position) + 0.14,
 				position.Z + math.sin(a) * radius
 			) * CFrame.Angles(0, -a, 0),
 			CanCollide = false,
@@ -631,7 +632,7 @@ placeField = function(
 			local anchor = part({
 				Name = "Flame",
 				Size = Vector3.new(0.2, 0.2, 0.2),
-				CFrame = CFrame.new(position.X, Config.FloorTop + 0.3, position.Z) * CFrame.new(offset),
+				CFrame = CFrame.new(position.X, Ground.y(position) + 0.3, position.Z) * CFrame.new(offset),
 				CanCollide = false,
 				CanQuery = false,
 				Transparency = 1,
@@ -649,7 +650,7 @@ placeField = function(
 		local bag = part({
 			Name = "Bag",
 			Size = Vector3.new(1.6, 1, 1.2),
-			CFrame = CFrame.new(position.X, Config.FloorTop + 0.5, position.Z),
+			CFrame = CFrame.new(position.X, Ground.y(position) + 0.5, position.Z),
 			CanCollide = false,
 			CanQuery = false,
 			Color = COLOR.green,
@@ -684,7 +685,7 @@ placeField = function(
 		kind = kind,
 		owner = owner,
 		model = model,
-		position = Vector3.new(position.X, Config.FloorTop, position.Z),
+		position = Ground.at(position),
 		radius = radius,
 		expiresAt = now() + lifetime,
 		lastTick = 0,
@@ -875,7 +876,7 @@ local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vect
 		end
 	end
 	local from = if hand then hand.Position else target + Vector3.new(0, 3, 0)
-	local to = Vector3.new(target.X, Config.FloorTop + 0.4, target.Z)
+	local to = Vector3.new(target.X, Ground.y(target) + 0.4, target.Z)
 	local p = part({
 		Name = "Thrown",
 		Size = Vector3.new(0.7, 0.7, 0.7),
@@ -905,7 +906,7 @@ local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vect
 			-- Homing: the landing point follows the locked enemy until it lands (or the enemy dies).
 			local lp = locked and Enemy.rootPosition(locked)
 			if lp then
-				to = Vector3.new(lp.X, Config.FloorTop + 0.4, lp.Z)
+				to = Vector3.new(lp.X, Ground.y(lp) + 0.4, lp.Z)
 			end
 			local pos = from:Lerp(to, a) + Vector3.new(0, peak * 4 * a * (1 - a), 0)
 			p.CFrame = CFrame.new(pos) * CFrame.Angles(a * 6, a * 4, 0)

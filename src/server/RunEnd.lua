@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Room = require(script.Parent.Room)
+local Maps = require(Shared.Maps)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
@@ -342,7 +343,7 @@ function RunEnd.play(): string
 	-- Everyone gets a fresh character standing in the line, anchored, bag and mask on. Dummies fill the squad.
 	local line = {}
 	for i = 1, n do
-		line[i] = RunStart.lineCFrame(i, n)
+		line[i] = RunStart.lineCFrame(i, n, Room.current().runEndLine)
 	end
 	for i, p in players do
 		local s = PlayerState.get(p)
@@ -393,6 +394,17 @@ function RunEnd.play(): string
 			}
 			else nil,
 		totalBanked = total, -- cash collected by the crew (the bill rain scales on it)
+		-- Brief 7: the map's run end line faces along its Lineup node (nil on the arena) and the summary names the map.
+		facing = if Room.current().runEndLine then (Room.current().runEndLine :: CFrame).LookVector else nil,
+		mapName = Maps.get(World.map).name,
+		difficultyName = (function()
+			for _, d in Config.QueueDifficulties do
+				if d.id == World.partySettings.difficultyId then
+					return d.name
+				end
+			end
+			return string.upper(World.partySettings.difficultyId)
+		end)(),
 		banked = banked, -- TOTAL BANKED (gold bags), the headline
 		gold = gold,
 		wave = World.wave,

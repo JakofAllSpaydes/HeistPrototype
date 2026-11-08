@@ -15,6 +15,7 @@ local World = require(script.Parent.World)
 local PlayerState = require(script.Parent.PlayerState)
 local Squad = require(script.Parent.Squad)
 local Log = require(script.Parent.Log)
+local Ground = require(Shared.Ground)
 
 local RunStart = {}
 
@@ -22,16 +23,46 @@ local LINE_GAP = 4.5 -- studs between crew in the line (room to read each one)
 local LINE_Z = 3 -- line sits this far south of the arena spawn
 local VAN_GAP = 7 -- the van brakes this far west of the line's west end
 
--- Slot i of n in the crew line, centered on the arena spawn, facing north into the arena.
-function RunStart.lineCFrame(i: number, n: number): CFrame
+-- Slot i of n in the crew line. The arena: centered on the arena spawn, facing north into the arena. Brief 7:
+-- a map with a lineup CFrame (`base`, or the map's run start line) centers the line on it, facing its look.
+function RunStart.lineCFrame(i: number, n: number, base: CFrame?): CFrame
+	local b = base or Room.current().lineup
+	if b then
+		local look = Vector3.new(b.LookVector.X, 0, b.LookVector.Z)
+		local facing = if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, -1)
+		local right = Vector3.new(-facing.Z, 0, facing.X)
+		local p = b.Position + right * ((i - (n + 1) / 2) * LINE_GAP)
+		local at = Vector3.new(p.X, Ground.y(p) + 3, p.Z)
+		return CFrame.lookAt(at, at + facing)
+	end
 	local x = Room.arenaSpawn.X + (i - (n + 1) / 2) * LINE_GAP
 	return CFrame.new(x, Config.FloorTop + 3, Room.arenaSpawn.Z + LINE_Z)
 end
 
--- Where the van stops for a line of n: just west of it, still facing north.
+-- The van's height over the floor (its pivot sits this far up in the yard).
+local function vanLift(): number
+	return Room.vanHome.Position.Y - Config.FloorTop
+end
+
+-- Where the van stops for a line of n: just west of it, still facing north (the arena), or on the map's Van node.
 function RunStart.vanBrake(n: number): CFrame
+	local node = Room.current().van
+	if node then
+		local look = Vector3.new(node.LookVector.X, 0, node.LookVector.Z)
+		local p = node.Position
+		local at = Vector3.new(p.X, Ground.y(p) + vanLift(), p.Z)
+		return CFrame.lookAt(at, at + (if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, -1)))
+	end
 	local westEnd = RunStart.lineCFrame(1, n).Position.X
 	return CFrame.new(westEnd - VAN_GAP, Room.vanHome.Position.Y, Room.arenaSpawn.Z + LINE_Z)
+end
+
+-- Where the van starts: the yard (the arena) or a drive-in from behind the map's Van node.
+local function vanStart(vanTo: CFrame): CFrame
+	if Room.current().van then
+		return vanTo * CFrame.new(0, 0, 90)
+	end
+	return Room.vanHome
 end
 
 -- The party in join order: the line, the MVP tie-break, the summary rows.
@@ -81,7 +112,9 @@ local function exitVan(from: CFrame)
 	if not van then
 		return
 	end
-	driveVan(from, from * CFrame.new(0, 0, -80), Config.VanExitSec)
+	-- The arena: on through the room; a map: back out the way it came (it faces the building it parked at).
+	local away = if Room.current().van then CFrame.new(0, 0, 90) else CFrame.new(0, 0, -80)
+	driveVan(from, from * away, Config.VanExitSec)
 	van.Parent = nil
 end
 
@@ -93,6 +126,7 @@ function RunStart.play()
 	local beats = Config.RunStartBeats
 	local startedAt = Workspace:GetServerTimeNow()
 	local vanTo = RunStart.vanBrake(n)
+	local vanFrom = vanStart(vanTo)
 	local roster = {}
 	local line = {}
 	local models: { Model? } = {}
@@ -137,6 +171,9 @@ function RunStart.play()
 
 	-- Into the van: anchored, invisible, parked inside the body.
 	showVan()
+	if vanFrom ~= Room.vanHome and Room.van then
+		Room.van:PivotTo(vanFrom)
+	end
 	for _, char in models do
 		if not char then
 			continue
@@ -154,15 +191,17 @@ function RunStart.play()
 				d.Transparency = 1
 			end
 		end
-		char:PivotTo(Room.vanHome)
+		char:PivotTo(vanFrom)
 	end
 
 	World.fireRun("RunStartBegin", {
 		startedAt = startedAt,
 		players = roster,
-		vanFrom = Room.vanHome,
+		vanFrom = vanFrom,
 		vanTo = vanTo,
-		door = Room.doorPosition,
+		door = if Room.current().van then vanTo.Position else Room.doorPosition,
+		-- Brief 7: on a map the line faces its lineup's look (the clients turn their shots with it).
+		facing = if Room.current().lineup then (Room.current().lineup :: CFrame).LookVector else nil,
 		line = line,
 		beats = beats,
 		introSec = Config.IntroSec,
@@ -170,7 +209,7 @@ function RunStart.play()
 	Log.event("Run", "run start sequence, %d in the van (%d dummies), %.1fs", n, #dummies, Config.IntroSec)
 
 	-- Beat 0: the van drives in and brakes as the doors beat lands.
-	task.spawn(driveVan, Room.vanHome, vanTo, beats.doors)
+	task.spawn(driveVan, vanFrom, vanTo, beats.doors)
 	task.wait(beats.doors)
 	World.fireRun("VanBrake", { position = vanTo.Position })
 

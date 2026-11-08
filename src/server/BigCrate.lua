@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Ground = require(Shared.Ground)
 local Weapons = require(Shared.Weapons)
 local Rarity = require(Shared.Rarity)
 local CrateReel = require(Shared.CrateReel)
@@ -18,6 +19,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local WeaponRoll = require(script.Parent.WeaponRoll)
 local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
+local Room = require(script.Parent.Room)
 local Log = require(script.Parent.Log)
 local Pause = require(script.Parent.Pause)
 
@@ -181,7 +183,7 @@ local function eject(crate: Crate, entry: Entry, rarity: number, _roller: Player
 	end
 	gun:SetAttribute("Landing", true) -- WeaponRoll.swap and the client tag both respect it
 	local a = math.atan2(spot.Z - crate.landPos.Z, spot.X - crate.landPos.X)
-	local settle = CFrame.new(spot.X, Config.FloorTop + 0.35, spot.Z)
+	local settle = CFrame.new(spot.X, Ground.y(spot) + 0.35, spot.Z)
 		* CFrame.Angles(0, a, 0)
 		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
 	local apex = CFrame.new((start.Position + settle.Position) / 2 + Vector3.new(0, 6, 0))
@@ -338,14 +340,33 @@ function BigCrate.drop(at: Vector3?, opts: DropOpts?)
 	local rolls = rollCount()
 	local landPos: Vector3
 	if at then
-		landPos = Vector3.new(at.X, Config.FloorTop, at.Z)
-	else
+		landPos = Ground.at(at)
+	elseif World.map == "Arena" then
 		local angle = math.random() * math.pi * 2
 		landPos = Vector3.new(
 			math.cos(angle) * Config.BigCrateDistanceFromCenter,
 			Config.FloorTop,
 			math.sin(angle) * Config.BigCrateDistanceFromCenter
 		)
+	else
+		-- Brief 7: a map without a center drops it on a free bag spot in the crew's zone (else beside the crew).
+		local crew, n = Vector3.zero, 0
+		for _, p in World.runAudience() do
+			local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root then
+				crew += root.Position
+				n += 1
+			end
+		end
+		crew = if n > 0 then crew / n else Room.current().floorTop * Vector3.yAxis
+		local best, bestDist = nil, math.huge
+		for _, s in Room.current().bagSpots do
+			local dist = (s.position - crew).Magnitude
+			if s.zone == World.crewZone and dist < bestDist and dist > 8 then
+				best, bestDist = s.position, dist
+			end
+		end
+		landPos = Ground.at(best or (crew + Vector3.new(6, 0, 6)))
 	end
 
 	local model = template:Clone()
@@ -500,7 +521,9 @@ end
 
 function BigCrate.onIntro()
 	if Config.BigCrateIntroDrop then
-		BigCrate.drop(Config.BigCrateIntroPosition)
+		-- Brief 7: on a map with a van node the intro crate lands in front of the crew's line.
+		local lineup = Room.current().lineup
+		BigCrate.drop(if lineup then (lineup * CFrame.new(0, 0, -8)).Position else Config.BigCrateIntroPosition)
 	end
 end
 

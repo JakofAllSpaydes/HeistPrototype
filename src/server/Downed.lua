@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Ground = require(Shared.Ground)
 local Remotes = require(Shared.Remotes)
 local PlayerState = require(script.Parent.PlayerState)
 local World = require(script.Parent.World)
@@ -55,7 +56,7 @@ local function dropStowed(state: PlayerState.State, position: Vector3)
 		return
 	end
 	state.stowed = nil
-	local cf = CFrame.new(position.X, Config.FloorTop + 0.35, position.Z)
+	local cf = CFrame.new(position.X, Ground.y(position) + 0.35, position.Z)
 		* CFrame.Angles(0, math.random() * math.pi * 2, 0)
 		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
 	WeaponRoll.dropGun(state, stowed, cf)

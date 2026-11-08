@@ -41,7 +41,7 @@ Maps.List = {
 		root = "Bank",
 		hasNodes = true,
 		sort = 2,
-		live = false, -- brief 7 step 4 puts it on the card
+		live = true,
 	},
 } :: { Map }
 

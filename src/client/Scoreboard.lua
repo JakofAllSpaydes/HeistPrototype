@@ -543,8 +543,9 @@ local function paint()
 	local roster: any = sync.roster
 	local S = UI.S
 	hdr.Text = string.format(
-		"WAVE %d  ·  TIME %s  ·  %s  ·  ◆ BANKED %s  ·  $ CASH %s",
+		"WAVE %d%s  ·  TIME %s  ·  %s  ·  ◆ BANKED %s  ·  $ CASH %s",
 		tonumber(sync.wave) or 1,
+		if roster and typeof(roster.zone) == "string" then "  ·  " .. roster.zone else "",
 		fmtClock(if roster then tonumber(roster.survivedSec) or 0 else 0),
 		stars(tonumber(sync.heat) or 0),
 		UI.fmtNum(if roster then tonumber(roster.banked) or 0 else tonumber(sync.banked) or 0),

@@ -15,6 +15,7 @@ local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
+local Ground = require(Shared.Ground)
 
 local Boss = {}
 
@@ -46,8 +47,60 @@ function Boss.spawn(id: string, wave: number, position: Vector3): Model?
 	return model
 end
 
--- The marker farthest from the crew, and the wall point behind it.
-local function entrance(): (Vector3, Vector3)
+local function crewCenter(): Vector3?
+	local sum, n = Vector3.zero, 0
+	for _, player in World.runAudience() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			sum += root.Position
+			n += 1
+		end
+	end
+	return if n > 0 then sum / n else nil
+end
+
+-- Brief 7: a map with BossWall nodes: the crew zone's wall (the one farthest from the crew when it has several);
+-- a zone without one (the vault room) uses the wall nearest the crew and TITAN paths in. Returns the marker
+-- it walks to, the wall point and the inward direction.
+local function wallEntrance(): (Vector3?, Vector3?, Vector3?)
+	local walls = Room.current().bossWalls
+	if #walls == 0 then
+		return nil, nil, nil
+	end
+	local crew = crewCenter() or walls[1].cframe.Position
+	local pick: Room.BossWall? = nil
+	local bestFar = -1
+	for _, w in walls do
+		local dist = (w.cframe.Position - crew).Magnitude
+		if w.zone == World.crewZone and dist > bestFar then
+			bestFar = dist
+			pick = w
+		end
+	end
+	if not pick then
+		local bestNear = math.huge
+		for _, w in walls do
+			local dist = (w.cframe.Position - crew).Magnitude
+			if dist < bestNear then
+				bestNear = dist
+				pick = w
+			end
+		end
+	end
+	local w = pick :: Room.BossWall
+	local look = Vector3.new(w.cframe.LookVector.X, 0, w.cframe.LookVector.Z)
+	local inward = if look.Magnitude > 0.1 then look.Unit else Vector3.zAxis
+	local p = w.cframe.Position
+	local wallPoint = Vector3.new(p.X, Ground.y(p + inward * 3, p.Y - w.size.Y / 2), p.Z)
+	return wallPoint + inward * 14, wallPoint, inward
+end
+
+-- The marker farthest from the crew, and the wall point behind it (the arena), or a BossWall node.
+local function entrance(): (Vector3, Vector3, Vector3)
+	local m, wp, inward = wallEntrance()
+	if m and wp and inward then
+		return m, wp, inward
+	end
 	local points = {}
 	for _, box in Room.current().spawnBoxes do
 		table.insert(points, box.cframe.Position)
@@ -74,13 +127,12 @@ local function entrance(): (Vector3, Vector3)
 	local out = Vector3.new(best.X, 0, best.Z)
 	local dir = if out.Magnitude > 0.1 then out.Unit else Vector3.zAxis
 	local wall = dir * (Config.RoomSize / 2 - 0.5)
-	return best, Vector3.new(wall.X, Config.FloorTop, wall.Z)
+	return best, Vector3.new(wall.X, Config.FloorTop, wall.Z), -dir
 end
 
 -- Debris off the wall: a few dark chunks flung into the room.
-local function blowWall(wallPoint: Vector3)
+local function blowWall(wallPoint: Vector3, inward: Vector3)
 	local effects = Workspace:FindFirstChild("Effects") or Workspace
-	local inward = -Vector3.new(wallPoint.X, 0, wallPoint.Z).Unit
 	for _ = 1, 10 do
 		local chunk = Instance.new("Part")
 		chunk.Size = Vector3.new(1 + math.random() * 1.5, 1 + math.random() * 1.5, 0.8)
@@ -108,7 +160,7 @@ function Boss.cutscene(wave: number)
 	end
 	local beats = Config.BossCutsceneBeats
 	local sec = Config.BossCutsceneSec
-	local marker, wallPoint = entrance()
+	local marker, wallPoint, inward = entrance()
 	local startedAt = Workspace:GetServerTimeNow()
 	Enemy.paused = true
 	for _, player in World.runAudience() do
@@ -142,14 +194,14 @@ function Boss.cutscene(wave: number)
 		Enemy.paused = false
 		return
 	end
-	blowWall(wallPoint)
+	blowWall(wallPoint, inward)
 	-- Steps through the wall onto the marker: spawned in the gap, walked in by its brain while paused.
 	local inside = wallPoint + (marker - wallPoint).Unit * 2
-	local model = Boss.spawn(mod.id, wave, Vector3.new(inside.X, Config.FloorTop, inside.Z))
+	local model = Boss.spawn(mod.id, wave, Ground.at(inside))
 	local d = model and Enemy.data(model)
 	if d then
 		d.mem.cutsceneTarget = marker
-		d.root.CFrame = CFrame.lookAt(d.root.Position, Vector3.new(0, d.root.Position.Y, 0))
+		d.root.CFrame = CFrame.lookAt(d.root.Position, Vector3.new(marker.X, d.root.Position.Y, marker.Z))
 	end
 	task.wait(math.max(0, sec - beats.blow))
 	if d then

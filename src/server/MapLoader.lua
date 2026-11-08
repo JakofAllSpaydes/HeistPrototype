@@ -15,6 +15,10 @@ local Enemies = require(Shared.Enemies)
 local Room = require(script.Parent.Room)
 local Log = require(script.Parent.Log)
 local World = require(script.Parent.World)
+local PlayerState = require(script.Parent.PlayerState)
+local Bags = require(script.Parent.Bags)
+local CrewCall = require(script.Parent.CrewCall)
+local Spawner = require(script.Parent.Spawner)
 local EnemyPath = require(script.Parent.EnemyPath)
 local TweenService = game:GetService("TweenService")
 
@@ -551,6 +555,20 @@ function MapLoader.read()
 	end
 end
 
+-- Is a zone open (reachable)? The door system (Doors.lua) replaces this; until a door system is installed only
+-- the vault and the tunnel, behind the asset's solid wheel doors, are closed.
+MapLoader.zoneOpen = function(zone: string): boolean
+	return zone ~= "vault" and zone ~= "tunnel"
+end
+
+-- Is a spawn box on? The door system replaces this too (door gates, the vault window, the hatch).
+MapLoader.boxOpen = function(b: any): boolean
+	if b.whileVault or b.doorEver then
+		return false
+	end
+	return MapLoader.zoneOpen(b.zone)
+end
+
 -- Can a run start on THE BANK? (MapLoaderStrict refuses one on a map with node errors.)
 function MapLoader.playable(): boolean
 	return MapLoader.loaded and (not Config.MapLoaderStrict or MapLoader.errors == 0)
@@ -643,7 +661,80 @@ function MapLoader.setHatch(open: boolean, instant: boolean?)
 	end
 end
 
+------------------------------------------------------------------ The crew zone
+-- The zone holding the most standing players (ties: the deeper zone), every CrewZoneSyncSec while a run is on
+-- THE BANK. Debug Set crew zone pins it. Each change logs how long the crew held the zone it left.
+MapLoader.pinnedZone = nil :: string?
+MapLoader.zoneTime = {} :: { [string]: number } -- seconds the crew held each zone this run (Stats MAP block)
+local zoneSince = 0
+
+local function measureCrewZone(): string?
+	local counts: { [string]: number } = {}
+	for _, p in World.runAudience() do
+		local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root and PlayerState.isStanding(PlayerState.get(p)) then
+			local z = MapLoader.nearestZone(root.Position)
+			if z then
+				counts[z] = (counts[z] or 0) + 1
+			end
+		end
+	end
+	local best, bestN, bestDepth = nil, 0, -math.huge
+	for z, n in counts do
+		local depth = MapLoader.zones[z] and MapLoader.zones[z].depth or 0
+		if n > bestN or (n == bestN and depth > bestDepth) then
+			best, bestN, bestDepth = z, n, depth
+		end
+	end
+	return best
+end
+
+local function setCrewZone(z: string)
+	if World.crewZone == z then
+		return
+	end
+	local now = os.clock()
+	if World.crewZone ~= "arena" and zoneSince > 0 then
+		Log.event("Zone", "wave %d crew %s for %.1f", World.wave, World.crewZone, now - zoneSince)
+	end
+	zoneSince = now
+	World.crewZone = z
+	local zone = MapLoader.zones[z]
+	World.crewZoneLabel = if zone then zone.label else nil
+	PlayerState.markAllDirty()
+end
+
+-- Run start: the crew zone starts where the line stands (the street on THE BANK, "arena" elsewhere).
+function MapLoader.resetRun()
+	MapLoader.zoneTime = {}
+	MapLoader.pinnedZone = nil
+	zoneSince = 0
+	World.crewZone = "arena"
+	World.crewZoneLabel = nil
+	if World.map == MapLoader.MAP_ID and MapLoader.loaded then
+		local lineup = Room.current().lineup
+		setCrewZone((lineup and MapLoader.nearestZone(lineup.Position)) or "street")
+	end
+end
+
+local function crewZoneLoop()
+	while true do
+		local dt = task.wait(Config.CrewZoneSyncSec)
+		if World.map ~= MapLoader.MAP_ID or not MapLoader.loaded or not World.inRunCycle() then
+			continue
+		end
+		if World.inRun() then
+			local z = MapLoader.pinnedZone or measureCrewZone()
+			if z then
+				setCrewZone(z)
+			end
+			MapLoader.zoneTime[World.crewZone] = (MapLoader.zoneTime[World.crewZone] or 0) + dt
+		end
+	end
+end
+
 function MapLoader.init()
+	task.spawn(crewZoneLoop)
 	local bank = Workspace:FindFirstChild("Bank")
 	if not bank or not bank:IsA("Model") then
 		Log.event("Map", "no Workspace.Bank model (sync src/map/Bank.rbxm with Rojo); THE BANK is off")
@@ -656,6 +747,19 @@ function MapLoader.init()
 	buildLadder()
 	MapLoader.setHatch(false, true)
 	Room.registerMap(MapLoader.MAP_ID, buildView)
+	-- Spots and boxes in closed zones never draw.
+	local function onBank(): boolean
+		return World.map == MapLoader.MAP_ID
+	end
+	Bags.spotOpen = function(s: Room.BagSpot): boolean
+		return not onBank() or MapLoader.zoneOpen(s.zone)
+	end
+	CrewCall.spotOpen = function(s: Room.JobSpot): boolean
+		return not onBank() or MapLoader.zoneOpen(s.zone)
+	end
+	Spawner.boxOpen = function(b: any): boolean
+		return not onBank() or MapLoader.boxOpen(b)
+	end
 	-- Paths share routes per zone pair on THE BANK; the arena is all one zone.
 	EnemyPath.zoneAt = function(p: Vector3): string?
 		if World.map ~= MapLoader.MAP_ID then

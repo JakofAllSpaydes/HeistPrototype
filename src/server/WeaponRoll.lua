@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Ground = require(Shared.Ground)
 local Weapons = require(Shared.Weapons)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
@@ -66,7 +67,7 @@ function WeaponRoll.dustRing(position: Vector3, size: number, color: Color3?)
 	local ring = Instance.new("Part")
 	ring.Shape = Enum.PartType.Cylinder
 	ring.Size = Vector3.new(0.2, 1, 1)
-	ring.CFrame = CFrame.new(position.X, Config.FloorTop + 0.3, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.CFrame = CFrame.new(position.X, Ground.y(position) + 0.3, position.Z) * CFrame.Angles(0, 0, math.rad(90))
 	ring.Anchored = true
 	ring.CanCollide = false
 	ring.CanQuery = false
@@ -153,7 +154,7 @@ function WeaponRoll.groundCFrameInFront(char: Model, distance: number): CFrame
 	local base = if root then root.CFrame else char:GetPivot()
 	local flat = CFrame.new(base.Position) * CFrame.Angles(0, select(2, base:ToEulerAnglesYXZ()), 0)
 	local pos = (flat * CFrame.new(0, 0, -distance)).Position
-	pos = Vector3.new(pos.X, Config.FloorTop + 0.35, pos.Z)
+	pos = Vector3.new(pos.X, Ground.y(pos) + 0.35, pos.Z)
 	return CFrame.new(pos)
 		* CFrame.Angles(0, math.random() * math.pi * 2, 0)
 		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
@@ -193,7 +194,7 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	state.lastSwapAt = now
 	-- The old gun always lands on the floor where the new one lay (never in the air over a crate).
 	local _, yaw = gun.CFrame:ToEulerAnglesYXZ()
-	local cf = CFrame.new(gun.Position.X, Config.FloorTop + 0.35, gun.Position.Z)
+	local cf = CFrame.new(gun.Position.X, Ground.y(gun.Position) + 0.35, gun.Position.Z)
 		* CFrame.Angles(0, yaw, 0)
 		* CFrame.Angles(0, 0, math.rad(math.random(-12, 12)))
 	local newId = gun:GetAttribute("WeaponId") :: string

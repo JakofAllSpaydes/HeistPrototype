@@ -12,6 +12,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Ground = require(Shared.Ground)
 local Enemies = require(Shared.Enemies)
 local Remotes = require(Shared.Remotes)
 local Server = script.Parent.Parent
@@ -59,8 +60,9 @@ local function now(): number
 	return os.clock()
 end
 
-local function floorY(): number
-	return Config.FloorTop
+-- Brief 7: the floor under a point (the boss fights on any floor of a map).
+local function floorY(at: Vector3): number
+	return Ground.y(at)
 end
 
 local function rotateY(v: Vector3, a: number): Vector3
@@ -177,7 +179,7 @@ local function startSweep(d: any, api: any, t: number, root: BasePart)
 	m.stage = "spin"
 	m.stageUntil = t + (if m.phase >= 2 then Config.TitanSweepSpinSecP2 else Config.TitanSweepSpinSec)
 	m.base = flat(root.Position - d.root.Position)
-	local center = Vector3.new(d.root.Position.X, floorY() + 0.12, d.root.Position.Z)
+	local center = Vector3.new(d.root.Position.X, floorY(d.root.Position) + 0.12, d.root.Position.Z)
 	-- The telegraph is the damage area: a filled fan of slices across the arc, each as wide at the rim as the
 	-- chord of its slice (they overlap near the center, which reads as the brighter hub).
 	local cone = {}
@@ -314,8 +316,8 @@ local function drawLine(d: any, to: Vector3)
 	if not line then
 		return
 	end
-	local a = Vector3.new(d.root.Position.X, floorY() + 0.12, d.root.Position.Z)
-	local b = Vector3.new(to.X, floorY() + 0.12, to.Z)
+	local a = Vector3.new(d.root.Position.X, floorY(d.root.Position) + 0.12, d.root.Position.Z)
+	local b = Vector3.new(to.X, floorY(to) + 0.12, to.Z)
 	local dir = flat(b - a)
 	b += dir * Config.TitanChargeOverrun -- the run carries on past the player: so does the rectangle
 	local len = math.max(1, (b - a).Magnitude)

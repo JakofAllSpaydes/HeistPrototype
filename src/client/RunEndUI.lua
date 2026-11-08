@@ -321,6 +321,21 @@ local function showSummary(d: any)
 	wavePill.ZIndex = 11
 	waveLabel.ZIndex = 12
 	waveLabel.Font = Theme.Fonts.display
+	-- Brief 7: the map and difficulty the run was on, small over the wave pill.
+	if typeof(d.mapName) == "string" then
+		UI.text({
+			Text = string.format("%s · %s", d.mapName, tostring(d.difficultyName or "")),
+			Font = Theme.Fonts.body,
+			TextSize = S(11),
+			TextColor3 = Theme.Colors.grey,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -S(26), 0, S(16)),
+			Size = UDim2.fromOffset(S(260), S(14)),
+			ZIndex = 11,
+			Parent = panel,
+		})
+	end
 
 	-- The level card floats above the panel (its own piece, not nested): hidden until the Gold count-up is
 	-- done, then it drops in and the bar fills with `+N XP` counting on the right.
@@ -572,6 +587,18 @@ end
 
 local lastCF: CFrame? = nil
 
+-- Brief 7: the line's own frame. The arena's line faces -Z at floor height (the plain world frame, so nothing
+-- moves there); a map that sends `facing` (THE BANK: the crew faces the bank) turns every shot with it.
+local function lineFrame(d: any, line: { CFrame }, center: Vector3): CFrame
+	local floorY = (if #line > 0 then line[1].Position.Y else Config.FloorTop + 3) - (Config.FloorTop + 3)
+	local p = Vector3.new(center.X, floorY, center.Z)
+	local f = d.facing
+	if typeof(f) == "Vector3" and Vector3.new(f.X, 0, f.Z).Magnitude > 0.1 then
+		return CFrame.lookAt(p, p + Vector3.new(f.X, 0, f.Z))
+	end
+	return CFrame.new(p)
+end
+
 local function step(_dt: number)
 	local d = data
 	if not d then
@@ -585,8 +612,11 @@ local function step(_dt: number)
 		sum += cf.Position
 	end
 	local center = if #line > 0 then sum / #line else Vector3.zero
-	local lineShot =
-		CFrame.lookAt(Vector3.new(center.X, 4.2, center.Z - 12), Vector3.new(center.X, EYE_LINE - 0.4, center.Z))
+	local F = lineFrame(d, line, center)
+	local lineShot = CFrame.lookAt(
+		F:PointToWorldSpace(Vector3.new(0, 4.2, -12)),
+		F:PointToWorldSpace(Vector3.new(0, EYE_LINE - 0.4, 0))
+	)
 
 	local cf: CFrame = lineShot
 	if t < beats.mvp then
@@ -623,11 +653,14 @@ local function step(_dt: number)
 			end)
 		end
 		local s = math.clamp(t / math.max(beats.mvp, 0.01), 0, 1)
-		local a = if #line > 0 then line[1].Position else center
-		local b = if #line > 0 then line[#line].Position else center
+		local a = F:PointToObjectSpace(if #line > 0 then line[1].Position else center)
+		local b = F:PointToObjectSpace(if #line > 0 then line[#line].Position else center)
 		local x = (a.X - 1.5) + ((b.X + 1.5) - (a.X - 1.5)) * s
 		local dist = PAN_FAR + (PAN_NEAR - PAN_FAR) * s
-		cf = CFrame.lookAt(Vector3.new(x, PAN_HEIGHT, center.Z - dist), Vector3.new(x, EYE_LINE, center.Z))
+		cf = CFrame.lookAt(
+			F:PointToWorldSpace(Vector3.new(x, PAN_HEIGHT, -dist)),
+			F:PointToWorldSpace(Vector3.new(x, EYE_LINE, 0))
+		)
 	elseif t < beats.summary then
 		once("mvp", function()
 			showMvp(d)
@@ -639,7 +672,7 @@ local function step(_dt: number)
 		local a = 0.55 - 0.8 * math.clamp(s, 0, 1)
 		-- Full body in frame: a touch above eye line, looking down at the chest.
 		cf = CFrame.lookAt(
-			pos + Vector3.new(math.sin(a) * MVP_DIST, MVP_HEIGHT, -math.cos(a) * MVP_DIST),
+			pos + F:VectorToWorldSpace(Vector3.new(math.sin(a) * MVP_DIST, MVP_HEIGHT, -math.cos(a) * MVP_DIST)),
 			pos + Vector3.new(0, EYE_LINE - 0.3, 0)
 		)
 	else

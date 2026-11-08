@@ -286,6 +286,16 @@ task.spawn(function()
 		World.runId += 1
 		-- Brief 7: the run's map (positions, spawn boxes, spots) comes from the party's pick.
 		World.map = Maps.pickable(World.partySettings.mapId)
+		if World.map == MapLoader.MAP_ID and not MapLoader.playable() then
+			Log.event(
+				"Run",
+				"THE BANK is not playable (%d node error%s, MapLoaderStrict %s): this run plays the arena",
+				MapLoader.errors,
+				if MapLoader.errors == 1 then "" else "s",
+				tostring(Config.MapLoaderStrict)
+			)
+			World.map = "Arena"
+		end
 		World.runGold = 0
 		World.objectivesDone = 0
 		World.banked = 0
@@ -299,6 +309,7 @@ task.spawn(function()
 		World.wave = 1
 		Heat.reset()
 		EnemyPath.resetRun()
+		MapLoader.resetRun()
 		Hub.beginRun()
 		Economy.resetRun(World.partyPlayers())
 		Mastery.beginRun(World.partyPlayers())

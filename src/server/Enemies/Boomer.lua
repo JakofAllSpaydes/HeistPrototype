@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 
 local Boomer = {}
 
@@ -75,7 +76,7 @@ function Boomer.onDeath(d: any, api: any, attacker: Player?)
 	end
 	d.mem.exploded = true
 	local radius = Config.BoomerRadius * Config.BoomerDeathRadiusMult
-	local pos = Vector3.new(d.root.Position.X, Config.FloorTop, d.root.Position.Z)
+	local pos = Ground.at(d.root.Position)
 	local fuse = math.max(0.05, Config.BoomerDeathFuseSec)
 	api.telegraph(pos, radius, fuse, ORANGE)
 	api.fire("BoomerFuse", { model = d.model, sec = fuse, position = pos })

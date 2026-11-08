@@ -13,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local Ground = require(Shared:WaitForChild("Ground"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local CrateReel = require(Shared:WaitForChild("CrateReel"))
@@ -444,7 +445,7 @@ local function floorRing(position: Vector3, color: Color3, size: number)
 	ring.CanQuery = false
 	ring.CanTouch = false
 	ring.Size = Vector3.new(0.15, 2, 2)
-	ring.CFrame = CFrame.new(position.X, Config.FloorTop + 0.15, position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.CFrame = CFrame.new(position.X, Ground.y(position) + 0.15, position.Z) * CFrame.Angles(0, 0, math.rad(90))
 	ring.Color = color
 	ring.Material = Enum.Material.Neon
 	ring.Transparency = 0.2

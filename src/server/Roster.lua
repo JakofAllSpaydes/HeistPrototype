@@ -68,6 +68,7 @@ function Roster.build(): View?
 		banked = World.banked,
 		survivedSec = math.floor(World.survivedSec()),
 		vault = World.vaultLive,
+		zone = World.crewZoneLabel, -- brief 7: the crew zone's Label on a map with zones (nil on the arena)
 	}
 end
 

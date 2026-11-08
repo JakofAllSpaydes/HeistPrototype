@@ -36,6 +36,7 @@ local World = {
 	-- Room.forMap(World.map) is where every position comes from.
 	map = "Arena",
 	crewZone = "arena", -- the zone holding the most standing players (MapLoader keeps it current on THE BANK)
+	crewZoneLabel = nil :: string?, -- its Label (LOBBY) for the scoreboard header; nil on the arena
 	-- Payout accumulators for the run (GDD_7 payout). Survive REVIVE EVERYBODY saves; paid once at the summary.
 	runGold = 0, -- sum over cleared waves of GoldPerWaveBase + GoldPerWaveAdd x (wave - 1)
 	objectivesDone = 0, -- side jobs completed this run

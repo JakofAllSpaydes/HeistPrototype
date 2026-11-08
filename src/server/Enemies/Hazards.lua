@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local PlayerState = require(script.Parent.Parent.PlayerState)
 local World = require(script.Parent.Parent.World)
 
@@ -101,7 +102,7 @@ function Hazards.telegraph(position: Vector3, radius: number, seconds: number, c
 		Name = "Telegraph",
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.15, 0.4, 0.4),
-		CFrame = CFrame.new(position.X, Config.FloorTop + 0.12, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
+		CFrame = CFrame.new(position.X, Ground.y(position) + 0.12, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		Color = color or RED,
 		Material = Enum.Material.Neon,
 		Transparency = Config.TelegraphTransparency,
@@ -111,7 +112,7 @@ function Hazards.telegraph(position: Vector3, radius: number, seconds: number, c
 		Name = "TelegraphRim",
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.1, radius * 2 + 0.6, radius * 2 + 0.6),
-		CFrame = CFrame.new(position.X, Config.FloorTop + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
+		CFrame = CFrame.new(position.X, Ground.y(position) + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		Color = color or RED,
 		Material = Enum.Material.Neon,
 		Transparency = Config.TelegraphRimTransparency,
@@ -134,7 +135,7 @@ function Hazards.fire(position: Vector3, radius: number, seconds: number, dps: n
 		Name = "Disc",
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.2, radius * 2, radius * 2),
-		CFrame = CFrame.new(position.X, Config.FloorTop + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
+		CFrame = CFrame.new(position.X, Ground.y(position) + 0.1, position.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		Color = FIRE,
 		Material = Enum.Material.Neon,
 		Transparency = 0.55,
@@ -152,7 +153,7 @@ function Hazards.fire(position: Vector3, radius: number, seconds: number, dps: n
 		local anchor = part({
 			Name = "Flame",
 			Size = Vector3.new(0.2, 0.2, 0.2),
-			CFrame = CFrame.new(position.X, Config.FloorTop + 0.3, position.Z) * CFrame.new(offset),
+			CFrame = CFrame.new(position.X, Ground.y(position) + 0.3, position.Z) * CFrame.new(offset),
 			Transparency = 1,
 			Parent = model,
 		})
@@ -167,7 +168,7 @@ function Hazards.fire(position: Vector3, radius: number, seconds: number, dps: n
 	model.Parent = effects()
 	fields[model] = {
 		model = model,
-		position = Vector3.new(position.X, Config.FloorTop, position.Z),
+		position = Ground.at(position),
 		radius = radius,
 		expiresAt = Workspace:GetServerTimeNow() + seconds,
 		lastTick = 0,

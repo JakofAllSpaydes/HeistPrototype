@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Ground = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Ground"))
 local Lines = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CrewCall"):WaitForChild("Lines"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -257,7 +258,7 @@ local function floorArrows(from: Vector3, to: Vector3, seconds: number)
 	local yaw = math.atan2(-dir.X, -dir.Z)
 	for d = 4, length - 3, step do
 		local p = from + dir * d
-		local base = CFrame.new(p.X, Config.FloorTop + 0.06, p.Z) * CFrame.Angles(0, yaw, 0)
+		local base = CFrame.new(p.X, Ground.y(p) + 0.06, p.Z) * CFrame.Angles(0, yaw, 0)
 		-- A chevron: two thin bars meeting at the front.
 		for _, side in { -1, 1 } do
 			local bar = Instance.new("Part")
