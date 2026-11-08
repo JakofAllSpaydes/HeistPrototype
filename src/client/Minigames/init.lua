@@ -18,6 +18,7 @@ local specs: { [string]: Frame.GameSpec } = {
 	Charges = require(script.Charges),
 	Safe = require(script.Safe),
 	Freq = require(script.Freq),
+	Cut = require(script.Cut), -- Round 19c
 }
 
 function Minigames.init()

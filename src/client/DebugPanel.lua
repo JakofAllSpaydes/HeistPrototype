@@ -501,6 +501,17 @@ local function build()
 	btn(rVault, "Seal vault", 1 / 3, function()
 		send("SealVault")
 	end, Theme.Colors.grey)
+	-- Round 19c: zone gas now, SILENCE THE ALARM, CUT THE CHAIN.
+	local rGas = row(panel, 30.18, rh)
+	btn(rGas, "Zone gas", 1 / 3, function()
+		send("ZoneGasNow")
+	end, Theme.Colors.red)
+	btn(rGas, "Alarm job", 1 / 3, function()
+		send("AlarmJob")
+	end, Theme.Colors.amber)
+	btn(rGas, "Cut job", 1 / 3, function()
+		send("CutJob")
+	end, Theme.Colors.amber)
 	-- Pin the crew zone (or AUTO), and the path overlay.
 	local pinRow: Frame? = nil
 	for i, z in { "auto", "street", "lobby", "upper", "back", "stairs", "vault", "tunnel" } do

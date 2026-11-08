@@ -23,10 +23,11 @@ local Minigames = require(script.Parent.Minigames)
 local Heat = require(script.Parent.Heat)
 local VaultJob = require(script.Parent.VaultJob)
 local Pause = require(script.Parent.Pause)
+local Alarms = require(script.Parent.Alarms)
 
 type Job = {
 	id: number,
-	kind: string, -- hack | capture | <minigame> | vault
+	kind: string, -- hack | capture | <minigame> | vault | alarm
 	endsAt: number,
 	beacon: Model?, -- nil for the vault (its door frame is the beacon)
 	fill: BasePart?, -- capture: the disc that grows with progress
@@ -74,6 +75,8 @@ end
 local function copyFor(kind: string): any
 	if kind == "capture" then
 		return Lines.capture
+	elseif kind == "alarm" then
+		return Lines.alarm
 	elseif kind == "vault" then
 		if World.map ~= "Arena" and Lines.vault.textBank then
 			local c = table.clone(Lines.vault) :: any
@@ -104,8 +107,8 @@ end
 
 -- Does a job spot's pool (nil = every kind) take this kind? The vault is never a spot's: it is its own door.
 local function inPool(pool: { string }?, kind: string): boolean
-	if not pool or kind == "vault" then
-		return true
+	if not pool or kind == "vault" or kind == "alarm" then
+		return true -- Round 19c: an alarm panel can stand at any job spot
 	end
 	local k = string.lower(kind)
 	for _, p in pool do
@@ -190,7 +193,8 @@ local function buildHackBeacon(
 	actionText: string,
 	objectText: string,
 	holdSec: number,
-	onTriggered: (Player) -> ()
+	onTriggered: (Player) -> (),
+	busyTag: string?
 ): Model
 	local model = buildBeaconBase(position, Config.SideJobBeaconRadius)
 	local terminal = Instance.new("Part")
@@ -222,11 +226,12 @@ local function buildHackBeacon(
 	prompt.Triggered:Connect(onTriggered)
 	if holdSec > 0 then
 		-- The hold itself is the work: HACKING over the holder's head until they let go or it lands.
+		local tag = busyTag or Lines.job.busyTag or "HACKING"
 		prompt.PromptButtonHoldBegan:Connect(function(player: Player)
-			busy(player, Lines.job.busyTag or "HACKING", true)
+			busy(player, tag, true)
 		end)
 		prompt.PromptButtonHoldEnded:Connect(function(player: Player)
-			busy(player, Lines.job.busyTag or "HACKING", false)
+			busy(player, tag, false)
 		end)
 	end
 	model.Parent = effects
@@ -370,6 +375,22 @@ function CrewCall.trigger(forceKind: string?)
 		end)
 	elseif kind == "capture" then
 		beacon, fill = buildCaptureBeacon(position)
+	elseif kind == "alarm" then
+		-- Round 19c: SILENCE THE ALARM. The building rings until the panel is shut off (or the job runs out).
+		Alarms.set("job", true)
+		beacon = buildHackBeacon(
+			position,
+			Lines.alarm.promptAction,
+			Lines.alarm.promptObject,
+			Config.AlarmJobHoldSec,
+			function(player)
+				if job == thisJob and thisJob.active and PlayerState.isStanding(PlayerState.get(player)) then
+					Log.event("Call", "%s silenced the alarm for Side Job #%d", player.Name, thisJob.id)
+					CrewCall.finish(true, nil, { player })
+				end
+			end,
+			Lines.alarm.busyTag
+		)
 	elseif isMinigame(kind) then
 		-- The prompt opens the minigame at the beacon; a validated done finishes the job. Fails can retry.
 		beacon = buildHackBeacon(position, "OPEN", copy.propName, 0, function(player)
@@ -497,6 +518,9 @@ function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 	end
 	if j.kind == "vault" then
 		VaultJob.jobEnded(success)
+	end
+	if j.kind == "alarm" then
+		Alarms.set("job", false) -- silenced, or it gives up on its own (no pay)
 	end
 	if silent then
 		-- Run ended or debug reset: the card, pill and marker just go away on every client.

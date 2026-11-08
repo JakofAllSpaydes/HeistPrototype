@@ -67,6 +67,7 @@ export type Data = {
 	mem: { [string]: any }, -- the brain's scratch space
 	box: any?, -- Room.SpawnBox it came from (the stuck teleport goes back there)
 	path: any, -- EnemyPath.State
+	sep: Vector3?, -- Round 19c: flat push away from neighbours (0..1), refreshed every EnemySeparationTickSec
 }
 
 -- What the killing (or hitting) shot looked like: its direction, whether it took the head, and how hard it
@@ -262,6 +263,13 @@ local function muzzleOf(d: Data): Vector3
 end
 
 local function hold(d: Data)
+	-- Round 19c: a holding enemy still steps out of a neighbour's space (never while paused or frozen).
+	local sep = d.sep
+	if sep and sep.Magnitude > 0.15 and not Pause.active() and not Enemy.paused and not Enemy.frozen then
+		d.holding = false
+		d.humanoid:MoveTo(d.root.Position + sep * Config.EnemySeparationPush)
+		return
+	end
 	if not d.holding then
 		d.holding = true
 		d.humanoid:MoveTo(d.root.Position)
@@ -382,7 +390,7 @@ local function chase(d: Data, target: BasePart, now: number)
 	if now < d.detourUntil then
 		return -- keep walking the detour waypoint
 	end
-	d.humanoid:MoveTo(target.Position)
+	d.humanoid:MoveTo(target.Position + (d.sep or Vector3.zero) * Config.EnemySeparationPush)
 end
 
 -- Remove an enemy without a kill (the Boomer after its burst): no cash, no body.
@@ -882,6 +890,67 @@ end
 -- Boss cutscene: enemies stand still (no brains) while `Enemy.paused` is set; nothing fades.
 Enemy.paused = false
 
+-- Round 19c: a crowd, not a single blob. Every enemy (the boss neither pushes nor is pushed) gets a flat push
+-- away from the others within EnemySeparationRadius on its level, stronger the closer they stand; steering adds
+-- it to the walk target (x EnemySeparationPush studs). A spatial hash keeps it cheap.
+local function separate()
+	local r = Config.EnemySeparationRadius
+	if r <= 0 then
+		for _, d in active do
+			d.sep = nil
+		end
+		return
+	end
+	local grid: { [string]: { Data } } = {}
+	local function key(x: number, z: number): string
+		return x .. ":" .. z
+	end
+	for _, d in active do
+		if not d.dead and not d.row.boss then
+			local p = d.root.Position
+			local k = key(math.floor(p.X / r), math.floor(p.Z / r))
+			local cell = grid[k]
+			if not cell then
+				cell = {}
+				grid[k] = cell
+			end
+			table.insert(cell, d)
+		end
+	end
+	for _, d in active do
+		if d.dead or d.row.boss then
+			d.sep = nil
+			continue
+		end
+		local p = d.root.Position
+		local cx, cz = math.floor(p.X / r), math.floor(p.Z / r)
+		local push = Vector3.zero
+		for dx = -1, 1 do
+			for dz = -1, 1 do
+				local cell = grid[key(cx + dx, cz + dz)]
+				if cell then
+					for _, o in cell do
+						if o ~= d then
+							local op = o.root.Position
+							if math.abs(op.Y - p.Y) < 6 then
+								local flat = Vector3.new(p.X - op.X, 0, p.Z - op.Z)
+								local dist = flat.Magnitude
+								if dist < r then
+									local dir = if dist > 0.05
+										then flat / dist
+										else Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
+									push += dir * (1 - dist / r)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		d.sep = if push.Magnitude > 1 then push.Unit elseif push.Magnitude > 0.01 then push else nil
+	end
+end
+
 function Enemy.init()
 	local existing = Workspace:FindFirstChild("Enemies")
 	enemiesFolder = if existing and existing:IsA("Folder") then existing else Instance.new("Folder")
@@ -901,11 +970,17 @@ function Enemy.init()
 	end
 	EnemyPath.init()
 
+	local sepAcc = 0
 	RunService.Heartbeat:Connect(function(dt)
 		if Enemy.frozen then
 			return
 		end
 		local now = os.clock()
+		sepAcc += dt
+		if sepAcc >= Config.EnemySeparationTickSec then
+			sepAcc = 0
+			separate()
+		end
 		for model, d in active do
 			if d.dead then
 				continue

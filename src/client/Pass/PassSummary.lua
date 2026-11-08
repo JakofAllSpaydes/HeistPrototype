@@ -1,7 +1,8 @@
 --!strict
 -- Brief 6: the summary screen's PASS XP bar, under the panel after the account XP bar fills: the season diamond
 -- with the level, a bar that fills from the run's start to its end (a level crossed pops `PASS LV 8` and bumps the
--- diamond), `+N PASS XP` counting, and CLAIM IN PASS, which opens the pass scene from the summary.
+-- diamond), `+N PASS XP` counting, and CLAIM IN PASS (Round 19c: `onClaim`, the summary sends you back to the hub
+-- and the pass opens there, so it never stacks on the end-of-run set).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local PassSeason = require(Shared:WaitForChild("PassSeason"))
@@ -17,7 +18,14 @@ local PassSummary = {}
 local ORANGE = Color3.fromHex("E8792A")
 
 -- `award` is the server's Pass.addXp result for the run; `delay` seconds before it slides in. Returns the frame.
-function PassSummary.show(parent: Instance, width: number, position: UDim2, award: any, delay: number): Frame?
+function PassSummary.show(
+	parent: Instance,
+	width: number,
+	position: UDim2,
+	award: any,
+	delay: number,
+	onClaim: (() -> ())?
+): Frame?
 	if typeof(award) ~= "table" then
 		return nil
 	end
@@ -108,7 +116,12 @@ function PassSummary.show(parent: Instance, width: number, position: UDim2, awar
 	claimBtn.Position = UDim2.new(1, -S(10), 0.5, 0)
 	claimBtn.TextSize = S(15)
 	claimBtn.Activated:Connect(function()
-		ClientState.Juice:Fire("OpenPass", {})
+		if onClaim then
+			claimBtn.Text = "TO THE HUB…"
+			onClaim()
+		else
+			ClientState.Juice:Fire("OpenPass", {})
+		end
 	end)
 	local sync = ClientState.sync
 	local waiting = PassSeason.claimableCount(sync and sync.profile and sync.profile.pass)

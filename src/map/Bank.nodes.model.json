@@ -2204,7 +2204,8 @@
             "Opens": "upper",
             "PingText": "CUT THE CHAINS",
             "Priority": 3,
-            "TriggerWave": 8
+            "TriggerWave": 8,
+            "Interact": "Cut"
           },
           "children": [
             {
@@ -2331,7 +2332,8 @@
             "Opens": "upper",
             "PingText": "CUT THE CHAINS",
             "Priority": 3,
-            "TriggerWave": 8
+            "TriggerWave": 8,
+            "Interact": "Cut"
           },
           "children": [
             {
@@ -8804,7 +8806,7 @@
         {
           "attributes": {
             "Label": "ELECTRICAL",
-            "Pool": "hotwire,freq",
+            "Pool": "hotwire,freq,cut",
             "Zone": "back"
           },
           "children": [
@@ -9046,7 +9048,7 @@
         {
           "attributes": {
             "Label": "SERVER ROOM",
-            "Pool": "hack,freq",
+            "Pool": "hack,freq,cut",
             "Zone": "tunnel"
           },
           "children": [
@@ -11127,6 +11129,246 @@
       ],
       "className": "Folder",
       "name": "VaultRoom"
+    },
+    {
+      "name": "Fences",
+      "className": "Folder",
+      "children": [
+        {
+          "attributes": {},
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "FENCE · back_strip_e",
+                    "TextColor3": [
+                      0.788,
+                      0.769,
+                      0.722
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  6,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "back_strip_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "position": [
+                  122.5,
+                  5,
+                  -910
+                ],
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.788,
+              0.769,
+              0.722
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              45,
+              10,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Fence"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {},
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "FENCE · back_strip_w",
+                    "TextColor3": [
+                      0.788,
+                      0.769,
+                      0.722
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  6,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "back_strip_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "position": [
+                  -122.5,
+                  5,
+                  -910
+                ],
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.788,
+              0.769,
+              0.722
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              45,
+              10,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Fence"
+            ],
+            "Transparency": 0.55
+          }
+        }
+      ]
     }
   ],
   "className": "Folder"

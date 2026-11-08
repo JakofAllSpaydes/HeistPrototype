@@ -23,6 +23,7 @@ NodeOverlay.TYPES = {
 	"Lineup",
 	"Hatch",
 	"VaultRoom",
+	"Fences",
 }
 local SHORT = {
 	Zones = "ZONE",
@@ -36,6 +37,7 @@ local SHORT = {
 	Lineup = "LINEUP",
 	Hatch = "HATCH",
 	VaultRoom = "VAULT",
+	Fences = "FENCE",
 }
 -- Which attributes the billboard shows per type (the rest stay in Studio's Properties panel).
 local KEYS = {
@@ -50,6 +52,7 @@ local KEYS = {
 	Lineup = {},
 	Hatch = { "Zone" },
 	VaultRoom = { "Door" },
+	Fences = {},
 }
 
 NodeOverlay.on = false

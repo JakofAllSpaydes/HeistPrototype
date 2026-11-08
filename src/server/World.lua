@@ -144,6 +144,8 @@ end
 
 -- Heat moves in half-star steps. Everyone sees the change; PlayerState resends on the next flush.
 World.heatDirty = false
+-- Round 19c: Alarms installs this; called when the heat crosses into a higher whole star.
+World.onStarUp = nil :: ((number) -> ())?
 function World.addHeat(delta: number, reason: string)
 	if delta == 0 then
 		return
@@ -155,6 +157,10 @@ function World.addHeat(delta: number, reason: string)
 	end
 	World.heatDirty = true
 	World.fireRun("HeatChanged", { delta = World.heat - before, value = World.heat, reason = reason })
+	local starUp = World.onStarUp
+	if starUp and math.floor(World.heat) > math.floor(before) then
+		starUp(math.floor(World.heat))
+	end
 	print(
 		string.format(
 			"[GHS Heat] %s: %.1f -> %.1f (%s)",

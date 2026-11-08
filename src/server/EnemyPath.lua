@@ -296,10 +296,29 @@ local function seen(point: Vector3): boolean
 	for _, player in World.runAudience() do
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root and PlayerState.isStanding(PlayerState.get(player)) then
-			local eye = root.Position + Vector3.new(0, 1.5, 0)
-			if (to - eye).Magnitude < 250 and Workspace:Raycast(eye, to - eye, seeParams) == nil then
-				return true
+			-- Round 19c: from the eyes and from up where the third-person camera sits.
+			for _, lift in { 1.5, Config.CatchUpCameraLift } do
+				local eye = root.Position + Vector3.new(0, lift, 0)
+				if (to - eye).Magnitude < 250 and Workspace:Raycast(eye, to - eye, seeParams) == nil then
+					return true
+				end
 			end
+		end
+	end
+	return false
+end
+
+-- Round 19c: never closer than CatchUpMinPlayerDistance (straight line) to any standing player, so a catch-up
+-- brings an enemy into the fight's neighbourhood instead of onto someone's back.
+local function nearAnyPlayer(point: Vector3): boolean
+	for _, player in World.runAudience() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if
+			root
+			and PlayerState.isStanding(PlayerState.get(player))
+			and (root.Position - point).Magnitude < Config.CatchUpMinPlayerDistance
+		then
+			return true
 		end
 	end
 	return false
@@ -317,7 +336,9 @@ function catchUp(d: any, st: State): boolean
 		remain += (wps[i + 1].Position - wps[i].Position).Magnitude
 		if remain >= Config.CatchUpLead and wps[i].Action ~= Enum.PathWaypointAction.Custom then
 			local p = wps[i].Position
-			if not seen(p) then
+			-- It must also be a real step forward: well short of the players, but closer than where it stands.
+			local gain = (d.root.Position - p).Magnitude
+			if gain >= Config.CatchUpMinGain and not nearAnyPlayer(p) and not seen(p) then
 				d.model:PivotTo(CFrame.new(p + Vector3.new(0, d.root.Size.Y / 2 + d.humanoid.HipHeight + 0.5, 0)))
 				st.index = i + 1
 				st.farFor = 0
@@ -458,6 +479,11 @@ function EnemyPath.steer(d: any, targetPos: Vector3, now: number, reach: number,
 	end
 	if now < st.detourUntil then
 		return
+	end
+	-- Round 19c: the crowd spreads out (Enemy fills d.sep from its neighbours).
+	local sep = d.sep
+	if sep then
+		goal += sep * Config.EnemySeparationPush
 	end
 	hum:MoveTo(goal)
 end

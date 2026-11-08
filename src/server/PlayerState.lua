@@ -261,7 +261,7 @@ end
 
 ------------------------------------------------------------------ Computed stats
 -- The multipliers a self buff gives at the player's level of that ability (AbilityGrowth on the percentages).
--- stim: fire rate, reload, move. stimshot: fire rate, reload (plus the heal on use). deadeye: damage, move, pierce.
+-- stim: fire rate, reload, move. stimshot: fire rate, reload (plus the heal on use). deadeye: damage, accuracy, pierce.
 function PlayerState.buffFor(state: State, id: string): Stats.Buffs
 	local level = PlayerState.abilityLevel(state, id)
 	local b: Stats.Buffs = { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
@@ -277,7 +277,8 @@ function PlayerState.buffFor(state: State, id: string): Stats.Buffs
 			+ AbilityGrowth.at(id, "ReloadPct", (Config.StimShotReloadSpeedMult - 1) * 100, level) / 100
 	elseif id == "deadeye" then
 		b.damageMult = 1 + AbilityGrowth.at(id, "DmgPct", Config.DeadEyeDmgPct, level) / 100
-		b.moveSpeedMult = 1 + AbilityGrowth.at(id, "SpeedPct", Config.DeadEyeSpeedPct, level) / 100
+		-- Round 19c: tighter spread instead of move speed (AccuracyPct less spread, like the Accuracy upgrade).
+		b.spreadMult = math.max(0.05, 1 - AbilityGrowth.at(id, "AccuracyPct", Config.DeadEyeAccuracyPct, level) / 100)
 		-- Fractional pierce is real: 2.2 passes through two more enemies at full damage and a third at 20%.
 		b.pierceAdd = AbilityGrowth.at(id, "Pierce", Config.DeadEyePierce, level)
 	end

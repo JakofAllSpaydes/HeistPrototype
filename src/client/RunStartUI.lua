@@ -115,7 +115,14 @@ local function finish()
 	end)
 	stopTracks()
 	ClientState.cameraMode = "gameplay"
-	ClientState.requestCameraYaw = 0 -- the line faces north (-Z); the gameplay camera picks up behind
+	-- The gameplay camera picks up behind the line: north (-Z) on the arena, the line's own look on a map
+	-- (Round 19c: THE BANK's crew faces +Z, toward the building).
+	local f = d.facing
+	if typeof(f) == "Vector3" and Vector3.new(f.X, 0, f.Z).Magnitude > 0.1 then
+		ClientState.requestCameraYaw = math.atan2(-f.X, -f.Z)
+	else
+		ClientState.requestCameraYaw = 0
+	end
 	ClientState.setBlock("cinematic", false)
 	HUD.setMode(HUD.baseMode())
 end

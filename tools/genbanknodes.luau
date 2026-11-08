@@ -203,6 +203,7 @@ local d2 = attrs({
 	PingText = "CUT THE CHAINS",
 	Label = "STAIR CHAINS",
 	Priority = 3,
+	Interact = "Cut", -- Round 19c: the bolt cutter minigame
 })
 local d2l, d2r = both("D2_stair", 60.2, 38, -3.6, { 16, 3, 0.6 }, 0, d2)
 table.insert(doors, d2l)
@@ -394,9 +395,9 @@ local function job(name: string, zoneId: string, pos: { number }, facing: number
 end
 job("teller_counter", "lobby", { 0, 6.5, -14 }, 180, "keypad,hack", "TELLER COUNTER")
 job("mezzanine_office", "upper", { 0, 37.5, 50 }, 0, "lockpick,charges", "OFFICE")
-job("electrical_panel", "back", { -90, 6.5, 45 }, -90, "hotwire,freq", "ELECTRICAL")
+job("electrical_panel", "back", { -90, 6.5, 45 }, -90, "hotwire,freq,cut", "ELECTRICAL")
 job("vault_landing", "stairs", { 0, -37.5, 80 }, 180, "capture", "VAULT LANDING")
-job("server_room", "tunnel", { 10, -36.5, -10 }, 0, "hack,freq", "SERVER ROOM")
+job("server_room", "tunnel", { 10, -36.5, -10 }, 0, "hack,freq,cut", "SERVER ROOM")
 job("street_road", "street", { 0, 1.5, -183 }, 180, "capture", "THE STREET")
 
 ------------------------------------------------------------------ Boss walls (facing into the zone)
@@ -428,6 +429,12 @@ local hatch = {
 	}),
 }
 local vaultRoom = { node("vault_room", { 0, -28.5, 34 }, { 33, 21, 38 }, 0, { Door = "D4" }) }
+-- Round 19c: hoardings across the side strips at the bank's back corners (building wall x 100 to the outer wall
+-- x 144) close off the empty strip behind the bank.
+local fences = {
+	node("back_strip_e", { 122.5, 5, 90 }, { 45, 10, 0.6 }, 0, {}),
+	node("back_strip_w", { -122.5, 5, 90 }, { 45, 10, 0.6 }, 0, {}),
+}
 
 local out = {
 	className = "Folder",
@@ -443,6 +450,7 @@ local out = {
 		folder("Lineup", "GHS_Lineup", lineup),
 		folder("Hatch", "GHS_Hatch", hatch),
 		folder("VaultRoom", "GHS_VaultRoom", vaultRoom),
+		folder("Fences", "GHS_Fence", fences),
 	},
 }
 fs.writeFile("src/map/Bank.nodes.model.json", serde.encode("json", out, true))

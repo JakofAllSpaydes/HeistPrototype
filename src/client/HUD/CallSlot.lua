@@ -151,6 +151,13 @@ function CallSlot.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 				Theme.Colors.red,
 				1.2
 			)
+		elseif name == "ZoneGas" and typeof(data.toast) == "string" then
+			-- Round 19c: the zone gas event (warning, gas, clear).
+			component.toast(
+				data.toast,
+				if data.phase == "clear" then Theme.Colors.cash else Theme.Colors.red,
+				if data.phase == "warn" then 2 else 1.4
+			)
 		end
 	end
 

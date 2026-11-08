@@ -26,6 +26,7 @@ local Queue = require(script.Parent.Queue)
 local Heat = require(script.Parent.Heat)
 local Bags = require(script.Parent.Bags)
 local VaultJob = require(script.Parent.VaultJob)
+local ZoneGas = require(script.Parent.ZoneGas) -- Round 19c
 local Boss = require(script.Parent.Boss)
 local Progression = require(script.Parent.Progression)
 local Mastery = require(script.Parent.Mastery)
@@ -395,6 +396,20 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			VaultJob.debugGas()
 		end
 		toast(player, "VAULT SEALS WHEN EMPTY")
+	end,
+	-- Round 19c: the zone gas on the crew zone now; the two new side jobs on demand.
+	ZoneGasNow = function(player, _state, _args)
+		if World.map == "Arena" then
+			toast(player, "ZONE GAS IS THE BANK ONLY")
+			return
+		end
+		ZoneGas.debugNow()
+	end,
+	AlarmJob = function(_player, _state, _args)
+		CrewCall.trigger("alarm")
+	end,
+	CutJob = function(_player, _state, _args)
+		CrewCall.trigger("Cut")
 	end,
 	GasVault = function(player, _state, _args)
 		if VaultJob.phase == "open" or VaultJob.phase == "warn" then

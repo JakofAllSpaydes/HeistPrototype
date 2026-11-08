@@ -641,6 +641,58 @@ local function refreshButton(parent: Instance, key: string, weekly: boolean, siz
 	return b
 end
 
+-- Round 19c: the small R in a sheet's corner swaps any unfinished Job (a solo player's REVIVE 3 TEAMMATES). Blue
+-- while today's free reroll is left (Config.JobFreeRerollsPerDay); after that it opens the fake-Robux REFRESH.
+local function rerollButton(parent: Instance, key: string, weekly: boolean): TextButton
+	local S = UI.S
+	local p = profile()
+	local used = tonumber(p and p.jobs and p.jobs.rerollUsed) or 0
+	local free = used < Config.JobFreeRerollsPerDay
+	local size = S(30)
+	local b = UI.button({
+		Name = "Reroll",
+		Text = "R",
+		Font = Theme.Fonts.display,
+		TextSize = S(17),
+		TextColor3 = Theme.Colors.white,
+		BackgroundColor3 = if free then Color3.fromHex("4D9FE8") else Color3.fromHex("6E7C8C"),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(8), 0, S(8)),
+		Size = UDim2.fromOffset(size, size),
+		ZIndex = 20,
+		Parent = parent,
+	})
+	UI.corner(b, size / 2)
+	UI.stroke(b, INK, S(1.5), 0.4)
+	local busy = false
+	b.Activated:Connect(function()
+		if busy then
+			return
+		end
+		UI.punch(b, 0.85, 0.15)
+		if free then
+			busy = true
+			local res = shop("jobReroll", { key = key })
+			busy = false
+			if res.ok then
+				UI.sound(Fx.Sounds.tear, 0.8, 0.5)
+			else
+				PurchaseSheet.toast(tostring(res.reason or "Not now"), Theme.Colors.malus, false)
+			end
+			return
+		end
+		PurchaseSheet.open(if weekly then "job_refresh_bounty" else "job_refresh_daily", {
+			context = "jobs reroll " .. key,
+			args = { key = key },
+			note = "Today's free reroll is used. Swap this Job for a fresh one with its own rewards.",
+			onSuccess = function()
+				UI.sound(Fx.Sounds.tear, 0.8, 0.5)
+			end,
+		})
+	end)
+	return b
+end
+
 ------------------------------------------------------------------ Cards
 -- One daily card, a third of the dailies' width and their full height:
 --   tag, title, MARLOW's line (top) · the state area (flexes) · the reward row (bottom)
@@ -742,6 +794,7 @@ local function dailyCard(parent: Frame, slot: number, e: any, order: number): Fr
 		local bar = progressBar(mid, progress, def.target, S(24), true, if at then at + 0.25 else nil)
 		bar.AnchorPoint = Vector2.new(0, 0.5)
 		bar.Position = UDim2.fromScale(0, 0.5)
+		rerollButton(paper, key, false)
 	end
 	return holder
 end
@@ -849,6 +902,7 @@ local function bountyCard(parent: Frame, e: any, order: number): Frame?
 		local bar = progressBar(slot, progress, def.target, S(32), false, if at then at + 0.25 else nil)
 		bar.AnchorPoint = Vector2.new(0, 0.5)
 		bar.Position = UDim2.fromScale(0, 0.5)
+		rerollButton(paper, key, true)
 	end
 	return holder
 end

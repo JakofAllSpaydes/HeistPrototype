@@ -498,6 +498,8 @@ function Markers.init()
 			else
 				Markers.setSub("vault", Lines.vault.gasHint, Theme.Colors.red)
 			end
+		elseif name == "VaultLooted" then
+			Markers.remove("vault") -- Round 19c: nothing left inside, nothing to point at
 		elseif name == "VaultSealed" or name == "HubEnter" then
 			Markers.remove("vault")
 			Markers.remove("hatch")

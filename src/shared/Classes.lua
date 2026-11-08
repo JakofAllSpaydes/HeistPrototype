@@ -193,10 +193,10 @@ Classes.List = {
 				hotkey = "E",
 				system = "self",
 				price = 150,
-				description = "Hit harder, move faster, shoot through them.",
+				description = "Hit harder, aim tighter, shoot through them.",
 				vars = {
 					var("DmgPct", "DMG", Config.DeadEyeDmgPct, "%"),
-					var("SpeedPct", "SPEED", Config.DeadEyeSpeedPct, "%"),
+					var("AccuracyPct", "ACC", Config.DeadEyeAccuracyPct, "%"),
 					var("Pierce", "PIERCE", Config.DeadEyePierce),
 				},
 				icon = "EYE",

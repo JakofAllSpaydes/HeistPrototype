@@ -19,6 +19,8 @@ MapLoader.init()
 local EnemyPath = require(script.Parent.EnemyPath)
 local Doors = require(script.Parent.Doors)
 local Windows = require(script.Parent.Windows)
+local Alarms = require(script.Parent.Alarms) -- Round 19c
+local ZoneGas = require(script.Parent.ZoneGas) -- Round 19c
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
@@ -126,6 +128,8 @@ Roster.init()
 Debug.init()
 Doors.init()
 Windows.init()
+Alarms.init()
+ZoneGas.init()
 
 local function setState(state: string)
 	World.state = state
@@ -192,6 +196,7 @@ local function runWaves()
 		Doors.onWaveStart(wave) -- brief 7: a door due by this wave takes the slot before the side-job draw
 		CrewCall.onWaveStart(wave)
 		Bags.onWaveStart(wave)
+		ZoneGas.onWaveStart(wave) -- Round 19c: every few waves the crew's zone is gassed
 
 		local advanced = Spawner.runWave(wave)
 		if World.runOver then
@@ -273,6 +278,8 @@ task.spawn(function()
 		Queue.onRunEnded(choice)
 		Hub.enter(lastParty)
 		Doors.resetRun()
+		Alarms.resetRun()
+		ZoneGas.resetRun()
 		-- Brief 6: back in the hub after a reset, MARLOW announces the new Jobs.
 		for _, p in lastParty do
 			task.delay(2.5, Jobs.announce, p)
@@ -322,6 +329,8 @@ task.spawn(function()
 		MapLoader.resetRun()
 		Doors.resetRun()
 		Windows.resetRun()
+		Alarms.resetRun()
+		ZoneGas.resetRun()
 		Hub.beginRun()
 		Economy.resetRun(World.partyPlayers())
 		Mastery.beginRun(World.partyPlayers())

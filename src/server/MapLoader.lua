@@ -536,6 +536,58 @@ local function readSingles(nodes: Instance)
 	end
 end
 
+-- Round 19c: Fence nodes close off ground nobody needs (the strip behind the bank). Each node's box becomes a solid
+-- site hoarding (a panel and posts every FencePostSpacing studs) that stops players and enemies; rebuilt on every
+-- read, so a dragged node moves its fence after Recompute nodes.
+local function buildFences(nodes: Instance)
+	local bank = MapLoader.bank
+	if not bank then
+		return
+	end
+	local old = bank:FindFirstChild("Fences")
+	if old then
+		old:Destroy()
+	end
+	local fences = partsIn(nodes, "Fences")
+	if #fences == 0 then
+		return
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Fences"
+	local color = Color3.fromHex(Config.FenceColor)
+	local postColor = Color3.fromHex(Config.FencePostColor)
+	local function piece(name: string, cf: CFrame, size: Vector3, c: Color3, material: Enum.Material)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanTouch = false
+		p.CFrame = cf
+		p.Size = size
+		p.Color = c
+		p.Material = material
+		p.Parent = folder
+	end
+	for _, n in fences do
+		local s = n.Size
+		local thick = math.max(s.Z, 0.4)
+		piece("Panel", n.CFrame, Vector3.new(s.X, s.Y, thick), color, Enum.Material.CorrodedMetal)
+		local posts = math.max(1, math.round(s.X / math.max(Config.FencePostSpacing, 1)))
+		for i = 0, posts do
+			local x = -s.X / 2 + s.X * i / posts
+			piece(
+				"Post",
+				n.CFrame * CFrame.new(x, 0.3, 0),
+				Vector3.new(0.6, s.Y + 0.6, thick + 0.4),
+				postColor,
+				Enum.Material.Metal
+			)
+		end
+		Log.event("Map", "Fence %s %.0f studs", n.Name, s.X)
+	end
+	folder.Parent = bank
+end
+
 -- THE BANK as Room.forMap hands it out. Door gating sits on top (spotOpen / box filters).
 local function buildView(): Room.MapView?
 	if not MapLoader.loaded then
@@ -616,6 +668,7 @@ function MapLoader.read()
 	readBoxes(nodes)
 	readSpots(nodes)
 	readSingles(nodes)
+	buildFences(nodes)
 	if not next(MapLoader.zones) then
 		fail("Zones", "no Zone nodes")
 	end

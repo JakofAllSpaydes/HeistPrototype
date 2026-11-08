@@ -27,6 +27,7 @@ local Pause = require(script.Parent.Pause)
 local Abilities = require(script.Parent.Abilities)
 local RunEvents = require(script.Parent.RunEvents)
 local GuidePath = require(script.Parent.GuidePath)
+local Alarms = require(script.Parent.Alarms)
 
 local VaultJob = {}
 
@@ -367,6 +368,7 @@ end
 local function seal()
 	VaultJob.phase = "sealed"
 	World.vaultLive = false
+	Alarms.set("vault", false)
 	PlayerState.markAllDirty()
 	setFog(false)
 	setLights(false)
@@ -391,6 +393,7 @@ local function startGas()
 		return
 	end
 	VaultJob.phase = "gas"
+	Alarms.set("vault", false)
 	setFog(true)
 	setLights(true, GAS)
 	Bags.fizzleVault()
@@ -413,6 +416,7 @@ local function startWarn()
 		text = Lines.vault.gasText,
 	})
 	Log.event("Vault", "gas warning, %ds left", Config.VaultGasWarnSec)
+	Alarms.set("vault", true) -- Round 19c: the building's alarms ring with the vault room's strobe
 	-- Red strobe until the gas or the seal.
 	local token = runToken
 	task.spawn(function()
@@ -549,6 +553,7 @@ end
 -- Run start / hub: closed, unlit, amber, undone.
 function VaultJob.resetRun()
 	runToken += 1
+	Alarms.set("vault", false)
 	removePrompt()
 	VaultJob.phase = "closed"
 	World.vaultLive = false
@@ -606,6 +611,21 @@ function VaultJob.init()
 	end
 	RunService.Heartbeat:Connect(function()
 		trackExits()
+		if VaultJob.phase == "sealed" then
+			-- Round 19c: anyone who slipped in while the door swung shut is put back on the landing side.
+			for _, player in playersInside() do
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if root then
+					local front = VaultJob.front()
+					local out = Vector3.new(front.X - root.Position.X, 0, front.Z - root.Position.Z)
+					local look = if out.Magnitude > 0.1 then out.Unit else Vector3.new(0, 0, -1)
+					local at = front + look * Config.VaultEjectStuds + Vector3.new(0, 3, 0)
+					player.Character:PivotTo(CFrame.lookAt(at, at + look))
+					Log.event("Vault", "%s was inside the sealed vault: moved out", player.Name)
+				end
+			end
+			return
+		end
 		if VaultJob.phase ~= "gas" then
 			return
 		end

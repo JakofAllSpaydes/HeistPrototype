@@ -28,6 +28,7 @@ local TAGS = {
 	Lineup = "GHS_Lineup",
 	Hatch = "GHS_Hatch",
 	VaultRoom = "GHS_VaultRoom",
+	Fences = "GHS_Fence",
 }
 local ORDER = {
 	"Zones",
@@ -41,6 +42,7 @@ local ORDER = {
 	"Lineup",
 	"Hatch",
 	"VaultRoom",
+	"Fences",
 }
 
 local path = process.args[1]

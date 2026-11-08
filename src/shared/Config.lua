@@ -115,6 +115,10 @@ local Config = {
 	HpPerPlayerMult = 0.5,
 	RetargetInterval = 1.0, -- how often an enemy re-picks its target
 	EnemyCollidesWithPlayers = false, -- false: enemies walk through players and each other, never body-block
+	-- Round 19c: soft separation so a crowd stays a crowd instead of one stacked enemy (no physics, steering only).
+	EnemySeparationRadius = 3.5, -- studs: neighbours closer than this push each other apart (0 = off)
+	EnemySeparationPush = 4, -- studs the push moves an enemy's walk target at full strength
+	EnemySeparationTickSec = 0.1, -- how often the pushes are recomputed
 	EnemyStepHeight = 1.5, -- Round 19: enemies step up stairs and sills this high without jumping (scaled by size)
 	EnemyStuckDetourSec = 1, -- PathfindingEnabled false only (Round 18d walk): no progress this long -> sidestep + jump
 	EnemyStuckTeleportSec = 8, -- PathfindingEnabled false only: still stuck after this long -> a random spawn box
@@ -141,7 +145,10 @@ local Config = {
 	-- to the first waypoint CatchUpLead studs (along the route) short of the target that no player can see.
 	CatchUpDistance = 90,
 	CatchUpSec = 6, -- 0 = off
-	CatchUpLead = 40,
+	CatchUpLead = 60, -- Round 19c: 40 -> 60
+	CatchUpMinPlayerDistance = 55, -- Round 19c: the landing waypoint is at least this far (straight line) from every standing player
+	CatchUpMinGain = 20, -- ...and at least this far from where the enemy stood (no tiny hops)
+	CatchUpCameraLift = 9, -- ...and hidden from a point this far above each player too (the third-person camera)
 	EnemyClimbAnimationId = "", -- [TBA] played while lifted (empty: none)
 	SpawnRingRadius = 90, -- studs from room center
 	SpawnPointCount = 8,
@@ -377,7 +384,8 @@ local Config = {
 	CrateDropRadius = 6, -- studs from the crate the gun lands
 	CrateLifetimeSec = 45, -- the crate closes after this even with rolls left (floor guns keep their own timers)
 	BigCrateWaveInterval = 0, -- a crate at the start of every Nth wave; 0 = never
-	BigCrateIntroDrop = true, -- one crate during the intro
+	BigCrateIntroDrop = true, -- one crate during the intro (the arena)...
+	BigCrateIntroDropOnMaps = false, -- ...and on THE BANK / later maps too (Round 19c: off, you start with the starter gun)
 	BigCrateIntroPosition = Vector3.new(0, 0, -14), -- where the intro crate lands
 	BigCrateDespawnOnWaveEnd = false, -- true: crates close at wave end
 	BigCrateRarityFloorByBracket = { 2, 3, 3, 4 }, -- the crate's rarity floor per wave bracket: Uncommon / Rare / Rare / Epic
@@ -405,9 +413,11 @@ local Config = {
 		Charges = 1,
 		Safe = 0, -- the Safe dial is the vault's own beat now, out of the normal rotation
 		Freq = 1,
+		Cut = 1, -- Round 19c: CUT THE CHAIN (the bolt cutter)
+		alarm = 1, -- Round 19c: SILENCE THE ALARM (every alarm in the building rings until the panel is shut off)
 		vault = 1, -- CRACK THE VAULT (from VaultJobMinWave, once per run when VaultJobOnce)
 	},
-	SideJobCaptureSec = 10, -- seconds a player must stand in the circle; pauses while nobody is inside
+	SideJobCaptureSec = 6, -- seconds a player must stand in the circle; pauses while nobody is inside (Round 19c: 10 -> 6)
 	SideJobCaptureRadius = 7, -- studs
 	SideJobRewardCrate = true, -- a crate drops at the beacon on completion
 	CallPillWarnSec = 10, -- pill turns red under this many seconds
@@ -491,7 +501,7 @@ local Config = {
 	ClaymoreLifetime = 0, -- until it goes off or is destroyed
 	DeadEyeDuration = 8,
 	DeadEyeDmgPct = 25, -- weapon damage x (1 + this / 100)
-	DeadEyeSpeedPct = 20,
+	DeadEyeAccuracyPct = 50, -- Round 19c (was move speed): spread x (1 - this / 100) while it runs, on top of the Accuracy upgrade
 	DeadEyePierce = 2, -- extra enemies every bullet passes through while it runs (on top of upgrades and sniper pierce)
 	FlashRadius = 12, -- enemies this close to the burst are stunned
 	StunDuration = 3, -- stunned enemies stop and do not swing
@@ -553,6 +563,7 @@ local Config = {
 	CashBagsPerWave = 1, -- spawned at every wave start (not the boss cutscene), up to MaxActiveBags; fractions carry (0.5 = every other wave)
 	GoldBagsPerWave = 0.5,
 	MaxActiveBags = 6, -- caps the wave-start trickle; bursts (boss, vault) bypass it
+	BagPartyScale = 0.5, -- Round 19c: every bag count (trickle, cap, bursts: vault, doors, boss) x (1 + this per member past the first): 1x solo, 2.5x for 4
 	-- Pickup has no button: stand near a bag and it fills, then it is yours. One bag at a time per player.
 	BagChannelSec = 0.7, -- a bag fills over this long (the first one of a streak)
 	BagStartRadius = 6, -- studs (flat, root to bag): a bag in this reach starts filling (one with fill first, else the nearest)...
@@ -590,6 +601,7 @@ local Config = {
 	VaultOpenSec = 60, -- the loot window from the door opening
 	VaultGasWarnSec = 10, -- alarm, strobe and MARLOW's warning this long before the gas
 	VaultGasDps = 8, -- to any player inside once the gas is in (stops the moment they step out)
+	VaultEjectStuds = 4, -- Round 19c: a player inside the sealed vault (walked in as the door shut) lands this far out on the landing side
 	-- Brief 5: the CRACK THE VAULT draw is impossible to miss.
 	VaultStampSec = 1.5, -- the center VAULT JOB stamp
 	VaultDoorPulseSec = 1.2, -- the door pulses amber (with a light) once per this, until cracked
@@ -599,6 +611,31 @@ local Config = {
 	VaultDoorSwingSec = 1.5, -- ...then the door swings in over this long (the server door with it)
 	VaultPillTunnelText = "TUNNEL OPEN", -- the vault pill's line while the tunnel is open (the map is a ring)
 	HatchOneWayAfterSeal = true, -- the hatch stays open for the rest of the run once the vault has opened
+
+	------------------------------------------------------------------ Alarms (Round 19c; Alarms.lua)
+	-- THE BANK's alarm fixtures strobe red and every client hears the horn while any source holds the alarm on:
+	-- the vault's gas warning, a whole heat star gained, SILENCE THE ALARM, the zone gas warning.
+	AlarmPartNames = { "alarm" }, -- the asset's fixtures (geometry part names)
+	AlarmStrobeSec = 0.25, -- half a strobe cycle
+	AlarmLightRange = 24, -- studs: the red light on each fixture
+	AlarmHeatUpSec = 3, -- a whole star gained rings the alarm this long (0 = never)
+	AlarmHornEverySec = 1.1, -- client: the horn repeats this often while ringing
+	AlarmHornVolume = 0.35,
+	AlarmScreenAlpha = 0.9, -- client: the red edge pulse peaks at this transparency (1 = none)
+	AlarmJobHoldSec = 2, -- SILENCE THE ALARM: hold F at the panel this long
+
+	------------------------------------------------------------------ Zone gas (Round 19c; ZoneGas.lua, THE BANK only)
+	-- Every few waves the zone the crew holds is gassed so nobody camps one room: alarm + warning, then gas.
+	ZoneGasEnabled = true,
+	ZoneGasFirstWave = 4, -- the first event can come at this wave...
+	ZoneGasEveryWaves = { 3, 5 }, -- ...then the next one this many waves later (a random pick in the range)
+	ZoneGasDelaySec = 12, -- into the wave before the warning (the crew has settled)
+	ZoneGasWarnSec = 10, -- the alarms ring and the toast counts this long before the gas
+	ZoneGasSec = 25, -- the gas hangs in the zone this long
+	ZoneGasDps = 10, -- to anyone standing in the gassed zone
+	ZoneGasHeight = 12, -- studs of each zone volume (from its floor) the cloud fills
+	ZoneGasParticlesPerArea = 0.03, -- emitter rate per square stud of zone floor (capped at 400 a volume)
+	ZoneGasSkipZones = { "vault", "tunnel" }, -- never gassed, and not a refuge (the vault has its own gas)
 
 	------------------------------------------------------------------ Progression (account level; Progression.lua, LevelRewards.lua)
 	-- XP per run, per player: XpPerWave x waves cleared + XpPerKill x kills + XpPerJob x jobs + XpPerBoss x boss kills
@@ -665,10 +702,11 @@ local Config = {
 	DealerTeleportDistance = 4, -- TELEPORT TO DEALER (any number of times) lands you this far outside the middle table
 	DealerCardWidth = 190, -- the stand panel (a pick-3 card with a price bar), design px
 	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
-	ShopPriceByTier = { 100, 160, 260, 420, 700 }, -- x UpgradePriceMult ^ upgrades bought (placeholders)
-	ShopCratePrice = 800, -- ARMS DROP: a crate at the stall for the party
-	ShopHealPrice = 300, -- HEAL ALL: full HP for every member
-	ShopRerollPrice = 150, -- REROLL: your eight stands again; doubles per use
+	-- Round 19c: about a quarter cheaper across the stall (was 100 / 160 / 260 / 420 / 700, crate 800, heal 300, reroll 150).
+	ShopPriceByTier = { 75, 120, 195, 315, 525 }, -- x UpgradePriceMult ^ upgrades bought (placeholders)
+	ShopCratePrice = 600, -- ARMS DROP: a crate at the stall for the party
+	ShopHealPrice = 225, -- HEAL ALL: full HP for every member
+	ShopRerollPrice = 110, -- REROLL: your eight stands again; doubles per use
 
 	------------------------------------------------------------------ Pause (brief 5; Pause.lua)
 	PauseMaxSec = 300, -- a pause lasts this long, then resumes by itself...
@@ -778,6 +816,9 @@ local Config = {
 	------------------------------------------------------------------ Nodes (brief 7: THE BANK's Workspace.Bank.Nodes)
 	BreakableNames = { "bankwindow", "bankwindow2" }, -- Round 19: glass panes a shot or a blast breaks (then open)
 	WindowShards = 10, -- shards per broken pane
+	WindowGroupMaxParts = 12, -- Round 19c: a pane inside a model this small breaks with the whole model (its frame bars)
+	WindowGroupMargin = 1, -- studs: see-through parts this close to a pane's box break with it (the glass sheet)
+	WindowHitboxThickness = 1, -- studs: the invisible hit box over each pane (a shot anywhere on the window lands)
 	EnemyPassNames = { "barrier" }, -- Round 19: THE BANK's geometry parts with these names stop players, not enemies
 	MapLoaderStrict = false, -- true = refuse to start a run on a map with node errors ([GHS Map] ERROR lines)
 	-- Debug Show nodes: the translucent box colour per node type.
@@ -793,7 +834,12 @@ local Config = {
 		Lineup = "9BA0A8",
 		Hatch = "9BA0A8",
 		VaultRoom = "8FE3A1",
+		Fences = "C9C4B8", -- Round 19c
 	},
+	-- Round 19c: Fence nodes (the strip behind the bank) become solid site hoardings in these colours.
+	FenceColor = "3B4048",
+	FencePostColor = "23262B",
+	FencePostSpacing = 8, -- studs between posts
 
 	------------------------------------------------------------------ Queue zone / Create Match
 	QueueZoneCount = 1, -- zones in the hub (QueueZone1..N parts in the map); the code never assumes 1
@@ -847,7 +893,7 @@ local Config = {
 	MinigameTier = 1, -- starting tier for every game (1..3); the tier pad and the debug panel change it per session
 	MinigamePanelPct = 0.55, -- panel width as a share of the shorter screen edge
 	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
-	MinigameMinSec = { Lockpick = 1.5, Hotwire = 1.5, Keypad = 1.5, Charges = 1.5, Safe = 2, Freq = 1 },
+	MinigameMinSec = { Lockpick = 1.5, Hotwire = 1.5, Keypad = 1.5, Charges = 1.5, Safe = 2, Freq = 1, Cut = 0.8 },
 	MinigameHaptics = true, -- HapticService pulses on hits and locks (mobile / gamepad)
 	MinigameCloseDistance = 14, -- walking further than this from the prop closes the panel (counts as cancel)
 	MinigameExitSec = 0.3, -- on DONE / FAILED the panel slides off over this long; input is back at once
@@ -863,6 +909,13 @@ local Config = {
 	KeypadReshowSec = 0.8, -- the code shows again this long after a wrong digit
 	KeypadDigitsByTier = { 3, 4, 5 },
 	ChargesCountByTier = { 5, 6, 8 }, -- blast caps to press in order
+	-- Round 19c: Cut, the bolt cutter (D2's chains, the CUT THE CHAIN side job): hold to squeeze, let go in the band.
+	CutLinksByTier = { 2, 3, 4 }, -- links to cut
+	CutBandByTier = { 0.22, 0.17, 0.13 }, -- the green band's width, as a share of the gauge
+	CutBandMin = 0.35, -- the band never starts below this share of the gauge (a tap is never a cut)
+	CutFillSec = 1.3, -- seconds for the needle to climb the whole gauge on the first link...
+	CutSpeedUp = 0.85, -- ...x this per link cut (faster)
+	CutSlipSec = 0.35, -- squeezing to the top slips: a miss, and no new squeeze for this long
 	SafeWarmRange = 18, -- needle turns amber within this many numbers of the target
 	SafeHotRange = 6, -- needle turns green within this
 	SafeLockSec = 0.3, -- hold inside the hot range this long to lock a number...
@@ -937,6 +990,7 @@ local Config = {
 	MvpCashWeight = 0.05,
 	MvpReviveWeight = 40,
 	SummaryAutoLobbySec = 30, -- TO LOBBY fires on its own after this
+	SummaryPassOpenDelaySec = 0.6, -- Round 19c: CLAIM IN PASS goes to the hub first; the pass opens this long after you land
 	SummaryCountUpSec = 1, -- GOLD EARNED count-up length
 
 	------------------------------------------------------------------ Monetization (brief 6; every purchase is fake)
@@ -995,6 +1049,7 @@ local Config = {
 	WeeklyGold = 800,
 	WeeklyPassXp = 2000,
 	WeeklyTokens = 5,
+	JobFreeRerollsPerDay = 1, -- Round 19c: the small R on any unclaimed sheet swaps the Job free this many times a fake day (then the fake-Robux REFRESH)
 	JobBoardPosition = Vector3.new(-30, 0, 136), -- MARLOW's corkboard in the yard (floor point; faces +Z toward the spawn)
 	JobAnnounceLine = "New jobs on the board. Pick your poison.",
 	JobBoardStaggerSec = 0.07, -- the board's sheets cascade in this far apart when it opens

@@ -29,7 +29,7 @@ the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, master
 rounds 15b–15m, the Round 16 / 16b feedback passes, and the brief 6 build (Round 17: fake purchase flow, store,
 crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c and 18–18d,
 and the brief 7 build (Round 19: THE BANK, doors, the vault ring, spawn boxes, pathfinding; one commit per step)
-with its first feedback round 19b.
+with its feedback rounds 19b and 19c (19c adds the building alarms, zone gas and the bolt cutter, unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -77,7 +77,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
 | PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
 | SHOP tile / Gold + (hub HUD) | Brief 6: the store window over a dark dim, scrolled to FEATURED (the Gold + scrolls to GOLD). The rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD) scrolls the one page to that section; LEAVE, Esc or a tap outside the window closes it (Esc closes an open detail sheet first). A red dot on the SHOP tile means banked crate opens or the VIP gift wait; the tile then opens on that section. VIEW CRATE / VIEW BUNDLE / VIEW VIP on customization tiles open it on that item. |
-| PASS / JOBS (hub HUD, right-center) | The battle pass scene and the JOBS board. F at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item and CLAIM IN PASS on the summary open the pass. Esc / LEAVE / BACK closes either. |
+| PASS / JOBS (hub HUD, right-center) | The battle pass scene and the JOBS board. F at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item opens the pass; CLAIM IN PASS on the summary takes you back to the hub first and opens it there (Round 19c). Esc / LEAVE / BACK closes either. |
 | $ + (match HUD cash row) | Brief 6: the cash-pack sheet (+$5,000 / +$20,000 / +$100,000 for fake Robux); the game keeps running behind it. Short of cash at the dealer, the same sheet opens (REROLL offers the R$ RESTOCK). |
 | F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
 | Esc / X | Cancel an open minigame (counts as `cancel` in the log). |
@@ -309,8 +309,8 @@ Self buffs (stim, stim shot, dead eye) share one slot per player; the tile that 
 - Claymore (INITIATE's Z): planted, arms after `ClaymoreArmSec`, an enemy inside `ClaymoreTriggerRadius` sets it
   off for `ClaymoreDamage` to everything in `ClaymoreBlastRadius`, 60s.
 - SHARPSHOOTER: eagle vision (brief 5: every enemy within `EagleEyeRadius` glows red through walls for `EagleEyeSec` and
-  walks `EagleEyeSlowPct` slower, capped `EagleEyeSlowCap`, the boss `EagleEyeBossSlowMult` of it; Round 16 replaced the damage bonus), dead eye (8s: weapon damage +25%, move
-  +20%, every bullet passes through `DeadEyePierce` more enemies; a fractional pierce like 2.2 is one more enemy
+  walks `EagleEyeSlowPct` slower, capped `EagleEyeSlowCap`, the boss `EagleEyeBossSlowMult` of it; Round 16 replaced the damage bonus), dead eye (8s: weapon damage +25%, spread
+  `DeadEyeAccuracyPct` (50%) tighter (Round 19c; was move +20%), every bullet passes through `DeadEyePierce` more enemies; a fractional pierce like 2.2 is one more enemy
   at 20% damage), flashbang (thrown; every enemy in `FlashRadius` stops and stops swinging for `StunDuration`, head goes white).
 - Friendly fields (molotov, burst oil drum) burn `AllyFireColor` blue with a solid segmented rim (`AllyFieldRim*`, the med
   bag's green field too), so they never read as the enemies' orange, rimless fire.
@@ -454,7 +454,8 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
   party, revives, the class a run finished as, kills by weapon archetype) and persists until the reset; a quarter crossed
   in a run toasts (`JOB · KILL 60 RUNNERS 30 / 60`) and the scoreboard footer lists the dailies. CLAIM pays
   `DailyXp` / `DailyGold` / `DailyPassXp` (the bounty `WeeklyXp` / `WeeklyGold` / `WeeklyPassXp` / `WeeklyTokens`); one
-  no reroll; a claimed Job can be refreshed for fake Robux (`JobPool.RefreshPrice`: NEW JOB R$ 49, NEW BOUNTY R$ 99,
+  Round 19c: the small R in the corner of any unfinished sheet rerolls that Job (`JobFreeRerollsPerDay`, 1, free a fake day,
+  then the fake-Robux REFRESH sheet); a claimed Job can be refreshed for fake Robux (`JobPool.RefreshPrice`: NEW JOB R$ 49, NEW BOUNTY R$ 99,
   product `job_refresh_*`) into a fresh one of a kind the board does not have. The rewards show as big icon tiles (XP,
   Gold, pass XP, tokens) and the header frames the countdowns (`NEW JOBS IN hh:mm:ss`, `BOUNTY RESETS IN 2D 16H 42M`).
   The board: the camera pushes onto MARLOW's corkboard (`JobBoardPosition`, a
@@ -473,7 +474,9 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
 `SideJobKindWeights` (equal odds; the Safe dial is weighted 0 since it is the vault's own beat): "VAULT PING" (hack
 the terminal, hold F), "HOLD THE FLOOR" (stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is
 inside, a green disc fills on the floor), one of the minigames (the beacon carries an OPEN prompt; a validated done
-finishes the job, fails can retry until the timer), or CRACK THE VAULT (above; forced every `VaultJobEveryWaves`
+finishes the job, fails can retry until the timer; Round 19c adds Cut, CUT THE CHAIN), SILENCE THE ALARM (Round 19c:
+every alarm in the building rings and strobes and the horn plays until someone holds F at the ALARM PANEL for
+`AlarmJobHoldSec`; expiry silences it without the pay), or CRACK THE VAULT (above; forced every `VaultJobEveryWaves`
 waves, otherwise drawn only when the vault can be). The dialogue card slides in from the right into
 the top-right stack with typewriter text, collapses in place to a timer pill (with a progress bar for capture), and the
 result card expands from that pill. A world marker over the beacon shows name, hint, timer and distance; past
@@ -618,7 +621,7 @@ and marks the profile dirty.
   emote is the flex played alone under the MVP stamp (`profile.emotes.mvp`, `mvpAnim`). Tapping a tile plays the
   emote on the avatar, the detail has a ▶ PREVIEW, and EQUIP / UNLOCK set it. Unlocks auto-equip.
 
-**Minigames.** Six games, played from the yard props for testing and from side job beacons in the arena. One client
+**Minigames.** Seven games, played from the yard props for testing and from side job beacons in the arena. One client
 module per game under `src/client/Minigames/`, sharing `Frame.lua` (centered panel `MinigamePanelPct` of the shorter
 screen edge wide, crew-call frame style, title, hint, elapsed timer, X / Esc cancel, damage shake, downed = fail,
 haptics on hits and locks, closes as a cancel past `MinigameCloseDistance` from the prop). On DONE or FAILED the gun
@@ -631,7 +634,9 @@ Lockpick (tap: zone width and points needed), Hotwire (drag: wires; a COLORBLIND
 account as `options.hotwireSymbols` via `SetOption`, swaps to the Okabe-Ito palette and letters each wire and socket),
 Keypad (tap: digits; typing early hides the code), Arm charges (tap: caps), Safe dial (drag: numbers; a number only
 counts when reached turning the asked way, and tumbler clicks rise near it: `SafeTick*`), Frequency jam (drag: locks
-and slider range; the slider spans a fixed band round `FreqCenter`, targets move, a lock drops the hold).
+and slider range; the slider spans a fixed band round `FreqCenter`, targets move, a lock drops the hold). Round 19c: Bolt cutter (`Cut`, hold and release: hold to squeeze, let go with the needle in the green band to cut a
+link, squeeze to the top and it slips; links `CutLinksByTier`, band `CutBandByTier`, faster per link) on D2's chains and
+the CUT THE CHAIN side job.
 
 **Downed, revive, game over.** 0 HP → `Downed.down`: crawl speed and animation (`DownedAnimationId`), no jump, no
 abilities / buys / swaps, enemies drop you from targeting, the health bar becomes a red bleed bar from
@@ -1010,15 +1015,16 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
    once a top wave lands there. A pre-brief-7 profile logs `[GHS Profile] v3 -> v4: … TheBank:* -> Arena:*`.
 3. Card: ARENA and THE BANK tiles plus COMING SOON; THE BANK is picked by default; the board and the compact card read
    `THE BANK · NORMAL`; the summary header names the map; PLAY AGAIN keeps it.
-4. Run start: the van drives onto the grass, the crew steps out facing the bank, WAVE 1 on the street. Spawns come
+4. Run start: the van drives onto the grass, the crew steps out facing the bank and the camera hands back facing it
+   too, no free crate (Round 19c), WAVE 1 on the street. Spawns come
    from behind the fence ends; the scoreboard header reads `· STREET`; amber ▲ beacons and signs on every door.
 5. Doors: only the next unlock has a beacon (later doors keep their signs). The intermission before wave 3 → MARLOW
    `Front doors. Make some noise.`, blue beacons, chevrons along the walking route to the doors, the pill
    `OPEN THE BANK` with ∞, no side job that wave; F at the doors (BREACH) opens the Charges minigame → done: the doors
    swing and fade, the asset's door leaves vanish, flash and shake, +$400 each, your card,
-   `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby, `[GHS Door] D1 opened …`. D3 (wave 6) and D2
-   (wave 8) are holds at either part (RAISE / CUT; release: the bar keeps its fill 2 s); the chevrons for D2 climb the
-   stairs to the chains at the top; the counter grille rolls up with the shutters. Debug `Open D1..D3` /
+   `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby, `[GHS Door] D1 opened …`. D3 (wave 6) is a hold
+   at either part (RAISE; release: the bar keeps its fill 2 s); D2 (wave 8) is the bolt cutter at either chain (CUT,
+   Round 19c); the chevrons for D2 climb the stairs to the chains at the top; the counter grille rolls up with the shutters. Debug `Open D1..D3` /
    `Close all` to jump.
 6. Pathfinding: debug `Pin LOBBY` + `Spawn at:` a box + an archetype; enemies take the stairs, both passages, the
    stairwells; `Path debug` draws their routes (red when stuck). With the vault open, spawn at `tunnel_far`: they climb
@@ -1028,7 +1034,7 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
    dial → `WE'RE IN`, the wheel spins, both doors swing, the burst, the pill `TUNNEL OPEN`, the hatch lid swings up with a
    blue TUNNEL beacon; the vault's back wall (the server door was painted on it) is gone for the window. Walk the ring
    vault → server room → tunnel → ladder → street. Gas at 10 s left; the doors close
-   only once nobody is in the room; `[GHS Vault] window used … exit tunnel <you>`; the hatch stays open.
+   only once nobody is in the room (step in as they shut → you are put outside); the alarms ring with the gas warning; `[GHS Vault] window used … exit tunnel <you>`; the hatch stays open.
 8. TITAN (wave 10): the wall blows on the crew zone's boss wall (the street: the west fence end) and it walks in; lead it
    into the building: it follows through openings it fits, otherwise holds and Volleys.
 9. Dealer after the boss: the stall stands on the crew zone's dealer spot (the grass, the lobby under the stairs, the
@@ -1036,6 +1042,16 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
 9b. Round 19b: enemies walk up the stairs without hopping each step and through the street barriers (players cannot);
     one far off for 6 s reappears closer on its route out of sight (`[GHS Path] … catch-ups N`); shoot a bank window →
     it shatters and stays open; no bags spawn outside the bank.
+9c. Round 19c: the crew faces the bank when the camera hands back; no free crate on THE BANK (the arena keeps it);
+    shoot a window anywhere (not just the middle) → the glass, the frame bars and the pane go together and you can walk
+    and shoot through; the strip behind the bank is fenced off at both back corners; enemies far away catch up to at
+    least `CatchUpMinPlayerDistance` (55) from everyone and never in view; a crowd stays spread out (no stacked
+    enemies); walk into the vault door as it seals → you land outside; grab the last vault bag → the CLEAN IT OUT
+    marker goes. D2's chains open the bolt cutter (hold, let go in the green; over-squeeze slips). Debug MAP row:
+    `Zone gas` (alarms + `GAS IN THE LOBBY · 10s · MOVE`, then green gas in the zone, `LOBBY CLEAR` after 25 s; stand
+    in it → tint and damage), `Alarm job` (fixtures strobe red, the horn and a faint red screen edge until the panel
+    is held), `Cut job`. A whole heat star gained rings the alarms for 3 s. Jobs board: R on an unfinished sheet swaps
+    it (free once a day, then the R$ sheet). The summary's CLAIM IN PASS → hub → the pass opens.
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
@@ -1508,7 +1524,34 @@ NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the
   gap stays open; panes are whole again each run. Node labels in Studio and Show nodes read TYPE · name, only within
   60 studs and never through walls.
 
+- **Round 19c (7 Nov) — feedback on THE BANK, part 2.** The vault ejects anyone inside once it seals (walked in as the
+  door shut: `VaultEjectStuds`). The gameplay camera picks up facing the line's look (THE BANK's crew faces the
+  building). No free intro crate on maps (`BigCrateIntroDropOnMaps`). Windows break as a unit (hit box per pane, the
+  glass sheet and bars with it: `WindowGroup*`, `WindowHitboxThickness`). Catch-up lands at least
+  `CatchUpMinPlayerDistance` from every standing player, `CatchUpMinGain` ahead, out of sight from the eyes and the
+  camera height (`CatchUpCameraLift`); `CatchUpLead` 60. Enemy separation (`EnemySeparation*`): a soft push between
+  neighbours, also while they hold. Bags scale with the party (`BagPartyScale`). Jobs: an R on any unfinished sheet
+  rerolls it (`JobFreeRerollsPerDay`, then the REFRESH sheet, which now takes unclaimed Jobs too). CLAIM IN PASS on the
+  summary sends you to the hub and opens the pass there (`SummaryPassOpenDelaySec`). `SideJobCaptureSec` 10 → 6. Dead
+  Eye gives accuracy instead of speed (`DeadEyeAccuracyPct`). The dealer is a quarter cheaper (`ShopPriceByTier`,
+  crate, heal, reroll). Fence nodes (new node type `Fences`, `Fence*`) close the strip behind the bank. The CLEAN IT
+  OUT marker goes with the last vault bag. Alarms (`Alarms.lua`, `Alarm*`): the asset's alarm fixtures strobe red and
+  clients hear the horn with a faint red screen edge during the vault's gas warning, for `AlarmHeatUpSec` on a whole
+  heat star, during the new SILENCE THE ALARM side job and the zone gas warning. Zone gas (`ZoneGas.lua`,
+  `ZoneGas*`): every 3-5 waves from wave 4 the crew zone is warned then gassed. New minigame Cut (bolt cutter, `Cut*`)
+  on D2's chains and as the CUT THE CHAIN side job; a Cut test prop in the yard.
+
 ## Open design notes (not built)
+
+- **Round 19c notes.** Windows: the builder's pane mesh only collides along its centre strip and a separate see-through
+  glass sheet sits in front of it; each pane now carries an invisible hit box and breaks with its own model (the bars)
+  and every see-through part inside its box. The frame trim (`window wall seam`) stays. Zone gas is THE BANK only, never
+  the vault or the tunnel, and waits for a second open zone (no gas before D1 opens), a non-boss wave and no vault
+  window. Enemies ignore the gas. The alarm job's panel can stand at any job spot (it ignores pools); CUT THE CHAIN
+  only draws at spots whose pool names `cut` (the electrical panel and the server room) or the arena pillars. Bag
+  counts scale with the party (`BagPartyScale` 0.5 per extra member) for every source: the trickle and its cap, the
+  vault, doors, the boss burst and debug Loot Rush. Enemy separation is steering only (no physics), so a doorway still
+  lets a crowd through.
 
 - **Round 19b notes.** The D2 chains stay at the stair tops (the guide now walks you up the stairs to them); drag
   them to the feet in Studio if wanted. Breakable glass is the builder's `bankwindow` panes only; ground-floor sills sit

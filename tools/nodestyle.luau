@@ -26,6 +26,7 @@ local SHORT = {
 	Lineup = "LINEUP",
 	Hatch = "HATCH",
 	VaultRoom = "VAULT",
+	Fences = "FENCE",
 }
 -- The attributes the label shows per type (the rest are in the Properties panel).
 local KEYS = {
@@ -40,6 +41,7 @@ local KEYS = {
 	Lineup = {},
 	Hatch = { "Zone" },
 	VaultRoom = { "Door" },
+	Fences = {},
 }
 
 local function hexColor(hex: string): { number }

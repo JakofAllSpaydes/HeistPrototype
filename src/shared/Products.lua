@@ -189,7 +189,7 @@ for _, board in { "daily", "bounty" } do
 		name = if board == "daily" then "NEW DAILY JOB" else "NEW WEEKLY BOUNTY",
 		price = JobPool.RefreshPrice[board],
 		icon = { kind = "passxp", amount = 1 },
-		sub = "Swap a finished Job for a fresh one with its own rewards",
+		sub = "Swap a Job for a fresh one with its own rewards",
 		jobBoard = board,
 	})
 end

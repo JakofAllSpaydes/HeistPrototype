@@ -234,12 +234,59 @@ Shop.register("jobClaimAll", function(player, profile)
 	return { ok = true, data = { results = all } }
 end)
 
--- Round 17c: REFRESH (fake Robux) swaps a claimed Job for a fresh one with its own rewards: a daily of a kind the
--- board does not have, or a different bounty.
+-- Round 17c: REFRESH (fake Robux) swaps a Job for a fresh one with its own rewards: a daily of a kind the
+-- board does not have, or a different bounty. Round 19c: any Job, claimed or not (the small R on each sheet);
+-- the first Config.JobFreeRerollsPerDay a fake day are free (jobReroll), then it is the fake-Robux REFRESH.
 local function findKey(profile: Profiles.Profile, key: string): (any, number?, boolean)
 	local list = if string.sub(key, 1, 1) == "b" then profile.jobs.bounty else profile.jobs.daily
 	local i = tonumber(string.sub(key, 2))
 	return list, i, string.sub(key, 1, 1) == "b"
+end
+
+-- Swap the Job in `key` for a fresh one. Returns the new id, or nil and why not.
+local function replaceJob(player: Player, profile: Profiles.Profile, key: string, how: string): (string?, string?)
+	local list, i, weekly = findKey(profile, key)
+	local old = i and list[i]
+	if not old then
+		return nil, "No such Job"
+	end
+	local fresh
+	if weekly then
+		local pool = {}
+		for _, j in JobPool.Bounty do
+			if j.id ~= old.id then
+				table.insert(pool, j)
+			end
+		end
+		fresh = draw(profile, pool, 1, {})
+	else
+		local exclude: { [string]: boolean } = {}
+		for k, other in profile.jobs.daily do
+			local def = JobPool.ById[other.id]
+			if def and k ~= i then
+				exclude[def.kind] = true
+			end
+		end
+		local pool = {}
+		for _, j in JobPool.Daily do
+			if j.id ~= old.id then
+				table.insert(pool, j)
+			end
+		end
+		fresh = draw(profile, pool, 1, exclude)
+	end
+	if #fresh == 0 then
+		return nil, "No other Jobs right now"
+	end
+	list[i :: number] = fresh[1]
+	local start = runStart[player]
+	if start then
+		start[key] = nil -- the summary ticks the new Job from 0
+	end
+	Profiles.markDirty(player)
+	PlayerState.get(player).dirty = true
+	Log.event("Jobs", "%s %s %s: %s -> %s", player.Name, how, key, old.id, fresh[1].id)
+	return fresh[1].id, nil
 end
 
 Purchases.register("job_refresh", {
@@ -254,49 +301,33 @@ Purchases.register("job_refresh", {
 		if weekly ~= (product.jobBoard == "bounty") then
 			return "Wrong board"
 		end
-		if not e.claimed then
-			return "Finish and claim it first"
-		end
 		return nil
 	end,
 	grant = function(player, profile, _product, args)
 		local key = tostring(args.key)
-		local list, i, weekly = findKey(profile, key)
-		local old = list[i :: number]
-		local fresh
-		if weekly then
-			local pool = {}
-			for _, j in JobPool.Bounty do
-				if j.id ~= old.id then
-					table.insert(pool, j)
-				end
-			end
-			fresh = draw(profile, pool, 1, {})
-		else
-			local exclude: { [string]: boolean } = {}
-			for k, other in profile.jobs.daily do
-				local def = JobPool.ById[other.id]
-				if def and k ~= i then
-					exclude[def.kind] = true
-				end
-			end
-			local pool = {}
-			for _, j in JobPool.Daily do
-				if j.id ~= old.id then
-					table.insert(pool, j)
-				end
-			end
-			fresh = draw(profile, pool, 1, exclude)
+		local id, why = replaceJob(player, profile, key, "refreshed")
+		if not id then
+			return nil, why
 		end
-		if #fresh == 0 then
-			return nil, "No other Jobs right now"
-		end
-		list[i :: number] = fresh[1]
-		Profiles.markDirty(player)
-		Log.event("Jobs", "%s refreshed %s: %s -> %s", player.Name, key, old.id, fresh[1].id)
-		return { key = key, id = fresh[1].id }
+		return { key = key, id = id }
 	end,
 })
+
+-- Round 19c: the free reroll (JobFreeRerollsPerDay a fake day across the board, then the client opens REFRESH).
+Shop.register("jobReroll", function(player, profile, args)
+	Jobs.normalize(player)
+	local key = if typeof(args) == "table" then tostring(args.key) else ""
+	local used = tonumber(profile.jobs.rerollUsed) or 0
+	if used >= Config.JobFreeRerollsPerDay then
+		return { ok = false, reason = "No free rerolls left today" }
+	end
+	local id, why = replaceJob(player, profile, key, "rerolled")
+	if not id then
+		return { ok = false, reason = why }
+	end
+	profile.jobs.rerollUsed = used + 1
+	return { ok = true, data = { key = key, id = id, left = Config.JobFreeRerollsPerDay - used - 1 } }
+end)
 
 ------------------------------------------------------------------ Runs and the hub
 function Jobs.beginRun(players: { Player })

@@ -89,6 +89,7 @@ local function showOthers()
 end
 local lobbyButton: TextButton? = nil
 local chosen = false
+local passAfterHub = false -- Round 19c: CLAIM IN PASS was pressed: the pass opens once we are back in the hub
 
 local function easeOut(s: number): number
 	s = math.clamp(s, 0, 1)
@@ -406,7 +407,19 @@ local function showSummary(d: any)
 	if passAward then
 		local PassSummary = require(script.Parent:WaitForChild("Pass"):WaitForChild("PassSummary")) :: any
 		local delay = math.max(d.countUpSec or 1, 0.05) + 0.15 + (tonumber(d.xpFillSec) or 1.2) + 0.4
-		PassSummary.show(g, W, UDim2.new(0.5, 0, 0.5, H / 2 + S(12)), passAward, delay)
+		-- Round 19c: CLAIM IN PASS = TO LOBBY, then the pass opens in the hub (not over the end-of-run set).
+		PassSummary.show(g, W, UDim2.new(0.5, 0, 0.5, H / 2 + S(12)), passAward, delay, function()
+			passAfterHub = true
+			if not chosen then
+				chosen = true
+				Remotes.SummaryChoice:FireServer("lobby")
+				UI.sound(Theme.Sounds.toast, 1.3, 0.5)
+				local b = lobbyButton
+				if b then
+					b.Text = "BACK TO THE HUB…"
+				end
+			end
+		end)
 	end
 	-- Brief 6: the Job ticks after the XP bars.
 	local ticks = myRow and myRow.jobTicks
@@ -859,6 +872,12 @@ function RunEndUI.init()
 			begin(d)
 		elseif name == "HubEnter" then
 			finish()
+			if passAfterHub then
+				passAfterHub = false
+				task.delay(Config.SummaryPassOpenDelaySec, function()
+					ClientState.Juice:Fire("OpenPass", {})
+				end)
+			end
 		end
 	end)
 end

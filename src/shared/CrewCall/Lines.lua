@@ -70,6 +70,7 @@ local Lines = {
 			Charges = { name = "CHARGE RIG", title = "ARM THE CHARGES" },
 			Safe = { name = "SAFE", title = "CRACK THE SAFE" },
 			Freq = { name = "JAMMER", title = "JAM THE SIGNAL" },
+			Cut = { name = "CHAIN", title = "CUT THE CHAIN" }, -- Round 19c
 		},
 		doneTitle = "NICE WORK",
 		doneText = {
@@ -145,6 +146,7 @@ local Lines = {
 			Keypad = "Crack the keypad. No clock on this one.",
 			Hotwire = "Hotwire the panel. No clock on this one.",
 			Freq = "Jam the lock. No clock on this one.",
+			Cut = "Take the bolt cutters to them. No clock on this one.",
 		},
 		holdActions = { chain = "CUT", shutter = "RAISE", panel = "FORCE", wheel = "OPEN" },
 		minigameActions = {
@@ -154,6 +156,7 @@ local Lines = {
 			Hotwire = "WIRE",
 			Freq = "JAM",
 			Safe = "CRACK",
+			Cut = "CUT",
 		},
 		holdHint = "HOLD F · %s",
 		minigameHint = "F · %s",
@@ -168,6 +171,36 @@ local Lines = {
 		doneByText = { "It's open.", "Move up." },
 		openedToast = "%s OPENED THE %s",
 		vaultSign = "UNLOCKS · VAULT JOB",
+	},
+	-- Round 19c: SILENCE THE ALARM. Every alarm in the building rings and strobes until someone shuts the panel off
+	-- (a hold at the beacon); expiry shuts it off anyway, without the pay.
+	alarm = {
+		name = "SILENCE THE ALARM",
+		crewLead = "MARLOW",
+		typeLabel = "SIDE JOB",
+		kind = "job",
+		text = {
+			"Somebody tripped the building alarm. It's giving me a headache.",
+			"Alarm panel's at the blue beacon. Shut it off.",
+		},
+		rewardLine = "+$%d CASH · +%d GOLD",
+		markerHint = "SHUT IT OFF",
+		promptAction = "SILENCE",
+		promptObject = "ALARM PANEL",
+		busyTag = "SILENCING",
+		doneTitle = "PEACE AND QUIET",
+		doneText = { "Finally. I can hear myself think.", "Payment's in." },
+		doneByText = { "Alarm's off.", "Payment's coming through." },
+		failText = { "It timed out on its own. No thanks to you.", "Next one, don't dawdle." },
+	},
+	-- Round 19c: the zone gas event (ZoneGas.lua) on the toast line and the zone's marker.
+	zoneGas = {
+		warnToast = "GAS IN THE %s · %ds · MOVE",
+		gasToast = "%s GASSED · GET OUT",
+		clearToast = "%s CLEAR",
+		markerTitle = "GAS",
+		markerWarn = "IN %ds · MOVE",
+		markerGas = "GET OUT",
 	},
 	-- The boss cutscene call and the kill stamp.
 	boss = {

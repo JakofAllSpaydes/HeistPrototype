@@ -520,7 +520,8 @@ function BigCrate.finishAll()
 end
 
 function BigCrate.onIntro()
-	if Config.BigCrateIntroDrop then
+	-- Round 19c: the free intro crate is the arena's only (BigCrateIntroDropOnMaps for THE BANK and later maps).
+	if Config.BigCrateIntroDrop and (World.map == "Arena" or Config.BigCrateIntroDropOnMaps) then
 		-- Brief 7: on a map with a van node the intro crate lands in front of the crew's line.
 		local lineup = Room.current().lineup
 		BigCrate.drop(if lineup then (lineup * CFrame.new(0, 0, -8)).Position else Config.BigCrateIntroPosition)

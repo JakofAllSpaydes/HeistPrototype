@@ -44,6 +44,7 @@ export type Buffs = {
 	reloadSpeedMult: number,
 	damageMult: number,
 	pierceAdd: number, -- extra pierce (dead eye)
+	spreadMult: number?, -- Round 19c: x spread (dead eye's accuracy); nil = 1
 }
 
 -- DPS as shown on tags and the held slot: damage x shots per second x pellets.
@@ -63,7 +64,8 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 	local w = Weapons.ById[held.weaponId]
 	local base = Weapons.atLevel(w, held.level or 0)
 	local crit = upgrades.CritChance
-	local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
+	local b: Buffs = buffs
+		or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0, spreadMult = 1 }
 	-- ELEMENTAL POWER (synergy) raises every held element's power; an element not held stays at 0.
 	local elemMult = 1 + math.max(0, pct(upgrades, "ElementalPower"))
 	local function boost(id: string): number
@@ -85,7 +87,7 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		incendiaryPower = power(upgrades, "Incendiary") * elemMult,
 		cryoPower = power(upgrades, "Cryo") * elemMult,
 		concussivePower = power(upgrades, "Concussive") * elemMult,
-		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3),
+		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3) * (b.spreadMult or 1),
 		pierce = math.max(0, math.floor(points(upgrades, "Pierce")))
 			+ Weapons.builtInPierce(w, held.rarity)
 			+ b.pierceAdd,

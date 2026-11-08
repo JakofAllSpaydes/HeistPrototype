@@ -365,7 +365,7 @@ end
 
 -- Minigame props along the east wall, PropSpacing apart, each a 4x6 panel with a floor label in front.
 -- Out of the main path but still testable. The server adds the labels' text and the prompts.
-local props = { "Lockpick", "Hotwire", "Keypad", "Charges", "Safe", "Freq" }
+local props = { "Lockpick", "Hotwire", "Keypad", "Charges", "Safe", "Freq", "Cut" }
 local propX = yw / 2 - 1.3
 local propZ0 = yardNorth + 11
 for i, name in props do

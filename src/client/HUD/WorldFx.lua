@@ -298,6 +298,57 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		ZIndex = 0,
 		Parent = gui,
 	})
+	-- Round 19c: the vault's gas and the zone gas both tint; either one keeps it on.
+	local gasOn = { vault = false, zone = false }
+	local function paintGas(key: string, on: boolean)
+		local was = gasOn.vault or gasOn.zone;
+		(gasOn :: any)[key] = on
+		local now = gasOn.vault or gasOn.zone
+		if now ~= was then
+			UI.tween(gasTint, { BackgroundTransparency = if now then 0.55 else 1 }, 0.4)
+			if now then
+				UI.sound(Theme.Sounds.hurt, 0.6, 0.3)
+			end
+		end
+	end
+	-- Round 19c: the building alarm. A red pulse at the screen's edge (faint: AlarmScreenAlpha) and the horn every
+	-- AlarmHornEverySec while the server says it is ringing.
+	-- A stroke draws outside its frame, so the frame is inset by the stroke's width to keep the band on screen.
+	local alarmTint = UI.frame({
+		Name = "AlarmTint",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -UI.S(56), 1, -UI.S(56)),
+		ZIndex = 0,
+		Parent = gui,
+	})
+	local alarmStroke = UI.stroke(alarmTint, Color3.fromRGB(255, 50, 40), 0, 1)
+	alarmStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	local alarmToken = 0
+	local function setAlarm(on: boolean)
+		alarmToken += 1
+		local my = alarmToken
+		if not on then
+			alarmStroke.Transparency = 1
+			return
+		end
+		task.spawn(function()
+			local lastHorn = -math.huge
+			local t0 = os.clock()
+			while my == alarmToken do
+				local t = os.clock() - t0
+				local k = 0.5 + 0.5 * math.sin(t * math.pi * 2 / math.max(Config.AlarmHornEverySec, 0.2))
+				alarmStroke.Thickness = UI.S(28)
+				alarmStroke.Transparency = 1 - (1 - Config.AlarmScreenAlpha) * k
+				if os.clock() - lastHorn >= Config.AlarmHornEverySec then
+					lastHorn = os.clock()
+					UI.sound(Theme.Sounds.deny, 0.45, Config.AlarmHornVolume)
+				end
+				task.wait(1 / 30)
+			end
+		end)
+	end
 
 	-- Enemy spawn puff: a dark ring where each enemy appears. Every enemy also gets its flinch watcher
 	-- (the server stamps FlinchAt on a hit; a white pop reads as the hit reaction on every client) and the
@@ -609,10 +660,11 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.sound(Theme.Sounds.take, if gold then 0.9 else 1.3, 0.5)
 			UI.sound(Theme.Sounds.reelLand, 1.2, 0.3)
 		elseif name == "VaultGasTint" then
-			UI.tween(gasTint, { BackgroundTransparency = if data.on then 0.55 else 1 }, 0.4)
-			if data.on then
-				UI.sound(Theme.Sounds.hurt, 0.6, 0.3)
-			end
+			paintGas("vault", data.on == true)
+		elseif name == "ZoneGasTint" then
+			paintGas("zone", data.on == true)
+		elseif name == "Alarm" then
+			setAlarm(data.on == true)
 		elseif name == "VaultOpen" and typeof(data.position) == "Vector3" then
 			blastRing(data.position, 12, Theme.Colors.amber)
 			UI.sound(Theme.Sounds.swap, 0.45, 0.7)
@@ -635,6 +687,9 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			blastRing(data.position, 8, Theme.Colors.grey)
 		elseif name == "HubEnter" then
 			gasTint.BackgroundTransparency = 1
+			gasOn.vault = false
+			gasOn.zone = false
+			setAlarm(false)
 		elseif name == "BossWallBlow" and typeof(data.position) == "Vector3" then
 			blastRing(data.position, 16, Color3.fromRGB(160, 150, 130))
 			sparks(data.position + Vector3.new(0, 4, 0), Color3.fromRGB(200, 190, 170), 30, 30)

@@ -279,12 +279,21 @@ end
 -- Wave start: the trickle, up to the cap. Fractional per-wave counts carry over (0.5 = every other wave).
 local carry = { cash = 0, gold = 0 }
 
+-- Round 19c: bag counts scale with the party: x (1 + BagPartyScale per member past the first).
+function Bags.partyMult(): number
+	return 1 + Config.BagPartyScale * math.max(0, #World.partyPlayers() - 1)
+end
+
+local function scaled(n: number): number
+	return math.max(if n > 0 then 1 else 0, math.round(n * Bags.partyMult()))
+end
+
 local function spawnKind(kind: string, perWave: number): number
-	carry[kind] += perWave
+	carry[kind] += perWave * Bags.partyMult()
 	local n = 0
 	while carry[kind] >= 1 do
 		carry[kind] -= 1
-		if Bags.count() >= Config.MaxActiveBags then
+		if Bags.count() >= math.round(Config.MaxActiveBags * Bags.partyMult()) then
 			break
 		end
 		local spot = Bags.pickSpot(kind)
@@ -305,8 +314,8 @@ function Bags.onWaveStart(wave: number)
 	end
 end
 
--- A burst onto listed spots (the vault), cash first. Bypasses the cap.
-function Bags.burstAtSpots(spots: { Vector3 }, cash: number, gold: number, vault: boolean)
+-- A burst onto listed spots (the vault), cash first. Bypasses the cap. Counts scale with the party.
+local function burst(spots: { Vector3 }, cash: number, gold: number, vault: boolean)
 	local order = table.clone(spots)
 	for i = #order, 2, -1 do
 		local k = math.random(i)
@@ -328,8 +337,13 @@ function Bags.burstAtSpots(spots: { Vector3 }, cash: number, gold: number, vault
 	Log.event("Bags", "burst: %d cash, %d gold%s", cash, gold, if vault then " in the vault" else "")
 end
 
+function Bags.burstAtSpots(spots: { Vector3 }, cash: number, gold: number, vault: boolean)
+	burst(spots, scaled(cash), scaled(gold), vault)
+end
+
 -- A burst in a ring around a point (the boss body). Bypasses the cap.
 function Bags.burstAround(center: Vector3, cash: number, gold: number, radius: number)
+	cash, gold = scaled(cash), scaled(gold)
 	local total = cash + gold
 	local spots = {}
 	for i = 1, total do
@@ -339,7 +353,7 @@ function Bags.burstAround(center: Vector3, cash: number, gold: number, radius: n
 			Ground.at(Vector3.new(center.X + math.cos(a) * radius, center.Y, center.Z + math.sin(a) * radius))
 		)
 	end
-	Bags.burstAtSpots(spots, cash, gold, false)
+	burst(spots, cash, gold, false)
 end
 
 local function remove(b: Bag, popped: boolean)
@@ -418,6 +432,19 @@ function Bags.collect(player: Player, b: Bag, streak: number?): boolean
 		banked = World.banked,
 		streak = streak or 0,
 	})
+	-- Round 19c: the last vault bag picked up takes the vault's CLEAN IT OUT marker down.
+	if b.vault then
+		local left = false
+		for _, other in bags do
+			if other.active and other.vault then
+				left = true
+				break
+			end
+		end
+		if not left then
+			World.fireRun("VaultLooted", {})
+		end
+	end
 	Log.event(
 		"Bags",
 		"%s %s a %s bag worth %d (banked %d, %d bags left, streak %d)",
