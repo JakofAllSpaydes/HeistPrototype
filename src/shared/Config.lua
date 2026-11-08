@@ -960,6 +960,7 @@ local Config = {
 	HubDoorRollSec = 1.2, -- a roll-up door's travel time
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
+	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
 	BoothWalkIn = true, -- walking onto a booth's orange half-circle opens the customization scene on its tab
 	BoothPromptDistance = 12, -- only with BoothWalkIn off: OPEN (F) at a booth reaches this far
 	BoardPromptDistance = 12, -- OPEN at MARLOW's board

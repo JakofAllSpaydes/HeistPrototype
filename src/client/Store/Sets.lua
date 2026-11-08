@@ -297,12 +297,25 @@ local function buildPassStage(): Set
 	rim.Transparency = 0.2
 	local key = part(m, Vector3.new(1, 1, 1), origin * CFrame.new(-6, 14, 9), orange, Enum.Material.Neon)
 	local fill = part(m, Vector3.new(1, 1, 1), origin * CFrame.new(5, 6, 6), orange, Enum.Material.Neon)
+	-- A front key aimed at the hero from the camera's side and a top light over the pedestal (the first key points
+	-- down beside the stage and left the figure in the dark). PassStageLight scales both.
+	local heroAt = (origin * CFrame.new(0, 2.6, 0)).Position
+	local frontPos = (origin * CFrame.new(1.5, 5, 9)).Position
+	local front = part(m, Vector3.new(1, 1, 1), CFrame.lookAt(frontPos, heroAt), orange, Enum.Material.Neon)
+	local top = part(m, Vector3.new(1, 1, 1), origin * CFrame.new(0, 11, 0.5), orange, Enum.Material.Neon)
+	local frontLight = light(front, "spot", Color3.fromHex("FFF1E0"), 3 * Config.PassStageLight, 24, 55)
+	local frontSpot: any = frontLight
+	frontSpot.Face = Enum.NormalId.Front
 	local lights = {
 		light(key, "spot", Color3.fromHex("FFC890"), 6, 40, 60),
 		light(fill, "point", Color3.fromHex("7FB8FF"), 1.2, 16),
+		frontLight,
+		light(top, "spot", Color3.fromHex("FFD8A8"), 2.5 * Config.PassStageLight, 18, 50),
 	}
 	key.Transparency = 1
 	fill.Transparency = 1
+	front.Transparency = 1
+	top.Transparency = 1
 	-- The hero sits center-frame, a little high (the track takes the bottom of the screen).
 	local shot = CFrame.lookAt((origin * CFrame.new(0, 2.2, 10)).Position, (origin * CFrame.new(0, 1.0, 0)).Position)
 	return {
