@@ -121,8 +121,19 @@ end
 
 ------------------------------------------------------------------ Zones (a zone is the union of its parts)
 local zones = {}
+-- Links: the zone graph (neighbour@gate, gate = a door group or "hatch"; none = always open). Spawn pressure
+-- counts hops along the open edges. Every part of a zone carries the same list.
+local LINKS = {
+	street = "lobby@D1,tunnel@hatch",
+	lobby = "street@D1,upper@D2,back@D3",
+	upper = "lobby@D2",
+	back = "lobby@D3,stairs",
+	stairs = "back,vault@D4",
+	vault = "stairs@D4,tunnel@D4",
+	tunnel = "vault@D4,street@hatch",
+}
 local function zone(name: string, depth: number, label: string, pos: { number }, size: { number })
-	table.insert(zones, node(name, pos, size, 0, { Depth = depth, Label = label }))
+	table.insert(zones, node(name, pos, size, 0, { Depth = depth, Label = label, Links = LINKS[name] or "" }))
 end
 -- Street: the plaza, road and grass in front, the side pavements, the strip behind.
 zone("street", 1, "STREET", { 0, 19, -212 }, { 300, 42, 224 })

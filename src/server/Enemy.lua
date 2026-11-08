@@ -262,8 +262,16 @@ local function face(d: Data, point: Vector3)
 	d.root.CFrame = CFrame.lookAt(pos, pos + flat.Unit)
 end
 
+-- Brief 7: the enemy whose brain is ticking, so a hit it lands credits its spawn box's contact time.
+local ticking: Data? = nil
+Enemy.onContact = nil :: ((Data) -> ())?
+
 local function damagePlayer(player: Player, amount: number, source: string)
 	PlayerState.damage(player, amount, source)
+	local hook = Enemy.onContact
+	if hook and ticking then
+		hook(ticking)
+	end
 end
 
 local function hitStructure(part: BasePart, amount: number)
@@ -928,7 +936,9 @@ function Enemy.init()
 				d.stunned = false
 				d.head.Color = d.headColor
 			end
+			ticking = d
 			d.brain.tick(d, api, now)
+			ticking = nil
 		end
 	end)
 	Log.event("Enemy", "%d archetypes in the roster", #Enemies.List)

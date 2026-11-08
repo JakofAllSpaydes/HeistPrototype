@@ -458,7 +458,9 @@ end
 local function callIn(d: any, api: any)
 	local best = d.root.Position
 	local bestDist = math.huge
-	for _, box in Room.current().spawnBoxes do
+	-- Brief 7: on a map with zones the Henchmen come in round the boss itself (a box nearby may be behind a
+	-- closed door); the arena keeps the nearest marker.
+	for _, box in if World.map == "Arena" then Room.current().spawnBoxes else {} do
 		local p = Room.pointInBox(box)
 		local dist = (p - d.root.Position).Magnitude
 		if dist < bestDist then

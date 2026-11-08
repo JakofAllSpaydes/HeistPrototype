@@ -1016,6 +1016,14 @@ function Doors.init()
 	Doors.build()
 	installVaultSite()
 	MapLoader.zoneOpen = zoneOpen
+	MapLoader.gateOpen = function(gate: string): boolean
+		if gate == "" then
+			return true
+		elseif gate == "hatch" then
+			return MapLoader.hatchOpen
+		end
+		return Doors.isOpen(gate)
+	end
 	MapLoader.boxOpen = boxOpen
 	MapLoader.onRead = Doors.build
 	CrewCall.onSlotFree = Doors.pump

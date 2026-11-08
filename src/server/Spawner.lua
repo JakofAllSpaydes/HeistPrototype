@@ -4,6 +4,7 @@
 -- FarWeightMult), with the opening surge, the MaxActiveEnemies cap (the rest queues and backfills at once)
 -- and the elite roll. Keeps World.enemiesLeft (unspawned + alive) current so the HUD can show "N LEFT".
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -15,6 +16,7 @@ local PlayerState = require(script.Parent.PlayerState)
 local Log = require(script.Parent.Log)
 local Heat = require(script.Parent.Heat)
 local Pause = require(script.Parent.Pause)
+local Ground = require(Shared.Ground)
 
 local Spawner = {}
 
@@ -66,28 +68,76 @@ end
 -- Brief 7: the door system installs this on THE BANK (a box behind a closed door, or in the closed vault,
 -- never draws). nil: every box is open (the arena).
 Spawner.boxOpen = nil :: ((any) -> boolean)?
+-- MapLoader installs this on THE BANK: hops from the crew zone to every zone along the open graph.
+Spawner.zoneHops = nil :: (() -> { [string]: number }?)?
 
--- A spawn box weighted by how close the crew is: enemies mostly arrive from where the action is.
-function Spawner.pickBox(archetype: string?): Room.SpawnBox?
+-- Per wave: spawns per box (the elite least-used rule) and contact times per box (the [GHS Spawn] log).
+local boxSpawns: { [string]: number } = {}
+local contacts: { [string]: { number } } = {}
+local warned = false
+
+-- Standing in the crew's zone (the zone volume holding the box's centre, not its Zone attribute: a box behind a
+-- fence or a window stands outside every zone and feeds its zone even while the crew holds it).
+local function inCrewZone(box: any): boolean
+	return Config.SpawnNeverInCrewZone and box.standsIn ~= nil and box.standsIn == World.crewZone
+end
+
+-- The eligible boxes for an archetype: open, allowing it, not standing in the crew zone. None: every open box
+-- (logged once per wave).
+local function eligible(archetype: string?): { any }
 	local all = Room.current().spawnBoxes
 	local open = Spawner.boxOpen
-	local boxes = {}
+	local out, openBoxes = {}, {}
 	for _, box in all do
 		if open and not open(box) then
 			continue
 		end
+		table.insert(openBoxes, box)
 		if archetype and box.allowed and not box.allowed[archetype] then
 			continue
 		end
-		table.insert(boxes, box)
+		if inCrewZone(box) then
+			continue
+		end
+		table.insert(out, box)
 	end
+	if #out == 0 and #openBoxes > 0 then
+		if not warned then
+			warned = true
+			Log.event("Spawn", "WARN no eligible box wave %d", World.wave)
+		end
+		return openBoxes
+	end
+	return out
+end
+
+-- A spawn box weighted by how close the crew is: enemies mostly arrive from where the action is. Brief 7:
+-- x ZoneDistanceMult ^ (zone hops from the crew zone along the open graph); an elite takes the eligible box with
+-- the fewest spawns this wave (EliteLeastUsedBox).
+function Spawner.pickBox(archetype: string?, elite: boolean?): Room.SpawnBox?
+	local boxes = eligible(archetype)
 	if #boxes == 0 then
 		return nil
 	end
+	if elite and Config.EliteLeastUsedBox then
+		local best, bestN = nil, math.huge
+		for _, box in boxes do
+			local n = boxSpawns[box.name] or 0
+			if n < bestN then
+				best, bestN = box, n
+			end
+		end
+		return best
+	end
+	local hopsOf = Spawner.zoneHops
+	local hops = if hopsOf then hopsOf() else nil
 	local weights = {}
 	local total = 0
 	for i, box in boxes do
 		local w = box.weight * proximity(box.cframe.Position)
+		if hops then
+			w *= Config.ZoneDistanceMult ^ (hops[box.zone] or 8)
+		end
 		weights[i] = w
 		total += w
 	end
@@ -106,12 +156,89 @@ function Spawner.rollElite(): boolean
 	return math.random() < World.eliteChance()
 end
 
--- One enemy of the wave: archetype from the bracket, box by proximity, elite by heat.
+-- A spawn point in plain sight of a standing player and closer than SpawnLosBuffer re-rolls once: nobody pops
+-- in front of anyone.
+local losParams = RaycastParams.new()
+losParams.FilterType = Enum.RaycastFilterType.Include
+local function inPlainSight(point: Vector3): boolean
+	losParams.FilterDescendantsInstances = (Ground.params() :: any).FilterDescendantsInstances
+	for _, player in World.runAudience() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root and PlayerState.isStanding(PlayerState.get(player)) then
+			local eye = root.Position + Vector3.new(0, 1.5, 0)
+			local to = point + Vector3.new(0, 3, 0)
+			if (to - eye).Magnitude < Config.SpawnLosBuffer and Workspace:Raycast(eye, to - eye, losParams) == nil then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- One enemy of the wave: archetype from the bracket, box by proximity (and zone hops), elite by heat.
 function Spawner.spawnOne(wave: number, archetype: string?): Model
 	local id = archetype or Enemies.rollArchetype(wave, World.bracketShift())
-	local box = Spawner.pickBox(id)
+	local elite = Spawner.rollElite()
+	local box = Spawner.pickBox(id, elite)
 	local at = if box then Room.pointInBox(box) else Room.randomSpawnPoint()
-	return Enemy.spawn(id, wave, at, { elite = Spawner.rollElite(), box = box })
+	if box and inPlainSight(at) then
+		at = Room.pointInBox(box)
+	end
+	local model = Enemy.spawn(id, wave, at, { elite = elite, box = box })
+	if box then
+		boxSpawns[box.name] = (boxSpawns[box.name] or 0) + 1
+		local d = Enemy.data(model)
+		if d then
+			d.mem.spawnedAt = os.clock()
+		end
+	end
+	return model
+end
+
+-- An enemy's first hit on a player: the contact time for its box this wave.
+local function onContact(d: any)
+	if d.mem.contacted or not d.box or not d.mem.spawnedAt then
+		return
+	end
+	d.mem.contacted = true
+	local list = contacts[d.box.name] or {}
+	contacts[d.box.name] = list
+	table.insert(list, os.clock() - d.mem.spawnedAt)
+end
+Enemy.onContact = onContact
+
+-- Run-long contact averages per box (debug Stats MAP block).
+Spawner.contactRun = {} :: { [string]: { sum: number, n: number } }
+
+local function logContacts(wave: number)
+	local names = {}
+	for name in contacts do
+		table.insert(names, name)
+	end
+	table.sort(names)
+	for _, name in names do
+		local list = contacts[name]
+		local sum = 0
+		for _, t in list do
+			sum += t
+		end
+		local avg = sum / math.max(#list, 1)
+		Log.event("Spawn", "wave %d box %s contact %.1f (%d of %d)", wave, name, avg, #list, boxSpawns[name] or 0)
+		local r = Spawner.contactRun[name] or { sum = 0, n = 0 }
+		r.sum += sum
+		r.n += #list
+		Spawner.contactRun[name] = r
+	end
+	contacts = {}
+	boxSpawns = {}
+	warned = false
+end
+
+function Spawner.resetRun()
+	contacts = {}
+	boxSpawns = {}
+	warned = false
+	Spawner.contactRun = {}
 end
 
 -- Blocks until the wave is over (budget spent and no enemies alive) or a skip is requested.
@@ -183,6 +310,7 @@ function Spawner.runWave(wave: number): boolean
 		if World.autoSkipActive() then
 			Heat.onAutoSkip(wave)
 			if os.clock() - startedAt >= Config.AutoSkipWaveSec then
+				logContacts(wave)
 				return true
 			end
 		end
@@ -195,6 +323,7 @@ function Spawner.runWave(wave: number): boolean
 		Enemy.killAll()
 	end
 	publishLeft(0)
+	logContacts(wave)
 	return false
 end
 

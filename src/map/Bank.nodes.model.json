@@ -5,7 +5,8 @@
         {
           "attributes": {
             "Depth": 1,
-            "Label": "STREET"
+            "Label": "STREET",
+            "Links": "lobby@D1,tunnel@hatch"
           },
           "className": "Part",
           "name": "street",
@@ -55,7 +56,8 @@
         {
           "attributes": {
             "Depth": 1,
-            "Label": "STREET"
+            "Label": "STREET",
+            "Links": "lobby@D1,tunnel@hatch"
           },
           "className": "Part",
           "name": "street",
@@ -105,7 +107,8 @@
         {
           "attributes": {
             "Depth": 1,
-            "Label": "STREET"
+            "Label": "STREET",
+            "Links": "lobby@D1,tunnel@hatch"
           },
           "className": "Part",
           "name": "street",
@@ -155,7 +158,8 @@
         {
           "attributes": {
             "Depth": 1,
-            "Label": "STREET"
+            "Label": "STREET",
+            "Links": "lobby@D1,tunnel@hatch"
           },
           "className": "Part",
           "name": "street",
@@ -205,7 +209,8 @@
         {
           "attributes": {
             "Depth": 2,
-            "Label": "LOBBY"
+            "Label": "LOBBY",
+            "Links": "street@D1,upper@D2,back@D3"
           },
           "className": "Part",
           "name": "lobby",
@@ -255,7 +260,8 @@
         {
           "attributes": {
             "Depth": 3,
-            "Label": "UPPER FLOOR"
+            "Label": "UPPER FLOOR",
+            "Links": "lobby@D2"
           },
           "className": "Part",
           "name": "upper",
@@ -305,7 +311,8 @@
         {
           "attributes": {
             "Depth": 3,
-            "Label": "BACK OF BANK"
+            "Label": "BACK OF BANK",
+            "Links": "lobby@D3,stairs"
           },
           "className": "Part",
           "name": "back",
@@ -355,7 +362,8 @@
         {
           "attributes": {
             "Depth": 3,
-            "Label": "BACK OF BANK"
+            "Label": "BACK OF BANK",
+            "Links": "lobby@D3,stairs"
           },
           "className": "Part",
           "name": "back",
@@ -405,7 +413,8 @@
         {
           "attributes": {
             "Depth": 3,
-            "Label": "BACK OF BANK"
+            "Label": "BACK OF BANK",
+            "Links": "lobby@D3,stairs"
           },
           "className": "Part",
           "name": "back",
@@ -455,7 +464,8 @@
         {
           "attributes": {
             "Depth": 4,
-            "Label": "VAULT STAIRS"
+            "Label": "VAULT STAIRS",
+            "Links": "back,vault@D4"
           },
           "className": "Part",
           "name": "stairs",
@@ -505,7 +515,8 @@
         {
           "attributes": {
             "Depth": 4,
-            "Label": "VAULT STAIRS"
+            "Label": "VAULT STAIRS",
+            "Links": "back,vault@D4"
           },
           "className": "Part",
           "name": "stairs",
@@ -555,7 +566,8 @@
         {
           "attributes": {
             "Depth": 4,
-            "Label": "VAULT STAIRS"
+            "Label": "VAULT STAIRS",
+            "Links": "back,vault@D4"
           },
           "className": "Part",
           "name": "stairs",
@@ -605,7 +617,8 @@
         {
           "attributes": {
             "Depth": 4,
-            "Label": "VAULT STAIRS"
+            "Label": "VAULT STAIRS",
+            "Links": "back,vault@D4"
           },
           "className": "Part",
           "name": "stairs",
@@ -655,7 +668,8 @@
         {
           "attributes": {
             "Depth": 5,
-            "Label": "VAULT"
+            "Label": "VAULT",
+            "Links": "stairs@D4,tunnel@D4"
           },
           "className": "Part",
           "name": "vault",
@@ -705,7 +719,8 @@
         {
           "attributes": {
             "Depth": 6,
-            "Label": "TUNNEL"
+            "Label": "TUNNEL",
+            "Links": "vault@D4,street@hatch"
           },
           "className": "Part",
           "name": "tunnel",
@@ -755,7 +770,8 @@
         {
           "attributes": {
             "Depth": 6,
-            "Label": "TUNNEL"
+            "Label": "TUNNEL",
+            "Links": "vault@D4,street@hatch"
           },
           "className": "Part",
           "name": "tunnel",
@@ -805,7 +821,8 @@
         {
           "attributes": {
             "Depth": 6,
-            "Label": "TUNNEL"
+            "Label": "TUNNEL",
+            "Links": "vault@D4,street@hatch"
           },
           "className": "Part",
           "name": "tunnel",

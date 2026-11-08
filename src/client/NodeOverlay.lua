@@ -39,7 +39,7 @@ local SHORT = {
 }
 -- Which attributes the billboard shows per type (the rest stay in Studio's Properties panel).
 local KEYS = {
-	Zones = { "Depth", "Label" },
+	Zones = { "Depth", "Label", "Links" },
 	Doors = { "Group", "Opens", "TriggerWave", "DoorStyle" },
 	SpawnBoxes = { "Zone", "RequiresDoor", "AllowedTypes", "Weight" },
 	BagSpots = { "Zone", "Gold" },

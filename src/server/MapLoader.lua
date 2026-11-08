@@ -66,6 +66,7 @@ MapLoader.nodesFolder = nil :: Folder?
 MapLoader.errors = 0
 MapLoader.zones = {} :: { [string]: Zone }
 MapLoader.zoneOrder = {} :: { Zone } -- deepest first (ties in a lookup go to the deeper zone)
+MapLoader.links = {} :: { [string]: { { to: string, gate: string } } } -- the zone graph
 MapLoader.doors = {} :: { [string]: Door }
 MapLoader.boxes = {} :: { Box }
 MapLoader.bagSpots = {} :: { Room.BagSpot }
@@ -77,6 +78,7 @@ MapLoader.vanLineupOffset = 12
 MapLoader.lineup = nil :: CFrame?
 MapLoader.hatch = nil :: Hatch?
 MapLoader.vaultRoom = nil :: (Volume & { door: string })?
+MapLoader.hatchOpen = false -- the tunnel's way up (closed until the vault first opens)
 
 -- Job kinds a JobSpot's Pool may name (the minigame props by their lower-case names).
 local POOL_KINDS = { hack = true, capture = true }
@@ -253,6 +255,21 @@ local function readZones(nodes: Instance)
 			MapLoader.zones[id] = z
 		end
 		table.insert(z.parts, { cframe = p.CFrame, size = p.Size })
+		-- Links (brief 7 addition): the zone graph, neighbour@gate. Any part may carry them; they merge.
+		local links = MapLoader.links[id] or {}
+		MapLoader.links[id] = links
+		for _, item in list(str(p, "Links", "")) do
+			local to, gate = string.match(item, "^([^@]+)@?(.*)$")
+			if to then
+				local dup = false
+				for _, l in links do
+					dup = dup or (l.to == to and l.gate == gate)
+				end
+				if not dup then
+					table.insert(links, { to = to, gate = gate or "" })
+				end
+			end
+		end
 		Log.event("Map", "Zone %s depth %d %q (%d x %d x %d)", id, z.depth, z.label, p.Size.X, p.Size.Y, p.Size.Z)
 	end
 	for _, z in MapLoader.zones do
@@ -507,6 +524,7 @@ function MapLoader.read()
 	MapLoader.errors = 0
 	MapLoader.zones = {}
 	MapLoader.zoneOrder = {}
+	MapLoader.links = {}
 	MapLoader.doors = {}
 	MapLoader.boxes = {}
 	MapLoader.bagSpots = {}
@@ -526,6 +544,16 @@ function MapLoader.read()
 	MapLoader.nodesFolder = nodes :: Folder
 	readZones(nodes)
 	readDoors(nodes)
+	-- The zone graph's references: neighbours must be zones, gates door groups or "hatch".
+	for id, links in MapLoader.links do
+		for _, l in links do
+			if not MapLoader.zones[l.to] then
+				fail(id, "Links names unknown zone '" .. l.to .. "'")
+			elseif l.gate ~= "" and l.gate ~= "hatch" and not MapLoader.doors[l.gate] then
+				fail(id, "Links gate '" .. l.gate .. "' is not a door group or hatch")
+			end
+		end
+	end
 	readBoxes(nodes)
 	readSpots(nodes)
 	readSingles(nodes)
@@ -576,6 +604,34 @@ end
 -- Doors installs this: the props re-dress after a re-read (Recompute nodes).
 MapLoader.onRead = nil :: (() -> ())?
 
+-- Is a graph edge's gate open? Doors installs the real one (door groups, the hatch); until then only ungated
+-- edges are.
+MapLoader.gateOpen = function(gate: string): boolean
+	if gate == "hatch" then
+		return MapLoader.hatchOpen
+	end
+	return gate == ""
+end
+
+-- Hops from `from` to every zone along open edges (brief 7: spawn pressure x ZoneDistanceMult ^ hops).
+function MapLoader.hops(from: string): { [string]: number }
+	local out: { [string]: number } = { [from] = 0 }
+	local frontier = { from }
+	while #frontier > 0 do
+		local nextFrontier = {}
+		for _, z in frontier do
+			for _, l in MapLoader.links[z] or {} do
+				if out[l.to] == nil and MapLoader.gateOpen(l.gate) then
+					out[l.to] = out[z] + 1
+					table.insert(nextFrontier, l.to)
+				end
+			end
+		end
+		frontier = nextFrontier
+	end
+	return out
+end
+
 -- Can a run start on THE BANK? (MapLoaderStrict refuses one on a map with node errors.)
 function MapLoader.playable(): boolean
 	return MapLoader.loaded and (not Config.MapLoaderStrict or MapLoader.errors == 0)
@@ -588,7 +644,6 @@ end
 local hatchParts: { { part: BasePart, closed: CFrame, collide: boolean } } = {}
 local ladderLink: PathfindingLink? = nil
 local linkHolder: BasePart? = nil
-MapLoader.hatchOpen = false
 
 local function buildLadder()
 	for _, h in hatchParts do
@@ -766,6 +821,12 @@ function MapLoader.init()
 	end
 	Spawner.boxOpen = function(b: any): boolean
 		return not onBank() or MapLoader.boxOpen(b)
+	end
+	Spawner.zoneHops = function(): { [string]: number }?
+		if not onBank() then
+			return nil
+		end
+		return MapLoader.hops(World.crewZone)
 	end
 	-- Paths share routes per zone pair on THE BANK; the arena is all one zone.
 	EnemyPath.zoneAt = function(p: Vector3): string?

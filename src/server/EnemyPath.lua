@@ -48,6 +48,7 @@ export type State = {
 	stuckFor: number,
 	detourUntil: number,
 	mode: string, -- direct | path
+	noRouteUntil: number, -- the boss: no route through openings it fits, it holds until then
 	modeAt: number, -- the direct check (a raycast) runs at most every 0.2 s
 }
 
@@ -92,6 +93,7 @@ function EnemyPath.new(): State
 		stuckFor = 0,
 		detourUntil = 0,
 		mode = "direct",
+		noRouteUntil = 0,
 		modeAt = -math.huge,
 	}
 end
@@ -208,7 +210,12 @@ local function compute(job: { d: any, from: Vector3, to: Vector3, key: string })
 		st.plannedAt = os.clock()
 		if st.fails >= 3 then
 			st.fails = 0
-			st.directUntil = os.clock() + Config.PathFailDirectSec
+			if d.row.boss then
+				-- TITAN never squeezes through a doorway it does not fit: it waits at the opening (and Volleys).
+				st.noRouteUntil = os.clock() + Config.PathFailDirectSec
+			else
+				st.directUntil = os.clock() + Config.PathFailDirectSec
+			end
 		end
 	end
 end
@@ -267,8 +274,9 @@ local function climb(d: any, st: State, to: Vector3)
 end
 
 local function teleportHome(d: any, st: State)
-	local box = d.box
-	local at = if box then Room.pointInBox(box) else Room.randomSpawnPoint()
+	-- Its own spawn box (or the current map's box nearest it: the boss and debug spawns have none).
+	local box = d.box or select(1, Room.nearestBox(d.root.Position))
+	local at = if box then Room.pointInBox(box) else d.root.Position
 	d.model:PivotTo(CFrame.new(at + Vector3.new(0, d.root.Size.Y / 2 + 1, 0)))
 	stats.teleports += 1
 	st.waypoints = nil
@@ -288,6 +296,14 @@ function EnemyPath.steer(d: any, targetPos: Vector3, now: number, reach: number,
 	local hum: Humanoid = d.humanoid
 	local pos = root.Position
 	local dist = (targetPos - pos).Magnitude
+	if now < st.noRouteUntil and dist > Config.DirectRange then
+		hum:MoveTo(pos)
+		st.stuckFor = 0
+		if not st.pending and now - st.plannedAt > Config.RepathSec then
+			request(st, d, Ground.at(targetPos), now)
+		end
+		return
+	end
 
 	-- Mode: direct when close with a clear walk (or pathfinding off / after three failed computes).
 	if now - st.modeAt >= 0.2 then

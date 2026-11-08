@@ -314,6 +314,7 @@ task.spawn(function()
 		World.wave = 1
 		Heat.reset()
 		EnemyPath.resetRun()
+		Spawner.resetRun()
 		MapLoader.resetRun()
 		Doors.resetRun()
 		Hub.beginRun()

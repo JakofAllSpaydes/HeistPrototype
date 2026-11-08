@@ -144,6 +144,11 @@ local Config = {
 	FarRange = 150, -- up to this: x1; beyond: x FarWeightMult
 	NearWeightMult = 3.0,
 	FarWeightMult = 0.25,
+	-- Brief 7 spawn boxes (THE BANK; the arena's markers are boxes with zone "arena" and behave as before).
+	SpawnNeverInCrewZone = true, -- no spawn from a box standing inside the crew's zone (boxes behind fences or windows stand outside every zone)
+	ZoneDistanceMult = 0.5, -- x this per zone hop from the crew zone along the open graph (two zones back trickle)
+	SpawnLosBuffer = 18, -- a spawn point in plain sight of a player and closer than this re-rolls once
+	EliteLeastUsedBox = true, -- an elite spawns from the eligible box with the fewest spawns this wave (GDD)
 	-- Marksman / Boomer / Grenadier / Heavy tuning.
 	MarksmanAimSec = 1.5, -- the red laser paints the line this long, then the shot goes down the line
 	MarksmanHitRadius = 2.2, -- studs from the laser line that still counts as "in the beam"
