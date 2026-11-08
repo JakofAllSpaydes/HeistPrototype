@@ -67,7 +67,10 @@ Theme.Sounds = {
 	reelLand = "rbxasset://sounds/button.wav",
 	legendary = "rbxasset://sounds/victory.wav",
 	take = "rbxasset://sounds/snap.mp3",
-	upgrade = "rbxassetid://9119816241", -- Round 19h: Synth Power Up Multi Tone Wind Ups Rise 1 (ProSoundEffects): an upgrade picked (was the snap)
+	-- Round 19j: picking an upgrade = a bright power-up hit with the sparkle bell on top (was the snap, then a quiet riser).
+	-- Alternates to try: Power Up Sweeteners 12 / 15 / 16 (9117886252 / 9117886560 / 9117886660).
+	upgrade = "rbxassetid://9117886085", -- Power Up Sweeteners 10 (ProSoundEffects)
+	upgradeDing = "rbxassetid://9126073001", -- Synth Sparkle Tone High Pitch Bell Tone Ding (ProSoundEffects)
 	reloadOut = "rbxassetid://9113104176", -- Ammo Magazine 1: the mag comes out
 	reloadIn = "rbxassetid://9113104208", -- Ammo Magazine 2: the mag seats
 	swap = "rbxassetid://15675024286", -- Roblox_UI_Whoosh_01 (swoosh.wav is blocked)

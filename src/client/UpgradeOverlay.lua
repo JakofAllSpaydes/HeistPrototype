@@ -661,7 +661,10 @@ function UpgradeOverlay.take(index: number)
 	local center = inner.AbsolutePosition + inner.AbsoluteSize / 2
 	local j = Juice.burst(card.tier, color, center)
 	UI.punch(inner, j.punch + 0.06, 0.2)
-	UI.sound(Theme.Sounds.upgrade, j.pitch, j.volume * Config.UpgradeTakeVolume)
+	-- Round 19j: a confirm with weight, at a fixed volume (the tier only lifts the pitch a little).
+	local takePitch = 1 + (math.max(1, tonumber(card.tier) or 1) - 1) * Config.UpgradeTakePitchStep
+	UI.sound(Theme.Sounds.upgrade, takePitch, Config.UpgradeTakeVolume)
+	UI.sound(Theme.Sounds.upgradeDing, takePitch * 1.05, Config.UpgradeTakeDingVolume)
 
 	-- Fly a ghost from the card to its tracker tile, or to where a new tile will appear.
 	local S = UI.S
