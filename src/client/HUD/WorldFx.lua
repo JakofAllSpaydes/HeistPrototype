@@ -785,6 +785,13 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			flash.BackgroundTransparency = 0.8
 			UI.tween(flash, { BackgroundTransparency = 1 }, 0.5)
 			ClientState.Juice:Fire("Shake", { amp = 0.25, dur = 0.3 })
+		elseif name == "HubDoor" and typeof(data.position) == "Vector3" then
+			-- Brief 8: a warehouse roll-up door going up or down.
+			soundAtPoint(data.position, Theme.Sounds.shutter, if data.open then 1.1 else 0.95, 0.5, 90)
+		elseif name == "HubVanDust" and typeof(data.position) == "Vector3" then
+			-- Brief 8: the hub van pulling out of the garage (everyone in the hub sees it; no shake).
+			blastRing(data.position, 14, Color3.fromRGB(160, 150, 130))
+			soundAtPoint(data.position, Theme.Sounds.crate, 0.7, 0.5, 80)
 		elseif name == "VanBrake" and typeof(data.position) == "Vector3" then
 			blastRing(data.position, 14, Color3.fromRGB(160, 150, 130))
 			UI.sound(Theme.Sounds.crate, 0.7, 0.7)

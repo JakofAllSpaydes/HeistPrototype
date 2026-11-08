@@ -2,7 +2,8 @@
 -- Run start on the client: the camera timeline (door shot on the van, one slow pan from the farthest crew
 -- member to you that pushes in as it arrives, orbit to behind you) and the animations (mask-on, poses)
 -- played on every character in the line. Runs off the server clock in RunStartBegin; input locked, HUD
--- down to the wave bar, not skippable.
+-- down to the wave bar, not skippable. Brief 8: before it, HubDepart is a short chase behind the hub van as it
+-- pulls out of the garage (the cut to the map's drive-in comes with RunStartBegin).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -90,11 +91,68 @@ local function stopTracks()
 	tracks = {}
 end
 
-local function vanBody(): BasePart?
+-- The van being chased: the arrival van the server sent (brief 8), else the old yard van.
+local function vanPoint(d: any): Vector3?
+	local van = d and d.van
+	if typeof(van) == "Instance" and van:IsA("Model") and van.Parent then
+		return van:GetPivot().Position + Vector3.new(0, 4, 0)
+	end
 	local room = Workspace:FindFirstChild("Room")
-	local van = room and room:FindFirstChild("Van")
-	local body = van and van:FindFirstChild("Body")
-	return if body and body:IsA("BasePart") then body else nil
+	local old = room and room:FindFirstChild("Van")
+	local body = old and old:FindFirstChild("Body")
+	return if body and body:IsA("BasePart") then body.Position else nil
+end
+
+------------------------------------------------------------------ The hub departure (brief 8)
+local departing = false
+local departChase: Vector3? = nil
+
+local function departStop(restore: boolean?)
+	if not departing then
+		return
+	end
+	departing = false
+	pcall(function()
+		RunService:UnbindFromRenderStep("GHSHubDepart")
+	end)
+	if restore and not data then
+		-- No cut came (the run never started): hand the camera and the HUD back.
+		ClientState.cameraMode = "gameplay"
+		ClientState.setBlock("cinematic", false)
+		HUD.setMode(HUD.baseMode())
+	end
+end
+
+-- Behind and above the hub van, looking past its nose, until the cut (RunStartBegin) or a timeout.
+local function departStart(d: any)
+	local van = d.van
+	if typeof(van) ~= "Instance" or not van:IsA("Model") then
+		return
+	end
+	departStop()
+	departing = true
+	departChase = nil
+	local t0 = os.clock()
+	local sec = (tonumber(d.sec) or 2.5) + 2
+	ClientState.setAds(false)
+	ClientState.cameraMode = "cinematic"
+	ClientState.setBlock("cinematic", true)
+	HUD.setMode("cinematic")
+	UI.sound(Theme.Sounds.shutter, 1.15, 0.45)
+	RunService:BindToRenderStep("GHSHubDepart", Enum.RenderPriority.Camera.Value + 1, function()
+		if not van.Parent or os.clock() - t0 > sec then
+			departStop(true)
+			return
+		end
+		local pivot = van:GetPivot()
+		local want = pivot.Position - pivot.LookVector * 16 + Vector3.new(0, 7, 0)
+		local prev = departChase
+		departChase = if prev then prev:Lerp(want, 0.2) else want
+		local cf = CFrame.lookAt(departChase :: Vector3, pivot.Position + pivot.LookVector * 10 + Vector3.new(0, 2, 0))
+		camera.CameraType = Enum.CameraType.Scriptable
+		camera.CFrame = cf
+		camera.Focus = cf
+	end)
 end
 
 local function once(beat: string, fn: () -> ())
@@ -177,8 +235,7 @@ local function step(_dt: number)
 	if t < beats.doors then
 		-- Chase the van from behind-right and above, through the door and into the arena.
 		local door: Vector3 = d.door
-		local body = vanBody()
-		local target = if body then body.Position else door
+		local target = vanPoint(d) or door
 		local want = target + F:VectorToWorldSpace(Vector3.new(2, 6, 14))
 		local prev = chasePos
 		chasePos = if prev then prev:Lerp(want, 0.25) else want
@@ -242,6 +299,7 @@ local function step(_dt: number)
 end
 
 local function begin(d: any)
+	departStop()
 	finish()
 	data = d
 	fired = {}
@@ -258,7 +316,10 @@ function RunStartUI.init()
 	ClientState.Juice:Connect(function(name: string, d: any)
 		if name == "RunStartBegin" then
 			begin(d)
+		elseif name == "HubDepart" then
+			departStart(d)
 		elseif name == "HubEnter" or name == "RunOver" then
+			departStop()
 			finish()
 		end
 	end)

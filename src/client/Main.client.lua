@@ -43,6 +43,7 @@ require(script.Parent:WaitForChild("PlayerTags")).init()
 require(script.Parent:WaitForChild("Nameplates")).init()
 require(script.Parent:WaitForChild("Spectate")).init()
 require(script.Parent:WaitForChild("RunStartUI")).init()
+require(script.Parent:WaitForChild("BoothMannequins")).init() -- brief 8
 require(script.Parent:WaitForChild("RunEndUI")).init()
 require(script.Parent:WaitForChild("BossCutscene")).init()
 require(script.Parent:WaitForChild("Scoreboard")).init()

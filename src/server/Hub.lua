@@ -1,7 +1,8 @@
 --!strict
--- The hub: the yard where players spawn, with the planning table, the queue zone, the three customization
--- stations (prompts that open the customization scene on a tab), the minigame props and the tier pad.
--- Owns the Hub state's housekeeping: resets, teleports, clearing the arena between runs, and the
+-- The hub (brief 8: the builder's warehouse, Workspace.Hub, read by HubMap): the star where players spawn, the
+-- three booths (OPEN opens the customization scene on a tab; each booth's rig is a mannequin the client dresses
+-- in your loadout), MARLOW's board, the van in its garage (the departure beat on run start), the range door, and
+-- the minigame props and tier pad standing in the range. Owns the hub's housekeeping (spawns, resets) and the
 -- nameplate data (level, class, best wave, VIP) each character shows while they stand in the hub.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -232,134 +233,14 @@ local function buildHubBoard(node: BasePart)
 	Hub.jobBoard = m
 end
 
--- The yard's corkboard by a planning table with the four Job cards pinned to it, a JOBS sign and a beacon (the
--- client pulses it until the day's board is opened); F opens the JOBS screen.
+-- MARLOW's board is the warehouse's bulletin board (the Board node); without one there is no board.
 local function buildJobBoard()
-	local hubBoard = HubMap.view and HubMap.view.board
-	if hubBoard then
-		buildHubBoard(hubBoard)
-		return
+	local node = HubMap.view and HubMap.view.board
+	if node then
+		buildHubBoard(node)
+	else
+		Log.event("Map", "hub: no Board node, MARLOW's board is off (the HUD's JOBS still opens it)")
 	end
-	local base = Config.JobBoardPosition
-	local floor = Config.FloorTop
-	local m = Instance.new("Model")
-	m.Name = "JobBoard"
-	local facing = CFrame.new(Vector3.new(base.X, floor, base.Z)) -- the board faces +Z
-	local function part(name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material): Part
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Anchored = true
-		p.Size = size
-		p.CFrame = cf
-		p.Color = color
-		p.Material = material
-		p.TopSurface = Enum.SurfaceType.Smooth
-		p.BottomSurface = Enum.SurfaceType.Smooth
-		p.Parent = m
-		return p
-	end
-	-- Legs and the board.
-	for _, x in { -3.2, 3.2 } do
-		part(
-			"Leg",
-			Vector3.new(0.4, 7, 0.4),
-			facing * CFrame.new(x, 3.5, 0),
-			Color3.fromRGB(70, 50, 34),
-			Enum.Material.Wood
-		)
-	end
-	local frame = part(
-		"Frame",
-		Vector3.new(7.4, 4.6, 0.5),
-		facing * CFrame.new(0, 4.8, 0),
-		Color3.fromRGB(90, 62, 40),
-		Enum.Material.Wood
-	)
-	local cork = part(
-		"Cork",
-		Vector3.new(6.8, 4, 0.3),
-		facing * CFrame.new(0, 4.8, 0.15),
-		Color3.fromRGB(184, 140, 92),
-		Enum.Material.Sand
-	)
-	-- Four pinned cards: three dailies and the bigger bounty poster.
-	local cards = {
-		{ CFrame.new(-2.3, 5.6, 0.32) * CFrame.Angles(0, 0, math.rad(-4)), Vector3.new(1.5, 1.2, 0.04) },
-		{ CFrame.new(-0.6, 5.7, 0.32) * CFrame.Angles(0, 0, math.rad(3)), Vector3.new(1.5, 1.2, 0.04) },
-		{ CFrame.new(-1.5, 4.1, 0.32) * CFrame.Angles(0, 0, math.rad(-2)), Vector3.new(1.5, 1.2, 0.04) },
-		{ CFrame.new(1.9, 4.9, 0.32) * CFrame.Angles(0, 0, math.rad(2)), Vector3.new(2.2, 3, 0.04) },
-	}
-	for i, c in cards do
-		local paper = part(
-			"Card" .. i,
-			c[2],
-			facing * c[1],
-			if i == 4 then Color3.fromRGB(226, 205, 160) else Color3.fromRGB(242, 230, 200),
-			Enum.Material.SmoothPlastic
-		)
-		part(
-			"Pin",
-			Vector3.new(0.14, 0.14, 0.14),
-			paper.CFrame * CFrame.new(0, c[2].Y / 2 - 0.12, 0.06),
-			Color3.fromRGB(232, 85, 77),
-			Enum.Material.SmoothPlastic
-		)
-	end
-	-- The JOBS sign over the board.
-	local sign = part(
-		"Sign",
-		Vector3.new(3.4, 0.9, 0.3),
-		facing * CFrame.new(0, 7.6, 0),
-		Color3.fromRGB(26, 26, 32),
-		Enum.Material.SmoothPlastic
-	)
-	surfaceLabel(sign, Enum.NormalId.Back, "JOBS", GOLD, 80)
-	-- The beacon: a neon strip under the sign (the client pulses it while a new board waits).
-	local beacon = part(
-		"Beacon",
-		Vector3.new(6.8, 0.18, 0.2),
-		facing * CFrame.new(0, 7.05, 0.2),
-		Color3.fromHex("E8B64C"),
-		Enum.Material.Neon
-	)
-	local light = Instance.new("PointLight")
-	light.Name = "BeaconLight"
-	light.Color = Color3.fromHex("E8B64C")
-	light.Range = 14
-	light.Brightness = 1.5
-	light.Parent = beacon
-	-- The planning table in front of it.
-	local top = part(
-		"Table",
-		Vector3.new(6, 0.4, 3.2),
-		facing * CFrame.new(0, 2.8, 3.4),
-		Color3.fromRGB(80, 56, 38),
-		Enum.Material.Wood
-	)
-	for _, x in { -2.6, 2.6 } do
-		for _, z in { 2.1, 4.7 } do
-			part(
-				"TableLeg",
-				Vector3.new(0.3, 2.6, 0.3),
-				facing * CFrame.new(x, 1.3, z),
-				Color3.fromRGB(60, 42, 28),
-				Enum.Material.Wood
-			)
-		end
-	end
-	local map = part(
-		"Blueprint",
-		Vector3.new(3.4, 0.05, 2.2),
-		top.CFrame * CFrame.new(-0.4, 0.22, 0) * CFrame.Angles(0, math.rad(8), 0),
-		Color3.fromRGB(46, 92, 160),
-		Enum.Material.SmoothPlastic
-	)
-	surfaceLabel(map, Enum.NormalId.Top, "THE BANK", Color3.fromRGB(220, 235, 255), 40)
-	local _ = cork
-	local _2 = frame
-	boardPrompt(top, 10)
-	m.Parent = Room.folder or workspace
-	Hub.jobBoard = m
 end
 
 ------------------------------------------------------------------ Roll-up doors (brief 8)
@@ -423,6 +304,238 @@ end
 Hub.garageShutter = nil :: BasePart?
 Hub.rangeShutter = nil :: BasePart?
 
+------------------------------------------------------------------ The test props and the tier pad (brief 8: in the range)
+-- The seven minigame props stand on their PropSpot nodes, the tier pad on its TierPad node; they register in the
+-- hub slot's Room (Room.props / Room.tierPads) so decorate() labels them and F opens them exactly as from the yard.
+local function buildProps()
+	local view = HubMap.view
+	if not view then
+		return
+	end
+	local panelGrey = Color3.fromRGB(66, 71, 87)
+	local labelDark = Color3.fromRGB(26, 26, 31)
+	local folder = Instance.new("Folder")
+	folder.Name = "RangeProps"
+	folder.Parent = HubMap.model or workspace
+	local function part(name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = material
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = folder
+		return p
+	end
+	for _, name in Room.PropNames do
+		local spot = view.propSpots[string.lower(name)]
+		if not spot then
+			continue
+		end
+		local f = spot.LookVector
+		-- The panel's Left face (decorate's label) faces the room; the floor label lies in front, reading from there.
+		local panel = part(
+			"Prop_" .. name,
+			Vector3.new(0.6, 6, 4),
+			CFrame.lookAt(spot.Position + Vector3.new(0, 3, 0), spot.Position + Vector3.new(0, 3, 0) + f)
+				* CFrame.Angles(0, -math.pi / 2, 0),
+			panelGrey,
+			Enum.Material.Metal
+		)
+		local at = spot.Position + f * 2.6 + Vector3.new(0, 0.1, 0)
+		local label = part(
+			"PropLabel_" .. name,
+			Vector3.new(3.6, 0.2, 2.2),
+			CFrame.lookAt(at, at - f),
+			labelDark,
+			Enum.Material.SmoothPlastic
+		)
+		label.CanCollide = false
+		Room.props[name] = { panel = panel, label = label }
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "Prompt"
+		prompt.ActionText = "OPEN"
+		prompt.ObjectText = string.upper(name)
+		prompt.KeyboardKeyCode = Enum.KeyCode.F
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = panel
+		prompt.Triggered:Connect(function(player)
+			if Runs.inRunCycle(player) then
+				return
+			end
+			-- The hub slot's minigames (the same sessions, log and tier as the yard's props).
+			Runs.mod(Runs.hub, "Minigames").open(player, name)
+		end)
+	end
+	local tier = view.tierPad
+	if tier then
+		local base = part("TierPad", tier.size, tier.cframe, labelDark, Enum.Material.SmoothPlastic)
+		base.CanCollide = false
+		Room.tierPadBase = base
+		Room.tierPads = {}
+		for t = 1, 3 do
+			local pad = part(
+				"TierPad" .. t,
+				Vector3.new(2.4, 0.6, 2.4),
+				tier.cframe * CFrame.new((t - 2) * 3, 0.3, 0),
+				Color3.fromRGB(77, 77, 87),
+				Enum.Material.Metal
+			)
+			pad.CanCollide = false
+			Room.tierPads[t] = pad
+		end
+	end
+end
+
+------------------------------------------------------------------ The van and the garage (brief 8)
+-- The asset's van stands in the garage all the time, nose to the roll-up door. Its pivot is normalized at load to
+-- the middle of its underside facing its nose, so PivotTo(a floor point facing a way) parks it there; the run
+-- slots drive copies of it (Hub.vanTemplate) as their arrival van. Run start: the party fades into it, the door
+-- rolls up, it pulls out through the door and is gone (the cut to the map); the door rolls back down
+-- GarageCloseSec later and the van is parked again behind it. Everyone in the hub sees it leave.
+local vanParts: { [BasePart]: number } = {}
+local vanHome: CFrame? = nil
+local departures = 0
+local vanOut = false
+
+local function normalizeVan(van: Model)
+	van.PrimaryPart = nil
+	local body: BasePart? = nil
+	local bottom = math.huge
+	for _, d in van:GetDescendants() do
+		if d:IsA("BasePart") then
+			if not body or d.Size.X * d.Size.Y * d.Size.Z > body.Size.X * body.Size.Y * body.Size.Z then
+				body = d
+			end
+			bottom = math.min(bottom, d.Position.Y - d.Size.Y / 2)
+		end
+	end
+	if not body then
+		return
+	end
+	local center = van:GetBoundingBox().Position
+	local look = body.CFrame.LookVector * Vector3.new(1, 0, 1)
+	local base = Vector3.new(center.X, bottom, center.Z)
+	van.WorldPivot = CFrame.lookAt(base, base + (if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, -1)))
+end
+
+local function setVanShown(on: boolean)
+	for p, t in vanParts do
+		if p.Parent then
+			p.Transparency = if on then t else 1
+			p.CanCollide = on
+		end
+	end
+end
+
+-- A copy of the asset's van for a map's drive-in (pivot at its underside, facing its nose), unparented.
+function Hub.vanTemplate(): Model?
+	local van = HubMap.view and HubMap.view.vanModel
+	if not van then
+		return nil
+	end
+	local copy = van:Clone()
+	for _, d in copy:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			local t = vanParts[van:FindFirstChild(d.Name, true) :: any]
+			if t then
+				d.Transparency = t
+			end
+		end
+	end
+	return copy
+end
+
+-- Where the party sits while it fades into the van (the van's middle, a little up).
+function Hub.vanSeat(): CFrame?
+	local home = vanHome
+	return if home then home + Vector3.new(0, 3, 0) else nil
+end
+
+-- The departure beat for a run's party (yields HubDepartSec). Two parties leaving close together: the door stays
+-- up for the second and the van is parked again for it.
+function Hub.depart(players: { Player })
+	local view = HubMap.view
+	local van = view and view.vanModel
+	local home = vanHome
+	if not van or not home then
+		task.wait(Config.HubDepartSec)
+		return
+	end
+	departures += 1
+	van:PivotTo(home)
+	setVanShown(true)
+	vanOut = true
+	for _, p in players do
+		Remotes.Juice:FireClient(p, "HubDepart", { van = van, sec = Config.HubDepartSec })
+	end
+	Hub.setShutter(Hub.garageShutter, true)
+	local roll = (view and view.garage and view.garage.openSec) or Config.HubDoorRollSec
+	local lead = math.min(roll * 0.6, Config.HubDepartSec * 0.4)
+	task.wait(lead)
+	-- Out through the door: a dust ring where it pulls away, then it is gone.
+	Remotes.Juice:FireAllClients("HubVanDust", { position = home.Position })
+	local value = Instance.new("CFrameValue")
+	value.Value = home
+	local conn = value.Changed:Connect(function(v)
+		van:PivotTo(v :: any)
+	end)
+	local drive = math.max(0.2, Config.HubDepartSec - lead)
+	TweenService:Create(value, TweenInfo.new(drive, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		Value = home * CFrame.new(0, 0, -Config.HubVanDriveStuds),
+	}):Play()
+	task.wait(drive)
+	conn:Disconnect()
+	value:Destroy()
+	setVanShown(false)
+	Log.event("Hub", "the van left the garage with %d", #players)
+	task.delay(Config.GarageCloseSec, function()
+		departures -= 1
+		if departures > 0 then
+			return
+		end
+		Hub.setShutter(Hub.garageShutter, false)
+		task.wait(roll)
+		if departures == 0 and vanOut then
+			vanOut = false
+			van:PivotTo(home)
+			setVanShown(true)
+		end
+	end)
+end
+
+-- Debug Open garage: the departure beat with nobody in the van.
+function Hub.openGarage()
+	task.spawn(Hub.depart, {})
+end
+
+local function prepareVan()
+	local view = HubMap.view
+	local van = view and view.vanModel
+	local node = view and view.van
+	if not van or not node then
+		return
+	end
+	normalizeVan(van)
+	for _, d in van:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			vanParts[d] = d.Transparency
+		end
+	end
+	local p = node.Position - Vector3.new(0, node.Size.Y / 2, 0)
+	local look = node.CFrame.LookVector * Vector3.new(1, 0, 1)
+	vanHome = CFrame.lookAt(p, p + (if look.Magnitude > 0.1 then look.Unit else Vector3.new(1, 0, 0)))
+	van:PivotTo(vanHome :: CFrame)
+end
+
 ------------------------------------------------------------------ State housekeeping
 -- (Brief 8: clearing a map after a run is the run slot's job: Run/Main clearArena.)
 
@@ -468,11 +581,20 @@ function Hub.init()
 	if view then
 		Hub.garageShutter = buildShutter("GarageShutter", view.garage, false)
 		Hub.rangeShutter = buildShutter("RangeShutter", view.rangeDoor, Config.RangeDoorOpen)
+		prepareVan()
+		-- The booth rigs: each client dresses them in its own player's loadout (client/BoothMannequins.lua).
+		for _, station in view.stations do
+			local rig = station.rig
+			if rig then
+				rig:SetAttribute("BoothTab", station.tab)
+				local root = rig:FindFirstChild("HumanoidRootPart")
+				if root and root:IsA("BasePart") then
+					root.Anchored = true
+				end
+			end
+		end
 	end
-	-- The yard's van is only a template now: each run slot drives its own copy.
-	if Room.van then
-		Room.van.Parent = nil
-	end
+	buildProps()
 	decorate()
 	buildJobBoard()
 	local function onPlayer(player: Player)

@@ -65,7 +65,8 @@ export type MapView = {
 	jobSpots: { JobSpot },
 	dealerSpots: { DealerSpot },
 	bossWalls: { BossWall },
-	van: CFrame?, -- where the van parks on run start (nil: the arena's drive in from the yard)
+	van: CFrame?, -- where the van parks on run start (its floor point and facing)
+	driveIn: number?, -- brief 8: studs the van drives from behind its node (nil: Config.VanDriveInStuds)
 	lineup: CFrame?, -- the crew's line on run start, facing along LookVector (nil: the arena spawn)
 	runEndLine: CFrame?, -- the run end line (nil: where the crew stands, as on the arena)
 	hub: any?, -- brief 8: Room.forMap("Hub") only: the hub's view (HubMap.View: spawn, pads, booths, board, van, range)
@@ -89,6 +90,10 @@ local Room = {
 	zones = {} :: { Zone }, -- queue zones, QueueZone1..N
 	stations = {} :: { Station },
 	vault = nil :: Vault?, -- nil when the map has no VaultDoor (the vault job is then never drawn)
+	-- Brief 8: the arena's Van / Lineup nodes (Workspace.Room.Nodes): the van brakes on one, the crew lines up on the other.
+	arenaVan = nil :: CFrame?,
+	arenaVanDriveIn = nil :: number?,
+	arenaLineup = nil :: CFrame?,
 }
 
 local function part(
@@ -198,22 +203,8 @@ local function buildFallback(): Folder
 	gas.Transparency = 1
 	part("WallE", Vector3.new(1, wallH, size + 2), CFrame.new(half + 0.5, wallH / 2, 0), dark, concrete, room)
 	part("WallW", Vector3.new(1, wallH, size + 2), CFrame.new(-half - 0.5, wallH / 2, 0), dark, concrete, room)
-	local doorHalf = Config.DoorWidth / 2
-	local segment = (size + 2) / 2 - doorHalf
-	local segCenter = doorHalf + segment / 2
-	part("WallS_L", Vector3.new(segment, wallH, 1), CFrame.new(-segCenter, wallH / 2, half + 0.5), dark, concrete, room)
-	part("WallS_R", Vector3.new(segment, wallH, 1), CFrame.new(segCenter, wallH / 2, half + 0.5), dark, concrete, room)
-	for _, side in { -1, 1 } do
-		local frame = part(
-			if side < 0 then "DoorFrameL" else "DoorFrameR",
-			Vector3.new(0.4, wallH, 1.2),
-			CFrame.new(side * (doorHalf + 0.2), wallH / 2, half + 0.5),
-			amber,
-			Enum.Material.Neon,
-			room
-		)
-		frame.CanCollide = false
-	end
+	-- Brief 8: the south wall is solid (no yard, no arena door: runs start from the warehouse hub).
+	part("WallS", Vector3.new(size + 2, wallH, 1), CFrame.new(0, wallH / 2, half + 0.5), dark, concrete, room)
 	local n = Config.PillarGrid
 	local spacing = size / (n + 1)
 	local ps = Config.PillarSize
@@ -260,147 +251,6 @@ local function buildFallback(): Folder
 		marker.Transparency = 0.4
 	end
 
-	-- Yard.
-	local yw, yd = Config.YardWidth, Config.YardDepth
-	local yardNorth = half + 1
-	local yardZ = yardNorth + yd / 2
-	local asphalt = Color3.fromRGB(51, 51, 59)
-	local yardWall = Color3.fromRGB(56, 56, 66)
-	local panelGrey = Color3.fromRGB(66, 71, 87)
-	local labelDark = Color3.fromRGB(26, 26, 31)
-	part("YardFloor", Vector3.new(yw, 2, yd), CFrame.new(0, floorTop - 1, yardZ), asphalt, Enum.Material.Asphalt, room)
-	part(
-		"YardWallS",
-		Vector3.new(yw + 2, wallH, 1),
-		CFrame.new(0, wallH / 2, yardNorth + yd + 0.5),
-		yardWall,
-		concrete,
-		room
-	)
-	part("YardWallE", Vector3.new(1, wallH, yd), CFrame.new(yw / 2 + 0.5, wallH / 2, yardZ), yardWall, concrete, room)
-	part("YardWallW", Vector3.new(1, wallH, yd), CFrame.new(-yw / 2 - 0.5, wallH / 2, yardZ), yardWall, concrete, room)
-	part(
-		"Table",
-		Vector3.new(10, 0.5, 5),
-		CFrame.new(0, floorTop + 2.75, yardZ),
-		labelDark,
-		Enum.Material.SmoothPlastic,
-		room
-	)
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "Spawn"
-	spawn.Size = Vector3.new(8, 0.4, 8)
-	spawn.CFrame = CFrame.new(0, floorTop + 0.25, yardZ + 9)
-	spawn.Anchored = true
-	spawn.CanCollide = false
-	spawn.Transparency = 0.6
-	spawn.Color = Color3.fromRGB(80, 80, 90)
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Parent = room
-	local qz = Config.QueueZoneSize
-	for i = 1, Config.QueueZoneCount do
-		local zx = (i - 1 - (Config.QueueZoneCount - 1) / 2) * (qz + 6)
-		local zone = part(
-			"QueueZone" .. i,
-			Vector3.new(qz, 0.2, qz),
-			CFrame.new(zx, floorTop + 0.1, yardNorth + 2 + qz / 2),
-			blue,
-			Enum.Material.Neon,
-			room
-		)
-		zone.CanCollide = false
-		zone.Transparency = 0.7
-		local gate = part(
-			"QueueGate" .. i,
-			Vector3.new(qz, 0.8, 0.8),
-			CFrame.new(zx, 11.4, yardNorth + 2.4),
-			blue,
-			Enum.Material.Neon,
-			room
-		)
-		gate.CanCollide = false
-		local anchor = part(
-			"QueueBillboard" .. i,
-			Vector3.new(1, 1, 1),
-			CFrame.new(zx, 14.5, yardNorth + 2.4),
-			blue,
-			Enum.Material.Neon,
-			room
-		)
-		anchor.CanCollide = false
-		anchor.Transparency = 1
-	end
-	local van = Instance.new("Model")
-	van.Name = "Van"
-	local vanY = floorTop + 1.4
-	local body = part(
-		"Body",
-		Vector3.new(6, 4.2, 11),
-		CFrame.new(14, vanY + 2.1, yardZ),
-		Color3.fromRGB(51, 61, 92),
-		Enum.Material.SmoothPlastic,
-		van
-	)
-	van.PrimaryPart = body
-	van.Parent = room
-	local stationX = -yw / 2 + 1.3
-	for i, name in Room.StationTabs do
-		local z = yardNorth + 18 + (i - 1) * Config.StationSpacing
-		part(
-			"Station_" .. name,
-			Vector3.new(0.6, 7, 7),
-			CFrame.new(stationX, 3.5, z),
-			panelGrey,
-			Enum.Material.Metal,
-			room
-		)
-		local label = part(
-			"StationLabel_" .. name,
-			Vector3.new(7, 0.2, 3),
-			CFrame.new(stationX + 5.2, floorTop + 0.1, z) * CFrame.Angles(0, math.rad(90), 0),
-			labelDark,
-			Enum.Material.SmoothPlastic,
-			room
-		)
-		label.CanCollide = false
-	end
-	local propX = yw / 2 - 1.3
-	local propZ0 = yardNorth + 11
-	for i, name in Room.PropNames do
-		local z = propZ0 + (i - 1) * Config.PropSpacing
-		part("Prop_" .. name, Vector3.new(0.6, 6, 4), CFrame.new(propX, 3, z), panelGrey, Enum.Material.Metal, room)
-		local label = part(
-			"PropLabel_" .. name,
-			Vector3.new(6, 0.2, 3),
-			CFrame.new(propX - 4.6, floorTop + 0.1, z) * CFrame.Angles(0, math.rad(-90), 0),
-			labelDark,
-			Enum.Material.SmoothPlastic,
-			room
-		)
-		label.CanCollide = false
-	end
-	local padZ = propZ0 + #Room.PropNames * Config.PropSpacing + 2
-	local base = part(
-		"TierPad",
-		Vector3.new(10, 0.4, 4),
-		CFrame.new(propX - 4.6, floorTop + 0.2, padZ) * CFrame.Angles(0, math.rad(-90), 0),
-		labelDark,
-		Enum.Material.SmoothPlastic,
-		room
-	)
-	base.CanCollide = false
-	for t = 1, 3 do
-		local button = part(
-			"TierPad" .. t,
-			Vector3.new(2.4, 0.6, 2.4),
-			CFrame.new(propX - 4.6, floorTop + 0.7, padZ + (t - 2) * 3),
-			Color3.fromRGB(77, 77, 87),
-			Enum.Material.Metal,
-			room
-		)
-		button.CanCollide = false
-	end
 	return room
 end
 
@@ -413,7 +263,7 @@ function Room.build()
 
 	local existing = Workspace:FindFirstChild("Room")
 	local room: Folder
-	if existing and existing:IsA("Folder") and existing:FindFirstChild("QueueZone1") then
+	if existing and existing:IsA("Folder") and existing:FindFirstChild("Floor") then
 		room = existing
 	else
 		if existing then
@@ -451,72 +301,53 @@ function Room.build()
 		table.insert(Room.pillars, Vector3.new(30, Config.FloorTop, 30))
 	end
 
-	-- Yard and sequence anchors.
+	-- Sequence anchors.
 	local arenaSpawn = room:FindFirstChild("ArenaSpawn")
 	if arenaSpawn and arenaSpawn:IsA("BasePart") then
 		Room.arenaSpawn = Vector3.new(arenaSpawn.Position.X, Config.FloorTop, arenaSpawn.Position.Z)
 	end
 	Room.doorPosition = Vector3.new(0, Config.FloorTop, Config.RoomSize / 2)
-	local spawn = room:FindFirstChild("Spawn")
-	if spawn and spawn:IsA("BasePart") then
-		Room.yardSpawn = CFrame.new(spawn.Position.X, Config.FloorTop + 3, spawn.Position.Z)
-	else
-		Room.yardSpawn = CFrame.new(0, Config.FloorTop + 3, Config.RoomSize / 2 + 1 + Config.YardDepth / 2 + 9)
-	end
-	local van = room:FindFirstChild("Van")
-	if van and van:IsA("Model") then
-		local body = van:FindFirstChild("Body")
-		if body and body:IsA("BasePart") then
-			van.PrimaryPart = body
-		end
-		Room.vanHome = van:GetPivot()
-		-- Brief 8: every run slot drives its own copy (two runs can start at once); the hub keeps the original
-		-- (Hub.init puts it away).
-		Room.van = if Slot.isHub then van else van:Clone()
-	end
+	-- Brief 8: the yard is gone. The hub is the warehouse (Workspace.Hub, HubMap); this is only the fallback spawn.
+	Room.yardSpawn = CFrame.new(Config.HubOrigin.Position + Vector3.new(0, 3, 0))
 	Room.props = {}
-	for _, name in Room.PropNames do
-		local panel = room:FindFirstChild("Prop_" .. name)
-		local label = room:FindFirstChild("PropLabel_" .. name)
-		if panel and panel:IsA("BasePart") and label and label:IsA("BasePart") then
-			Room.props[name] = { panel = panel, label = label }
-		end
-	end
 	Room.tierPads = {}
-	for t = 1, 3 do
-		local pad = room:FindFirstChild("TierPad" .. t)
-		if pad and pad:IsA("BasePart") then
-			Room.tierPads[t] = pad
-		end
-	end
-	local base = room:FindFirstChild("TierPad")
-	Room.tierPadBase = if base and base:IsA("BasePart") then base else nil
+	Room.tierPadBase = nil
 	Room.zones = {}
-	local i = 1
-	while true do
-		local pad = room:FindFirstChild("QueueZone" .. i)
-		if not pad or not pad:IsA("BasePart") then
-			break
-		end
-		local gate = room:FindFirstChild("QueueGate" .. i)
-		local anchor = room:FindFirstChild("QueueBillboard" .. i)
-		table.insert(Room.zones, {
-			index = i,
-			pad = pad,
-			gate = if gate and gate:IsA("BasePart") then gate else nil,
-			billboardAnchor = if anchor and anchor:IsA("BasePart") then anchor else nil,
-		})
-		i += 1
-	end
-	if #Room.zones == 0 then
-		warn("[GHS Room] no QueueZone parts in Workspace.Room; regenerate the map")
-	end
 	Room.stations = {}
-	for _, tab in Room.StationTabs do
-		local panel = room:FindFirstChild("Station_" .. tab)
-		local label = room:FindFirstChild("StationLabel_" .. tab)
-		if panel and panel:IsA("BasePart") and label and label:IsA("BasePart") then
-			table.insert(Room.stations, { tab = tab, panel = panel, label = label })
+	-- The arena's run start nodes (Workspace.Room.Nodes: Van, Lineup), hidden in a running game.
+	Room.arenaVan = nil
+	Room.arenaVanDriveIn = nil
+	Room.arenaLineup = nil
+	local nodes = room:FindFirstChild("Nodes")
+	if nodes then
+		for _, d in nodes:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Transparency = 1
+				d.CanQuery = false
+				d.CanCollide = false
+				d.CanTouch = false
+			end
+		end
+		local function first(typeName: string): BasePart?
+			local f = nodes:FindFirstChild(typeName)
+			for _, c in if f then f:GetChildren() else {} do
+				if c:IsA("BasePart") then
+					return c
+				end
+			end
+			return nil
+		end
+		local van = first("Van")
+		if van then
+			local p = van.Position - Vector3.new(0, van.Size.Y / 2, 0)
+			Room.arenaVan = CFrame.lookAt(p, p + van.CFrame.LookVector * Vector3.new(1, 0, 1))
+			local drive = van:GetAttribute("DriveIn")
+			Room.arenaVanDriveIn = if typeof(drive) == "number" then drive else nil
+		end
+		local lineup = first("Lineup")
+		if lineup then
+			local p = lineup.Position - Vector3.new(0, lineup.Size.Y / 2, 0)
+			Room.arenaLineup = CFrame.lookAt(p, p + lineup.CFrame.LookVector * Vector3.new(1, 0, 1))
 		end
 	end
 
@@ -649,8 +480,9 @@ local function arenaView(): MapView
 		jobSpots = jobs,
 		dealerSpots = { { name = "stall", cframe = CFrame.new(d.X, Config.FloorTop, d.Z), zone = "arena" } },
 		bossWalls = {},
-		van = nil,
-		lineup = nil,
+		van = Room.arenaVan,
+		driveIn = Room.arenaVanDriveIn,
+		lineup = Room.arenaLineup,
 		runEndLine = nil,
 	}
 end

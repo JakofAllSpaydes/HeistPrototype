@@ -4,7 +4,7 @@
 -- type, Name = id, Size / CFrame = the volume, Attributes = config (the brief 7 node spec). This reads them into the
 -- hub's view, which the hub slot's Room hands out as Room.forMap("Hub") (spawn, pads, booths, the board, the van and
 -- garage, the range, its dummies and prop spots; the run-only fields are empty). One `[GHS Map] hub …` line per node;
--- a missing or broken node is an `ERROR` line and the hub falls back to the old yard for that piece.
+-- a missing or broken node is an `ERROR` line and that piece is off.
 -- (THE BANK's loader is Run/MapLoader, one per run slot; the hub has a single loader shared by everyone.)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -131,7 +131,7 @@ function HubMap.read()
 	HubMap.view = nil
 	HubMap.nodes = nodes
 	if not nodes then
-		fail("Nodes", "no Workspace.Hub.Nodes folder; the hub runs on the old yard")
+		fail("Nodes", "no Workspace.Hub.Nodes folder; players spawn at HubOrigin with no pads or booths")
 		Room.invalidate(HubMap.MAP_ID)
 		return
 	end
@@ -198,7 +198,7 @@ function HubMap.read()
 		return a.index < b.index
 	end)
 	if #view.pads == 0 then
-		fail("QueuePads", "no QueuePad nodes; the queue uses the yard's zones")
+		fail("QueuePads", "no QueuePad nodes; there is no queue")
 	end
 
 	for _, p in partsIn(nodes, "Stations") do
@@ -216,7 +216,7 @@ function HubMap.read()
 	if view.board then
 		Log.event("Map", "hub Board %s", view.board.Name)
 	else
-		fail("Board", "no Board node; MARLOW's board stays in the yard")
+		fail("Board", "no Board node; MARLOW's board is off (JOBS on the HUD still opens it)")
 	end
 
 	local van = partsIn(nodes, "Van")[1]
@@ -308,7 +308,10 @@ end
 function HubMap.init()
 	local hub = Workspace:FindFirstChild("Hub")
 	if not hub or not hub:IsA("Model") then
-		Log.event("Map", "no Workspace.Hub model (sync src/map/Hub.rbxm with Rojo); the hub is the old yard")
+		Log.event(
+			"Map",
+			"no Workspace.Hub model (sync src/map/Hub.rbxm with Rojo; restart rojo serve after pulling brief 8)"
+		)
 		return
 	end
 	HubMap.model = hub

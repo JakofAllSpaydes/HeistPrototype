@@ -1,9 +1,10 @@
 --!strict
--- Run start timeline (Config.IntroSec total, beats in Config.RunStartBeats). The server moves things: the
--- crew (players plus dummies up to SquadSize) vanishes into the van, the van drives from the yard through
--- the door and brakes beside the arena spawn, the crew steps out in a line in join order, heads recolor to
--- their mask color, control returns, the van drives off and is removed. Clients run the camera and the
--- animations off the same clock (RunStartUI).
+-- Run start timeline. Brief 8: first the departure in the warehouse hub (Config.HubDepartSec: the party fades
+-- into the hub van, the garage rolls up, the van pulls out; Hub.depart), then the cut to the map's own drive-in
+-- (Config.IntroSec, beats in Config.RunStartBeats, counted from the cut): the crew (players plus dummies up to
+-- SquadSize) rides a copy of the hub van in from behind the map's Van node, it brakes, the crew steps out in a
+-- line in join order on the Lineup node, heads recolor to their mask color, control returns, the van drives off
+-- and is removed. Clients run the camera and the animations off the same clock (RunStartUI).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -16,6 +17,7 @@ local PlayerState = require(script.Parent.Parent.PlayerState)
 local Squad = require(script.Parent.Squad)
 local Log = require(script.Parent.Parent.Log)
 local Ground = require(Shared.Ground)
+local Hub = require(script.Parent.Parent.Hub)
 
 local RunStart = {}
 
@@ -39,9 +41,21 @@ function RunStart.lineCFrame(i: number, n: number, base: CFrame?): CFrame
 	return CFrame.new(x, Config.FloorTop + 3, Room.arenaSpawn.Z + LINE_Z)
 end
 
--- The van's height over the floor (its pivot sits this far up in the yard).
+-- Brief 8: the arrival van is a copy of the hub's van (Hub.vanTemplate), its pivot at its underside; made once.
+local arrival: Model? = nil
+local function arrivalVan(): Model?
+	if not arrival then
+		arrival = Hub.vanTemplate()
+		if arrival then
+			arrival.Name = "ArrivalVan"
+		end
+	end
+	return arrival
+end
+
+-- The van's pivot height over the floor (0: the copy's pivot is its underside).
 local function vanLift(): number
-	return Room.vanHome.Position.Y - Config.FloorTop
+	return if arrivalVan() then 0 else Room.vanHome.Position.Y - Config.FloorTop
 end
 
 -- Where the van stops for a line of n: just west of it, still facing north (the arena), or on the map's Van node.
@@ -57,10 +71,14 @@ function RunStart.vanBrake(n: number): CFrame
 	return CFrame.new(westEnd - VAN_GAP, Room.vanHome.Position.Y, Room.arenaSpawn.Z + LINE_Z)
 end
 
--- Where the van starts: the yard (the arena) or a drive-in from behind the map's Van node.
+-- Where the van starts: a drive-in from behind the map's Van node (its DriveIn studs).
+local function driveIn(): number
+	return Room.current().driveIn or Config.VanDriveInStuds
+end
+
 local function vanStart(vanTo: CFrame): CFrame
 	if Room.current().van then
-		return vanTo * CFrame.new(0, 0, 90)
+		return vanTo * CFrame.new(0, 0, driveIn())
 	end
 	return Room.vanHome
 end
@@ -79,7 +97,7 @@ function RunStart.dummyCount(): number
 end
 
 local function driveVan(from: CFrame, to: CFrame, sec: number)
-	local van = Room.van
+	local van = arrivalVan()
 	if not van then
 		return
 	end
@@ -98,22 +116,22 @@ local function driveVan(from: CFrame, to: CFrame, sec: number)
 	van:PivotTo(to)
 end
 
--- The van only exists during this animation: shown parked in the yard at t = 0, driven off and removed after.
-local function showVan()
-	local van = Room.van
+-- The arrival van only exists during this animation: shown at the start of the drive-in, driven off and removed.
+local function showVan(at: CFrame)
+	local van = arrivalVan()
 	if van then
-		van:PivotTo(Room.vanHome)
-		van.Parent = Room.folder
+		van:PivotTo(at)
+		van.Parent = Workspace
 	end
 end
 
 local function exitVan(from: CFrame)
-	local van = Room.van
+	local van = arrivalVan()
 	if not van then
 		return
 	end
-	-- The arena: on through the room; a map: back out the way it came (it faces the building it parked at).
-	local away = if Room.current().van then CFrame.new(0, 0, 90) else CFrame.new(0, 0, -80)
+	-- Back out the way it came (it faces the building it parked at).
+	local away = CFrame.new(0, 0, driveIn())
 	driveVan(from, from * away, Config.VanExitSec)
 	van.Parent = nil
 end
@@ -124,7 +142,6 @@ function RunStart.play()
 	local dummyCount = RunStart.dummyCount()
 	local n = #players + dummyCount
 	local beats = Config.RunStartBeats
-	local startedAt = Workspace:GetServerTimeNow()
 	local vanTo = RunStart.vanBrake(n)
 	local vanFrom = vanStart(vanTo)
 	local roster = {}
@@ -169,12 +186,9 @@ function RunStart.play()
 		models[i] = d.model
 	end
 
-	-- Into the van: anchored, invisible, parked inside the body.
-	showVan()
-	if vanFrom ~= Room.vanHome and Room.van then
-		Room.van:PivotTo(vanFrom)
-	end
-	for _, char in models do
+	-- Into the van: anchored, invisible. Brief 8: the players first ride the hub van out of the garage.
+	local seat = Hub.vanSeat()
+	for i, char in models do
 		if not char then
 			continue
 		end
@@ -191,10 +205,20 @@ function RunStart.play()
 				d.Transparency = 1
 			end
 		end
-		char:PivotTo(vanFrom)
+		char:PivotTo(if seat and i <= #players then seat else vanFrom)
 	end
+	Hub.depart(players)
+	-- The cut: the map's drive-in.
+	for i, char in models do
+		if char and i <= #players then
+			char:PivotTo(vanFrom)
+		end
+	end
+	showVan(vanFrom)
+	local startedAt = Workspace:GetServerTimeNow()
 
 	World.fireRun("RunStartBegin", {
+		van = arrivalVan(),
 		startedAt = startedAt,
 		players = roster,
 		vanFrom = vanFrom,

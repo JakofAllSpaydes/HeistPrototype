@@ -1,5 +1,6 @@
 --!strict
--- Generates src/map/Room.model.json from Config: the arena plus the hub yard on its south wall.
+-- Generates src/map/Room.model.json from Config: the arena (brief 8: the hub is the warehouse, Workspace.Hub; the
+-- yard, its stations, props, tier pad, queue pad, planning table and the arena door are gone).
 -- Run with: lune run tools/genmap.luau   (then let Rojo sync, or `rojo build`)
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -77,22 +78,8 @@ part("Floor", { size, 2, size }, { 0, floorTop - 1, 0 }, darker, "Concrete")
 part("WallE", { 1, wallH, size + 2 }, { half + 0.5, wallH / 2, 0 }, dark, "Concrete")
 part("WallW", { 1, wallH, size + 2 }, { -half - 0.5, wallH / 2, 0 }, dark, "Concrete")
 
--- South wall has the run start door in the middle: two segments and a lit frame.
-local doorHalf = Config.DoorWidth / 2
-local segment = (size + 2) / 2 - doorHalf
-local segCenter = doorHalf + segment / 2
-part("WallS_L", { segment, wallH, 1 }, { -segCenter, wallH / 2, half + 0.5 }, dark, "Concrete")
-part("WallS_R", { segment, wallH, 1 }, { segCenter, wallH / 2, half + 0.5 }, dark, "Concrete")
-for _, side in { -1, 1 } do
-	part(
-		if side < 0 then "DoorFrameL" else "DoorFrameR",
-		{ 0.4, wallH, 1.2 },
-		{ side * (doorHalf + 0.2), wallH / 2, half + 0.5 },
-		amber,
-		"Neon",
-		{ CanCollide = false }
-	)
-end
+-- South wall: solid (runs start from the warehouse hub; the van drives in from the Van node below).
+part("WallS", { size + 2, wallH, 1 }, { 0, wallH / 2, half + 0.5 }, dark, "Concrete")
 
 -- North wall carries the vault: two segments round a VaultDoorWidth opening, a heavy door that slides up,
 -- an amber frame (the beacon), a VAULT sign, and a VaultSize closet behind it with a ceiling, two light
@@ -196,205 +183,40 @@ for k = 1, count do
 	)
 end
 
------------------------------------------------------------------- Hub (the yard, south of the arena)
-local yw = Config.YardWidth
-local yd = Config.YardDepth
-local yardNorth = half + 1 -- just past the arena's south wall
-local yardZ = yardNorth + yd / 2
-local asphalt = { 0.2, 0.2, 0.23 }
-local yardWall = { 0.22, 0.22, 0.26 }
-local blue = { 0.3, 0.62, 0.91 }
-local panelGrey = { 0.26, 0.28, 0.34 }
-local labelDark = { 0.1, 0.1, 0.12 }
-
-part("YardFloor", { yw, 2, yd }, { 0, floorTop - 1, yardZ }, asphalt, "Asphalt")
-part("YardWallS", { yw + 2, wallH, 1 }, { 0, wallH / 2, yardNorth + yd + 0.5 }, yardWall, "Concrete")
-part("YardWallE", { 1, wallH, yd }, { yw / 2 + 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
-part("YardWallW", { 1, wallH, yd }, { -yw / 2 - 0.5, wallH / 2, yardZ }, yardWall, "Concrete")
-
-local tableZ = yardZ -- where the table stood; the spawn keeps its spot south of it
-table.insert(children, {
-	name = "Spawn",
-	className = "SpawnLocation",
-	properties = {
-		Size = { 8, 0.4, 8 },
-		CFrame = cframe({ 0, floorTop + 0.25, tableZ + 9 }),
-		Color = { 0.31, 0.31, 0.35 },
-		Material = "SmoothPlastic",
-		Anchored = true,
+------------------------------------------------------------------ Nodes (brief 8)
+-- The run start on the arena: the van brakes on the Van node (just inside the south wall, between the pillar rows,
+-- after driving DriveIn studs from behind it) and the crew lines up on the Lineup node facing into the room. Same
+-- spec as THE BANK nodes (a Part per node, the type folder, Attributes); hidden when the game runs.
+local function nodePart(name: string, pos: { number }, sz: { number }, yawDeg: number, attrs: { [string]: any }): Child
+	local c = part(name, sz, pos, { 0.61, 0.63, 0.66 }, "SmoothPlastic", {
+		Yaw = yawDeg,
 		CanCollide = false,
-		Transparency = 0.6,
-		Neutral = true,
-		Duration = 0,
-		TopSurface = "Smooth",
-		BottomSurface = "Smooth",
+		CanTouch = false,
+		CastShadow = false,
+		Transparency = 0.55,
+	}, {});
+	(c :: any).attributes = attrs
+	return c
+end
+table.insert(children, {
+	name = "Nodes",
+	className = "Folder",
+	properties = {},
+	children = {
+		{
+			name = "Van",
+			className = "Folder",
+			properties = {},
+			children = { nodePart("van", { 40, floorTop, 83 }, { 11, 9, 25 }, 90, { DriveIn = 50 }) },
+		},
+		{
+			name = "Lineup",
+			className = "Folder",
+			properties = {},
+			children = { nodePart("lineup", { 16.7, floorTop, 78 }, { 2, 1, 2 }, 0, {}) },
+		},
 	},
 })
-
--- Queue zone(s): a QueueZoneSize square pad in front of the arena door with a blue gate frame on its north
--- edge and a billboard anchor above the lintel. The server reads QueueZone<N>, QueueGate<N> and QueueBillboard<N>.
-local qz = Config.QueueZoneSize
-for i = 1, Config.QueueZoneCount do
-	-- Several zones fan out along the door wall, the first centered on the door.
-	local zx = (i - 1 - (Config.QueueZoneCount - 1) / 2) * (qz + 6)
-	local zz = yardNorth + 2 + qz / 2
-	part("QueueZone" .. i, { qz, 0.2, qz }, { zx, floorTop + 0.1, zz }, blue, "Neon", {
-		CanCollide = false,
-		Transparency = 0.7,
-	})
-	for _, sx in { -1, 1 } do
-		part(
-			string.format("QueueGate%dPost%s", i, if sx < 0 then "L" else "R"),
-			{ 0.8, 11, 0.8 },
-			{ zx + sx * (qz / 2 - 0.4), 5.5, yardNorth + 2.4 },
-			blue,
-			"Neon",
-			{ CanCollide = false }
-		)
-	end
-	part("QueueGate" .. i, { qz, 0.8, 0.8 }, { zx, 11.4, yardNorth + 2.4 }, blue, "Neon", { CanCollide = false })
-	part("QueueBillboard" .. i, { 1, 1, 1 }, { zx, 14.5, yardNorth + 2.4 }, blue, "Neon", {
-		CanCollide = false,
-		Transparency = 1,
-	})
-end
-
--- Lamps in the yard corners so it reads as lit and outside.
-for _, sx in { -1, 1 } do
-	for _, sz in { 0.12, 0.88 } do
-		local x = sx * (yw / 2 - 10)
-		local z = yardNorth + yd * sz
-		local label = string.format("Lamp_%s_%s", if sx < 0 then "W" else "E", if sz < 0.5 then "N" else "S")
-		part(label .. "_Post", { 0.6, 14, 0.6 }, { x, 7, z }, { 0.3, 0.3, 0.34 }, "Metal")
-		local head = part(label, { 1.6, 1, 1.6 }, { x, 14.5, z }, { 1, 0.9, 0.7 }, "Neon", { CanCollide = false })
-		head.children = {
-			{
-				name = "Light",
-				className = "PointLight",
-				properties = { Brightness = 1.5, Range = 70, Color = { 1, 0.9, 0.72 }, Shadows = false },
-			},
-		}
-	end
-end
-
--- Van: a Parts box with wheels, parked beside the planning table facing the arena door (-Z). It only shows
--- inside the start animation (the server parks it away otherwise).
-local vanParts: { Child } = {}
-local vanX = 14
-local vanY = floorTop + 1.4 -- body bottom sits on the wheels, wheels on the floor
-part("Body", { 6, 4.2, 11 }, { vanX, vanY + 2.1, yardZ }, { 0.2, 0.24, 0.36 }, "SmoothPlastic", nil, vanParts)
-part("Windshield", { 5.4, 1.5, 0.2 }, { vanX, vanY + 3.1, yardZ - 5.45 }, { 0.55, 0.7, 0.85 }, "Glass", {
-	CanCollide = false,
-	Transparency = 0.3,
-}, vanParts)
-part(
-	"Stripe",
-	{ 6.05, 0.5, 8 },
-	{ vanX, vanY + 1.4, yardZ + 1 },
-	amber,
-	"SmoothPlastic",
-	{ CanCollide = false },
-	vanParts
-)
-for _, sx in { -1, 1 } do
-	part(
-		if sx < 0 then "HeadlightL" else "HeadlightR",
-		{ 1.2, 0.6, 0.2 },
-		{ vanX + sx * 2, vanY + 1, yardZ - 5.55 },
-		{ 1, 0.95, 0.8 },
-		"Neon",
-		{ CanCollide = false },
-		vanParts
-	)
-	for _, sz in { -1, 1 } do
-		part(
-			string.format("Wheel_%s%s", if sx < 0 then "L" else "R", if sz < 0 then "F" else "B"),
-			{ 0.8, 2.2, 2.2 },
-			{ vanX + sx * 3.2, floorTop + 1.1, yardZ + sz * 3.6 },
-			{ 0.08, 0.08, 0.09 },
-			"Rubber",
-			{ Shape = "Cylinder", CanCollide = false },
-			vanParts
-		)
-	end
-end
-table.insert(children, { name = "Van", className = "Model", properties = {}, children = vanParts })
-
--- Customization stations along the west wall: gun rack (WEAPONS), podium (CLASSES), mask wall (AVATAR).
--- Each is a panel with a floor label in front; the server adds the text and the prompt.
-local stationX = -yw / 2 + 1.3
-local stationZ0 = yardNorth + 18
-local stations = { "WEAPONS", "CLASSES", "AVATAR" }
-for i, name in stations do
-	local z = stationZ0 + (i - 1) * Config.StationSpacing
-	part("Station_" .. name, { 0.6, 7, 7 }, { stationX, 3.5, z }, panelGrey, "Metal")
-	part("StationLabel_" .. name, { 7, 0.2, 3 }, { stationX + 5.2, floorTop + 0.1, z }, labelDark, "SmoothPlastic", {
-		CanCollide = false,
-		Yaw = 90,
-	})
-	if name == "WEAPONS" then
-		-- Rack bars: three gun silhouettes.
-		for k = 1, 3 do
-			part(
-				"RackGun" .. k,
-				{ 0.4, 0.5, 2.4 },
-				{ stationX + 0.5, 1.6 + k * 1.4, z - 2.2 + (k - 1) * 2.2 },
-				{ 0.6, 0.63, 0.66 },
-				"Metal",
-				{ CanCollide = false }
-			)
-		end
-	elseif name == "CLASSES" then
-		part("Podium", { 3, 1.2, 3 }, { stationX + 3, floorTop + 0.6, z }, { 0.3, 0.3, 0.34 }, "Metal")
-		part("PodiumTop", { 3.2, 0.2, 3.2 }, { stationX + 3, floorTop + 1.3, z }, amber, "Neon", { CanCollide = false })
-	else
-		-- Mask wall: a row of small colored cubes.
-		local colors = { { 0.91, 0.33, 0.3 }, { 0.3, 0.62, 0.91 }, { 0.56, 0.89, 0.63 }, { 0.91, 0.71, 0.3 } }
-		for k, c in colors do
-			part(
-				"MaskCube" .. k,
-				{ 0.5, 1, 1 },
-				{ stationX + 0.55, 4.5, z - 2.4 + (k - 1) * 1.6 },
-				c,
-				"SmoothPlastic",
-				{ CanCollide = false }
-			)
-		end
-	end
-end
-
--- Minigame props along the east wall, PropSpacing apart, each a 4x6 panel with a floor label in front.
--- Out of the main path but still testable. The server adds the labels' text and the prompts.
-local props = { "Lockpick", "Hotwire", "Keypad", "Charges", "Safe", "Freq", "Cut" }
-local propX = yw / 2 - 1.3
-local propZ0 = yardNorth + 11
-for i, name in props do
-	local z = propZ0 + (i - 1) * Config.PropSpacing
-	part("Prop_" .. name, { 0.6, 6, 4 }, { propX, 3, z }, panelGrey, "Metal")
-	part("PropLabel_" .. name, { 6, 0.2, 3 }, { propX - 4.6, floorTop + 0.1, z }, labelDark, "SmoothPlastic", {
-		CanCollide = false,
-		Yaw = -90,
-	})
-end
-
--- Tier pad past the last prop: three buttons that set the minigame tier for the session.
-local padZ = propZ0 + #props * Config.PropSpacing + 2
-part("TierPad", { 10, 0.4, 4 }, { propX - 4.6, floorTop + 0.2, padZ }, labelDark, "SmoothPlastic", {
-	CanCollide = false,
-	Yaw = -90,
-})
-for t = 1, 3 do
-	part(
-		"TierPad" .. t,
-		{ 2.4, 0.6, 2.4 },
-		{ propX - 4.6, floorTop + 0.7, padZ + (t - 2) * 3 },
-		{ 0.3, 0.3, 0.34 },
-		"Metal",
-		{
-			CanCollide = false,
-		}
-	)
-end
 
 local model = { className = "Folder", children = children }
 local json = serde.encode("json", model, true)

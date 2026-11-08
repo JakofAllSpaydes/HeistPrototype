@@ -937,19 +937,13 @@ local Config = {
 	------------------------------------------------------------------ Room
 	RoomSize = 200,
 	WallHeight = 12,
-	FloorTop = 0.5, -- y of the floor's top face (arena and yard); above the default Baseplate so nothing z-fights
+	FloorTop = 0.5, -- y of the arena floor's top face; above the default Baseplate so nothing z-fights
 
 	PillarGrid = 5, -- NxN pillars, the center one is skipped so the spawn stays clear
 	PillarSize = 4,
 
-	------------------------------------------------------------------ Hub (the yard; regenerate the map after changing sizes)
-	MatchMode = "local", -- "local": the party plays in this server's arena. Reserved servers / TeleportService are out of scope.
-	YardWidth = 120, -- studs east-west, attached to the arena's south wall
-	YardDepth = 80, -- studs north-south
-	DoorWidth = 12, -- arena door opening in the south wall
-	PropSpacing = 10, -- studs between the minigame props along the yard's east wall
-	QueueZoneSize = 16, -- the queue pad is this many studs square, in front of the arena door
-	StationSpacing = 16, -- studs between the three customization stations along the west wall
+	------------------------------------------------------------------ Hub (brief 8: the warehouse; where things stand is its nodes)
+	MatchMode = "local", -- "local": the party plays in this server's maps. Reserved servers / TeleportService are out of scope.
 	HubCash = 0, -- Match Cash shown in the hub (nothing to buy there)
 
 	------------------------------------------------------------------ Maps (brief 7; the rows live in src/shared/Maps.lua)
@@ -1038,7 +1032,6 @@ local Config = {
 	FencePostSpacing = 8, -- studs between posts
 
 	------------------------------------------------------------------ Queue zone / Create Match
-	QueueZoneCount = 2, -- zones in the hub (QueueZone1..N parts in the map); brief 8 step 1 plays two pads
 	MaxPartySize = 4,
 	QueueCountdownSec = 15, -- from CREATE; a full party or a party of 1 starts at once
 	-- Brief 8: every pad holds its own party; runs on different maps play at once. The map geometry is one copy
@@ -1206,6 +1199,7 @@ local Config = {
 	------------------------------------------------------------------ Run start (IntroSec is the total length)
 	RunStartBeats = { doors = 1.4, masks = 2.2, poses = 2.8, orbit = 4.2 }, -- seconds from START RUN
 	SquadSize = 4, -- the start / end line-ups fill up to this many with dummy crew (prototype presentation)
+	VanDriveInStuds = 90, -- brief 8: a map's van drives this far from behind its Van node (a node's DriveIn attribute overrides it)
 	VanExitSec = 1.2, -- after control returns the van drives off and is removed; it only exists in the start animation
 	PoseStagger = 0.15, -- gap between each player's pose starting
 	MaskColors = { "E8554D", "4D9FE8", "8FE3A1", "E8B64C", "A864E8", "F2E6C8" }, -- head recolor per player, by join order
@@ -1289,7 +1283,6 @@ local Config = {
 	WeeklyPassXp = 2000,
 	WeeklyTokens = 5,
 	JobFreeRerollsPerDay = 1, -- Round 19c: the small R on any unclaimed sheet swaps the Job free this many times a fake day (then the fake-Robux REFRESH)
-	JobBoardPosition = Vector3.new(-30, 0, 136), -- MARLOW's corkboard in the yard (floor point; faces +Z toward the spawn)
 	JobAnnounceLine = "New jobs on the board. Pick your poison.",
 	JobBoardStaggerSec = 0.07, -- the board's sheets cascade in this far apart when it opens
 	JobBarFillSec = 0.5, -- progress bars fill from empty over this long on open
