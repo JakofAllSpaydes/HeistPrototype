@@ -36,7 +36,7 @@ wave 10), 19f (the glass offices as mini vaults), 19g (door waves 2 / 5 / 8 / 12
 pass (stand-in gun models, a procedural hold / aim / fire / reload animation, 3D viewport icons for guns and
 cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h (feedback on it: the gun-only
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
-screen overlay, softer kill sounds, the door guide up until the door opens) 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick; unplayed).
+screen overlay, softer kill sounds, the door guide up until the door opens) 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick) and 19l (particles on picking an upgrade; unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -1163,7 +1163,8 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     `[GunAnim] can't pose` line in the output. Icons: Weapons / Avatar tiles, store cards and the HUD slot show the
     3D models; ability wells, class circles, boost chips and upgrade cards show pictograms.
 9h. Round 19h: CUSTOMIZE on a gun → the avatar disappears, the gun alone spins in side-on (muzzle left), drag turns
-    it, a wrap paints it, BACK brings the avatar back. Picking an upgrade card plays `sfx_menu_upgrade` (Round 19k) at pitch 1, not a snap. Two
+    it, a wrap paints it, BACK brings the avatar back. Picking an upgrade card plays `sfx_menu_upgrade` (Round 19k) at pitch 1, not a snap, with a burst of chips off
+    the card (more per tier), sparkles trailing the icon to the tracker and a pop where it lands (Round 19l). Two
     alarm jobs in a row never use the same minigame (nor two of any job type); no HACK-hold terminal jobs, door
     shutters still hold F. The crate reel shows gun models (it now draws on a screen overlay that follows the crate).
     A kill is a light tick and a soft thud. A called door's chevrons, loud beacon and edge arrow stay until it opens.
@@ -1729,6 +1730,11 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
 - **Round 19k (7 Nov) — upgrade pick sound, take three.** The 19j hit was too shrill: the pick plays the designer's
   chosen clip (`sfx_menu_upgrade`, 85188753846582) alone at pitch 1 and `UpgradeTakeVolume` 0.5 (the bell layer and
   `UpgradeTakeDingVolume` / `UpgradeTakePitchStep` dropped).
+
+- **Round 19l (7 Nov) — upgrade pick particles.** `Juice.sparks`: GUI chips (squares, slivers, dots) with gravity,
+  drag, spin and a late fade, a shockwave ring and a glow, on their own top ScreenGui (`JuiceFxDisplayOrder`) so they
+  outlive the overlay. Picking an upgrade bursts them off the card (`UpgradeFxSparkBase` + `UpgradeFxSparkPerTier` ×
+  tier), trails sparkles behind the flying icon and pops at the tracker tile (`UpgradeFx*`).
 
 ## Open design notes (not built)
 
