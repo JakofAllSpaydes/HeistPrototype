@@ -921,6 +921,13 @@ local function due(wave: number)
 	for _, gid in added do
 		table.insert(queue, gid)
 	end
+	-- Round 20p: a door that comes due takes the slot from a running side job (closed quietly: no fail, no heat),
+	-- so the front doors are never locked behind the wave 1 alarm. The vault job and another door keep it.
+	local holding = CrewCall.activeKind()
+	if #added > 0 and Config.DoorSupersedesSideJob and holding and holding ~= "door" and holding ~= "vault" then
+		Log.event("Door", "%s takes the slot from the running %s job", added[1], holding)
+		CrewCall.finish(false, true)
+	end
 	table.sort(queue, function(a, b)
 		return (MapLoader.doors[a] and MapLoader.doors[a].priority or 0)
 			< (MapLoader.doors[b] and MapLoader.doors[b].priority or 0)

@@ -724,6 +724,15 @@ function CrewCall.busy(): boolean
 	return job ~= nil and job.active
 end
 
+-- What holds the slot: the side job's kind, "door" for a door objective, nil when free.
+function CrewCall.activeKind(): string?
+	local j = job
+	if not j or not j.active then
+		return nil
+	end
+	return if j.door then "door" else j.kind
+end
+
 -- A door objective on the crew-call shell: MARLOW's card, the pill with no clock, never expires.
 function CrewCall.triggerDoor(info: DoorInfo)
 	if job then

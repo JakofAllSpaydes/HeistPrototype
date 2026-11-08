@@ -959,6 +959,7 @@ local Config = {
 	GarageCloseSec = 3, -- the garage rolls back down this long after the van has gone (everyone sees it)
 	HubDoorRollSec = 1.2, -- a roll-up door's travel time
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
+	DoorSupersedesSideJob = true, -- THE BANK: a door coming due ends the running side job (quietly) and is called at once
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
 	PremiumSetAmbient = "4A4552", -- the ambient while a premium scene (pass, store, crate room) is up (was near-black)
