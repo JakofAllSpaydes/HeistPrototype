@@ -48,9 +48,13 @@ end
 
 -- The marker farthest from the crew, and the wall point behind it.
 local function entrance(): (Vector3, Vector3)
-	local best = Room.spawnPoints[1] or Vector3.zero
+	local points = {}
+	for _, box in Room.current().spawnBoxes do
+		table.insert(points, box.cframe.Position)
+	end
+	local best = points[1] or Vector3.zero
 	local bestDist = -1
-	for _, p in Room.spawnPoints do
+	for _, p in points do
 		local nearest = math.huge
 		for _, player in World.runAudience() do
 			local char = player.Character

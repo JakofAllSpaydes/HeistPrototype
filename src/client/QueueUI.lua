@@ -19,6 +19,7 @@ local PurchaseSheet = require(script.Parent:WaitForChild("PurchaseSheet"))
 local BoostDefs = require(Shared:WaitForChild("BoostDefs"))
 local ReviveTokenPacks = require(Shared:WaitForChild("ReviveTokenPacks"))
 local Clock = require(Shared:WaitForChild("Clock"))
+local Maps = require(Shared:WaitForChild("Maps"))
 
 local QueueUI = {}
 
@@ -36,12 +37,7 @@ local partyNames: TextLabel? = nil
 local chosen = { partySize = 4, mapIndex = 1, diffIndex = 1 }
 
 local function mapById(id: string?): any
-	for _, m in Config.QueueMaps do
-		if m.id == id then
-			return m
-		end
-	end
-	return Config.QueueMaps[1]
+	return Maps.get(id)
 end
 
 local function diffById(id: string?): any
@@ -142,6 +138,11 @@ local function openCreate(v: any)
 	chosen.partySize =
 		math.clamp(tonumber(v.settings and v.settings.partySize) or v.maxPartySize or 4, 1, v.maxPartySize or 4)
 	chosen.mapIndex = 1
+	for i, m in Maps.live() do
+		if m.id == Maps.pickable(v.settings and v.settings.mapId) then
+			chosen.mapIndex = i -- PLAY AGAIN keeps the map
+		end
+	end
 	chosen.diffIndex = 1
 	ClientState.setBlock("queue", true)
 	local g = UI.new("ScreenGui", {
@@ -229,8 +230,29 @@ local function openCreate(v: any)
 		LayoutOrder = 2,
 		Parent = body,
 	})
-	UI.list(mapsRow, Enum.FillDirection.Horizontal, S(8))
+	-- Brief 7: the live maps in Maps.lua order, then one COMING SOON filler. Desktop: three tiles share the row;
+	-- mobile (or more than three tiles): fixed tiles (88 x 64 thumbnails on a phone, name under) that swipe.
+	local liveMaps = Maps.live()
+	local tileCount = #liveMaps + 1
+	local scroll = mobile or tileCount > 3
+	local tileRow: GuiObject = mapsRow
+	if scroll then
+		local sf = UI.new("ScrollingFrame", {
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1),
+			CanvasSize = UDim2.new(),
+			AutomaticCanvasSize = Enum.AutomaticSize.X,
+			ScrollingDirection = Enum.ScrollingDirection.X,
+			ScrollBarThickness = S(3),
+			ElasticBehavior = Enum.ElasticBehavior.Always,
+			Parent = mapsRow,
+		})
+		tileRow = sf
+	end
+	UI.list(tileRow, Enum.FillDirection.Horizontal, S(8))
 	local mapCards: { TextButton } = {}
+	local repaintBonus: () -> () = function() end
 	local function paintMaps()
 		for i, c in mapCards do
 			local stroke = c:FindFirstChildOfClass("UIStroke")
@@ -240,26 +262,40 @@ local function openCreate(v: any)
 			end
 		end
 	end
-	for i = 1, 3 do
-		local m = Config.QueueMaps[i]
+	for i = 1, tileCount do
+		local m = liveMaps[i]
 		local c = UI.button({
 			Text = "",
 			BackgroundColor3 = if m then Theme.Colors.panel2 else Theme.Colors.panel,
-			Size = UDim2.new(1 / 3, -S(6), 1, 0),
+			Size = if scroll
+				then UDim2.new(0, if mobile then 96 else S(150), 1, -S(6))
+				else UDim2.new(1 / 3, -S(6), 1, 0),
 			LayoutOrder = i,
-			Parent = mapsRow,
+			Parent = tileRow,
 		})
 		UI.corner(c, S(6))
 		UI.stroke(c, Theme.Colors.black, S(1), 0.3)
-		-- Thumbnail stand-in: a dark block with a lighter "building" shape.
+		-- Thumbnail: the map's image when it has one, else its colour block with a lighter "building" shape.
 		local thumb = UI.frame({
-			BackgroundColor3 = if m then Color3.fromHex("55657A") else Theme.Colors.panel2,
-			Position = UDim2.fromScale(0.08, 0.1),
-			Size = UDim2.fromScale(0.84, 0.58),
+			BackgroundColor3 = if m then Color3.fromHex(m.color) else Theme.Colors.panel2,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, if mobile then 4 else 0),
+			Size = if mobile then UDim2.fromOffset(88, 64) else UDim2.fromScale(0.84, 0.58),
 			Parent = c,
 		})
+		if not mobile then
+			thumb.Position = UDim2.fromScale(0.5, 0.1)
+		end
 		UI.corner(thumb, S(4))
-		if m then
+		if m and m.thumb ~= "" then
+			UI.new("ImageLabel", {
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				Image = m.thumb,
+				ScaleType = Enum.ScaleType.Crop,
+				Parent = thumb,
+			})
+		elseif m then
 			UI.frame({
 				BackgroundColor3 = Theme.Colors.gold,
 				AnchorPoint = Vector2.new(0.5, 1),
@@ -273,7 +309,8 @@ local function openCreate(v: any)
 			Font = Theme.Fonts.body,
 			TextSize = S(12),
 			TextColor3 = if m then Theme.Colors.white else Theme.Colors.grey,
-			Position = UDim2.fromScale(0, 0.72),
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.fromScale(0, 1),
 			Size = UDim2.new(1, 0, 0, S(22)),
 			Parent = c,
 		})
@@ -281,6 +318,7 @@ local function openCreate(v: any)
 			c.Activated:Connect(function()
 				chosen.mapIndex = i
 				paintMaps()
+				repaintBonus()
 				UI.punch(c, 0.96, 0.15)
 			end)
 		end
@@ -304,7 +342,8 @@ local function openCreate(v: any)
 	local function paintBonus()
 		if bonus then
 			local d = Config.QueueDifficulties[chosen.diffIndex] or Config.QueueDifficulties[1]
-			local top = if v.topWaves then v.topWaves[d.id] else v.topWave
+			local m = Maps.live()[chosen.mapIndex] or Maps.live()[1]
+			local top = if v.topWaves then v.topWaves[m.id .. ":" .. d.id] else v.topWave
 			bonus.Text = string.format(
 				"◆ x%s Gold   |   ENEMY HP x%s · DMG x%s   |   ★ Top wave %d",
 				tostring(d.goldMult or 1),
@@ -314,6 +353,7 @@ local function openCreate(v: any)
 			)
 		end
 	end
+	repaintBonus = paintBonus
 	segment(body, 4, diffEntries, chosen.diffIndex, S(40), function(i)
 		chosen.diffIndex = i
 		paintBonus()
@@ -464,7 +504,7 @@ local function openCreate(v: any)
 		UI.sound(Theme.Sounds.legendary, 1.2, 0.5)
 		Remotes.QueueAction:FireServer("create", {
 			partySize = chosen.partySize,
-			mapId = Config.QueueMaps[chosen.mapIndex].id,
+			mapId = (Maps.live()[chosen.mapIndex] or Maps.live()[1]).id,
 			difficultyId = Config.QueueDifficulties[chosen.diffIndex].id,
 		})
 		closeCreate()

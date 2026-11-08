@@ -80,18 +80,8 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		end
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local best = Room.randomSpawnPoint()
-		if root then
-			local bestDist = math.huge
-			for _, p in Room.spawnPoints do
-				local d = (p - root.Position).Magnitude
-				if d < bestDist then
-					bestDist = d
-					best = p
-				end
-			end
-		end
-		Enemy.spawn(id, World.wave, best, { elite = elite })
+		local box, best = Room.nearestBox(if root then root.Position else nil)
+		Enemy.spawn(id, World.wave, best, { elite = elite, box = box })
 		World.enemiesLeft = math.max(World.enemiesLeft, Enemy.count())
 		PlayerState.markAllDirty()
 	end,
@@ -280,17 +270,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		end
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local best = Room.randomSpawnPoint()
-		if root then
-			local bestDist = math.huge
-			for _, p in Room.spawnPoints do
-				local d = (p - root.Position).Magnitude
-				if d < bestDist then
-					bestDist = d
-					best = p
-				end
-			end
-		end
+		local _, best = Room.nearestBox(if root then root.Position else nil)
 		Boss.spawn(Config.BossId, World.wave, best)
 		World.enemiesLeft = math.max(World.enemiesLeft, Enemy.count())
 		PlayerState.markAllDirty()

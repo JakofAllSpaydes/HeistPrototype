@@ -10,9 +10,11 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Classes = require(Shared.Classes)
+local Maps = require(Shared.Maps)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
+local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
 local Enemy = require(script.Parent.Enemy)
 local BigCrate = require(script.Parent.BigCrate)
@@ -98,7 +100,11 @@ function Hub.refreshTag(player: Player)
 		return
 	end
 	local profile = state.profile
-	local top = if profile then (profile.topWave[World.partyKey()] or profile.topWave["TheBank:Normal"] or 0) else 0
+	-- Brief 7: the best top wave across maps, with that map's short name (LV 7 · TOP WAVE 14 ★ BANK).
+	local top, topMap = 0, nil
+	if profile then
+		top, topMap = Profiles.bestTopWave(profile)
+	end
 	local level = if profile then profile.level else 1
 	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
 	local gui = Instance.new("BillboardGui")
@@ -137,7 +143,12 @@ function Hub.refreshTag(player: Player)
 	label.Font = Enum.Font.LuckiestGuy
 	label.TextScaled = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Text = string.format("LV %d · TOP WAVE %d ★", level, top)
+	label.Text = string.format(
+		"LV %d · TOP WAVE %d ★%s",
+		level,
+		top,
+		if topMap and top > 0 then " " .. Maps.get(topMap).short else ""
+	)
 	label.TextColor3 = GOLD
 	label.TextStrokeTransparency = 0.4
 	label.Parent = gui

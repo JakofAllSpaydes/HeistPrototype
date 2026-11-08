@@ -6,14 +6,14 @@ local luau = require("@lune/luau")
 local serde = require("@lune/serde")
 local process = require("@lune/process")
 
--- Config.lua uses Roblox datatypes (Vector2 / Vector3) that Lune does not have. Load it with stubs;
--- the generator only reads plain numbers out of it.
+-- Config.lua uses Roblox datatypes (Vector2 / Vector3 / CFrame) that Lune's plain Luau does not have. Load it
+-- with stubs; the generator only reads plain numbers out of it.
 local function vec(...: number)
 	return { ... }
 end
 local Config = luau.load(fs.readFile("src/shared/Config.lua"), {
 	debugName = "Config",
-	environment = { Vector2 = { new = vec }, Vector3 = { new = vec } },
+	environment = { Vector2 = { new = vec }, Vector3 = { new = vec }, CFrame = { new = vec } },
 })() :: any
 
 type Child = { name: string, className: string, properties: { [string]: any }, children: { Child }? }

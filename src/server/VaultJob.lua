@@ -16,7 +16,6 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Rarity = require(Shared.Rarity)
-local BagSpots = require(Shared.BagSpots)
 local Lines = require(Shared.CrewCall.Lines)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
@@ -362,7 +361,7 @@ function VaultJob.open()
 	slideDoor(true)
 	setLights(true)
 	paintBeacons(AMBER)
-	Bags.burstAtSpots(BagSpots.Vault, Config.VaultBurstCash, Config.VaultBurstGold, true)
+	Bags.burstAtSpots(Room.current().vaultSpots, Config.VaultBurstCash, Config.VaultBurstGold, true)
 	World.fireRun("VaultOpen", {
 		position = v.front,
 		endsAt = endsAt,

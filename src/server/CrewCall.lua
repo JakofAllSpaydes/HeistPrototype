@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Lines = require(Shared.CrewCall.Lines)
+local Ground = require(Shared.Ground)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
 local Room = require(script.Parent.Room)
@@ -82,10 +83,27 @@ local function copyFor(kind: string): any
 	}
 end
 
--- Weighted roll over Config.SideJobKindWeights. The vault only when it can be drawn this wave.
-local function rollKind(): string
+-- Does a job spot's pool (nil = every kind) take this kind? The vault is never a spot's: it is its own door.
+local function inPool(pool: { string }?, kind: string): boolean
+	if not pool or kind == "vault" then
+		return true
+	end
+	local k = string.lower(kind)
+	for _, p in pool do
+		if string.lower(p) == k then
+			return true
+		end
+	end
+	return false
+end
+
+-- Weighted roll over Config.SideJobKindWeights ∩ the spot's pool. The vault only when it can be drawn this wave.
+local function rollKind(pool: { string }?): string
 	local function weight(kind: string, w: number): number
 		if kind == "vault" and not VaultJob.available(World.wave) then
+			return 0
+		end
+		if not inPool(pool, kind) then
 			return 0
 		end
 		return math.max(0, w)
@@ -250,21 +268,68 @@ local function updateInsideSet(j: Job, set: { [Player]: boolean })
 	j.insideSet = set
 end
 
+-- The job spots a draw may use on the current map: open zones only (CrewCall.spotOpen, installed by the door
+-- system on THE BANK), the spot's pool taking `kind` when one is forced, biased JobOtherZoneMult toward spots
+-- outside the crew zone.
+CrewCall.spotOpen = nil :: ((Room.JobSpot) -> boolean)?
+function CrewCall.pickSpot(kind: string?): Room.JobSpot?
+	local open = CrewCall.spotOpen
+	local spots = {}
+	local weights = {}
+	local total = 0
+	for _, s in Room.current().jobSpots do
+		if open and not open(s) then
+			continue
+		end
+		if kind and not inPool(s.pool, kind) then
+			continue
+		end
+		local w = if s.zone ~= World.crewZone then Config.JobOtherZoneMult else 1
+		table.insert(spots, s)
+		table.insert(weights, w)
+		total += w
+	end
+	if #spots == 0 then
+		return nil
+	end
+	local r = math.random() * total
+	for i, w in weights do
+		r -= w
+		if r <= 0 then
+			return spots[i]
+		end
+	end
+	return spots[#spots]
+end
+
+-- Where the beacon stands for a spot: arena pillars push it toward the room center so it is reachable; real job
+-- spots stand on their own floor point.
+local function spotPosition(spot: Room.JobSpot?, radius: number): Vector3
+	if not spot then
+		local pillar = Room.randomPillar()
+		local toCenter = if pillar.Magnitude > 0.1 then -pillar.Unit else Vector3.new(1, 0, 0)
+		return pillar + toCenter * (Config.PillarSize / 2 + radius + 1)
+	end
+	local p = spot.cframe.Position
+	if spot.pillar then
+		local toCenter = if p.Magnitude > 0.1 then -Vector3.new(p.X, 0, p.Z).Unit else Vector3.new(1, 0, 0)
+		return p + toCenter * (Config.PillarSize / 2 + radius + 1)
+	end
+	return Ground.at(p)
+end
+
 -- `forceKind` skips the roll (the forced vault draw, debug).
 function CrewCall.trigger(forceKind: string?)
 	if job then
 		CrewCall.finish(false, true)
 	end
 	nextId += 1
-	local kind = if forceKind and (forceKind ~= "vault" or VaultJob.available(World.wave))
-		then forceKind
-		else rollKind()
+	local forced = if forceKind and (forceKind ~= "vault" or VaultJob.available(World.wave)) then forceKind else nil
+	local spot = CrewCall.pickSpot(forced)
+	local kind = forced or rollKind(spot and spot.pool)
 	local copy = copyFor(kind)
-	local pillar = Room.randomPillar()
-	-- Beacon sits beside the pillar, pushed toward the room center so it is reachable.
 	local radius = if kind == "capture" then Config.SideJobCaptureRadius else Config.SideJobBeaconRadius
-	local toCenter = if pillar.Magnitude > 0.1 then -pillar.Unit else Vector3.new(1, 0, 0)
-	local position = pillar + toCenter * (Config.PillarSize / 2 + radius + 1)
+	local position = spotPosition(spot, radius)
 	-- Round 18c: CRACK THE VAULT gets its own, longer window.
 	local duration = if kind == "vault" then Config.VaultJobDurationSec else Config.SideJobDurationSec
 	local endsAt = Workspace:GetServerTimeNow() + duration

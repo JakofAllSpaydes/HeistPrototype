@@ -719,11 +719,19 @@ local Config = {
 	StationSpacing = 16, -- studs between the three customization stations along the west wall
 	HubCash = 0, -- Match Cash shown in the hub (nothing to buy there)
 
+	------------------------------------------------------------------ Maps (brief 7; the rows live in src/shared/Maps.lua)
+	DefaultMap = "Arena", -- the map a fresh Create Match card picks (and the fallback for an unknown id)
+	BankOrigin = CFrame.new(0, 0, -1000), -- where THE BANK model is pivoted on load (the import baked it here)
+	CrewZoneSyncSec = 0.5, -- the crew zone (the zone holding the most standing players) is recomputed this often
+
+	------------------------------------------------------------------ Doors (brief 7; per-door numbers live on the Door nodes)
+	BagOtherZoneMult = 2, -- bag spots outside the crew zone weigh this much more (bags pull the crew through the map)
+	JobOtherZoneMult = 1.5, -- the same for side-job spots
+
 	------------------------------------------------------------------ Queue zone / Create Match
 	QueueZoneCount = 1, -- zones in the hub (QueueZone1..N parts in the map); the code never assumes 1
 	MaxPartySize = 4,
 	QueueCountdownSec = 15, -- from CREATE; a full party or a party of 1 starts at once
-	QueueMaps = { { id = "TheBank", name = "THE BANK" } }, -- one entry in the prototype
 	-- Round 16: difficulty is live. Each row scales enemy HP (hpMult) and damage (dmgMult), the wave's enemy count
 	-- (budgetMult) and the run's Gold payout (goldMult). Top waves are kept per map:difficulty.
 	QueueDifficulties = {

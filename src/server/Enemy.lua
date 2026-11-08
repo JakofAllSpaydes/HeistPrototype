@@ -63,6 +63,7 @@ export type Data = {
 	lastFlinch: number,
 	markUntil: number, -- Eagle Eye: server clock the mark ends
 	mem: { [string]: any }, -- the brain's scratch space
+	box: any?, -- Room.SpawnBox it came from (the stuck teleport goes back there)
 }
 
 -- What the killing (or hitting) shot looked like: its direction, whether it took the head, and how hard it
@@ -425,7 +426,7 @@ local api = {
 }
 
 ------------------------------------------------------------------ Spawn
-export type SpawnOpts = { elite: boolean?, row: Enemies.Row?, brain: any? }
+export type SpawnOpts = { elite: boolean?, row: Enemies.Row?, brain: any?, box: any? }
 
 -- Spawn one `archetype` at a floor point, scaled for `wave` and the party size. opts.row / opts.brain let the
 -- boss supply its own row and brain.
@@ -479,6 +480,7 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		lastFlinch = -math.huge,
 		markUntil = 0,
 		mem = {},
+		box = opts and opts.box,
 	}
 	count += 1
 	local d = active[model]

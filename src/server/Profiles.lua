@@ -30,9 +30,9 @@ export type Profile = {
 	masks: { owned: { [string]: boolean }, equipped: string },
 	emotes: { owned: { [string]: boolean }, squad: string, mvp: string }, -- line-up pose and MVP flex
 	wraps: { owned: { [string]: boolean } },
-	topWave: { [string]: number }, -- "TheBank:Normal" -> wave
-	topBanked: { [string]: number }, -- "TheBank:Normal" -> best TOTAL BANKED in one run
-	topTime: { [string]: number }, -- "TheBank:Normal" -> longest time survived (seconds)
+	topWave: { [string]: number }, -- "<mapId>:<difficulty>" ("Arena:Normal", "TheBank:Hard") -> wave
+	topBanked: { [string]: number }, -- "<mapId>:<difficulty>" -> best TOTAL BANKED in one run
+	topTime: { [string]: number }, -- "<mapId>:<difficulty>" -> longest time survived (seconds)
 	level: number, -- account level (Progression.lua)
 	xp: number, -- XP into the current level
 	lastHeistDay: number, -- UTC day number of the last completed run (FIRST HEIST OF THE DAY)
@@ -101,7 +101,9 @@ local STORE_NAME = "GHS_Profiles_v1"
 -- keyed by ability id, so they move with the ability; the migration only logs it. Eagle Eye, Frag and Overclock
 -- start at level 0 (absent).
 -- 3 (brief 6): fake Robux, revive tokens, boosts, VIP, the pass, Jobs, crate pity / opens, the purchase log.
-local VERSION = 3
+-- 4 (brief 7): records are keyed <mapId>:<difficulty>. Every run before brief 7 was on the arena (whose id was
+-- the placeholder "TheBank"), so TheBank:* moves to Arena:* once; a run on the real Bank then writes TheBank:*.
+local VERSION = 4
 local RETRY_BACKOFF = { 1, 2, 4 }
 
 local Profiles = {}
@@ -157,9 +159,9 @@ function Profiles.fresh(): Profile
 			return { owned = owned, squad = Emotes.DefaultSquad, mvp = Emotes.DefaultMvp }
 		end)(),
 		wraps = { owned = {} },
-		topWave = { ["TheBank:Normal"] = 0 },
-		topBanked = { ["TheBank:Normal"] = 0 },
-		topTime = { ["TheBank:Normal"] = 0 },
+		topWave = {},
+		topBanked = {},
+		topTime = {},
 		level = 1,
 		xp = 0,
 		lastHeistDay = 0,
@@ -199,6 +201,18 @@ function Profiles.fresh(): Profile
 		dailyReroll = { day = 0, count = 0 },
 		version = VERSION,
 	}
+end
+
+-- Brief 7: the best topWave across every map and difficulty, and the map it was on (the hub tag's suffix).
+function Profiles.bestTopWave(p: Profile): (number, string?)
+	local best, bestMap = 0, nil
+	for key, v in p.topWave do
+		if v > best then
+			best = v
+			bestMap = string.match(key, "^([^:]+):")
+		end
+	end
+	return best, bestMap
 end
 
 local function num(v: any, default: number): number
@@ -437,6 +451,26 @@ local function migrate(raw: any): Profile
 		p.dailyReroll.count = math.max(0, math.floor(num(raw.dailyReroll.count, 0)))
 	end
 	local fromVersion = tonumber(raw.version) or 1
+	if raw ~= nil and fromVersion < 4 then
+		local moved = 0
+		for _, records in { p.topWave, p.topBanked, p.topTime } do
+			for key, v in table.clone(records) do
+				local diff = string.match(key, "^TheBank:(.+)$")
+				if diff then
+					records[key] = nil
+					records["Arena:" .. diff] = math.max(records["Arena:" .. diff] or 0, v)
+					moved += 1
+				end
+			end
+		end
+		Log.event(
+			"Profile",
+			"v%d -> v4: %d record%s moved TheBank:* -> Arena:*",
+			fromVersion,
+			moved,
+			if moved == 1 then "" else "s"
+		)
+	end
 	if fromVersion < 2 and p.classes.owned.SHARPSHOOTER and (p.abilities.claymore or 0) > 0 then
 		Log.event("Profile", "v1 -> v2: claymore LV %d now on INITIATE's Z", p.abilities.claymore)
 	end
@@ -559,7 +593,7 @@ local function load(player: Player): Profile
 		end)(),
 		p.classes.equipped,
 		p.masks.equipped,
-		p.topWave["TheBank:Normal"] or 0,
+		Profiles.bestTopWave(p),
 		if raw == nil then " (new)" else ""
 	)
 	return p

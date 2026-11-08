@@ -28,6 +28,8 @@ local Pause = require(script.Parent.Pause)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local Purchases = require(script.Parent.Purchases)
+local Room = require(script.Parent.Room)
+local Ground = require(Shared.Ground)
 
 local Dealer = {}
 
@@ -46,13 +48,47 @@ local AMBER = Color3.fromHex("E8B64C")
 local WOOD = Color3.fromRGB(110, 78, 46)
 local DARK = Color3.fromRGB(40, 40, 46)
 
+-- Brief 7: the stall stands on a DealerSpot of the map (the crew zone's on THE BANK, the arena's single one),
+-- opening along the spot's LookVector (the arena's faces -Z, into the room). Chosen when the break starts.
+local stallFrame = CFrame.new(Config.DealerStallPosition.X, Config.FloorTop, Config.DealerStallPosition.Z)
+
+-- The crew zone's spot, else the spot nearest the crew.
+local function pickFrame(): CFrame
+	local view = Room.current()
+	local best: Room.DealerSpot? = nil
+	local bestDist = math.huge
+	local crew = Vector3.zero
+	local n = 0
+	for _, p in World.runAudience() do
+		local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			crew += root.Position
+			n += 1
+		end
+	end
+	crew = if n > 0 then crew / n else Vector3.zero
+	for _, s in view.dealerSpots do
+		local d = (s.cframe.Position - crew).Magnitude - (if s.zone == World.crewZone then 1e6 else 0)
+		if d < bestDist then
+			bestDist = d
+			best = s
+		end
+	end
+	if not best then
+		return stallFrame
+	end
+	local cf = best.cframe
+	local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+	local p = Ground.at(cf.Position)
+	return if look.Magnitude > 0.1 then CFrame.lookAt(p, p + look.Unit) else CFrame.new(p)
+end
+
 local function origin(): Vector3
-	local p = Config.DealerStallPosition
-	return Vector3.new(p.X, Config.FloorTop, p.Z)
+	return stallFrame.Position
 end
 
 local function tableTop(): number
-	return Config.FloorTop + 3
+	return stallFrame.Position.Y + 3
 end
 
 -- The stall is a half circle of DealerTableAngles tables round the DEALER (who stands at the origin), opening
@@ -61,7 +97,7 @@ local function tableCFrame(t: number): CFrame
 	local o = origin()
 	local a = math.rad(Config.DealerTableAngles[t] or 0)
 	local r = Config.DealerArcRadius
-	local p = Vector3.new(o.X + math.sin(a) * r, tableTop() - 0.2, o.Z - math.cos(a) * r)
+	local p = stallFrame:PointToWorldSpace(Vector3.new(math.sin(a) * r, tableTop() - 0.2 - o.Y, -math.cos(a) * r))
 	return CFrame.lookAt(p, Vector3.new(o.X, p.Y, o.Z))
 end
 
@@ -79,11 +115,10 @@ end
 local PROPS = { "crate", "heal", "reroll" }
 -- The props stand on the floor just past the arc's ends.
 local function propPosition(id: string): Vector3
-	local o = origin()
 	local deg = if id == "crate" then -100 elseif id == "heal" then 100 else 122
 	local a = math.rad(deg)
 	local r = Config.DealerArcRadius
-	return Vector3.new(o.X + math.sin(a) * r, Config.FloorTop + 1.2, o.Z - math.cos(a) * r)
+	return stallFrame:PointToWorldSpace(Vector3.new(math.sin(a) * r, 1.2, -math.cos(a) * r))
 end
 
 local function part(props: { [string]: any }): Part
@@ -153,7 +188,7 @@ local function buildStall(): Model
 		part({
 			Name = "SideBox",
 			Size = Vector3.new(2, 1.2, 2),
-			CFrame = CFrame.new(p.X, Config.FloorTop + 0.6, p.Z),
+			CFrame = CFrame.new(p - Vector3.new(0, 0.6, 0)),
 			Color = WOOD,
 			Material = Enum.Material.WoodPlanks,
 			Parent = model,
@@ -191,7 +226,7 @@ local function buildStall(): Model
 		part({
 			Name = "Crate",
 			Size = Vector3.new(2, 2, 2),
-			CFrame = CFrame.new(o.X + x, Config.FloorTop + 1, o.Z + 2.5),
+			CFrame = stallFrame * CFrame.new(x, 1, 2.5),
 			Color = WOOD,
 			Material = Enum.Material.WoodPlanks,
 			Parent = model,
@@ -200,7 +235,7 @@ local function buildStall(): Model
 	part({
 		Name = "LampPost",
 		Size = Vector3.new(0.3, 6, 0.3),
-		CFrame = CFrame.new(o.X - 1.8, Config.FloorTop + 3, o.Z + 2),
+		CFrame = stallFrame * CFrame.new(-1.8, 3, 2),
 		Color = DARK,
 		Material = Enum.Material.Metal,
 		Parent = model,
@@ -209,7 +244,7 @@ local function buildStall(): Model
 		Name = "Lamp",
 		Shape = Enum.PartType.Ball,
 		Size = Vector3.new(0.9, 0.9, 0.9),
-		CFrame = CFrame.new(o.X - 1.8, Config.FloorTop + 6.2, o.Z + 2),
+		CFrame = stallFrame * CFrame.new(-1.8, 6.2, 2),
 		Color = AMBER,
 		Material = Enum.Material.Neon,
 		CanCollide = false,
@@ -221,7 +256,7 @@ local function buildStall(): Model
 	light.Brightness = 2
 	light.Parent = bulb
 	-- The DEALER: a Part rig in the middle of the half circle that idles.
-	local npcPos = Vector3.new(o.X, Config.FloorTop, o.Z)
+	local npcPos = o
 	local body = part({
 		Name = "DealerBody",
 		Size = Vector3.new(2, 3, 1.2),
@@ -440,8 +475,7 @@ local function buy(player: Player, slot: any)
 			return result(player, false, slot, "cash")
 		end
 		if slot == "crate" then
-			local o = origin()
-			BigCrate.drop(Vector3.new(o.X, o.Y, o.Z - Config.DealerArcRadius - 10)) -- in front of the half circle
+			BigCrate.drop(stallFrame:PointToWorldSpace(Vector3.new(0, 0, -Config.DealerArcRadius - 10))) -- in front of the half circle
 		elseif slot == "heal" then
 			for _, p in World.runAudience() do
 				local ps = PlayerState.get(p)
@@ -518,10 +552,8 @@ local function onAction(player: Player, action: any, arg: any)
 			return
 		end
 		local o = origin()
-		local spot = Vector3.new(
-			o.X + (math.random() - 0.5) * 6,
-			o.Y + 3,
-			o.Z - Config.DealerArcRadius - Config.DealerTeleportDistance
+		local spot = stallFrame:PointToWorldSpace(
+			Vector3.new((math.random() - 0.5) * 6, 3, -Config.DealerArcRadius - Config.DealerTeleportDistance)
 		)
 		char:PivotTo(CFrame.lookAt(spot, Vector3.new(o.X, spot.Y, o.Z)))
 		Remotes.Juice:FireClient(player, "DealerTeleported", { position = spot })
@@ -557,6 +589,7 @@ function Dealer.run(wave: number)
 	endsAt = Workspace:GetServerTimeNow() + Config.DealerSec
 	World.state = "Dealer"
 	PlayerState.markAllDirty()
+	stallFrame = pickFrame()
 	stall = buildStall()
 	for _, p in World.runAudience() do
 		restock(p)

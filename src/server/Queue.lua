@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Enemies = require(Shared.Enemies)
+local Maps = require(Shared.Maps)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
@@ -57,18 +58,14 @@ end
 local function defaultSettings(): World.PartySettings
 	return {
 		partySize = Config.MaxPartySize,
-		mapId = Config.QueueMaps[1].id,
+		mapId = Maps.pickable(Config.DefaultMap),
 		difficultyId = Config.QueueDifficulties[1].id,
 	}
 end
 
 local function mapName(id: string): string
-	for _, m in Config.QueueMaps do
-		if m.id == id then
-			return m.name
-		end
-	end
-	return string.upper(id)
+	local m = Maps.ById[id]
+	return if m then m.name else string.upper(id)
 end
 
 local function diffName(id: string): string
@@ -243,7 +240,7 @@ local function viewFor(player: Player): any
 		zone = zone.index,
 		phase = zone.phase,
 		settings = zone.settings,
-		maps = Config.QueueMaps,
+		maps = Maps.live(),
 		difficulties = Config.QueueDifficulties,
 		maxPartySize = Config.MaxPartySize,
 		members = names,
@@ -252,11 +249,14 @@ local function viewFor(player: Player): any
 		startsAt = zone.startsAt,
 		countdownSec = Config.QueueCountdownSec,
 		topWave = if profile then (profile.topWave[topKey] or 0) else 0,
-		-- Per difficulty on this map, so the Create Match bonus row follows the segment (Round 16).
+		-- Per map:difficulty, so the Create Match bonus row follows the map tile and the segment (Round 16, brief 7).
 		topWaves = (function()
 			local out = {}
-			for _, d in Config.QueueDifficulties do
-				out[d.id] = if profile then (profile.topWave[zone.settings.mapId .. ":" .. d.id] or 0) else 0
+			for _, m in Maps.live() do
+				for _, d in Config.QueueDifficulties do
+					local key = m.id .. ":" .. d.id
+					out[key] = if profile then (profile.topWave[key] or 0) else 0
+				end
 			end
 			return out
 		end)(),
@@ -468,10 +468,8 @@ local function create(player: Player, raw: any)
 		if size then
 			s.partySize = math.clamp(math.floor(size), 1, Config.MaxPartySize)
 		end
-		for _, m in Config.QueueMaps do
-			if m.id == raw.mapId then
-				s.mapId = m.id
-			end
+		if typeof(raw.mapId) == "string" then
+			s.mapId = Maps.pickable(raw.mapId)
 		end
 		for _, d in Config.QueueDifficulties do
 			if d.id == raw.difficultyId then

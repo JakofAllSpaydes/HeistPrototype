@@ -31,7 +31,11 @@ local World = {
 	minigameTier = Config.MinigameTier, -- 1..3, set by the tier pad in the yard or the debug panel
 	-- The party: userIds in join order. Set by Queue when a run starts (or re-forms), cleared back in the hub.
 	party = {} :: { number },
-	partySettings = { partySize = 1, mapId = "TheBank", difficultyId = "Normal" } :: PartySettings,
+	partySettings = { partySize = 1, mapId = Config.DefaultMap, difficultyId = "Normal" } :: PartySettings,
+	-- Brief 7: the map the current (or last) run is on, set at run start from partySettings.mapId.
+	-- Room.forMap(World.map) is where every position comes from.
+	map = "Arena",
+	crewZone = "arena", -- the zone holding the most standing players (MapLoader keeps it current on THE BANK)
 	-- Payout accumulators for the run (GDD_7 payout). Survive REVIVE EVERYBODY saves; paid once at the summary.
 	runGold = 0, -- sum over cleared waves of GoldPerWaveBase + GoldPerWaveAdd x (wave - 1)
 	objectivesDone = 0, -- side jobs completed this run

@@ -21,7 +21,8 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
-local BagSpots = require(Shared.BagSpots)
+local Ground = require(Shared.Ground)
+local Room = require(script.Parent.Room)
 local Lines = require(Shared.CrewCall.Lines)
 local PlayerState = require(script.Parent.PlayerState)
 local Economy = require(script.Parent.Economy)
@@ -180,7 +181,7 @@ function Bags.spawnAt(kind: string, position: Vector3, vault: boolean?): Bag
 		id = nextId,
 		kind = kind,
 		model = nil :: any,
-		position = Vector3.new(position.X, Config.FloorTop, position.Z),
+		position = Ground.at(position),
 		wave = World.wave,
 		value = Bags.valueFor(kind, World.wave),
 		vault = vault == true,
@@ -219,21 +220,29 @@ local function occupied(spot: Vector3): boolean
 	return false
 end
 
--- A free arena spot weighted away from the crew; gold bags also keep GoldBagMinDistance when any spot allows it.
+-- Brief 7: the door system installs this on THE BANK so spots in closed zones (and the sealed vault) never draw.
+Bags.spotOpen = nil :: ((Room.BagSpot) -> boolean)?
+
+-- A free spot on the map weighted away from the crew (x BagOtherZoneMult outside the crew zone); gold bags need
+-- a Gold spot and keep GoldBagMinDistance when any spot allows it.
 function Bags.pickSpot(kind: string): Vector3?
 	local candidates = {}
 	local weights = {}
 	local total = 0
 	local goldOk = {}
-	for _, spot in BagSpots.Arena do
-		if occupied(spot) then
+	local open = Bags.spotOpen
+	for _, s in Room.current().bagSpots do
+		local spot = s.position
+		if occupied(spot) or (open and not open(s)) or (kind == "gold" and not s.gold) then
 			continue
 		end
 		local d = crewDistance(spot)
-		local w = if d > Config.BagFarDistance
-			then Config.BagFarMult
-			elseif d < Config.BagNearDistance then Config.BagNearMult
-			else 1
+		local w = (
+			if d > Config.BagFarDistance
+				then Config.BagFarMult
+				elseif d < Config.BagNearDistance then Config.BagNearMult
+				else 1
+		) * (if s.zone ~= World.crewZone then Config.BagOtherZoneMult else 1)
 		table.insert(candidates, spot)
 		table.insert(weights, w)
 		table.insert(goldOk, d >= Config.GoldBagMinDistance)
@@ -327,7 +336,7 @@ function Bags.burstAround(center: Vector3, cash: number, gold: number, radius: n
 		local a = (i - 1) / total * math.pi * 2 + math.random() * 0.4
 		table.insert(
 			spots,
-			Vector3.new(center.X + math.cos(a) * radius, Config.FloorTop, center.Z + math.sin(a) * radius)
+			Ground.at(Vector3.new(center.X + math.cos(a) * radius, center.Y, center.Z + math.sin(a) * radius))
 		)
 	end
 	Bags.burstAtSpots(spots, cash, gold, false)
@@ -618,7 +627,8 @@ function Bags.debugSpawn(player: Player, kind: string)
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local best: Vector3? = nil
 	local bestDist = math.huge
-	for _, spot in BagSpots.Arena do
+	for _, s in Room.current().bagSpots do
+		local spot = s.position
 		if occupied(spot) then
 			continue
 		end
@@ -628,7 +638,8 @@ function Bags.debugSpawn(player: Player, kind: string)
 			best = spot
 		end
 	end
-	local at = best or (if root then root.Position + root.CFrame.LookVector * 6 else BagSpots.Arena[1])
+	local at = best
+		or (if root then root.Position + root.CFrame.LookVector * 6 else Room.current().floorTop * Vector3.yAxis)
 	Bags.spawnAt(if kind == "gold" then "gold" else "cash", at)
 	Remotes.Juice:FireClient(player, "Toast", { text = string.upper(kind) .. " BAG DROPPED" })
 end

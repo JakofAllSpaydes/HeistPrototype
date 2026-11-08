@@ -8,6 +8,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local BagSpots = require(ReplicatedStorage.Shared.BagSpots)
+local Ground = require(ReplicatedStorage.Shared.Ground)
+local World = require(script.Parent.World)
 
 export type Zone = { index: number, pad: BasePart, gate: BasePart?, billboardAnchor: BasePart? }
 export type Station = { tab: string, panel: BasePart, label: BasePart }
@@ -26,6 +29,44 @@ export type Vault = {
 	maxX: number,
 	minZ: number,
 	maxZ: number,
+}
+
+-- Brief 7: every map hands out the same shape (Room.forMap). The arena wraps its markers, bag spots,
+-- pillars, closet vault and dealer position; THE BANK's view is built by MapLoader from its nodes.
+export type SpawnBox = {
+	name: string,
+	zone: string,
+	cframe: CFrame, -- the box volume (a random point inside, dropped to the ground, is the spawn)
+	size: Vector3,
+	weight: number,
+	allowed: { [string]: boolean }?, -- archetype ids; nil = all
+	requiresDoor: string?, -- a door group that must be open; nil = always on
+	mouth: string, -- the opening it stands behind, for the logs
+	whileVault: boolean?, -- only while the vault is open (the vault room's vent)
+}
+export type BagSpot = { name: string, position: Vector3, zone: string, gold: boolean }
+export type JobSpot = {
+	name: string,
+	cframe: CFrame,
+	zone: string,
+	pool: { string }?, -- job kinds this spot draws; nil = every kind
+	label: string?,
+	pillar: boolean?, -- arena: the beacon stands beside this pillar, pushed toward the room center
+}
+export type DealerSpot = { name: string, cframe: CFrame, zone: string }
+export type BossWall = { name: string, cframe: CFrame, size: Vector3, zone: string }
+export type MapView = {
+	id: string,
+	floorTop: number, -- the main floor (fallback height)
+	spawnBoxes: { SpawnBox },
+	bagSpots: { BagSpot },
+	vaultSpots: { Vector3 }, -- the vault burst's spots
+	jobSpots: { JobSpot },
+	dealerSpots: { DealerSpot },
+	bossWalls: { BossWall },
+	van: CFrame?, -- where the van parks on run start (nil: the arena's drive in from the yard)
+	lineup: CFrame?, -- the crew's line on run start, facing along LookVector (nil: the arena spawn)
+	runEndLine: CFrame?, -- the run end line (nil: where the crew stands, as on the arena)
 }
 
 local Room = {
@@ -551,6 +592,120 @@ function Room.insideZone(zone: Zone, position: Vector3, margin: number?): boolea
 	local m = margin or 0
 	return math.abs(position.X - pad.Position.X) <= pad.Size.X / 2 + m
 		and math.abs(position.Z - pad.Position.Z) <= pad.Size.Z / 2 + m
+end
+
+------------------------------------------------------------------ Per-map views (brief 7)
+local views: { [string]: MapView } = {}
+local builders: { [string]: () -> MapView? } = {}
+
+-- The arena: its eight markers as spawn boxes (zone "arena", no door, a point-sized box so the spawn is the
+-- marker itself), the twelve bag spots, the pillars as job spots, the closet's spots and the dealer position.
+local function arenaView(): MapView
+	local boxes: { SpawnBox } = {}
+	for i, p in Room.spawnPoints do
+		table.insert(boxes, {
+			name = "marker" .. i,
+			zone = "arena",
+			cframe = CFrame.new(p),
+			size = Vector3.zero,
+			weight = 1,
+			allowed = nil,
+			requiresDoor = nil,
+			mouth = "marker " .. i,
+		})
+	end
+	local spots: { BagSpot } = {}
+	for i, p in BagSpots.Arena do
+		table.insert(spots, { name = "spot" .. i, position = p, zone = "arena", gold = true })
+	end
+	local jobs: { JobSpot } = {}
+	for i, p in Room.pillars do
+		table.insert(jobs, { name = "pillar" .. i, cframe = CFrame.new(p), zone = "arena", pillar = true })
+	end
+	local d = Config.DealerStallPosition
+	return {
+		id = "Arena",
+		floorTop = Config.FloorTop,
+		spawnBoxes = boxes,
+		bagSpots = spots,
+		vaultSpots = BagSpots.Vault,
+		jobSpots = jobs,
+		dealerSpots = { { name = "stall", cframe = CFrame.new(d.X, Config.FloorTop, d.Z), zone = "arena" } },
+		bossWalls = {},
+		van = nil,
+		lineup = nil,
+		runEndLine = nil,
+	}
+end
+
+-- MapLoader registers maps built from nodes; a registered builder runs once, on the first forMap.
+function Room.registerMap(id: string, build: () -> MapView?)
+	builders[id] = build
+	views[id] = nil
+end
+
+-- Drop a cached view (debug Recompute nodes, a re-registered map).
+function Room.invalidate(id: string?)
+	if id then
+		views[id] = nil
+	else
+		views = {}
+	end
+end
+
+-- The positions of a map. Unknown or unbuilt maps fall back to the arena so a run never starts on nothing.
+function Room.forMap(id: string): MapView
+	local v = views[id]
+	if v then
+		return v
+	end
+	local build = builders[id]
+	local built = if build then build() else nil
+	if not built then
+		if id ~= "Arena" then
+			warn(string.format("[GHS Room] no view for map %s; using the arena", id))
+		end
+		built = views.Arena or arenaView()
+		views.Arena = built
+	end
+	views[id] = built
+	return built :: MapView
+end
+
+-- The map the current (or last) run is on.
+function Room.current(): MapView
+	return Room.forMap(World.map)
+end
+
+-- The current map's spawn box nearest a point (or a named one), and a spawn point in it.
+function Room.nearestBox(position: Vector3?, name: string?): (SpawnBox?, Vector3)
+	local best: SpawnBox? = nil
+	local bestDist = math.huge
+	for _, box in Room.current().spawnBoxes do
+		if name and box.name ~= name then
+			continue
+		end
+		local d = if position then (box.cframe.Position - position).Magnitude else math.random()
+		if d < bestDist then
+			bestDist = d
+			best = box
+		end
+	end
+	if best then
+		return best, Room.pointInBox(best)
+	end
+	return nil, Room.randomSpawnPoint()
+end
+
+-- A random point in a spawn box, dropped to the ground under it (the box itself for point-sized boxes).
+function Room.pointInBox(box: SpawnBox): Vector3
+	local s = box.size
+	local local_ = Vector3.new((math.random() - 0.5) * s.X, 0, (math.random() - 0.5) * s.Z)
+	local p = box.cframe:PointToWorldSpace(local_)
+	if s.Magnitude < 0.01 then
+		return p
+	end
+	return Vector3.new(p.X, Ground.y(p + Vector3.new(0, s.Y / 2, 0), p.Y - s.Y / 2), p.Z)
 end
 
 return Room

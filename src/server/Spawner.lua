@@ -54,20 +54,25 @@ local function nearestPlayerDistance(point: Vector3): number
 	return best
 end
 
--- A marker weighted by how close the crew is: enemies mostly arrive from where the action is.
-function Spawner.pickMarker(): Vector3
-	local points = Room.spawnPoints
-	if #points == 0 then
-		return Room.randomSpawnPoint()
+-- The proximity multiplier for a box: NearRange x NearWeightMult, FarRange x1, beyond x FarWeightMult.
+local function proximity(point: Vector3): number
+	local d = nearestPlayerDistance(point)
+	return if d <= Config.NearRange
+		then Config.NearWeightMult
+		elseif d <= Config.FarRange then 1
+		else Config.FarWeightMult
+end
+
+-- A spawn box weighted by how close the crew is: enemies mostly arrive from where the action is.
+function Spawner.pickBox(_archetype: string?): Room.SpawnBox?
+	local boxes = Room.current().spawnBoxes
+	if #boxes == 0 then
+		return nil
 	end
 	local weights = {}
 	local total = 0
-	for i, p in points do
-		local d = nearestPlayerDistance(p)
-		local w = if d <= Config.NearRange
-			then Config.NearWeightMult
-			elseif d <= Config.FarRange then 1
-			else Config.FarWeightMult
+	for i, box in boxes do
+		local w = box.weight * proximity(box.cframe.Position)
 		weights[i] = w
 		total += w
 	end
@@ -75,10 +80,10 @@ function Spawner.pickMarker(): Vector3
 	for i, w in weights do
 		r -= w
 		if r <= 0 then
-			return points[i]
+			return boxes[i]
 		end
 	end
-	return points[#points]
+	return boxes[#boxes]
 end
 
 -- Elite roll for a spawn: HeatElitePerStar x max(0, stars - 1).
@@ -86,10 +91,12 @@ function Spawner.rollElite(): boolean
 	return math.random() < World.eliteChance()
 end
 
--- One enemy of the wave: archetype from the bracket, marker by proximity, elite by heat.
+-- One enemy of the wave: archetype from the bracket, box by proximity, elite by heat.
 function Spawner.spawnOne(wave: number, archetype: string?): Model
 	local id = archetype or Enemies.rollArchetype(wave, World.bracketShift())
-	return Enemy.spawn(id, wave, Spawner.pickMarker(), { elite = Spawner.rollElite() })
+	local box = Spawner.pickBox(id)
+	local at = if box then Room.pointInBox(box) else Room.randomSpawnPoint()
+	return Enemy.spawn(id, wave, at, { elite = Spawner.rollElite(), box = box })
 end
 
 -- Blocks until the wave is over (budget spent and no enemies alive) or a skip is requested.

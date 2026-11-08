@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
+local Maps = require(Shared.Maps)
 
 local Room = require(script.Parent.Room)
 Room.build()
@@ -278,6 +279,8 @@ task.spawn(function()
 		end
 		World.runRequested = false
 		World.runId += 1
+		-- Brief 7: the run's map (positions, spawn boxes, spots) comes from the party's pick.
+		World.map = Maps.pickable(World.partySettings.mapId)
 		World.runGold = 0
 		World.objectivesDone = 0
 		World.banked = 0

@@ -454,9 +454,10 @@ end
 
 -- Phase 3: Henchmen from the marker nearest the boss.
 local function callIn(d: any, api: any)
-	local best = Room.spawnPoints[1]
+	local best = d.root.Position
 	local bestDist = math.huge
-	for _, p in Room.spawnPoints do
+	for _, box in Room.current().spawnBoxes do
+		local p = Room.pointInBox(box)
 		local dist = (p - d.root.Position).Magnitude
 		if dist < bestDist then
 			bestDist = dist
