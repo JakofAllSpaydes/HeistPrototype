@@ -700,8 +700,35 @@ function UpgradeOverlay.take(index: number)
 		Size = UDim2.fromOffset(S(48), S(48)),
 		Rotation = 180,
 	}, 0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	-- Round 19l: particles. A burst off the card (more chips per tier), sparkles trailing the icon to the tracker, a
+	-- small pop where it lands.
+	if Config.UpgradeFxEnabled then
+		local tier = math.clamp(tonumber(card.tier) or 1, 1, 5)
+		Juice.sparks(center, color, Config.UpgradeFxSparkBase + tier * Config.UpgradeFxSparkPerTier)
+		task.spawn(function()
+			local t0 = os.clock()
+			while os.clock() - t0 < 0.3 and ghost.Parent do
+				local p = ghost.AbsolutePosition + ghost.AbsoluteSize / 2
+				Juice.sparks(
+					p,
+					color,
+					Config.UpgradeFxTrailSparks,
+					{ speed = 140, life = 0.35, size = 6, ring = 0, up = 0 }
+				)
+				task.wait(Config.UpgradeFxTrailEvery)
+			end
+		end)
+	end
 	task.delay(0.34, function()
 		ghost:Destroy()
+		if Config.UpgradeFxEnabled then
+			Juice.sparks(
+				targetPos,
+				color,
+				Config.UpgradeFxArriveSparks,
+				{ speed = 300, life = 0.45, size = 7, ring = 110 }
+			)
+		end
 		if target and target.Parent then
 			UI.punch(target, 1.4, 0.3)
 		end

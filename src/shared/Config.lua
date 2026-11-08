@@ -1061,6 +1061,22 @@ local Config = {
 	MetaGunSpinTurns = 1, -- full turns in the opening spin
 	MetaGunStageBob = 0.03, -- studs of slow up / down float
 	UpgradeTakeVolume = 0.5, -- Round 19k: the upgrade pick sound (Theme.Sounds.upgrade) at Roblox's default volume, pitch 1
+	-- Round 19l: particles on picking an upgrade (Juice.sparks: GUI chips, a shockwave ring and a glow). Sizes and
+	-- speeds are px on the 760 UI basis.
+	UpgradeFxEnabled = true,
+	UpgradeFxSparkBase = 14, -- chips off the card...
+	UpgradeFxSparkPerTier = 5, -- ...plus this many per card tier (common 19, legendary 39)
+	UpgradeFxSparkSpeed = 560, -- the fastest chip, px/s
+	UpgradeFxSparkSize = 10, -- chip size, px
+	UpgradeFxUpBias = 0.35, -- share of the speed added upward (a fountain)
+	UpgradeFxGravity = 1400, -- px/s²
+	UpgradeFxDrag = 2.2, -- per second (higher = chips stop sooner)
+	UpgradeFxLife = 0.65, -- seconds
+	UpgradeFxRingSize = 300, -- the shockwave ring's end size, px
+	UpgradeFxTrailSparks = 2, -- sparkles left behind the flying icon every UpgradeFxTrailEvery seconds
+	UpgradeFxTrailEvery = 0.035,
+	UpgradeFxArriveSparks = 12, -- the pop at the tracker tile
+	JuiceFxDisplayOrder = 20, -- the particle layer draws over the overlays (the upgrade overlay is 10)
 	KillBodyVolume = 0.22, -- Round 19h: the soft body drop under the kill tick
 	MetaWeaponPreview = true, -- tapping a gun in the Weapons tab puts it in the avatar's hand (local only; the real one comes back on leaving the tab or closing)
 	MetaTileHoverScale = 1.05, -- customization tiles grow this much under the cursor (scale only, they never move)
