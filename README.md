@@ -36,7 +36,7 @@ wave 10), 19f (the glass offices as mini vaults), 19g (door waves 2 / 5 / 8 / 12
 pass (stand-in gun models, a procedural hold / aim / fire / reload animation, 3D viewport icons for guns and
 cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h (feedback on it: the gun-only
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
-screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade) and 19m (the premium scene sets moved under the arena so the pass lights up at once; unplayed).
+screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade), 19m (the premium scene sets moved under the arena so the pass lights up at once) and 19n (the hub nameplate: level badge, name, class block, best wave; seen by Jack in Studio).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -233,7 +233,7 @@ times. Every level pays `LevelGold`; milestones 5 / 10 / 25 / 50 grant a mask (`
 and `emote` exist as kinds with no handler. Summary: after the Gold count-up the XP row slides in under the header
 (`LV 7` left, `LV 8` right, the bar fills over `XpFillSec` with the number counting, a level crossed flashes gold, bumps
 both labels and pops `LEVEL 8 · +100 GOLD · BLUE VISOR`; `FIRST HEIST OF THE DAY ×2` under the bar when it applies).
-Level shows on the hub tag (`LV 7 · TOP WAVE 14 ★`), the party card, the summary rows and the scoreboard; lifetime XP in
+Level shows as the badge on the hub nameplate (Round 19n), the party card, the summary rows and the scoreboard; lifetime XP in
 `stats.xp`. Debug: `+500 XP`, `Set level`, `Reset daily`.
 
 **Scoreboard and time survived (brief 4, `Roster.lua`, `Scoreboard.lua`).** The server rebuilds the roster every
@@ -547,7 +547,9 @@ SHOP icon tile left-center (amber, the store window), PASS and JOBS stacked righ
 bottom-left with `+` (the store's GOLD tab) and INVITE FRIENDS under it (does nothing), the dock bottom-center (WEAPONS ·
 CLASSES · AVATAR as 92px icon tiles with labels under them, reference style), BOOSTS bottom-right (the live boost chips,
 VIP's CASH chip and daily gift, the revive token chip reading `×N` where a timer would be, a `+` into the BOOSTS tab), the compact queue card under PLAY
-while in a party, and a `TOP WAVE N ★` billboard with the class icon (and the VIP tag) above every character in the hub.
+while in a party, and the nameplate above every character in the hub (Round 19n, `Nameplates.lua`): the level badge (the level
+card's emblem with the number in it) over the plate's left end, the name in caps with a gold VIP tag, `★ WAVE 14 · BANK`
+under it, and a class-coloured block with the class pictogram on the right. The Roblox name hides under it.
 Top-left stays empty for server chat.
 
 **Queue zone and Create Match (`Queue.lua` / `QueueUI.lua`, GDD_7 Hub → Queue Zones minus the teleport).** Walk into an
@@ -595,7 +597,7 @@ the Create Party card, which instead closes when you walk off the pad). The scen
 frame (`MetaCameraTweenSec` ease): it stands `MetaCameraDistance` (7.5) in front of the character and
 `MetaCameraSideShare` of that to the character's left, `MetaCameraHeight` up, aiming `MetaCameraAim` (1.6 studs)
 below the character's center, so the avatar fills the left third with its head near the top of the frame, facing the
-camera and playing the equipped class's idle (`ClassIdleAnimationId`); the hub HUD hides and the TOP WAVE billboard is
+camera and playing the equipped class's idle (`ClassIdleAnimationId`); the hub HUD hides and your own nameplate is
 kept off every frame. Dragging on the avatar side of the screen (not on the panel, dock, gold pill or strips) turns
 the avatar round (`MetaDragSensitivity`). The Gold pill and the dock (LEAVE · WEAPONS · CLASSES · AVATAR, 96px tiles)
 sit bottom-left and read the balance on open. All three tabs share one format
@@ -816,7 +818,7 @@ they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault
   compact card and the summary. A run on THE BANK drives the van in to the Van node on the grass, lines the crew up
   facing the bank and ends on the Lineup node (the camera shots turn with the line); members return to the hub spawn.
   Records are `<mapId>:<difficulty>`; profile v4 moved the old `TheBank:*` (the arena's placeholder id) to `Arena:*`.
-  The hub tag shows the best top wave across maps with the map's short name (`LV 7 · TOP WAVE 14 ★ BANK`).
+  The hub nameplate shows the best top wave across maps with the map's short name (`★ WAVE 14 · BANK`).
 - **Audio (Round 19d, every map).** Sound effects play through an SFX SoundGroup and the soundtrack through a Music
   one (`SfxVolume`, `MusicVolume`). `UI.sound` / `UI.soundAt` level each `Theme.Sounds` key (`SfxGain`), spread its
   pitch a little (`SfxPitchJitter`) and cap copies of one clip at `SfxMaxVoices`. Real library clips (ProSoundEffects
@@ -850,8 +852,8 @@ The brief 3 code was written and built (`stylua`, `luau-lsp`, `rojo build`) but 
 `Enable Studio Access to API Services` first (otherwise profiles stay in memory and the rejoin line cannot pass).
 Solo pass first, then a 2-player Local Server; anything that fails is a Config or one-file fix:
 
-1. Fresh join: hub HUD only (no buy column, abilities, wave bar, health or ammo), Gold 10,000 bottom-left, `TOP WAVE 0
-   ★` with the INITIATE circle over your head, no hat / face accessories, plain mask. Output shows `[GHS Profile]
+1. Fresh join: hub HUD only (no buy column, abilities, wave bar, health or ammo), Gold 10,000 bottom-left, the nameplate
+   over your head (badge 1, your name, INITIATE in its colour, the INITIATE block), no hat / face accessories, plain mask. Output shows `[GHS Profile]
    <name> loaded … (new)`. Backtick → `+1,000 Gold` bumps the row; `Reset profile` puts it back. If the floor labels
    by the stations or props read upside down, flip the `Yaw` on the label parts in `tools/genmap.luau`.
 2. PLAY teleports you onto the pad and the Create Party card opens (you can still walk; walking off the pad closes
@@ -869,7 +871,7 @@ Solo pass first, then a 2-player Local Server; anything that fails is a Config o
    the party lands on the pad with a fresh countdown. Rejoin (leave and re-enter Play) → Gold, top wave, owned items
    restored.
 5. Customization: dock tile or station `F` opens the scene on that tab; you cannot move, the camera eases to the
-   avatar on the left with its head near the top, no TOP WAVE tag, the Gold pill reads the balance, dragging on the
+   avatar on the left with its head near the top, no nameplate, the Gold pill reads the balance, dragging on the
    avatar turns it. Weapons: unlock (toast `… unlocked and equipped!`, Gold −100, STARTER tag moves), `Not enough
    Gold!` when short (reset profile and spend down, or set `StartingGold` 0), UPGRADE raises LV and the green
    `» next` values, CUSTOMIZE hides the panel and dock and zooms on the gun, WRAP opens the swatch row, a wrap
@@ -937,8 +939,8 @@ Local Server through one boss; anything that fails is a Config or one-file fix:
    in green on the right, the bar reading `350 / 400 XP`); cross a level (use `+500 XP` before a run, or a long run)
    and it flashes, reads `LV 2`, pops `LEVEL 2 · +100 GOLD` above the card and keeps filling; `FIRST HEIST OF THE
    DAY ×2` under the gain on the first run of the day (then `Reset daily` to see it again). Rows read `LV 2 NAME`.
-   Back in the hub the same card sits above the Gold pill bottom-left with the new level and bar, the tag reads
-   `LV 2 · TOP WAVE 12 ★`, the Gold row includes the banked total and the level reward, and the party card lists
+   Back in the hub the same card sits above the Gold pill bottom-left with the new level and bar, the nameplate
+   reads badge 2 and `★ WAVE 12`, the Gold row includes the banked total and the level reward, and the party card lists
    `LV 2 NAME`. Rejoin: level, XP and the daily flag hold (API access on). The card never shows in a run.
 9. Scoreboard: hold Tab in a run: `WAVE 5 · TIME 3:12 · ★★ · ◆ BANKED 54 · $ CASH 2,340`, your row highlighted with
    level, class circle, green dot, kills, cash, bags, jobs, downs, revives, MVP score, updating every second; release
@@ -1087,8 +1089,8 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
    and the boss walls against the building. To move one: stop, select it under `Workspace.Bank.Nodes` in edit mode,
    drag, then select `Workspace.Bank.Nodes` > Save to File as `Nodes.rbxmx` and run
    `lune run tools/exportnodes.luau Nodes.rbxmx`. In a play session, `Recompute nodes` re-reads after a drag.
-2. Arena unchanged: Create Match > ARENA > a run plays as before (markers, closet vault, bag spots); hub tag `★ ARENA`
-   once a top wave lands there. A pre-brief-7 profile logs `[GHS Profile] v3 -> v4: … TheBank:* -> Arena:*`.
+2. Arena unchanged: Create Match > ARENA > a run plays as before (markers, closet vault, bag spots); the nameplate reads
+   `★ WAVE N · ARENA` once a top wave lands there. A pre-brief-7 profile logs `[GHS Profile] v3 -> v4: … TheBank:* -> Arena:*`.
 3. Card: ARENA and THE BANK tiles plus COMING SOON; THE BANK is picked by default; the board and the compact card read
    `THE BANK · NORMAL`; the summary header names the map; PLAY AGAIN keeps it.
 4. Run start: the van drives onto the grass, the crew steps out facing the bank and the camera hands back facing it
@@ -1172,6 +1174,10 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     TOO FAR, then the cancel after `MinigameWalkAwayGraceSec` (step back in range within it and it stays open).
     Round 19m: open the battle pass, the store and a crate from the hub → each set is lit from the first frame (no
     fade-up over a few seconds).
+    Round 19n: in the hub every character wears the nameplate: the level badge with the number in it, the name in caps
+    (+ the gold VIP tag), `★ WAVE N · MAP` (the class name before a first wave), the class block on the right, a class
+    tint and underline; no Roblox name over it. `+500 XP` to a new level pops the badge; switching class recolours it;
+    CUSTOMIZE hides your own plate; a run hides every plate in the party and the Roblox names come back.
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
@@ -1194,7 +1200,7 @@ Elements (element procs and statuses), Mastery (XP, tiers, kill passives), Deale
 entry point and kind registry), Grants (applies rewards, dupes), Shop (Remotes.Shop actions, bundles, boosts), CrateOpen,
 Boosts, Vip, Pass, Jobs, RunEvents (the run event bus), and brief 7: MapLoader (THE BANK's nodes, zones, the crew zone, the hatch
 and ladder link), Doors (door props, objectives, zone gates, the vault site), EnemyPath (pathfinding),
-Hub (yard dressing, stations, tier pad, resets, the LV · TOP WAVE tag), Queue (zones, Create Match, party, countdown,
+Hub (yard dressing, stations, tier pad, resets, the nameplate attributes), Queue (zones, Create Match, party, countdown,
 PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions), Minigames (sessions, log, stats, a tier override), Downed
 (down / revive / bleed-out / game over / sidearm), AllyCallout (teammate radio lines), RunStart, RunEnd (payout, XP award, summary), Squad (dummy crew for
 the sequences), Debug, Log; `GameLoop.server.lua` is the entry. All cash, Gold, HP, spawns, rolls, loot, minigame
@@ -1212,7 +1218,7 @@ under the wave bar; `Currency` with the Banked row), QueueUI (Create Match card,
 tags and the reel), StatusFx (element looks, Eagle Vision marks), MasteryUI (the tier-up card), DealerUI (dealer card, stands,
 shop panels; `UI/CardFace.lua` is the upgrade card look it shares with UpgradeOverlay), PauseUI (the overlay), GroundLoot, CrewCallUI (job cards, the vault pill, MARLOW's line cards, ally
 callouts), Markers (beacon, bag and vault billboards, the vault chevrons), Minigames (Frame + one module
-per game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Spectate,
+per game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (busy tags over teammates), Nameplates (the hub nameplate), Spectate,
 RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary with the XP row), BossCutscene, Scoreboard,
 DebugPanel, Juice (rarity tiers), Camera, Gun, Main. Brief 6: PurchaseSheet, `src/client/Store/` (StoreScene, Fx,
 Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, GoldTab, CrateScene),
@@ -1741,6 +1747,14 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
 - **Round 19m (7 Nov) — premium sets light up at once.** The showroom, crate room and pass stage moved from 3000+
   studs out (where their local lights took seconds to come up after the camera jumped there) into a row of sealed
   rooms under the arena floor (`PremiumSetsOrigin`, `PremiumSetsSpacing`), and `Sets.lua` builds all three at startup.
+
+- **Round 19n (7 Nov) — the hub nameplate.** The one-line `LV 7 · TOP WAVE 14 ★ BANK` billboard became a
+  client-drawn plate (`Nameplates.lua`): the level badge (the level card's emblem, chevron over the number, so no
+  LV text) overlapping a near-black plate, the name in Oswald caps with a gold VIP tag, `★ WAVE 14 · BANK` under it
+  (the class name before a first wave), a full-height class-coloured block with the class pictogram, a class tint
+  from the left and a fading class underline. `Hub.refreshTag` now only publishes Player attributes (`Plate`,
+  `PlateLevel`, `PlateTop`, `PlateMap`, `PlateClass`, `PlateVip`); the Roblox name hides locally under a plate.
+  `NameplateOffset`, `NameplateHeight` (everything scales from it), `NameplateMaxDistance`, `NameplateShowSelf`.
 
 ## Open design notes (not built)
 

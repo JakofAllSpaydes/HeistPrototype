@@ -24,6 +24,7 @@ local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
+local Nameplates = require(script.Parent:WaitForChild("Nameplates"))
 local MetaFolder = script.Parent:WaitForChild("Meta")
 local GunPreview = require(MetaFolder:WaitForChild("GunPreview"))
 
@@ -500,14 +501,9 @@ local function overAvatarArea(x: number, y: number): boolean
 	return true
 end
 
--- The TOP WAVE billboard over the local character hides while the scene is up (it would sit in the shot).
+-- The hub nameplate over the local character hides while the scene is up (it would sit in the shot).
 local function setHubTagVisible(visible: boolean)
-	local c = char()
-	local head = c and c:FindFirstChild("Head")
-	local tag = head and head:FindFirstChild("HubTag")
-	if tag and tag:IsA("BillboardGui") then
-		tag.Enabled = visible
-	end
+	Nameplates.setLocalHidden(not visible)
 end
 
 ------------------------------------------------------------------ Scene chrome

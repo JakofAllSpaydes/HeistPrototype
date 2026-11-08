@@ -40,6 +40,7 @@ require(script.Parent:WaitForChild("Music")).init() -- Round 19d
 require(script.Parent:WaitForChild("Minigames")).init()
 require(script.Parent:WaitForChild("DownedUI")).init()
 require(script.Parent:WaitForChild("PlayerTags")).init()
+require(script.Parent:WaitForChild("Nameplates")).init()
 require(script.Parent:WaitForChild("Spectate")).init()
 require(script.Parent:WaitForChild("RunStartUI")).init()
 require(script.Parent:WaitForChild("RunEndUI")).init()

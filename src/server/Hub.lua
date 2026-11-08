@@ -2,14 +2,13 @@
 -- The hub: the yard where players spawn, with the planning table, the queue zone, the three customization
 -- stations (prompts that open the customization scene on a tab), the minigame props and the tier pad.
 -- Owns the Hub state's housekeeping: resets, teleports, clearing the arena between runs, and the
--- TOP WAVE / class billboard over each character while they stand in the hub.
+-- nameplate data (level, class, best wave, VIP) each character shows while they stand in the hub.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
-local Classes = require(Shared.Classes)
 local Maps = require(Shared.Maps)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
@@ -83,108 +82,27 @@ function Hub.setTier(tier: number, who: string?)
 	Log.event("Minigame", "tier set to %d by %s", t, who or "debug")
 end
 
------------------------------------------------------------------- TOP WAVE billboard
--- Above the character in the hub: TOP WAVE N with a star and the equipped class icon in a circle.
+------------------------------------------------------------------ Hub nameplate
+-- The nameplate over each character in the hub (client/Nameplates.lua draws it: level badge, name, VIP, class,
+-- best top wave). The server only publishes the numbers as Player attributes; Plate = false hides it (runs).
 function Hub.refreshTag(player: Player)
 	local state = PlayerState.get(player)
-	local char = player.Character
-	local head = char and char:FindFirstChild("Head")
-	if not char or not head then
-		return
-	end
-	local old = head:FindFirstChild("HubTag")
-	if old then
-		old:Destroy()
-	end
 	if World.inRunCycle() and World.isInParty(player) then
+		player:SetAttribute("Plate", false)
 		return
 	end
 	local profile = state.profile
-	-- Brief 7: the best top wave across maps, with that map's short name (LV 7 · TOP WAVE 14 ★ BANK).
+	-- Brief 7: the best top wave across maps, with that map's short name (★ WAVE 14 BANK).
 	local top, topMap = 0, nil
 	if profile then
 		top, topMap = Profiles.bestTopWave(profile)
 	end
-	local level = if profile then profile.level else 1
-	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "HubTag"
-	gui.Adornee = head
-	gui.AlwaysOnTop = false
-	gui.Size = UDim2.fromScale(5, 1.3)
-	gui.StudsOffset = Vector3.new(0, 2.6, 0)
-	gui.MaxDistance = 90
-	gui.LightInfluence = 0
-	gui.Parent = head
-	local circle = Instance.new("Frame")
-	circle.BackgroundColor3 = Color3.fromHex(class.color)
-	circle.Size = UDim2.fromScale(0.22, 0.85)
-	circle.Position = UDim2.fromScale(0.02, 0.075)
-	circle.BorderSizePixel = 0
-	circle.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.5, 0)
-	corner.Parent = circle
-	local ratio = Instance.new("UIAspectRatioConstraint")
-	ratio.AspectRatio = 1
-	ratio.Parent = circle
-	local icon = Instance.new("TextLabel")
-	icon.BackgroundTransparency = 1
-	icon.Size = UDim2.fromScale(1, 1)
-	icon.Font = Enum.Font.LuckiestGuy
-	icon.TextScaled = true
-	icon.Text = class.glyph
-	icon.TextColor3 = DARK
-	icon.Parent = circle
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Position = UDim2.fromScale(0.26, 0)
-	label.Size = UDim2.fromScale(0.74, 1)
-	label.Font = Enum.Font.LuckiestGuy
-	label.TextScaled = true
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Text = string.format(
-		"LV %d · TOP WAVE %d ★%s",
-		level,
-		top,
-		if topMap and top > 0 then " " .. Maps.get(topMap).short else ""
-	)
-	label.TextColor3 = GOLD
-	label.TextStrokeTransparency = 0.4
-	label.Parent = gui
-	-- Brief 6: the VIP gold tag, a small pill over the name line.
-	if profile and profile.vip.active then
-		local pill = Instance.new("Frame")
-		pill.Name = "VipTag"
-		pill.BackgroundColor3 = Color3.fromHex("F2C14E")
-		pill.BorderSizePixel = 0
-		pill.Position = UDim2.fromScale(0.26, -0.62)
-		pill.Size = UDim2.fromScale(0.2, 0.55)
-		pill.Parent = gui
-		local pc = Instance.new("UICorner")
-		pc.CornerRadius = UDim.new(0.3, 0)
-		pc.Parent = pill
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromHex("FFF1C4")
-		stroke.Thickness = 1.5
-		stroke.Parent = pill
-		local vt = Instance.new("TextLabel")
-		vt.BackgroundTransparency = 1
-		vt.Size = UDim2.fromScale(1, 1)
-		vt.Font = Enum.Font.LuckiestGuy
-		vt.TextScaled = true
-		vt.Text = "VIP"
-		vt.TextColor3 = DARK
-		vt.Parent = pill
-		gui.Size = UDim2.fromScale(5, 1.9)
-		gui.StudsOffset = Vector3.new(0, 2.9, 0)
-		circle.Size = UDim2.fromScale(0.22, 0.58)
-		circle.Position = UDim2.fromScale(0.02, 0.36)
-		label.Size = UDim2.fromScale(0.74, 0.68)
-		label.Position = UDim2.fromScale(0.26, 0.32)
-		pill.Position = UDim2.fromScale(0.26, 0)
-		pill.Size = UDim2.fromScale(0.2, 0.3)
-	end
+	player:SetAttribute("PlateLevel", if profile then profile.level else 1)
+	player:SetAttribute("PlateTop", top)
+	player:SetAttribute("PlateMap", if topMap and top > 0 then Maps.get(topMap).short else "")
+	player:SetAttribute("PlateClass", PlayerState.classOf(state))
+	player:SetAttribute("PlateVip", profile ~= nil and profile.vip.active == true)
+	player:SetAttribute("Plate", true)
 end
 
 function Hub.refreshAllTags()
@@ -436,12 +354,7 @@ function Hub.beginRun()
 		if not player.Character then
 			player:LoadCharacter()
 		end
-		local char = player.Character
-		local head = char and char:FindFirstChild("Head")
-		local tag = head and head:FindFirstChild("HubTag")
-		if tag then
-			tag:Destroy()
-		end
+		player:SetAttribute("Plate", false)
 	end
 end
 

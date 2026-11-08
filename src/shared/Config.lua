@@ -1153,6 +1153,11 @@ local Config = {
 	RevivePausesBleed = true, -- a teammate's revive hold freezes the bleed timer; letting go resumes it
 	ReviveTickSec = 0.5, -- the reviver's centered bar ticks this often while it fills
 	BusyTagOffset = 3.2, -- studs above a teammate's head for the LOCKPICK / HACKING / CAPTURING tag
+	-- The hub nameplate (client/Nameplates.lua): level badge, name, VIP chip, class pictogram, best top wave.
+	NameplateOffset = 2.8, -- studs above the head
+	NameplateHeight = 44, -- px at the UI basis (the class block is this square); the level badge is 1.3x this
+	NameplateMaxDistance = 90, -- studs: plates past this hide
+	NameplateShowSelf = true, -- your own plate over your character
 	-- Ally callouts (brief 5, lines in Callouts.lua): downed / revived / bled-out radio to teammates, and (Round 16)
 	-- the big moments: the boss's last hit, a Legendary from a crate, a multi-kill, a mastery tier.
 	CalloutMultiKill = 5, -- one frag / claymore killing at least this many sends the multi-kill callout
