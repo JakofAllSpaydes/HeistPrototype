@@ -15,7 +15,7 @@ local Remotes = require(Shared.Remotes)
 local Products = require(Shared.Products)
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
-local World = require(script.Parent.World)
+local Runs = require(script.Parent.Runs)
 local Economy = require(script.Parent.Economy)
 local Grants = require(script.Parent.Grants)
 local Log = require(script.Parent.Log)
@@ -37,8 +37,9 @@ end
 
 -- Wave and run context for the readout (conversion points are read from the session log).
 local function context(player: Player, extra: string?): string
-	local where = if World.inRun() and World.isInParty(player)
-		then string.format("in-run wave %d %s", World.wave, World.state)
+	local World = Runs.worldOf(player)
+	local where = if Runs.inRun(player)
+		then string.format("in-run %s wave %d %s", World.map, World.wave, World.state)
 		else "hub"
 	return if extra and extra ~= "" then where .. " · " .. extra else where
 end
@@ -66,7 +67,7 @@ function Purchases.buy(player: Player, productId: string, args: any): Response
 	if not h then
 		return { ok = false, reason = "Not on sale yet", balance = profile.fakeRobux }
 	end
-	if not product.inRun and World.inRun() and World.isInParty(player) then
+	if not product.inRun and Runs.inRun(player) then
 		return { ok = false, reason = "Not during a run", balance = profile.fakeRobux }
 	end
 	local check = h.check
@@ -135,7 +136,7 @@ Purchases.register("gold", {
 
 Purchases.register("cash_pack", {
 	check = function(player)
-		if not (World.inRun() and World.isInParty(player)) then
+		if not Runs.inRun(player) then
 			return "Match cash is for a run"
 		end
 		return nil
@@ -180,10 +181,12 @@ function Purchases.init()
 		return Purchases.buy(player, tostring(productId), args)
 	end
 	Remotes.SheetState.OnServerEvent:Connect(function(player: Player, open: any)
-		World.sheetOpen[player.UserId] = if open == true then true else nil
+		Runs.worldOf(player).sheetOpen[player.UserId] = if open == true then true else nil
 	end)
 	Players.PlayerRemoving:Connect(function(player)
-		World.sheetOpen[player.UserId] = nil
+		for _, s in Runs.allSlots() do
+			s.World.sheetOpen[player.UserId] = nil
+		end
 	end)
 end
 

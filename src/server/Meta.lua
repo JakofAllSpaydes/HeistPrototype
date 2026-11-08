@@ -16,7 +16,7 @@ local Prices = require(Shared.Prices)
 local MasteryCopy = require(Shared.MasteryCopy)
 local PlayerState = require(script.Parent.PlayerState)
 local Profiles = require(script.Parent.Profiles)
-local World = require(script.Parent.World)
+local Runs = require(script.Parent.Runs)
 local Log = require(script.Parent.Log)
 local Hub = require(script.Parent.Hub)
 
@@ -76,7 +76,7 @@ handlers.unlockWeapon = function(player, state, p, args)
 	-- New things are equipped as they are unlocked.
 	p.starterWeaponId = w.id
 	Profiles.markDirty(player)
-	if not World.inRun() then
+	if not Runs.inRun(player) then
 		state.held = PlayerState.starterHeld(state)
 		PlayerState.refreshHeldVisual(state)
 		state.dirty = true
@@ -113,7 +113,7 @@ handlers.equipStarter = function(player, state, p, args)
 	end
 	p.starterWeaponId = w.id
 	Profiles.markDirty(player)
-	if not World.inRun() then
+	if not Runs.inRun(player) then
 		state.held = PlayerState.starterHeld(state)
 		PlayerState.refreshHeldVisual(state)
 		state.dirty = true
@@ -331,7 +331,7 @@ function Meta.init()
 			return fail("profile loading")
 		end
 		state.profile = profile
-		if World.inRun() and World.isInParty(player) then
+		if Runs.inRun(player) then
 			return fail("not in a run")
 		end
 		local result = handler(player, state, profile, args)

@@ -16,7 +16,7 @@ local Classes = require(Shared.Classes)
 local Crates = require(Shared.Crates)
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
-local Mastery = require(script.Parent.Mastery)
+local Runs = require(script.Parent.Runs)
 local Boosts = require(script.Parent.Boosts)
 local Progression = require(script.Parent.Progression)
 local Log = require(script.Parent.Log)
@@ -106,9 +106,10 @@ function Grants.apply(player: Player, r: Rewards.Reward, opts: Opts): Result
 				res.mastery = Config.DupeMasteryByTier[tier] or 0
 				profile.gold += res.gold
 				if r.kind == "weapon" and r.id then
-					Mastery.grant(player, "weapon", r.id, res.mastery, opts.deferMastery)
+					Runs.modOf(player, "Mastery").grant(player, "weapon", r.id, res.mastery, opts.deferMastery)
 				else
-					Mastery.grant(player, "class", profile.classes.equipped, res.mastery, opts.deferMastery)
+					Runs.modOf(player, "Mastery")
+						.grant(player, "class", profile.classes.equipped, res.mastery, opts.deferMastery)
 				end
 			end
 		else
@@ -126,8 +127,8 @@ function Grants.apply(player: Player, r: Rewards.Reward, opts: Opts): Result
 		Boosts.extend(player, r.id, r.sec or 0)
 	elseif r.kind == "mastery" then
 		-- On the starter gun and the equipped class.
-		Mastery.grant(player, "weapon", profile.starterWeaponId, n)
-		Mastery.grant(player, "class", profile.classes.equipped, n)
+		Runs.modOf(player, "Mastery").grant(player, "weapon", profile.starterWeaponId, n)
+		Runs.modOf(player, "Mastery").grant(player, "class", profile.classes.equipped, n)
 	elseif r.kind == "xp" then
 		Progression.addXp(player, n)
 	elseif r.kind == "passxp" then

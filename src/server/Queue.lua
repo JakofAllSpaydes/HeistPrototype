@@ -1,10 +1,12 @@
 --!strict
--- Queue zones and Create Match (GDD_7 Hub -> Queue Zones, minus the teleport: MatchMode "local").
--- Walk into an empty zone -> the Create Match card; CREATE locks the settings and makes you the owner;
--- others join by walking in, leave by walking out; a full party starts at once, otherwise
--- QueueCountdownSec from creation; a party of 1 starts on CREATE. Owner leaves -> next member owns;
--- zone empties -> reset. Start -> World.party is the run's player set and GameLoop takes it from there.
--- Local-mode rule: while the party is in the arena the zone reads MATCH IN PROGRESS and refuses entry.
+-- Queue pads and Create Match (GDD_7 Hub -> Queue Zones, minus the teleport: MatchMode "local").
+-- Brief 8: every pad holds its own party (the Round 11 zone logic, one instance per pad) and starts it on the run
+-- slot of its map (Runs), so parties on different maps play at once. Walk onto an empty pad -> the Create Match
+-- card; CREATE locks the settings and makes you the owner; others join by walking in, leave by walking out; a full
+-- party starts at once, otherwise QueueCountdownSec from creation; a party of 1 starts on CREATE. Owner leaves ->
+-- next member owns; pad empties -> reset. A party whose map is busy (MapInstancesPerMap) waits on its pad with
+-- MAP BUSY · <name> IS INSIDE and starts by itself when the map frees (MapBusyAutoStart). While its party is in a
+-- run the pad reads MATCH IN PROGRESS · WAVE N and refuses entry.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -16,8 +18,9 @@ local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Enemies = require(Shared.Enemies)
 local Maps = require(Shared.Maps)
-local Room = require(script.Parent.Room)
-local World = require(script.Parent.World)
+local Room = require(script.Parent.Run.Room)
+local World = require(script.Parent.Run.World)
+local Runs = require(script.Parent.Runs)
 local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
 
@@ -26,8 +29,8 @@ type Billboard = { gui: BillboardGui, title: TextLabel, slots: { Frame }, status
 type Zone = {
 	index: number,
 	room: Room.Zone,
-	-- idle: nobody inside | creating: one player has the card open | open: party formed, counting down |
-	-- inProgress: the party is in the arena (local mode)
+	-- idle: nobody inside | creating: one player has the card open | open: party formed, counting down (or, with
+	-- `waiting`, holding for a busy map) | inProgress: the party is in its run
 	phase: string,
 	creator: Player?,
 	owner: Player?,
@@ -35,6 +38,8 @@ type Zone = {
 	settings: World.PartySettings,
 	createdAt: number, -- server time
 	startsAt: number, -- server time the countdown ends (open phase)
+	waiting: boolean, -- the countdown is done but the map is busy
+	slot: Runs.Slot?, -- the run slot this pad's party is playing on (inProgress)
 	inside: { [Player]: boolean },
 	board: Billboard?,
 	toastToken: number,
@@ -44,12 +49,13 @@ type Zone = {
 local Queue = {}
 
 local zones: { Zone } = {}
-local zoneOf: { [Player]: Zone } = {} -- the zone a player is standing in
+local zoneOf: { [Player]: Zone } = {} -- the pad a player is standing on
 local lastSent: { [Player]: string } = {}
 local BLUE = Color3.fromHex("4D9FE8")
 local GOLD = Color3.fromHex("E8B64C")
 local TEXT = Color3.fromHex("F2E6C8")
 local GREY = Color3.fromHex("9BA0A8")
+local RED = Color3.fromHex("E8554D")
 local DARK = Color3.fromHex("1A1A20")
 
 local function now(): number
@@ -78,9 +84,35 @@ local function diffName(id: string): string
 	return string.upper(id)
 end
 
+-- The map a party really plays: THE BANK falls back to the arena when its nodes are not playable.
+local function runMap(mapId: string): string
+	local id = Maps.pickable(mapId)
+	if id == "TheBank" then
+		for _, s in Runs.forMap(id) do
+			local loader = s.folder:FindFirstChild("MapLoader")
+			if loader and not (require(loader :: ModuleScript) :: any).playable() then
+				Log.event(
+					"Queue",
+					"THE BANK is not playable (node errors, MapLoaderStrict): this party plays the arena"
+				)
+				return "Arena"
+			end
+		end
+	end
+	return id
+end
+
+local function names(list: { Player }): string
+	local out = {}
+	for _, m in list do
+		table.insert(out, m.Name)
+	end
+	return table.concat(out, ", ")
+end
+
 ------------------------------------------------------------------ Billboard
 local function buildBoard(z: Zone)
-	local anchor = z.room.billboardAnchor or z.room.gate
+	local anchor = z.room.billboardAnchor or z.room.gate or z.room.pad
 	if not anchor then
 		return
 	end
@@ -89,7 +121,7 @@ local function buildBoard(z: Zone)
 	gui.Adornee = anchor
 	gui.AlwaysOnTop = false
 	gui.Size = UDim2.fromScale(16, 4.4)
-	gui.StudsOffset = Vector3.new(0, 1.5, 0)
+	gui.StudsOffset = Vector3.new(0, if anchor == z.room.pad then 8 else 1.5, 0)
 	gui.MaxDistance = 140
 	gui.LightInfluence = 0
 	gui.Parent = anchor
@@ -155,6 +187,11 @@ local function buildBoard(z: Zone)
 	z.board = { gui = gui, title = title, slots = slots, status = status, toast = toast }
 end
 
+local function busyLine(mapId: string): string
+	local who = Runs.busyBy(mapId) or "A CREW"
+	return string.upper(string.format(Config.MapBusyText, who))
+end
+
 local function paintBoard(z: Zone)
 	local b = z.board
 	if not b then
@@ -162,7 +199,7 @@ local function paintBoard(z: Zone)
 	end
 	local s = z.settings
 	if z.phase == "idle" or z.phase == "creating" then
-		b.title.Text = "QUEUE ZONE " .. z.index
+		b.title.Text = "PAD " .. z.index
 		b.status.Text = if z.phase == "creating" then "SETTING UP A MATCH…" else "WALK IN TO CREATE A MATCH"
 		b.status.TextColor3 = GREY
 		for _, slot in b.slots do
@@ -170,7 +207,8 @@ local function paintBoard(z: Zone)
 		end
 		return
 	end
-	b.title.Text = string.upper(string.format("%s · %s", mapName(s.mapId), diffName(s.difficultyId)))
+	b.title.Text =
+		string.upper(string.format("PAD %d · %s · %s", z.index, mapName(s.mapId), diffName(s.difficultyId)))
 	for i, slot in b.slots do
 		slot.Visible = i <= s.partySize
 		local filled = i <= #z.members
@@ -178,8 +216,16 @@ local function paintBoard(z: Zone)
 		slot.BackgroundTransparency = if filled then 0 else 0.6
 	end
 	if z.phase == "inProgress" then
-		b.status.Text = "MATCH IN PROGRESS"
-		b.status.TextColor3 = Color3.fromHex("E8554D")
+		local slot = z.slot
+		local w = slot and slot.World
+		local wave = if w and (w.state == "Wave" or w.state == "Intermission" or w.state == "Dealer")
+			then w.wave
+			else nil
+		b.status.Text = if wave then string.format("MATCH IN PROGRESS · WAVE %d", wave) else "MATCH IN PROGRESS"
+		b.status.TextColor3 = RED
+	elseif z.waiting then
+		b.status.Text = busyLine(s.mapId)
+		b.status.TextColor3 = RED
 	else
 		local left = math.max(0, math.ceil(z.startsAt - now()))
 		b.status.Text = string.format("STARTING IN %d · %d / %d", left, #z.members, s.partySize)
@@ -203,26 +249,29 @@ local function boardToast(z: Zone, text: string)
 end
 
 ------------------------------------------------------------------ Client view
--- What a player sees of the queue: nothing, the Create Match card, or the compact party card.
-local function viewFor(player: Player): any
-	local z = zoneOf[player]
-	local member: Zone? = nil
-	for _, zone in zones do
-		if table.find(zone.members, player) then
-			member = zone
-			break
+-- In some pad's party (open, waiting or in its run).
+local function partyOf(player: Player): Zone?
+	for _, z in zones do
+		if table.find(z.members, player) then
+			return z
 		end
 	end
-	local zone = member or z
+	return nil
+end
+
+-- What a player sees of the queue: nothing, the Create Match card, or the compact party card.
+local function viewFor(player: Player): any
+	local member = partyOf(player)
+	local zone = member or zoneOf[player]
 	if not zone then
 		return { card = nil }
 	end
 	local state = PlayerState.get(player)
 	local profile = state.profile
-	local names = {}
+	local list = {}
 	for _, m in zone.members do
 		local mp = PlayerState.get(m).profile
-		table.insert(names, {
+		table.insert(list, {
 			userId = m.UserId,
 			name = m.Name,
 			level = if mp then mp.level else 1,
@@ -240,11 +289,13 @@ local function viewFor(player: Player): any
 		card = card,
 		zone = zone.index,
 		phase = zone.phase,
+		waiting = zone.waiting,
+		busyText = if zone.waiting then busyLine(zone.settings.mapId) else nil,
 		settings = zone.settings,
 		maps = Maps.live(),
 		difficulties = Config.QueueDifficulties,
 		maxPartySize = Config.MaxPartySize,
-		members = names,
+		members = list,
 		owner = if zone.owner then zone.owner.UserId else nil,
 		isOwner = zone.owner == player,
 		startsAt = zone.startsAt,
@@ -270,13 +321,14 @@ local function send(player: Player, force: boolean?)
 	local view = viewFor(player)
 	-- Cheap change detection so the 10 Hz loop only sends on changes.
 	local key = string.format(
-		"%s|%s|%d|%d|%s|%.1f",
+		"%s|%s|%d|%d|%s|%.1f|%s",
 		tostring(view.card),
 		tostring(view.phase),
 		#(view.members or {}),
 		tonumber(view.zone) or 0,
 		tostring(view.isOwner),
-		tonumber(view.startsAt) or 0
+		tonumber(view.startsAt) or 0,
+		tostring(view.busyText)
 	)
 	if not force and lastSent[player] == key then
 		return
@@ -308,6 +360,8 @@ local function reset(z: Zone, reason: string)
 	z.settings = defaultSettings()
 	z.startsAt = 0
 	z.createdAt = 0
+	z.waiting = false
+	z.slot = nil
 	paintBoard(z)
 	for _, m in had do
 		send(m, true)
@@ -315,7 +369,7 @@ local function reset(z: Zone, reason: string)
 	for p in z.inside do
 		send(p, true)
 	end
-	Log.event("Queue", "zone %d reset (%s)", z.index, reason)
+	Log.event("Queue", "pad %d reset (%s)", z.index, reason)
 end
 
 local function stepOut(z: Zone, player: Player)
@@ -326,21 +380,34 @@ local function stepOut(z: Zone, player: Player)
 	end
 end
 
+-- The countdown is done (or the party is full): hand the party to a free slot of its map, or wait for one.
 local function startParty(z: Zone, reason: string)
 	if z.phase ~= "open" or #z.members == 0 then
 		return
 	end
-	if World.state ~= "Hub" or World.runRequested then
-		return -- another zone's party is already going (one arena in local mode)
+	local mapId = runMap(z.settings.mapId)
+	local slot = Runs.freeSlot(mapId)
+	if not slot then
+		if not z.waiting then
+			z.waiting = true
+			paintBoard(z)
+			sendMembers(z)
+			Log.event("Queue", "pad %d busy-wait: %s is in use (%s inside)", z.index, mapId, Runs.busyBy(mapId) or "?")
+		end
+		return
 	end
 	local ids = {}
 	for _, m in z.members do
 		table.insert(ids, m.UserId)
 	end
-	World.party = ids
-	World.partySettings = table.clone(z.settings)
-	World.runRequested = true
+	local w = slot.World
+	w.partySettings = table.clone(z.settings)
+	w.partySettings.mapId = mapId
+	w.party = ids
+	w.runRequested = true
 	z.phase = "inProgress"
+	z.waiting = false
+	z.slot = slot
 	z.startsAt = 0
 	paintBoard(z)
 	sendMembers(z)
@@ -351,22 +418,22 @@ local function startParty(z: Zone, reason: string)
 	end
 	Log.event(
 		"Queue",
-		"zone %d: match starting (%s) with %d/%d: %s",
+		"pad %d start %s %s (%s) with %d/%d: %s",
 		z.index,
+		mapId,
+		z.settings.difficultyId,
 		reason,
 		#z.members,
 		z.settings.partySize,
-		table.concat(
-			(function()
-				local names = {}
-				for _, m in z.members do
-					table.insert(names, m.Name)
-				end
-				return names
-			end)(),
-			", "
-		)
+		names(z.members)
 	)
+	-- A pad still waiting on this map now names the new crew inside.
+	for _, other in zones do
+		if other ~= z and other.waiting then
+			paintBoard(other)
+			sendMembers(other)
+		end
+	end
 end
 
 local function tryJoin(z: Zone, player: Player)
@@ -374,7 +441,7 @@ local function tryJoin(z: Zone, player: Player)
 		return
 	end
 	if #z.members >= z.settings.partySize then
-		Remotes.Juice:FireClient(player, "QueueToast", { text = "PARTY FULL" })
+		Remotes.Juice:FireClient(player, "QueueToast", { text = string.format("PAD %d · PARTY FULL", z.index) })
 		stepOut(z, player)
 		return
 	end
@@ -385,10 +452,16 @@ local function tryJoin(z: Zone, player: Player)
 	paintBoard(z)
 	memberToast(
 		z,
-		string.format("%s JOINED THE PARTY (%d/%d)", string.upper(player.Name), #z.members, z.settings.partySize)
+		string.format(
+			"%s JOINED THE PARTY · PAD %d (%d/%d)",
+			string.upper(player.Name),
+			z.index,
+			#z.members,
+			z.settings.partySize
+		)
 	)
 	sendMembers(z)
-	Log.event("Queue", "zone %d: %s joined (%d/%d)", z.index, player.Name, #z.members, z.settings.partySize)
+	Log.event("Queue", "pad %d: %s joined (%d/%d)", z.index, player.Name, #z.members, z.settings.partySize)
 	if #z.members >= z.settings.partySize then
 		startParty(z, "party full")
 	end
@@ -400,7 +473,7 @@ local function leave(z: Zone, player: Player, reason: string)
 		return
 	end
 	table.remove(z.members, i)
-	Log.event("Queue", "zone %d: %s left (%s), %d left", z.index, player.Name, reason, #z.members)
+	Log.event("Queue", "pad %d: %s left (%s), %d left", z.index, player.Name, reason, #z.members)
 	if #z.members == 0 then
 		reset(z, "party empty")
 		send(player, true)
@@ -409,7 +482,7 @@ local function leave(z: Zone, player: Player, reason: string)
 	if z.owner == player then
 		z.owner = z.members[1]
 		memberToast(z, string.format("%s NOW OWNS THE PARTY", string.upper(z.owner.Name)))
-		Log.event("Queue", "zone %d: ownership to %s", z.index, z.owner.Name)
+		Log.event("Queue", "pad %d: ownership to %s", z.index, z.owner.Name)
 	else
 		memberToast(
 			z,
@@ -423,8 +496,18 @@ end
 
 local function onEnter(z: Zone, player: Player)
 	if z.phase == "inProgress" then
-		-- Local-mode rule: one arena, so the zone is closed until the run ends.
+		-- The pad's party is in its run: the pad is closed until it ends.
 		Remotes.Juice:FireClient(player, "QueueToast", { text = "MATCH IN PROGRESS" })
+		stepOut(z, player)
+		return
+	end
+	local other = partyOf(player)
+	if other and other ~= z then
+		Remotes.Juice:FireClient(
+			player,
+			"QueueToast",
+			{ text = string.format("YOU'RE IN THE PAD %d PARTY", other.index) }
+		)
 		stepOut(z, player)
 		return
 	end
@@ -434,7 +517,7 @@ local function onEnter(z: Zone, player: Player)
 		z.settings = defaultSettings()
 		paintBoard(z)
 		send(player, true)
-		Log.event("Queue", "zone %d: %s is creating a match", z.index, player.Name)
+		Log.event("Queue", "pad %d: %s is creating a match", z.index, player.Name)
 	elseif z.phase == "creating" then
 		Remotes.Juice:FireClient(player, "QueueToast", { text = "A MATCH IS BEING SET UP · WAIT HERE" })
 		send(player, true)
@@ -483,21 +566,22 @@ local function create(player: Player, raw: any)
 	z.creator = nil
 	z.owner = player
 	z.members = {}
+	z.waiting = false
 	z.createdAt = now()
 	z.startsAt = z.createdAt + Config.QueueCountdownSec
 	Log.event(
 		"Queue",
-		"zone %d: %s created a match (%s · %s · %d), countdown %ds",
+		"pad %d create %s %s owner %s (party of %d, countdown %ds)",
 		z.index,
-		player.Name,
 		s.mapId,
 		s.difficultyId,
+		player.Name,
 		s.partySize,
 		Config.QueueCountdownSec
 	)
 	tryJoin(z, player)
 	for other in z.inside do
-		if other ~= player and z.phase == "open" then
+		if other ~= player and z.phase == "open" and not partyOf(other) then
 			tryJoin(z, other)
 		end
 	end
@@ -508,7 +592,7 @@ local function create(player: Player, raw: any)
 	sendMembers(z)
 end
 
--- X on the card: close it and step out of the zone.
+-- X on the card: close it and step out of the pad.
 local function cancel(player: Player)
 	local z = zoneOf[player]
 	if not z then
@@ -520,73 +604,93 @@ local function cancel(player: Player)
 	stepOut(z, player)
 end
 
------------------------------------------------------------------- Run lifecycle hooks (GameLoop)
--- The summary closed. PLAY AGAIN re-forms the same party on the pad with the same settings and a fresh
--- countdown; TO LOBBY (or the auto) returns everyone to the hub spawn and reopens the zone.
-function Queue.onRunEnded(choice: string?)
-	local party = World.partyPlayers()
+------------------------------------------------------------------ Run lifecycle hooks (Run/Main)
+-- A slot's summary closed. PLAY AGAIN re-forms the same party on its pad with the same settings and a fresh
+-- countdown; TO LOBBY (or the auto) returns everyone to the hub spawn and reopens the pad.
+function Queue.onRunEnded(slotId: string, choice: string?, party: { Player })
 	local z: Zone? = nil
 	for _, zone in zones do
-		if zone.phase == "inProgress" then
+		if zone.phase == "inProgress" and zone.slot and zone.slot.id == slotId then
 			z = zone
 			break
 		end
 	end
-	if not z then
-		z = zones[1]
-	end
-	if not z then
-		return
-	end
-	if choice == "again" and #party > 0 then
-		z.phase = "open"
-		z.members = party
-		z.owner = party[1]
-		z.inside = {}
-		z.createdAt = now()
-		z.startsAt = z.createdAt + Config.QueueCountdownSec
-		z.graceUntil = os.clock() + 3
-		local pad = z.room.pad
-		for i, p in party do
-			local state = PlayerState.get(p)
-			local x = pad.Position.X + (i - (#party + 1) / 2) * 3
-			state.pendingSpawnCFrame = CFrame.new(x, Config.FloorTop + 3, pad.Position.Z + 2)
-			z.inside[p] = true
-			zoneOf[p] = z
-		end
-		paintBoard(z)
-		Log.event(
-			"Queue",
-			"zone %d: PLAY AGAIN re-formed the party (%d), countdown %ds",
-			z.index,
-			#party,
-			Config.QueueCountdownSec
-		)
-		if #party >= z.settings.partySize then
-			-- Full party again: start as soon as the characters have landed.
-			task.delay(2, function()
-				if z and z.phase == "open" then
-					startParty(z, "play again, party full")
-				end
-			end)
+	if z then
+		z.slot = nil
+		if choice == "again" and #party > 0 then
+			z.phase = "open"
+			z.waiting = false
+			z.members = party
+			z.owner = party[1]
+			z.inside = {}
+			z.createdAt = now()
+			z.startsAt = z.createdAt + Config.QueueCountdownSec
+			z.graceUntil = os.clock() + 3
+			local pad = z.room.pad
+			for i, p in party do
+				local state = PlayerState.get(p)
+				local x = pad.Position.X + (i - (#party + 1) / 2) * 3
+				state.pendingSpawnCFrame = CFrame.new(x, pad.Position.Y + 3, pad.Position.Z)
+				z.inside[p] = true
+				zoneOf[p] = z
+			end
+			paintBoard(z)
+			Log.event(
+				"Queue",
+				"pad %d: PLAY AGAIN re-formed the party (%d), countdown %ds",
+				z.index,
+				#party,
+				Config.QueueCountdownSec
+			)
+			if #party >= z.settings.partySize then
+				-- Full party again: start as soon as the characters have landed.
+				local again = z
+				task.delay(2, function()
+					if again.phase == "open" then
+						startParty(again, "play again, party full")
+					end
+				end)
+			else
+				sendMembers(z)
+			end
 		else
-			sendMembers(z)
+			reset(z, "run ended")
 		end
-	else
-		reset(z, "run ended")
+	end
+	-- A slot just freed: a party waiting for that map starts now (or counts down again).
+	for _, other in zones do
+		if other.phase == "open" and other.waiting then
+			if Config.MapBusyAutoStart then
+				startParty(other, "map freed")
+			elseif not Runs.busyBy(runMap(other.settings.mapId)) then
+				other.waiting = false
+				other.startsAt = now() + Config.QueueCountdownSec
+				paintBoard(other)
+				sendMembers(other)
+			end
+		end
 	end
 end
 
--- Debug: start now. In an open party -> start it; otherwise a party of just this player.
+-- Debug: start now. In an open party -> start it; otherwise a party of just this player on the pad it stands on
+-- (or the first idle one).
 function Queue.forceStart(player: Player)
-	for _, z in zones do
-		if table.find(z.members, player) and z.phase == "open" then
-			startParty(z, "forced")
-			return
+	local mine = partyOf(player)
+	if mine and mine.phase == "open" then
+		startParty(mine, "forced")
+		return
+	end
+	local z = zoneOf[player]
+	if not z or (z.phase ~= "idle" and z.phase ~= "creating") then
+		z = nil
+		for _, zone in zones do
+			if zone.phase == "idle" then
+				z = zone
+				break
+			end
 		end
 	end
-	local z = zoneOf[player] or zones[1]
-	if not z or z.phase == "inProgress" then
+	if not z then
 		return
 	end
 	reset(z, "forced start")
@@ -598,6 +702,15 @@ function Queue.forceStart(player: Player)
 	z.createdAt = now()
 	z.startsAt = now()
 	startParty(z, "forced solo")
+end
+
+-- Debug Force pad N start: the pad's open party starts now (a busy map still waits).
+function Queue.forcePad(index: number)
+	local z = zones[index]
+	if z and z.phase == "open" then
+		z.startsAt = now()
+		startParty(z, "forced")
+	end
 end
 
 function Queue.zoneCount(): number
@@ -616,6 +729,8 @@ function Queue.init()
 			settings = defaultSettings(),
 			createdAt = 0,
 			startsAt = 0,
+			waiting = false,
+			slot = nil,
 			inside = {},
 			board = nil,
 			toastToken = 0,
@@ -625,9 +740,7 @@ function Queue.init()
 		paintBoard(z)
 		table.insert(zones, z)
 	end
-	if #zones ~= Config.QueueZoneCount then
-		Log.event("Queue", "map has %d queue zones, Config.QueueZoneCount is %d", #zones, Config.QueueZoneCount)
-	end
+	Log.event("Queue", "%d queue pad%s", #zones, if #zones == 1 then "" else "s")
 
 	Remotes.QueueAction.OnServerEvent:Connect(function(player: Player, action: any, args: any)
 		if action == "create" then
@@ -635,42 +748,46 @@ function Queue.init()
 		elseif action == "cancel" then
 			cancel(player)
 		elseif action == "leave" then
-			local z = zoneOf[player]
-			if z then
+			local z = partyOf(player) or zoneOf[player]
+			if z and z.phase ~= "inProgress" then
 				leave(z, player, "left")
 				stepOut(z, player)
 			end
 		elseif action == "refresh" then
 			send(player, true)
 		elseif action == "play" then
-			-- PLAY: straight onto the nearest open pad; the presence loop opens the card (or joins the party).
+			-- PLAY: straight onto the nearest open pad (no party, or a party with room); the presence loop opens
+			-- the card (or joins the party).
 			local state = PlayerState.get(player)
 			local char = player.Character
 			local root = char and char:FindFirstChild("HumanoidRootPart")
 			if not char or not root or not root:IsA("BasePart") or not PlayerState.isStanding(state) then
 				return
 			end
-			if World.inRunCycle() and World.isInParty(player) then
+			if Runs.inRunCycle(player) then
 				return
 			end
-			local best: Zone? = nil
-			local bestDist = math.huge
-			for _, z in zones do
-				if z.phase == "inProgress" then
-					continue
-				end
-				local d = (z.room.pad.Position - root.Position).Magnitude
-				if d < bestDist then
-					bestDist = d
-					best = z
+			local best: Zone? = partyOf(player)
+			if not best then
+				local bestDist = math.huge
+				for _, z in zones do
+					local open = z.phase == "idle" or (z.phase == "open" and #z.members < z.settings.partySize)
+					if not open then
+						continue
+					end
+					local d = (z.room.pad.Position - root.Position).Magnitude
+					if d < bestDist then
+						bestDist = d
+						best = z
+					end
 				end
 			end
 			if not best then
-				Remotes.Juice:FireClient(player, "QueueToast", { text = "MATCH IN PROGRESS" })
+				Remotes.Juice:FireClient(player, "QueueToast", { text = "EVERY PAD IS IN USE" })
 				return
 			end
 			local pad = best.room.pad
-			char:PivotTo(CFrame.new(pad.Position.X, Config.FloorTop + 3, pad.Position.Z + 2))
+			char:PivotTo(CFrame.new(pad.Position.X, pad.Position.Y + 3, pad.Position.Z))
 		end
 	end)
 
@@ -698,27 +815,11 @@ function Queue.init()
 		end
 		acc = 0
 		for _, z in zones do
-			if z.phase == "inProgress" then
-				-- Members are in the arena; only keep outsiders off the pad.
-				for _, player in Players:GetPlayers() do
-					if World.isInParty(player) then
-						continue
-					end
-					local char = player.Character
-					local root = char and char:FindFirstChild("HumanoidRootPart")
-					if root and root:IsA("BasePart") and Room.insideZone(z.room, root.Position) then
-						if not z.inside[player] then
-							z.inside[player] = true
-							onEnter(z, player)
-						end
-					else
-						z.inside[player] = nil
-					end
-				end
-				continue
-			end
 			local grace = os.clock() < z.graceUntil
 			for _, player in Players:GetPlayers() do
+				if Runs.inRunCycle(player) then
+					continue -- in a run: not on the hub floor
+				end
 				local state = PlayerState.get(player)
 				local char = player.Character
 				local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -738,17 +839,19 @@ function Queue.init()
 					if zoneOf[player] == z then
 						zoneOf[player] = nil
 					end
-					onExit(z, player)
+					if z.phase ~= "inProgress" then
+						onExit(z, player)
+					end
 				end
 			end
-			if z.phase == "open" and z.startsAt > 0 and now() >= z.startsAt then
+			if z.phase == "open" and z.startsAt > 0 and now() >= z.startsAt and not z.waiting then
 				startParty(z, "countdown")
 			end
 		end
 		if boardAcc >= 0.5 then
 			boardAcc = 0
 			for _, z in zones do
-				if z.phase == "open" then
+				if z.phase == "open" or z.phase == "inProgress" then
 					paintBoard(z)
 				end
 			end

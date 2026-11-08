@@ -537,7 +537,7 @@ local function buildParty(v: any)
 	local map = mapById(v.settings and v.settings.mapId)
 	local diff = diffById(v.settings and v.settings.difficultyId)
 	UI.text({
-		Text = string.format("%s · %s", map.name, diff.name),
+		Text = string.format("PAD %d · %s · %s", tonumber(v.zone) or 1, map.name, diff.name),
 		FontFace = Theme.Fonts.body,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.white,
@@ -615,6 +615,8 @@ local function paintParty(v: any)
 	if partyCountdown then
 		if v.phase == "inProgress" then
 			partyCountdown.Text = "STARTING"
+		elseif v.waiting then
+			partyCountdown.Text = "MAP BUSY" -- brief 8: the map is in use; the pad starts when it frees
 		else
 			partyCountdown.Text = string.format("%d / %d", #members, tonumber(v.settings and v.settings.partySize) or 1)
 		end
@@ -661,7 +663,7 @@ function QueueUI.init()
 	RunService.Heartbeat:Connect(function()
 		local v = view
 		local label = partyCountdown
-		if not v or not label or v.card ~= "party" or v.phase ~= "open" then
+		if not v or not label or v.card ~= "party" or v.phase ~= "open" or v.waiting then
 			return
 		end
 		local startsAt = tonumber(v.startsAt) or 0

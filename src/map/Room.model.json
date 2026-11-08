@@ -2899,7 +2899,7 @@
               ]
             ],
             "position": [
-              0,
+              -11,
               0.6,
               111
             ]
@@ -2947,7 +2947,7 @@
               ]
             ],
             "position": [
-              -7.6,
+              -18.6,
               5.5,
               103.4
             ]
@@ -2994,7 +2994,7 @@
               ]
             ],
             "position": [
-              7.6,
+              -3.4000000000000004,
               5.5,
               103.4
             ]
@@ -3041,7 +3041,7 @@
               ]
             ],
             "position": [
-              0,
+              -11,
               11.4,
               103.4
             ]
@@ -3088,7 +3088,244 @@
               ]
             ],
             "position": [
-              0,
+              -11,
+              14.5,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          1,
+          1,
+          1
+        ],
+        "TopSurface": "Smooth",
+        "Transparency": 1
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueZone2",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              11,
+              0.6,
+              111
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          16,
+          0.2,
+          16
+        ],
+        "TopSurface": "Smooth",
+        "Transparency": 0.7
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueGate2PostL",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              3.4000000000000004,
+              5.5,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          0.8,
+          11,
+          0.8
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueGate2PostR",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              18.6,
+              5.5,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          0.8,
+          11,
+          0.8
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueGate2",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              11,
+              11.4,
+              103.4
+            ]
+          }
+        },
+        "CanCollide": false,
+        "Color": [
+          0.3,
+          0.62,
+          0.91
+        ],
+        "Material": "Neon",
+        "Size": [
+          16,
+          0.8,
+          0.8
+        ],
+        "TopSurface": "Smooth"
+      }
+    },
+    {
+      "className": "Part",
+      "name": "QueueBillboard2",
+      "properties": {
+        "Anchored": true,
+        "BottomSurface": "Smooth",
+        "CFrame": {
+          "CFrame": {
+            "orientation": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "position": [
+              11,
               14.5,
               103.4
             ]

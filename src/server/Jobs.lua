@@ -15,7 +15,7 @@ local JobPool = require(Shared.JobPool)
 local Remotes = require(Shared.Remotes)
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
-local World = require(script.Parent.World)
+local Runs = require(script.Parent.Runs)
 local Grants = require(script.Parent.Grants)
 local Shop = require(script.Parent.Shop)
 local RunEvents = require(script.Parent.RunEvents)
@@ -397,7 +397,7 @@ function Jobs.init()
 	RunEvents.listen(onEvent)
 	Profiles.Loaded:Connect(function(player: Player)
 		task.delay(3, function()
-			if player.Parent and not (World.inRunCycle() and World.isInParty(player)) then
+			if player.Parent and not Runs.inRunCycle(player) then
 				Jobs.announce(player)
 			end
 		end)
@@ -407,7 +407,7 @@ function Jobs.init()
 		while true do
 			task.wait(5)
 			for _, p in Players:GetPlayers() do
-				if Jobs.normalize(p) and not (World.inRunCycle() and World.isInParty(p)) then
+				if Jobs.normalize(p) and not Runs.inRunCycle(p) then
 					Jobs.announce(p)
 				end
 			end

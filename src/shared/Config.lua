@@ -1015,9 +1015,14 @@ local Config = {
 	FencePostSpacing = 8, -- studs between posts
 
 	------------------------------------------------------------------ Queue zone / Create Match
-	QueueZoneCount = 1, -- zones in the hub (QueueZone1..N parts in the map); the code never assumes 1
+	QueueZoneCount = 2, -- zones in the hub (QueueZone1..N parts in the map); brief 8 step 1 plays two pads
 	MaxPartySize = 4,
 	QueueCountdownSec = 15, -- from CREATE; a full party or a party of 1 starts at once
+	-- Brief 8: every pad holds its own party; runs on different maps play at once. The map geometry is one copy
+	-- (doors, windows and the vault are stateful), so a second party on a busy map waits on its pad.
+	MapInstancesPerMap = 1, -- parties per map at once (above 1 needs map copies: out of scope, capped to 1)
+	MapBusyAutoStart = true, -- a waiting party starts the moment its map frees (false: its countdown restarts)
+	MapBusyText = "MAP BUSY · %s IS INSIDE", -- the pad's billboard line while it waits (%s = the crew inside)
 	-- Round 16: difficulty is live. Each row scales enemy HP (hpMult) and damage (dmgMult), the wave's enemy count
 	-- (budgetMult) and the run's Gold payout (goldMult). Top waves are kept per map:difficulty.
 	QueueDifficulties = {

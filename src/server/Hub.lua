@@ -11,20 +11,12 @@ local Fonts = require(Shared.Fonts)
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 local Maps = require(Shared.Maps)
-local Room = require(script.Parent.Room)
-local World = require(script.Parent.World)
+local Room = require(script.Parent.Run.Room)
+local World = require(script.Parent.Run.World) -- the hub slot's World (the session-wide minigame tier)
+local Runs = require(script.Parent.Runs)
 local Log = require(script.Parent.Log)
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
-local Enemy = require(script.Parent.Enemy)
-local BigCrate = require(script.Parent.BigCrate)
-local CrewCall = require(script.Parent.CrewCall)
-local WeaponRoll = require(script.Parent.WeaponRoll)
-local Abilities = require(script.Parent.Abilities)
-local Squad = require(script.Parent.Squad)
-local Bags = require(script.Parent.Bags)
-local VaultJob = require(script.Parent.VaultJob)
-local Boss = require(script.Parent.Boss)
 
 local Hub = {}
 
@@ -88,7 +80,7 @@ end
 -- best top wave). The server only publishes the numbers as Player attributes; Plate = false hides it (runs).
 function Hub.refreshTag(player: Player)
 	local state = PlayerState.get(player)
-	if World.inRunCycle() and World.isInParty(player) then
+	if Runs.inRunCycle(player) then
 		player:SetAttribute("Plate", false)
 		return
 	end
@@ -155,7 +147,7 @@ local function decorate()
 		prompt.Parent = station.panel
 		prompt.Triggered:Connect(function(player)
 			local state = PlayerState.get(player)
-			if World.inRunCycle() and World.isInParty(player) then
+			if Runs.inRunCycle(player) then
 				return
 			end
 			if not PlayerState.isStanding(state) then
@@ -297,7 +289,7 @@ local function buildJobBoard()
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = top
 	prompt.Triggered:Connect(function(player)
-		if World.inRunCycle() and World.isInParty(player) then
+		if Runs.inRunCycle(player) then
 			return
 		end
 		Remotes.Juice:FireClient(player, "OpenJobs", {})
@@ -307,36 +299,17 @@ local function buildJobBoard()
 end
 
 ------------------------------------------------------------------ State housekeeping
--- Everything hostile or left over from the last run goes away.
-function Hub.clearArena()
-	Enemy.killAll()
-	BigCrate.finishAll()
-	CrewCall.finish(false, true)
-	WeaponRoll.clearAll()
-	Abilities.clearAll()
-	Squad.clear()
-	Bags.clearAll()
-	VaultJob.resetRun()
-	Boss.clear()
-	Enemy.paused = false
-	World.spawnsPaused = false
-	World.enemiesLeft = 0
-end
+-- (Brief 8: clearing a map after a run is the run slot's job: Run/Main clearArena.)
 
 -- Where a freshly loaded character belongs: always the hub spawn (late joiners never land in the arena).
 function Hub.spawnCFrame(_player: Player): CFrame?
 	return Room.yardSpawn
 end
 
--- Back to the hub for `players` (the party that just finished): clean arena, van put away, fresh state
+-- Back to the hub for `players` (the party that just finished; its slot has cleared its map): fresh state
 -- with HubCash, a fresh character at the yard spawn (or wherever pendingSpawnCFrame says: PLAY AGAIN
 -- puts the party back on the queue pad).
 function Hub.enter(players: { Player })
-	Hub.clearArena()
-	local van = Room.van
-	if van then
-		van.Parent = nil
-	end
 	for _, player in players do
 		local state = PlayerState.get(player)
 		local pending = state.pendingSpawnCFrame -- PLAY AGAIN: the queue pad
@@ -348,8 +321,8 @@ function Hub.enter(players: { Player })
 end
 
 -- Run start: fresh run state for the party where they stand; RunStart moves them.
-function Hub.beginRun()
-	for _, player in World.partyPlayers() do
+function Hub.beginRun(players: { Player })
+	for _, player in players do
 		local state = PlayerState.get(player)
 		PlayerState.reset(state, Config.StartingCash)
 		if not player.Character then
@@ -361,6 +334,10 @@ end
 
 function Hub.init()
 	PlayerState.spawnCFrame = Hub.spawnCFrame
+	-- The yard's van is only a template now: each run slot drives its own copy.
+	if Room.van then
+		Room.van.Parent = nil
+	end
 	decorate()
 	buildJobBoard()
 	local function onPlayer(player: Player)

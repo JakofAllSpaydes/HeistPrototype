@@ -8,8 +8,15 @@ export type Handler = (player: Player, kind: string, amount: number, arg: string
 
 local handlers: { Handler } = {}
 
--- Brief 7: the map every event happened on (GameLoop sets it at run start).
-RunEvents.map = nil :: string?
+-- Brief 7: the map every event happened on. Brief 8: per player, since two runs can be on at once (Run/Main sets
+-- it for its party at run start and clears it back in the hub).
+local mapOf: { [Player]: string } = {}
+
+function RunEvents.setMap(players: { Player }, map: string?)
+	for _, p in players do
+		mapOf[p] = map
+	end
+end
 
 function RunEvents.listen(fn: Handler)
 	table.insert(handlers, fn)
@@ -20,7 +27,7 @@ function RunEvents.emit(player: Player?, kind: string, amount: number?, arg: str
 		return
 	end
 	for _, fn in handlers do
-		local ok, err = pcall(fn, player, kind, amount or 1, arg, RunEvents.map)
+		local ok, err = pcall(fn, player, kind, amount or 1, arg, mapOf[player])
 		if not ok then
 			warn("[GHS RunEvents] " .. kind .. ": " .. tostring(err))
 		end

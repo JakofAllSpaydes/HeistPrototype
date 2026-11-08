@@ -21,10 +21,9 @@ local MaskShapes = require(Shared.MaskShapes)
 local Classes = require(Shared.Classes)
 local AbilityGrowth = require(Shared.AbilityGrowth)
 local Stats = require(script.Parent.Stats)
-local World = require(script.Parent.World)
+local Runs = require(script.Parent.Runs)
 local Log = require(script.Parent.Log)
 local Profiles = require(script.Parent.Profiles)
-local Pause = require(script.Parent.Pause)
 local Boosts = require(script.Parent.Boosts)
 
 export type State = {
@@ -298,7 +297,8 @@ function PlayerState.computed(state: State): Types.Computed
 		buffs = PlayerState.buffFor(state, id)
 	end
 	-- CREW OVERCLOCK (ENGINEER III): every crew member's gun runs faster while the Overclock lasts.
-	if World.crewOverclockUntil > Workspace:GetServerTimeNow() and World.isInParty(state.player) then
+	local W = Runs.worldOf(state.player)
+	if W.crewOverclockUntil > Workspace:GetServerTimeNow() and W.isInParty(state.player) then
 		local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
 		b.fireRateMult *= 1 + Config.CrewOverclockFireRatePct
 		b.reloadSpeedMult *= 1 + Config.CrewOverclockReloadPct
@@ -378,7 +378,7 @@ function PlayerState.applyMask(state: State)
 	-- Brief 6: every shape (the new crate / VIP / pass masks too) comes from the shared builder.
 	local part = MaskShapes.build(head, mask, "MaskPart", char)
 	-- The VIP mask gets the Epic+ sparkle treatment in the hub.
-	if part and mask.rarity >= 4 and not World.inRun() then
+	if part and mask.rarity >= 4 and not Runs.inRun(state.player) then
 		local sparkle = Instance.new("ParticleEmitter")
 		sparkle.Name = "MaskSparkle"
 		sparkle.Color = ColorSequence.new(Color3.fromHex(mask.accent or mask.color))
@@ -483,7 +483,7 @@ PlayerState.onZeroHP = nil :: ((Player) -> ())?
 
 function PlayerState.damage(player: Player, amount: number, source: string?)
 	local state = states[player]
-	if not state or state.god or state.downed or state.bledOut or Pause.active() then
+	if not state or state.god or state.downed or state.bledOut or Runs.modOf(player, "Pause").active() then
 		return
 	end
 	if state.invulnUntil > Workspace:GetServerTimeNow() then
@@ -511,7 +511,7 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 end
 
 function PlayerState.inParty(state: State): boolean
-	return World.isInParty(state.player)
+	return not Runs.slotOf(state.player).isHub
 end
 
 -- An ability's cooldown for this player: the Config base less ABILITY COOLDOWN (capped in Stats).
@@ -568,6 +568,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		total += item.count
 	end
 	local inParty = PlayerState.inParty(state)
+	local World = Runs.worldOf(state.player) -- brief 8: the player's own run (the hub slot's when not in one)
 	local levelRate = Weapons.levelRateMult(state.held.level)
 	local wrapId = PlayerState.wrapOf(state, state.held.weaponId)
 	local wrap = wrapId and Wraps.ById[wrapId]
@@ -632,7 +633,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		skipNeeded = World.skipNeeded(),
 		myVote = World.skipVotes[state.player.UserId] == true,
 		autoSkip = World.autoSkip[state.player.UserId] == true,
-		minigameTier = World.minigameTier,
+		minigameTier = Runs.hub.World.minigameTier,
 		downed = state.downed,
 		bledOut = state.bledOut,
 		bleedEndsAt = state.bleedEndsAt,
@@ -716,23 +717,7 @@ end
 
 function PlayerState.init()
 	PlayerState.setupCollisionGroups()
-	-- The pause: every party member's character is held where it stands, then let go.
-	Pause.setFreezeHook(function(on: boolean)
-		for _, p in World.partyPlayers() do
-			local char = p.Character
-			local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-			if root then
-				root.Anchored = on
-			end
-			local s = states[p]
-			if s and not on then
-				PlayerState.applyCharacterStats(s)
-			end
-			if s then
-				s.dirty = true
-			end
-		end
-	end)
+	-- (Brief 8: the pause's freeze hook is installed per run slot by Run/Main.)
 	-- Characters are loaded by hand: a bled-out player has none until revived or the run ends, and the
 	-- first character waits for the profile so the starter, mask and wrap are right from the first frame.
 	Players.CharacterAutoLoads = false
@@ -784,7 +769,13 @@ function PlayerState.init()
 		for player, state in states do
 			local char = player.Character
 			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			if hum and not state.downed and not Pause.active() and hum.Health > 0 and hum.Health < hum.MaxHealth then
+			if
+				hum
+				and not state.downed
+				and hum.Health > 0
+				and hum.Health < hum.MaxHealth
+				and not Runs.modOf(player, "Pause").active()
+			then
 				local st = PlayerState.computed(state)
 				hum.Health = math.min(hum.MaxHealth, hum.Health + st.hpRegen * dt)
 			end
@@ -797,15 +788,23 @@ function PlayerState.init()
 		end
 		acc = 0
 		-- A full resend every 2s covers a client that loaded after its first sync.
-		local force = forceAcc >= 2 or World.heatDirty or World.pauseDirty or World.dealerDirty
+		-- Brief 8: a run's heat / pause / dealer change resends its own party only.
+		local force = forceAcc >= 2
 		if force then
 			forceAcc = 0
-			World.heatDirty = false
-			World.pauseDirty = false
-			World.dealerDirty = false
+		end
+		local slotForced: { [any]: boolean } = {}
+		for _, s in Runs.allSlots() do
+			local w = s.World
+			if w.heatDirty or w.pauseDirty or w.dealerDirty then
+				w.heatDirty = false
+				w.pauseDirty = false
+				w.dealerDirty = false
+				slotForced[s] = true
+			end
 		end
 		for player, state in states do
-			if state.dirty or force then
+			if state.dirty or force or (next(slotForced) ~= nil and slotForced[Runs.slotOf(player)]) then
 				state.dirty = false
 				Remotes.StateSync:FireClient(player, PlayerState.buildSync(state))
 			end
