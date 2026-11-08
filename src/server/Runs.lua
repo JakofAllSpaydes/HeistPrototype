@@ -9,6 +9,7 @@
 -- are stateful parts), so it is capped at 1 until maps can be cloned.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Maps = require(ReplicatedStorage.Shared.Maps)
@@ -132,6 +133,17 @@ end
 
 -- Clone Run/ once per live map, configure each clone, then start every slot's Main (the hub's first).
 function Runs.start()
+	-- The shared world folders exist before any run module loads: several wait on them at require time (Bags,
+	-- WeaponRoll, Combat wait for Effects / GroundLoot), and Room.build only runs inside Main.start, after those
+	-- requires. Without this the first require of Run/Main hangs forever.
+	for _, name in { "Enemies", "GroundLoot", "Effects" } do
+		local existing = Workspace:FindFirstChild(name)
+		if not (existing and existing:IsA("Folder")) then
+			local f = Instance.new("Folder")
+			f.Name = name
+			f.Parent = Workspace
+		end
+	end
 	RemoteRouter.slotOf = function(player: Player): string
 		return Runs.slotOf(player).id
 	end
