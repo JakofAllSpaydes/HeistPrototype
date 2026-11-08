@@ -3,7 +3,6 @@
 -- with `lune run tools/genmap.luau`): the arena plus the hub yard on its south wall. This module reads
 -- spawn points, pillars, the van, the queue zones, the stations and the yard props from it, and only
 -- builds the map in code if the folder is missing, so a fresh clone still plays.
-local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -402,10 +401,7 @@ function Room.build()
 		Room.vault = nil
 	end
 
-	Lighting.Ambient = Color3.fromRGB(70, 70, 80)
-	Lighting.OutdoorAmbient = Color3.fromRGB(90, 90, 100)
-	Lighting.Brightness = 2
-	Lighting.ClockTime = 14
+	-- (Lighting is the place's own, set in Studio: nothing here overrides it.)
 end
 
 function Room.randomSpawnPoint(): Vector3
