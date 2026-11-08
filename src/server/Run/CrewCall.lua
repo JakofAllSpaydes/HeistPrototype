@@ -67,7 +67,10 @@ export type OfficeHook = {
 CrewCall.office = nil :: OfficeHook?
 
 local effects = Workspace:WaitForChild("Effects")
-local job: Job? = nil
+local job: Job? = nil -- the side job slot
+-- Round 24: a door objective has its own slot, so a door coming due no longer ends the running side job; both
+-- pills stack on the client.
+local doorJob: Job? = nil
 local nextId = 0
 local vaultOfferedSinceUnlock = false -- Round 22: tracks whether the vault has been offered since it became available
 local BLUE = Color3.fromHex("4D9FE8")
@@ -435,12 +438,8 @@ end
 
 -- `forceKind` skips the roll (the forced vault draw, debug); `forceGame` picks SILENCE THE ALARM's minigame.
 function CrewCall.trigger(forceKind: string?, forceGame: string?)
-	if job and job.kind == "door" then
-		Log.event("Call", "a door holds the objective slot; no side job drawn")
-		return
-	end
 	if job then
-		CrewCall.finish(false, true)
+		CrewCall.finish(false, true, nil, job)
 	end
 	nextId += 1
 	local forced = if forceKind and (forceKind ~= "vault" or VaultJob.available(World.wave)) then forceKind else nil
@@ -612,13 +611,19 @@ function CrewCall.trigger(forceKind: string?, forceGame: string?)
 end
 
 -- `by`: who finished it (the hacker, the minigame player, the capture holders); the completion card shows them.
-function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
-	local j = job
+-- `which`: the job to end (default: the side job, else the door).
+function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?, which: Job?)
+	local j = which or job or doorJob
 	if not j or not j.active then
 		return
 	end
 	j.active = false
-	job = nil
+	if job == j then
+		job = nil
+	end
+	if doorJob == j then
+		doorJob = nil
+	end
 	if j.beacon then
 		j.beacon:Destroy()
 	end
@@ -714,7 +719,7 @@ function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 	Log.event("Call", "Side Job #%d %s", j.id, if success then "complete, paid $" .. reward else "failed")
 	-- Brief 7: a queued door takes the slot the moment it is free.
 	local free = CrewCall.onSlotFree
-	if free then
+	if free and door then
 		task.defer(free)
 	end
 end
@@ -723,12 +728,27 @@ end
 CrewCall.onSlotFree = nil :: (() -> ())?
 CrewCall.supersedes = nil :: (() -> boolean)?
 
--- Is the one objective slot taken?
+-- Is the side job slot taken?
 function CrewCall.busy(): boolean
 	return job ~= nil and job.active
 end
 
--- What holds the slot: the side job's kind, "door" for a door objective, nil when free.
+-- Round 24: is the door slot taken?
+function CrewCall.doorBusy(): boolean
+	return doorJob ~= nil and doorJob.active
+end
+
+-- Run end / debug reset: both slots go quietly.
+function CrewCall.clearAll()
+	if doorJob then
+		CrewCall.finish(false, true, nil, doorJob)
+	end
+	if job then
+		CrewCall.finish(false, true, nil, job)
+	end
+end
+
+-- The side job's kind, nil when that slot is free.
 function CrewCall.activeKind(): string?
 	local j = job
 	if not j or not j.active then
@@ -739,7 +759,7 @@ end
 
 -- A door objective on the crew-call shell: MARLOW's card, the pill with no clock, never expires.
 function CrewCall.triggerDoor(info: DoorInfo)
-	if job then
+	if doorJob then
 		return
 	end
 	nextId += 1
@@ -759,7 +779,7 @@ function CrewCall.triggerDoor(info: DoorInfo)
 		reminded = true,
 		door = info,
 	}
-	job = thisJob
+	doorJob = thisJob
 	World.fireRun("CallStart", {
 		id = thisJob.id,
 		jobKind = "door",
@@ -784,9 +804,9 @@ end
 
 -- The door's group opened while its call was up: the call completes, credited to the opener.
 function CrewCall.finishDoor(group: string, by: Player?)
-	local j = job
+	local j = doorJob
 	if j and j.active and j.door and j.door.group == group then
-		CrewCall.finish(true, nil, if by then { by } else nil)
+		CrewCall.finish(true, nil, if by then { by } else nil, j)
 	end
 end
 
@@ -799,7 +819,7 @@ end
 function CrewCall.onWaveStart(wave: number)
 	-- Brief 7: a door due (or open as the objective) supersedes this wave's side-job draw.
 	local sup = CrewCall.supersedes
-	if sup and sup() then
+	if Config.DoorSupersedesSideJob and sup and sup() then
 		Log.event("Call", "wave %d side job skipped: a door holds the objective slot", wave)
 		return
 	end

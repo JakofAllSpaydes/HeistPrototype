@@ -73,8 +73,12 @@ handlers.unlockWeapon = function(player, state, p, args)
 		return fail("gold", NOT_ENOUGH)
 	end
 	p.weapons[w.id] = { level = 0 }
-	-- New things are equipped as they are unlocked.
-	p.starterWeaponId = w.id
+	-- New things are equipped as they are unlocked: into the empty second slot if there is one, else slot 1.
+	if p.starterWeaponId2 == nil then
+		p.starterWeaponId2 = w.id
+	else
+		p.starterWeaponId = w.id
+	end
 	Profiles.markDirty(player)
 	if not Runs.inRun(player) then
 		state.held = PlayerState.starterHeld(state)
@@ -106,12 +110,59 @@ handlers.upgradeWeapon = function(player, state, p, args)
 	return done(string.format("%s LV %d!", w.displayName, entry.level), "celebrate")
 end
 
+-- Round 24y: heart / un-heart a weapon (owned or not, showcase guns too). Silent: the tile's heart is the feedback.
+handlers.toggleFavorite = function(player, _state, p, args)
+	-- Round 24aa: masks and emotes too (args.kind); their keys are "mask:<id>" / "emote:<id>", guns stay bare ids.
+	local kind = tostring(args and args.kind or "weapon")
+	local id = tostring(args and (args.id or args.weaponId))
+	local known = false
+	local key = id
+	if kind == "mask" then
+		known = Masks.ById[id] ~= nil
+		key = "mask:" .. id
+	elseif kind == "emote" then
+		known = Emotes.ById[id] ~= nil
+		key = "emote:" .. id
+	else
+		known = Weapons.ById[id] ~= nil
+		for _, s in Weapons.Showcase do
+			if s.id == id then
+				known = true
+			end
+		end
+	end
+	if not known then
+		return fail("unknown item")
+	end
+	p.favorites = p.favorites or {}
+	p.favorites[key] = if p.favorites[key] then nil else true
+	Profiles.markDirty(player)
+	return { ok = true }
+end
+
+-- Round 24z: two starter slots. args.slot (1 | 2) picks the slot; without it the gun goes into an empty slot 2,
+-- and with both full the client is told to ask which to replace (needSlot, no toast).
 handlers.equipStarter = function(player, state, p, args)
 	local w = Weapons.ById[tostring(args and args.weaponId)]
 	if not w or not p.weapons[w.id] then
 		return fail("not owned")
 	end
-	p.starterWeaponId = w.id
+	if p.starterWeaponId == w.id or p.starterWeaponId2 == w.id then
+		return done(w.displayName .. " is already equipped")
+	end
+	local slot = tonumber(args and args.slot)
+	if slot == nil then
+		if p.starterWeaponId2 == nil then
+			slot = 2
+		else
+			return { ok = false, reason = "pick slot", needSlot = true } :: any
+		end
+	end
+	if slot == 2 then
+		p.starterWeaponId2 = w.id
+	else
+		p.starterWeaponId = w.id
+	end
 	Profiles.markDirty(player)
 	if not Runs.inRun(player) then
 		state.held = PlayerState.starterHeld(state)
@@ -338,6 +389,21 @@ function Meta.init()
 		state.dirty = true
 		return result
 	end
+	-- Round 24aa prototype: sprint. The server owns the walk speed; the character attribute tells every client to
+	-- lower the gun (GunAnim) and the shooter's FireShot is ignored while it is on.
+	Remotes.SetSprint.OnServerEvent:Connect(function(player: Player, on: any)
+		local state = PlayerState.get(player)
+		local want = on == true and Config.SprintEnabled and not state.downed
+		if (state :: any).sprinting == want then
+			return
+		end
+		(state :: any).sprinting = want
+		local char = player.Character
+		if char then
+			char:SetAttribute("Sprinting", if want then true else nil)
+		end
+		PlayerState.applyCharacterStats(state)
+	end)
 	-- Account options (Round 16): allowed any time, in a run too (the Hotwire symbols toggle lives on the minigame).
 	Remotes.SetOption.OnServerEvent:Connect(function(player: Player, key: any, value: any)
 		if typeof(key) ~= "string" or Profiles.OPTIONS[key] == nil or typeof(value) ~= "boolean" then

@@ -52,17 +52,65 @@ end
 -- it slides over (gameProcessed is ignored on move), so a thumb on the stick, one on FIRE and a drag all work
 -- together. The hub turns too (touch never waited on RMB).
 local cameraTouches = ClientState.cameraTouches
+local opticSens = 1 -- Round 24r: look slows with a magnified optic's zoom
 local assistFriction = 1 -- Round 24 aim assist: look sensitivity multiplier while the crosshair is on a target
-UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-	if input.UserInputType == Enum.UserInputType.MouseButton2 then
-		rmbHeld = true
-	elseif input.UserInputType == Enum.UserInputType.Touch and not gameProcessed then
-		local vp = camera.ViewportSize
-		if input.Position.X > vp.X * Config.TouchCameraStartX then
-			cameraTouches[input] = true
+-- Round 24g: this frame's look input (radians), so the assist can tell when you are pulling off a target.
+local inputYaw, inputPitch = 0, 0
+local awayUntil = 0
+-- Round 24d: a second finger that lands while the thumbstick is held comes in flagged gameProcessed (or never
+-- reaches InputBegan at all: the stick's own touch handling takes it), so move + look never worked together.
+-- The camera now decides for itself: a touch right of TouchCameraStartX is a look touch unless it lands on one
+-- of our buttons. It listens on three paths (InputBegan, TouchStarted, a high-priority ContextAction that
+-- passes the input on), and claiming the same touch twice is harmless.
+local GuiService = game:GetService("GuiService")
+local ContextActionService = game:GetService("ContextActionService")
+local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
+
+local function onOurButton(p: Vector2): boolean
+	local inset = GuiService:GetGuiInset()
+	for _, at in { p, p + inset } do
+		for _, g in playerGui:GetGuiObjectsAtPosition(at.X, at.Y) do
+			if (g:IsA("GuiButton") or g:IsA("TextBox")) and not g:FindFirstAncestor("TouchGui") then
+				return true
+			end
 		end
 	end
+	return false
+end
+
+local function claimTouch(input: InputObject)
+	if input.UserInputType ~= Enum.UserInputType.Touch or cameraTouches[input] ~= nil then
+		return
+	end
+	local vp = camera.ViewportSize
+	local p = Vector2.new(input.Position.X, input.Position.Y)
+	if p.X > vp.X * Config.TouchCameraStartX and not onOurButton(p) then
+		cameraTouches[input] = true
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input: InputObject)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		rmbHeld = true
+	else
+		claimTouch(input)
+	end
 end)
+UserInputService.TouchStarted:Connect(function(input: InputObject)
+	claimTouch(input)
+end)
+ContextActionService:BindActionAtPriority(
+	"GHSTouchLook",
+	function(_name: string, state: Enum.UserInputState, input: InputObject)
+		if state == Enum.UserInputState.Begin then
+			claimTouch(input)
+		end
+		return Enum.ContextActionResult.Pass
+	end,
+	false,
+	Enum.ContextActionPriority.High.Value + 50,
+	Enum.UserInputType.Touch
+)
 UserInputService.InputEnded:Connect(function(input: InputObject)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		rmbHeld = false
@@ -78,14 +126,9 @@ UserInputService.InputChanged:Connect(function(input: InputObject)
 		end
 		return
 	end
-	local sens = (if ClientState.ads then Config.AdsSensitivityMult else 1) * assistFriction
+	local sens = (if ClientState.ads then Config.AdsSensitivityMult else 1) * assistFriction * opticSens
 	if input.UserInputType == Enum.UserInputType.Touch then
-		-- Touch turns the camera in the hub and in combat alike; only a menu (blocked) holds it.
-		if cameraTouches[input] and not pinching and not ClientState.blocked() then
-			yaw -= input.Delta.X * Config.TouchSensitivity * sens
-			pitch = math.clamp(pitch - input.Delta.Y * Config.TouchSensitivity * sens, PITCH_MIN, PITCH_MAX)
-		end
-		return
+		return -- touch look is polled every frame (pollTouches)
 	end
 	-- Cursor unlocked: the camera holds still (the character turns toward the cursor in the render step)
 	-- unless RMB is held, which drags it.
@@ -94,22 +137,27 @@ UserInputService.InputChanged:Connect(function(input: InputObject)
 	end
 	if input.UserInputType == Enum.UserInputType.MouseMovement then
 		yaw -= input.Delta.X * Config.MouseSensitivity * sens
+		inputYaw -= input.Delta.X * Config.MouseSensitivity * sens
+		inputPitch -= input.Delta.Y * Config.MouseSensitivity * sens
 		pitch = math.clamp(pitch - input.Delta.Y * Config.MouseSensitivity * sens, PITCH_MIN, PITCH_MAX)
 	end
 end)
 
 -- Pinch: scale is relative to the gesture start, so spreading the fingers (scale > 1) zooms in.
 UserInputService.TouchPinch:Connect(
-	function(
-		_touches: { Vector2 },
-		scale: number,
-		_velocity: number,
-		state: Enum.UserInputState,
-		gameProcessed: boolean
-	)
+	function(touches: { Vector2 }, scale: number, _velocity: number, state: Enum.UserInputState, gameProcessed: boolean)
 		if state == Enum.UserInputState.Begin then
 			if gameProcessed or ClientState.blocked() then
 				return
+			end
+			-- Round 24f: Roblox reports ANY two moving fingers as a pinch, the thumbstick thumb included, and a pinch
+			-- froze touch look: moving + looking died after a tiny flick. A real pinch has both fingers in the look
+			-- area, right of the stick.
+			local edge = camera.ViewportSize.X * Config.TouchCameraStartX
+			for _, t in touches do
+				if t.X <= edge then
+					return
+				end
 			end
 			pinching = true
 			pinchStartZoom = if targetZoom == 0 then Config.CameraFirstPersonBelow else targetZoom
@@ -129,6 +177,7 @@ params.FilterType = Enum.RaycastFilterType.Exclude
 
 -- FOV kick on fire and camera shake, both decay each frame.
 local fovKick = 0
+local camPunch = 0 -- Round 24n: radians of upward camera kick, easing home
 local stimFov = 0
 local slowFov = 0
 local shakeAmp = 0
@@ -138,6 +187,12 @@ local adsBlend = 0 -- 0 hip, 1 fully aimed
 ClientState.Juice:Connect(function(name: string, data: any)
 	if name == "LocalFire" then
 		fovKick = Config.FireFovKick
+		-- Round 24n: a camera punch per gun kind (every view), eased back home; snipers / shotguns hit hard.
+		local char = player.Character
+		local gun = char and char:FindFirstChild("HeldGun")
+		local kind = gun and gun:GetAttribute("GunKind")
+		local punch = (Config.CameraRecoilDeg :: any)[tostring(kind)] or 0
+		camPunch = math.min(camPunch + math.rad(punch), math.rad(punch) * 2)
 	elseif name == "Shake" then
 		shakeAmp = math.max(shakeAmp, data.amp or 0)
 		shakeTotal = data.dur or 0.2
@@ -162,7 +217,8 @@ ClientState.Juice:Connect(function(name: string, data: any)
 	end
 end)
 
--- First person hides the local character (gun and accessories included) so nothing sits in front of the lens.
+-- First person hides the whole local character; FirstPersonView.client draws the camera-locked gun and arms
+-- (Round 24c: the real arms sat right in front of the lens).
 local hiddenChar: Model? = nil
 local function setHidden(char: Model?, hidden: boolean)
 	if not char then
@@ -171,9 +227,31 @@ local function setHidden(char: Model?, hidden: boolean)
 	for _, d in char:GetDescendants() do
 		if d:IsA("BasePart") or d:IsA("Decal") then
 			d.LocalTransparencyModifier = if hidden then 1 else 0
+		elseif
+			d:IsA("ParticleEmitter")
+			or d:IsA("Light")
+			or d:IsA("Beam")
+			or d:IsA("Trail")
+			or d:IsA("Sparkles")
+			or d:IsA("Fire")
+			or d:IsA("Smoke")
+		then
+			-- Round 24g: effects on the body (buff auras, status embers, sparkles) emit right at the lens in
+			-- first person: off locally while hidden, back as they were after.
+			local fx = d :: any
+			if hidden then
+				if fx.Enabled then
+					d:SetAttribute("FPWasOn", true)
+					fx.Enabled = false
+				end
+			elseif d:GetAttribute("FPWasOn") then
+				d:SetAttribute("FPWasOn", nil)
+				fx.Enabled = true
+			end
 		end
 	end
 end
+local fpEyeRel: Vector3? = nil -- the head's offset from the root, smoothed (the steady eye)
 
 -- Round 24 aim assist (touch / gamepad; mouse too with Config.AimAssistMouse). The enemy nearest the crosshair
 -- inside AimAssistConeDeg pulls the camera toward its torso; with the crosshair held above AimAssistHeadBias of
@@ -190,6 +268,7 @@ ClientState.Juice:Connect(function(name: string)
 	end
 end)
 
+local assistScale = 1 -- Round 24aa: 1 for touch / gamepad, AimAssistMouseScale for the mouse
 local function assistWanted(): boolean
 	if not Config.AimAssistEnabled then
 		return false
@@ -197,11 +276,17 @@ local function assistWanted(): boolean
 	if ClientState.blocked() or ClientState.combatOff() or ClientState.isMouseFree() or ClientState.downed then
 		return false
 	end
+	assistScale = 1
 	if ClientState.isMobile or Config.AimAssistMouse then
 		return true
 	end
 	local last = UserInputService:GetLastInputType()
-	return last == Enum.UserInputType.Touch or string.find(last.Name, "Gamepad") ~= nil
+	if last == Enum.UserInputType.Touch or string.find(last.Name, "Gamepad") ~= nil then
+		return true
+	end
+	-- Round 24aa: mouse gets a faint version (AimAssistMouseScale of the pull and stickiness, a narrower cone).
+	assistScale = Config.AimAssistMouseScale
+	return assistScale > 0
 end
 
 local function wrapAngle(a: number): number
@@ -210,6 +295,8 @@ end
 
 local function aimAssist(dt: number, char: Model)
 	assistFriction = 1
+	local hadYaw, hadPitch = inputYaw, inputPitch
+	inputYaw, inputPitch = 0, 0 -- consumed below only when a target is in reach
 	if not assistWanted() then
 		assistModel = nil
 		return
@@ -223,6 +310,7 @@ local function aimAssist(dt: number, char: Model)
 	local look = camCf.LookVector
 	local ads = ClientState.ads
 	local cone = math.rad(if ads then Config.AimAssistAdsConeDeg else Config.AimAssistConeDeg)
+		* (if assistScale < 1 then Config.AimAssistMouseCone else 1)
 	local range = Config.AimAssistRange
 	local vp = camera.ViewportSize
 	local centreY = vp.Y / 2
@@ -299,23 +387,85 @@ local function aimAssist(dt: number, char: Model)
 	local d = (point - camPos).Unit
 	local angle = math.acos(math.clamp(look:Dot(d), -1, 1))
 	local falloff = math.clamp(1 - angle / cone, 0, 1)
-	local pull = if ads then Config.AimAssistAdsPull else Config.AimAssistPull
+	local pull = (if ads then Config.AimAssistAdsPull else Config.AimAssistPull) * assistScale
 	if os.clock() < firingUntil or ClientState.touchFire then
 		pull *= Config.AimAssistFiringMult
 	end
-	local k = (1 - math.exp(-pull * dt)) * math.sqrt(falloff)
 	local wantYaw = math.atan2(-d.X, -d.Z)
 	local wantPitch = math.asin(math.clamp(d.Y, -1, 1))
+	-- Pulling away: look input pointing off the target lets go (most of the pull, all of the friction) for a
+	-- moment, so breaking off is easy while tracking still sticks.
+	local toYaw, toPitch = wrapAngle(wantYaw - yaw), wantPitch - pitch
+	local inMag = math.sqrt(hadYaw * hadYaw + hadPitch * hadPitch)
+	if inMag > 1e-4 and (hadYaw * toYaw + hadPitch * toPitch) < 0 then
+		awayUntil = os.clock() + Config.AimAssistReleaseSec
+	end
+	local away = os.clock() < awayUntil
+	if away then
+		pull *= Config.AimAssistPullAwayMult
+	end
+	local k = (1 - math.exp(-pull * dt)) * math.sqrt(falloff)
 	yaw += wrapAngle(wantYaw - yaw) * k
 	pitch = math.clamp(pitch + (wantPitch - pitch) * k, PITCH_MIN, PITCH_MAX)
 
 	local frictionCone = math.rad(Config.AimAssistFrictionDeg)
-	if angle < frictionCone then
-		assistFriction = 1 - (1 - Config.AimAssistFriction) * (1 - angle / frictionCone)
+	if angle < frictionCone and not away then
+		assistFriction = 1 - (1 - Config.AimAssistFriction) * (1 - angle / frictionCone) * assistScale
 	end
 end
 
+-- Round 24b: touch look reads each tracked finger's live Position every frame instead of trusting InputChanged.
+-- With the thumbstick held, the FIRE thumb's move events did not reach this script (the stick's own touch
+-- handling ate them), so moving + firing + aiming never worked together. The InputObject's Position updates
+-- regardless, so polling it always sees the drag.
+local touchLast: { [InputObject]: Vector3 } = {}
+local function pollTouches()
+	for input in touchLast do
+		if not cameraTouches[input] then
+			touchLast[input] = nil
+		end
+	end
+	local sens = (if ClientState.ads then Config.AdsSensitivityMult else 1) * assistFriction * opticSens
+	local canTurn = not pinching and not ClientState.blocked()
+	for input in cameraTouches do
+		if input.UserInputState == Enum.UserInputState.End or input.UserInputState == Enum.UserInputState.Cancel then
+			cameraTouches[input] = nil
+			touchLast[input] = nil
+			continue
+		end
+		local pos = input.Position
+		local last = touchLast[input]
+		touchLast[input] = pos
+		if last and canTurn then
+			local d = pos - last
+			yaw -= d.X * Config.TouchSensitivity * sens
+			inputYaw -= d.X * Config.TouchSensitivity * sens
+			inputPitch -= d.Y * Config.TouchSensitivity * sens
+			pitch = math.clamp(pitch - d.Y * Config.TouchSensitivity * sens, PITCH_MIN, PITCH_MAX)
+		end
+	end
+end
+
+-- The held gun's magnified optic zoom (an FOV multiplier) in first person, or nil.
+local function opticZoom(): number?
+	if not ClientState.firstPerson then
+		return nil
+	end
+	local char = player.Character
+	local gun = char and char:FindFirstChild("HeldGun")
+	local sight = gun and gun:GetAttribute("Sight")
+	if sight == "scope" then
+		return Config.ScopeFovMult
+	elseif sight == "acog" then
+		return Config.AcogFovMult
+	elseif sight == "medium" then
+		return Config.MediumScopeFovMult
+	end
+	return nil
+end
+
 local pivotYNow = 1.5
+local shoulderBlend = 1 -- Round 24aa: 1 over the shoulder, 0 centred (cursor unlocked)
 RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, function(dt)
 	camera.CameraType = Enum.CameraType.Scriptable
 	local requested = ClientState.requestCameraYaw
@@ -332,6 +482,14 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	-- Unlocked cursor: ADS only pulls in a little.
 	local unlocked = ClientState.isMouseFree() and not ClientState.blocked()
 	local adsFov = if unlocked then Config.AdsFovMultUnlocked else Config.AdsFovMult
+	-- Round 24r: magnified optics in first person zoom further (sniper scope, ACOG) and slow the look to match.
+	local zoomMult = opticZoom()
+	if zoomMult then
+		adsFov = zoomMult
+		opticSens = 1 + (zoomMult / Config.AdsFovMult - 1) * adsBlend
+	else
+		opticSens = 1
+	end
 	local adsZoom = if unlocked then Config.AdsZoomMultUnlocked else Config.AdsZoomMult
 	local fovMult = 1 + (adsFov - 1) * adsBlend
 	camera.FieldOfView = Config.CameraFov * fovMult + fovKick + stimFov + slowFov
@@ -346,12 +504,14 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	if ClientState.cameraMode ~= "gameplay" then
 		return
 	end
+	pollTouches()
 
 	zoom += (targetZoom - zoom) * math.min(1, dt * Config.CameraZoomSmoothing)
 	if math.abs(targetZoom - zoom) < 0.02 then
 		zoom = targetZoom
 	end
 	local firstPerson = zoom < Config.CameraFirstPersonBelow
+	ClientState.firstPerson = firstPerson -- FirstPersonView draws the viewmodel
 
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -369,15 +529,14 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 		setHidden(wantHidden, true)
 		hiddenChar = wantHidden
 	elseif firstPerson then
-		-- Parts added after the switch (new HeldGun on swap) start visible; keep them hidden.
-		local gun = char:FindFirstChild("HeldGun") :: BasePart?
-		if gun and gun.LocalTransparencyModifier < 1 then
-			setHidden(char, true)
-		end
+		-- Re-applied every frame: parts added after the switch (a new HeldGun, a fresh mag) and anything the
+		-- PlayerModule's own transparency pass touches stay the way first person wants them.
+		setHidden(char, true)
 	end
 
 	aimAssist(dt, char)
-	local rot = CFrame.fromEulerAnglesYXZ(pitch, yaw, 0)
+	camPunch *= math.exp(-dt * Config.CameraRecoilReturn)
+	local rot = CFrame.fromEulerAnglesYXZ(math.clamp(pitch + camPunch, PITCH_MIN, PITCH_MAX), yaw, 0)
 	-- Downed: the pivot drops to DownedCameraHeight above the floor (the root sits 3 studs up). It eases there and
 	-- back, so a revive lifts the camera with the stand-up instead of snapping.
 	local targetY = if ClientState.downed then Config.DownedCameraHeight - 3 else 1.5
@@ -385,12 +544,23 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	local pivot = root.Position + Vector3.new(0, pivotYNow, 0)
 	local camPos: Vector3
 	if firstPerson then
+		-- Round 24b: a steady eye. The head's offset from the root is smoothed (FirstPersonSteadyRate) and only
+		-- FirstPersonBobKeep of the walk bob comes through, so running no longer rocks the view.
 		local head = char:FindFirstChild("Head") :: BasePart?
-		camPos = if head then head.Position else pivot
+		local raw = if head then head.Position else pivot
+		local rel = raw - root.Position
+		local prev = fpEyeRel or rel
+		local smoothed = prev:Lerp(rel, 1 - math.exp(-dt * Config.FirstPersonSteadyRate))
+		fpEyeRel = smoothed
+		camPos = (root.Position + smoothed):Lerp(raw, Config.FirstPersonBobKeep)
 	else
+		fpEyeRel = nil
 		local dist = zoom * (1 + (adsZoom - 1) * adsBlend)
 		local side = math.clamp(dist / Config.CameraZoomDefault, 0, 1)
-		local offset = Vector3.new(Config.CameraShoulder.X * side, Config.CameraShoulder.Y * side, dist)
+		-- Round 24aa: cursor unlocked (Ctrl / Alt): the shoulder offset eases out so the character sits mid-screen.
+		local wantShoulder = if ClientState.mouseFree or ClientState.mouseFreeHold then 0 else 1
+		shoulderBlend += (wantShoulder - shoulderBlend) * math.clamp(dt * Config.CameraCenterRate, 0, 1)
+		local offset = Vector3.new(Config.CameraShoulder.X * side * shoulderBlend, Config.CameraShoulder.Y * side, dist)
 		local desired = pivot + rot:VectorToWorldSpace(offset)
 		local filter: { Instance } = { char }
 		for _, name in { "GroundLoot", "Effects", "Enemies" } do

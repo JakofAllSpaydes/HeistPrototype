@@ -80,6 +80,10 @@ Theme.Sounds = {
 	upgrade = "rbxassetid://85188753846582",
 	reloadOut = "rbxassetid://9113104176", -- Ammo Magazine 1: the mag comes out
 	reloadIn = "rbxassetid://9113104208", -- Ammo Magazine 2: the mag seats
+	-- Round 24o: one shell into a tube-fed gun (was the snap.mp3 "take", which read as a slap). Verified library
+	-- alternatives to audition: 9113104337 Ammo Magazine 3, 9113104335 Ammo Magazine 4 (ProSoundEffects),
+	-- 16480551554 Roblox_Pinball_Small_Metal_Click_01 (Roblox), 9116321575 Locking Wrench 15 (ProSoundEffects).
+	shellLoad = "rbxassetid://9117396156", -- Pistol Clip 2 (ProSoundEffects): a short metal click
 	swap = "rbxassetid://15675024286", -- Roblox_UI_Whoosh_01 (swoosh.wav is blocked)
 	crate = "rbxasset://sounds/bass.wav",
 	call = "rbxasset://sounds/clickfast.wav",

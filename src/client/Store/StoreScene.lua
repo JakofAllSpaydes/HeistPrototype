@@ -179,6 +179,16 @@ local function build(focus: string, arg: any?)
 		Parent = playerGui,
 	}) :: ScreenGui
 	gui = g
+	-- Round 24d: on mobile every label in the store reads Config.MobileStoreTextScale bigger (FixedTextSize opts out).
+	if mobile and (Config.MobileStoreTextScale or 1) ~= 1 then
+		local k = Config.MobileStoreTextScale
+		g.DescendantAdded:Connect(function(d)
+			if (d:IsA("TextLabel") or d:IsA("TextButton")) and not d:GetAttribute("FixedTextSize") then
+				local t = d :: TextLabel
+				t.TextSize = math.round(t.TextSize * k)
+			end
+		end)
+	end
 	railButtons = {}
 	sections = {}
 	sectionCtx = {}
@@ -332,7 +342,7 @@ local function build(focus: string, arg: any?)
 	end)
 
 	-- The rail of tabs on the left.
-	local railW = if mobile then S(118) else S(176)
+	local railW = if mobile then S(158) else S(176) -- Round 24d: wider on mobile for the bigger labels
 	local rail = UI.frame({
 		Name = "Rail",
 		BackgroundColor3 = Color3.fromHex("121217"),
@@ -385,7 +395,7 @@ local function build(focus: string, arg: any?)
 		local label = UI.text({
 			Text = tab,
 			FontFace = Theme.Fonts.display,
-			TextSize = if mobile then S(14) else S(18),
+			TextSize = if mobile then S(19) else S(18),
 			TextColor3 = Theme.Colors.textDim,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Position = UDim2.fromOffset(S(36), 0),

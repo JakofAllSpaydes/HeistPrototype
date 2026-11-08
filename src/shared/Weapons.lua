@@ -28,6 +28,17 @@ export type Weapon = {
 	unlockCost: number?, -- nil = Prices.weaponUnlock
 	upgBaseCost: number?, -- nil = Prices.weaponUpgrade
 	rarity: number, -- Armory rarity 1..5 (Weapons.ArmoryRarity): the collection tile color, not the drop roll
+	-- Round 24v: Explosive / Elemental weapons. nil mode = hitscan. The server (Run/SpecialFire.lua) reads these:
+	--   projectile: proj = { kind, speed, gravity, fuse (0 = on contact), radius, directDetonate?, bomblets?, ... }
+	--   charge: charge = { sec, maxCost, maxDmgMult, minWidth, maxWidth, minDur, maxDur, maxTicks, range } (a held beam)
+	--   stream: stream = { element = "fire" | "frost", range, angle } (a cone every tick)
+	--   chain: chain = { range, angle, chains, chainRange, decay } (lock-on lightning)
+	mode: string?,
+	tracer: string?, -- Round 24ad: hex for this gun's bullet line (energy guns); nil = the usual warm white
+	proj: any?,
+	charge: any?,
+	stream: any?,
+	chain: any?,
 }
 
 -- Silhouette of a gun (brief 6 guns): body length, barrel length, stock, mag kind and scope, plus its own accent
@@ -238,6 +249,299 @@ Weapons.List = {
 		spread = 2.4,
 		auto = true,
 	}),
+	-- Round 24s: two more each for the thin types (pistol / shotgun / sniper / LMG), Gold-unlocked (Direct).
+	-- Paper DPS at common: Python 139, M93R 138 (burst), AA-12 173, M870 156, SVD 140, Kar98k 136, PKM 176, MG42 170.
+	def({
+		id = "Python",
+		displayName = "Python .357",
+		archetype = "Pistol",
+		baseDmg = 58,
+		fireRate = 2.4,
+		magSize = 6,
+		reloadTime = 2.0,
+		spread = 0.9,
+	}),
+	def({
+		id = "M93R",
+		displayName = "M93R",
+		archetype = "Pistol",
+		baseDmg = 26,
+		fireRate = 14, -- inside the burst
+		burst = 3,
+		burstDelay = 0.35, -- 3 shots per 0.56s = 5.3/s effective
+		magSize = 21,
+		reloadTime = 1.4,
+		spread = 1.4,
+	}),
+	def({
+		id = "AA12",
+		displayName = "AA-12",
+		archetype = "Shotgun",
+		baseDmg = 9,
+		fireRate = 3.2,
+		magSize = 20,
+		reloadTime = 3.2, -- drum: the whole mag at once
+		spread = 8,
+		pellets = 6,
+		auto = true,
+	}),
+	def({
+		id = "M870",
+		displayName = "M870",
+		archetype = "Shotgun",
+		baseDmg = 15,
+		fireRate = 1.3,
+		magSize = 6,
+		reloadTime = 0.5, -- per shell (pump tube)
+		spread = 6.5,
+		pellets = 8,
+		shellReload = true,
+	}),
+	def({
+		id = "SVD",
+		displayName = "SVD",
+		archetype = "Sniper",
+		baseDmg = 70,
+		fireRate = 2.0,
+		magSize = 10,
+		reloadTime = 2.6,
+		spread = 0.4,
+		pierceByRarity = { 1, 1, 2, 2, 3 }, -- the semi-auto pierces a step less than the bolts
+	}),
+	def({
+		id = "Kar98k",
+		displayName = "Kar98k",
+		archetype = "Sniper",
+		baseDmg = 170,
+		fireRate = 0.8,
+		magSize = 5,
+		reloadTime = 2.5,
+		spread = 0.15,
+		pierceByRarity = { 1, 1, 2, 3, 4 },
+	}),
+	def({
+		id = "PKM",
+		displayName = "PKM",
+		archetype = "LMG",
+		baseDmg = 16,
+		fireRate = 11,
+		magSize = 100,
+		reloadTime = 4.8,
+		spread = 2.6,
+		auto = true,
+	}),
+	def({
+		id = "MG42",
+		displayName = "MG42",
+		archetype = "LMG",
+		baseDmg = 8.5,
+		fireRate = 20,
+		magSize = 75,
+		reloadTime = 4.2,
+		spread = 3.2,
+		auto = true,
+	}),
+	-- Round 24v: EXPLOSIVE. Damage is the blast's (full in the inner 60%, ExplosiveEdgeDmg at the rim). The RPG
+	-- blows on contact; the grenade 0.25s after it lands (at once on a direct hit); the cluster splits into
+	-- bomblets 0.5s after landing; thrown TNT sits 1s on its fuse.
+	def({
+		id = "RPG7",
+		displayName = "RPG-7",
+		archetype = "Explosive",
+		baseDmg = 220,
+		fireRate = 0.5,
+		magSize = 1,
+		reloadTime = 2.8,
+		spread = 0.4,
+		mode = "projectile",
+		proj = { kind = "rocket", speed = 47.5, gravity = 2, fuse = 0, radius = 13 }, -- Round 24aa: half speed (was 95)
+	}),
+	def({
+		id = "M32",
+		displayName = "M32 MGL",
+		archetype = "Explosive",
+		baseDmg = 90,
+		fireRate = 1.6,
+		magSize = 6,
+		reloadTime = 3.4,
+		spread = 0.8,
+		mode = "projectile",
+		proj = {
+			kind = "grenade",
+			speed = 72,
+			gravity = 55,
+			fuse = 0.25,
+			radius = 9,
+			directDetonate = true,
+			bounce = 0.4,
+		},
+	}),
+	def({
+		id = "ClusterLauncher",
+		displayName = "Cluster Launcher",
+		archetype = "Explosive",
+		baseDmg = 55,
+		fireRate = 1.0,
+		magSize = 4,
+		reloadTime = 0.6, -- per shell (pump tube)
+		spread = 0.8,
+		shellReload = true,
+		mode = "projectile",
+		proj = {
+			kind = "cluster",
+			speed = 62,
+			gravity = 55,
+			fuse = 0.5,
+			radius = 6,
+			bomblets = 6,
+			bombletRadius = 5,
+			bombletDmgMult = 0.55,
+			bounce = 0.4,
+		},
+	}),
+	def({
+		id = "TNT",
+		displayName = "TNT Bundle",
+		archetype = "Explosive",
+		baseDmg = 260,
+		fireRate = 0.8,
+		magSize = 3,
+		reloadTime = 2.2,
+		spread = 0,
+		mode = "projectile",
+		proj = { kind = "tnt", speed = 46, gravity = 70, fuse = 1.0, radius = 15, bounce = 0.12 },
+	}),
+	-- Round 24v: ELEMENTAL. The mag is fuel / charge; every tick (fireRate per second) spends one.
+	def({
+		id = "Flamethrower",
+		displayName = "Flamethrower",
+		archetype = "Elemental",
+		baseDmg = 9,
+		fireRate = 12,
+		magSize = 120,
+		reloadTime = 3.0,
+		spread = 0,
+		auto = true,
+		mode = "stream",
+		stream = { element = "fire", range = 22.5, angle = 14 }, -- Round 24aa: +25% reach (was 18)
+	}),
+	def({
+		id = "CryoSprayer",
+		displayName = "Cryo Sprayer",
+		archetype = "Elemental",
+		baseDmg = 6,
+		fireRate = 12,
+		magSize = 120,
+		reloadTime = 3.0,
+		spread = 0,
+		auto = true,
+		mode = "stream",
+		stream = { element = "frost", range = 16, angle = 16 },
+	}),
+	def({
+		id = "ArcGun",
+		displayName = "Arc Gun",
+		archetype = "Elemental",
+		baseDmg = 11,
+		fireRate = 12,
+		magSize = 100,
+		reloadTime = 2.6,
+		spread = 0,
+		auto = true,
+		mode = "chain",
+		chain = { range = 26, angle = 10, chains = 3, chainRange = 12, decay = 0.7 },
+	}),
+	def({
+		id = "PlasmaCaster",
+		displayName = "Plasma Caster",
+		archetype = "Elemental",
+		baseDmg = 45,
+		fireRate = 1.6,
+		magSize = 24,
+		reloadTime = 2.4,
+		spread = 0,
+		mode = "charge",
+		-- Hold to charge up to `sec`: a full charge spends maxCost cells for a beam maxDmgMult harder and wider.
+		-- The beam passes through walls and every enemy on its line.
+		charge = {
+			sec = 1.4,
+			maxCost = 6,
+			maxDmgMult = 5,
+			minWidth = 0.25, -- a thin laser uncharged...
+			maxWidth = 3.5, -- ...a thick ray at full charge
+			minDur = 0.08, -- seconds the beam holds uncharged (one hit)...
+			maxDur = 1.0, -- ...and at full charge,
+			maxTicks = 6, -- hitting this many times
+			range = 160, -- set and long, whatever the charge
+		},
+	}),
+	-- Round 24ad: the former showcase guns, now real. Crate / Event sale: no Gold unlock, no crate drops them yet;
+	-- debug UNLOCK ALL grants them. Each has its own twist.
+	def({
+		id = "Exogun",
+		displayName = "Exogun",
+		archetype = "Rifle",
+		baseDmg = 24,
+		fireRate = 9,
+		magSize = 40,
+		reloadTime = 2.2,
+		spread = 1.2,
+		auto = true,
+		saleType = "Crate",
+		tracer = "5FE8FF", -- energy rounds: cyan lines
+	}),
+	def({
+		id = "StormLinker",
+		displayName = "StormLinker",
+		archetype = "SMG",
+		baseDmg = 14,
+		fireRate = 15,
+		magSize = 45,
+		reloadTime = 1.8,
+		spread = 2.6,
+		auto = true,
+		saleType = "Crate",
+		tracer = "B07CFF", -- violet lines
+	}),
+	def({
+		id = "Railcaster",
+		displayName = "Railcaster",
+		archetype = "Sniper",
+		baseDmg = 160,
+		fireRate = 0.9,
+		magSize = 4,
+		reloadTime = 3.0,
+		spread = 0,
+		saleType = "Event",
+		-- A charged rail: hold to charge, release a thin blue slug-line that pierces walls and every enemy on it,
+		-- harder the longer it charged. One round a shot.
+		mode = "charge",
+		charge = {
+			sec = 1.1,
+			maxCost = 1,
+			maxDmgMult = 2.5,
+			minWidth = 0.18,
+			maxWidth = 0.55,
+			minDur = 0.06,
+			maxDur = 0.06,
+			maxTicks = 1,
+			range = 260,
+			color = "7FD8FF",
+		},
+	}),
+	def({
+		id = "Hornet",
+		displayName = "Hornet",
+		archetype = "Pistol",
+		baseDmg = 26,
+		fireRate = 13, -- inside the burst
+		burst = 3,
+		burstDelay = 0.32,
+		magSize = 15,
+		reloadTime = 1.4,
+		spread = 1.3,
+		saleType = "Event",
+	}),
 	-- Brief 6: the ARMS CRATE pool (Crates.lua). Common-level paper DPS like the rest, each with its own look;
 	-- never Gold-priced (saleType Crate). The FAL and the Mosin also come in bundles.
 	def({
@@ -363,6 +667,29 @@ Weapons.ArmoryRarity = {
 	M82 = 4,
 	M249 = 2,
 	RPK = 3,
+	-- Round 24ad: the former showcase guns
+	Exogun = 5,
+	StormLinker = 4,
+	Railcaster = 5,
+	Hornet = 4,
+	-- Round 24v: Explosive / Elemental
+	RPG7 = 3,
+	M32 = 3,
+	ClusterLauncher = 4,
+	TNT = 2,
+	Flamethrower = 3,
+	CryoSprayer = 3,
+	ArcGun = 4,
+	PlasmaCaster = 4,
+	-- Round 24s
+	Python = 2,
+	M93R = 3,
+	AA12 = 4,
+	M870 = 1,
+	SVD = 3,
+	Kar98k = 2,
+	PKM = 3,
+	MG42 = 4,
 	-- Brief 6 crate guns: the rarity is also the crate tier they drop at.
 	MAC10 = 1,
 	Skorpion = 1,
@@ -402,58 +729,7 @@ export type Showcase = {
 	pellets: number,
 }
 Weapons.Showcase = {
-	{
-		id = "Exogun",
-		displayName = "Exogun",
-		archetype = "Rifle",
-		saleType = "Crate",
-		hint = "Energy",
-		rarity = 5,
-		baseDmg = 24,
-		fireRate = 9,
-		magSize = 40,
-		reloadTime = 2.2,
-		pellets = 1,
-	},
-	{
-		id = "StormLinker",
-		displayName = "StormLinker",
-		archetype = "SMG",
-		saleType = "Crate",
-		hint = "Automatic",
-		rarity = 4,
-		baseDmg = 14,
-		fireRate = 15,
-		magSize = 45,
-		reloadTime = 1.8,
-		pellets = 1,
-	},
-	{
-		id = "Railcaster",
-		displayName = "Railcaster",
-		archetype = "Sniper",
-		saleType = "Event",
-		hint = "Charged",
-		rarity = 5,
-		baseDmg = 160,
-		fireRate = 0.9,
-		magSize = 4,
-		reloadTime = 3.0,
-		pellets = 1,
-	},
-	{
-		id = "Hornet",
-		displayName = "Hornet",
-		archetype = "Pistol",
-		saleType = "Event",
-		hint = "Burst",
-		rarity = 4,
-		baseDmg = 26,
-		fireRate = 6,
-		magSize = 15,
-		reloadTime = 1.4,
-		pellets = 1,
-	},
+	-- Round 24ad: the four showcase guns are real weapons now (Weapons.List, Crate / Event sale: debug UNLOCK ALL).
 } :: { Showcase }
 
 -- Armory level math (Config.Upg*Pct): applied to the base stats before rarity and in-run upgrades,
@@ -464,20 +740,27 @@ function Weapons.typeName(weaponId: string?): string
 	return if w then string.upper(w.archetype) else ""
 end
 
+-- Round 24ac: levels are mostly DAMAGE (a straight line). Mag, reload and fire rate rise on a soft cap: quick at
+-- first, then flattening toward a small ceiling (UpgSoftCap), so a levelled gun still feels like its archetype (a
+-- bolt-action stays slow, a 5-round mag stays small). soft(level, cap) -> 0..cap, about 63% of it at UpgSoftScale.
+local function soft(level: number, cap: number): number
+	return cap * (1 - math.exp(-math.max(0, level) / math.max(Config.UpgSoftScale, 1)))
+end
+
 function Weapons.levelDmgMult(level: number): number
 	return 1 + Config.UpgDmgPct * math.max(0, level)
 end
 
 function Weapons.levelMagMult(level: number): number
-	return 1 + Config.UpgMagPct * math.max(0, level)
+	return 1 + soft(level, Config.UpgSoftCap.mag)
 end
 
 function Weapons.levelReloadDiv(level: number): number
-	return 1 + Config.UpgReloadPct * math.max(0, level)
+	return 1 + soft(level, Config.UpgSoftCap.reload)
 end
 
 function Weapons.levelRateMult(level: number): number
-	return 1 + Config.UpgFireRatePct * math.max(0, level)
+	return 1 + soft(level, Config.UpgSoftCap.rate)
 end
 
 -- Base stats at an Armory level, before rarity and in-run upgrades.

@@ -22,6 +22,12 @@
         }
       }
     },
+    "StarterGui": {
+      "$ignoreUnknownInstances": true,
+      "$properties": {
+        "ScreenOrientation": "LandscapeSensor"
+      }
+    },
     "Workspace": {
       "$ignoreUnknownInstances": true,
       "Room": {

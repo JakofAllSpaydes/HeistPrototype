@@ -33,6 +33,8 @@ local DEFS: { [string]: string } = {
 	DealerAction = "RemoteEvent", -- client -> server: "buy" (stand index | "crate" | "heal" | "reroll") | "skip" | "teleport"
 	PauseAction = "RemoteEvent", -- client -> server: "vote" | "unvote" (to pause) | "extend" | "resume" (votes while paused)
 	-- Round 16
+	BeamAim = "RemoteEvent", -- client -> server: the cursor's world point while a held plasma beam runs (Round 24ab: it steers)
+	SetSprint = "RemoteEvent", -- client -> server: boolean (Round 24aa prototype: Shift sprint, gun away, SprintSpeedMult)
 	SetOption = "RemoteEvent", -- client -> server: key (Profiles.OPTIONS), value (boolean); saved to the profile
 	-- Brief 6: the fake purchase flow and the shop actions
 	Purchase = "RemoteFunction", -- client -> server: productId, args; returns { ok, reason?, balance, data? } (Purchases.lua)

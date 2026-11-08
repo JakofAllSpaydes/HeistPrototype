@@ -705,6 +705,10 @@ DRAW.plus = function(c: Ctx) -- a plus
 	bar(c, 0.5, 0.22, 0.5, 0.78, 0.15, 1, c.fg)
 end
 
+DRAW.heart = function(c: Ctx) -- Round 24y: favourites
+	heart(c)
+end
+
 DRAW.revive = function(c: Ctx) -- a revive token: a heart with a cross
 	heart(c)
 	plusMark(c, 0.5, 0.48, 0.26, 0.08, 2, c.dt)
@@ -723,6 +727,23 @@ DRAW.vip = function(c: Ctx) -- a crown
 	for _, x in { 0.32, 0.5, 0.68 } do
 		circle(c, x, 0.59, 0.08, 2, dt)
 	end
+end
+
+DRAW.crate = function(c: Ctx) -- Round 24af: a supply crate (CRATE source)
+	local fg, dt = c.fg, c.dt
+	rect(c, 0.5, 0.56, 0.74, 0.56, 1, fg, 0.06)
+	rect(c, 0.5, 0.31, 0.8, 0.12, 1, fg, 0.1)
+	rect(c, 0.5, 0.56, 0.74, 0.045, 2, dt)
+	rect(c, 0.3, 0.56, 0.05, 0.5, 2, dt)
+	rect(c, 0.7, 0.56, 0.05, 0.5, 2, dt)
+	rect(c, 0.5, 0.42, 0.14, 0.1, 2, dt)
+end
+
+DRAW.event = function(c: Ctx) -- Round 24af: an eight-point star (EVENT source)
+	local fg, dt = c.fg, c.dt
+	rect(c, 0.5, 0.5, 0.56, 0.56, 1, fg, 0.06)
+	rect(c, 0.5, 0.5, 0.56, 0.56, 1, fg, 0.06, 45)
+	circle(c, 0.5, 0.5, 0.22, 2, dt)
 end
 
 DRAW.gift = function(c: Ctx) -- a gift box with a bow

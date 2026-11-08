@@ -106,6 +106,32 @@ end
 ------------------------------------------------------------------ Juice
 -- Hover grows the object in place (the PunchScale UIScale UI.punch uses, so a press punch and the hover share one
 -- scale); it never moves away from the cursor.
+-- Round 24aa: the favourite heart in a tile's top-right corner (solid red when hearted). onToggle runs on a tap.
+function MetaUI.favHeart(tile: GuiObject, fav: boolean, onToggle: () -> ()): GuiButton
+	local S = UI.S
+	local heartBtn = UI.button({
+		Name = "Favorite",
+		Text = "",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(3), 0, S(3)),
+		Size = UDim2.fromOffset(S(24), S(24)),
+		ZIndex = 20,
+		Parent = tile,
+	})
+	local glyph =
+		Icons.fit(heartBtn, "heart", 0.8, if fav then Theme.Colors.red else Theme.Colors.white, Theme.Colors.white)
+	if not fav then
+		Icons.setTransparency(glyph, 0.55)
+	end
+	heartBtn.Activated:Connect(function()
+		UI.punch(heartBtn, if fav then 0.85 else 1.35, 0.2)
+		UI.sound(Theme.Sounds.toast, if fav then 1.0 else 1.5, 0.3)
+		onToggle()
+	end)
+	return heartBtn
+end
+
 function MetaUI.hover(b: GuiButton, scale: number?)
 	local to = scale or Config.MetaTileHoverScale
 	local function sc(): UIScale
@@ -249,6 +275,55 @@ end
 -- The detail well's equipped check. Round 18c: the side panel carries no check (the grid tile does); kept as a
 -- no-op so the tabs' calls stay put.
 function MetaUI.wellCheck(_well: GuiObject, _pop: boolean?) end
+
+-- Round 24af: where a thing comes from when Gold can't buy it: a badge in the art box's top-right corner, the
+-- source's icon over a small caps tag in the source's colour (CRATE / EVENT / BUNDLE / VIP / PASS).
+local SOURCE_ICONS =
+	{ Crate = "crate", Event = "event", Bundle = "gift", VIP = "vip", Pass = "event", Mastery = "power" }
+local SOURCE_TAGS =
+	{ Crate = "CRATE", Event = "EVENT", Bundle = "BUNDLE", VIP = "VIP", Pass = "PASS", Mastery = "MASTERY" }
+function MetaUI.wellSource(well: GuiObject, saleType: string?): Frame?
+	if not saleType or saleType == "Direct" then
+		return nil
+	end
+	local S = UI.S
+	local color = MetaUI.SourceColors[saleType] or Theme.Colors.grey
+	local badge = UI.frame({
+		Name = "SourceBadge",
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.15,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(8), 0, S(8)),
+		Size = UDim2.fromOffset(S(52), S(54)),
+		ZIndex = 6,
+		Parent = well,
+	})
+	UI.corner(badge, S(4))
+	UI.stroke(badge, color, S(1.5), 0.1)
+	local holder = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, S(4)),
+		Size = UDim2.fromOffset(S(30), S(30)),
+		ZIndex = 7,
+		Parent = badge,
+	})
+	Icons.fit(holder, SOURCE_ICONS[saleType] or "event", 0.95, color, Theme.Colors.bg)
+	local tag = UI.text({
+		Text = SOURCE_TAGS[saleType] or string.upper(saleType),
+		FontFace = Theme.Fonts.display,
+		TextScaled = true,
+		TextColor3 = color,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -S(3)),
+		Size = UDim2.new(1, -S(6), 0, S(14)),
+		ZIndex = 7,
+		Parent = badge,
+	})
+	tag:SetAttribute("FixedTextSize", true)
+	UI.new("UITextSizeConstraint", { MaxTextSize = S(12), Parent = tag })
+	return badge
+end
 
 -- Deep links for an unowned item that is not Gold-priced: VIEW CRATE / VIEW BUNDLE / VIEW PASS / VIEW VIP (EVENT ONLY
 -- stays disabled). `kind` is the Rewards kind (weapon | mask | wrap | emote | class).
@@ -1038,6 +1113,93 @@ function MetaUI.pills(
 			end)
 			MetaUI.hover(b, 1.04)
 		end
+	end
+	return row
+end
+
+-- Round 24x: filter tiles with an icon (a 3D gun, or a glyph) over a small label. Every tile takes an equal share of
+-- the row, so any number of categories fits without scrolling and they all read the same size.
+-- entries: { id, name, weaponId? } (no weaponId: the "all" grid glyph).
+function MetaUI.iconPills(
+	parent: Instance,
+	entries: { { id: string, name: string, weaponId: string?, glyph: string? } },
+	selected: string,
+	onPick: (string) -> (),
+	height: number
+): Frame
+	local S = UI.S
+	local n = #entries
+	local gap = S(6)
+	local row = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, height),
+		Parent = parent,
+	})
+	UI.list(row, Enum.FillDirection.Horizontal, gap)
+	for i, e in entries do
+		local on = e.id == selected
+		local b = UI.button({
+			Name = e.id,
+			Text = "",
+			BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,
+			Size = UDim2.new(1 / n, -gap * (n - 1) / n, 1, 0),
+			LayoutOrder = i,
+			Parent = row,
+		})
+		UI.corner(b, S(4))
+		if on then
+			UI.stroke(b, Theme.Colors.white, S(1.5), 0.5)
+		end
+		local labelH = math.floor(height * 0.26)
+		local iconArea = UI.frame({
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(0, S(2)),
+			Size = UDim2.new(1, 0, 1, -labelH - S(2)),
+			Parent = b,
+		})
+		if e.glyph then
+			Icons.fit(iconArea, e.glyph, 0.7, Theme.Colors.red, Theme.Colors.white)
+		elseif e.weaponId then
+			local vp =
+				ModelIcon.weapon(iconArea, e.weaponId, UDim2.fromScale(1, 1), { motion = "hover", hoverTarget = b })
+			vp.BackgroundTransparency = 1
+		else
+			-- ALL: a 2x2 grid of squares.
+			local sq = math.floor((height - labelH) * 0.24)
+			local grid = UI.frame({
+				BackgroundTransparency = 1,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(sq * 2 + S(4), sq * 2 + S(4)),
+				Parent = iconArea,
+			})
+			for k = 0, 3 do
+				local c = UI.frame({
+					BackgroundColor3 = Theme.Colors.white,
+					Position = UDim2.fromOffset((k % 2) * (sq + S(4)), math.floor(k / 2) * (sq + S(4))),
+					Size = UDim2.fromOffset(sq, sq),
+					Parent = grid,
+				})
+				UI.corner(c, S(2))
+			end
+		end
+		local label = UI.text({
+			Text = e.name,
+			FontFace = Theme.Fonts.display,
+			TextScaled = true,
+			TextColor3 = Theme.Colors.white,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(3)),
+			Size = UDim2.new(1, -S(6), 0, labelH),
+			Parent = b,
+		})
+		label:SetAttribute("FixedTextSize", true)
+		UI.new("UITextSizeConstraint", { MaxTextSize = S(13), MinTextSize = 6, Parent = label })
+		b.Activated:Connect(function()
+			UI.punch(b, 0.94, 0.15)
+			onPick(e.id)
+		end)
+		MetaUI.hover(b, 1.04)
 	end
 	return row
 end

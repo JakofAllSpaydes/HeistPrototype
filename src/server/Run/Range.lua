@@ -75,7 +75,7 @@ local function enter(player: Player)
 	end
 	-- The run start's record: the starter at Common at its Armory level, a full mag.
 	state.held = PlayerState.starterHeld(state)
-	state.offhand = nil -- Round 21: one gun in, the second slot empty, as at a run start
+	state.offhand = PlayerState.starterOffhand(state) -- Round 24z: both starters, as at a run start
 	state.activeSlot = 1
 	PlayerState.refreshHeldVisual(state)
 	PlayerState.applyCharacterStats(state) -- run walk speed inside (the hub's is HubWalkSpeedMult)

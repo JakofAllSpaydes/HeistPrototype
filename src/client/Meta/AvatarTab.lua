@@ -16,6 +16,7 @@ local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local MetaUI = require(script.Parent:WaitForChild("MetaUI"))
+local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 
 local AvatarTab = {}
 
@@ -44,7 +45,90 @@ local CATEGORIES = {
 
 local SLOT_COLORS = { SQUAD = Color3.fromHex("3FA873"), MVP = Color3.fromHex("E8B64C") }
 
+-- Round 24aa: favourites (hearts on the tiles, saved to the profile as "mask:<id>" / "emote:<id>"), sorted first
+-- (highest rarity first; the rest lowest first), and a FAV toggle that shows only the current category's favourites.
+local favOnly = false
+local favLocal: { [string]: boolean } = {}
+local function isFav(profile: any, key: string): boolean
+	local v = favLocal[key]
+	if v ~= nil then
+		return v
+	end
+	return profile ~= nil and profile.favorites ~= nil and profile.favorites[key] == true
+end
+local function toggleFav(scene: any, profile: any, kind: string, id: string)
+	local key = kind .. ":" .. id
+	favLocal[key] = not isFav(profile, key)
+	task.spawn(function()
+		local r = scene.request("toggleFavorite", { kind = kind, id = id })
+		if not (r and r.ok) then
+			favLocal[key] = nil
+			scene.refresh()
+		end
+	end)
+	scene.refresh()
+end
+-- Favourites first (highest rarity first), then the rest lowest rarity first; name breaks ties.
+local function favSort(profile: any, kind: string, list: { any })
+	table.sort(list, function(a, b)
+		local fa, fb = isFav(profile, kind .. ":" .. a.id), isFav(profile, kind .. ":" .. b.id)
+		if fa ~= fb then
+			return fa
+		end
+		if a.rarity ~= b.rarity then
+			return if fa then a.rarity > b.rarity else a.rarity < b.rarity
+		end
+		return a.name < b.name
+	end)
+end
+local function favFilter(profile: any, kind: string, list: { any }): { any }
+	if not favOnly then
+		return list
+	end
+	local out = {}
+	for _, e in list do
+		if isFav(profile, kind .. ":" .. e.id) then
+			table.insert(out, e)
+		end
+	end
+	return out
+end
+
 local function pills(scene: any, panel: Frame)
+	-- The FAV toggle sits right of the category pills: a heart, red and lit when on.
+	local S = UI.S
+	local favBtn = UI.button({
+		Name = "FavToggle",
+		Text = "",
+		BackgroundColor3 = if favOnly then Theme.Colors.red else Theme.Colors.panel,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromOffset(S(72), S(34)),
+		Parent = panel,
+	})
+	UI.corner(favBtn, S(4))
+	local heartHolder = UI.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(S(6), S(5)),
+		Size = UDim2.fromOffset(S(24), S(24)),
+		Parent = favBtn,
+	})
+	Icons.fit(heartHolder, "heart", 0.9, if favOnly then Theme.Colors.white else Theme.Colors.red, Theme.Colors.white)
+	UI.text({
+		Text = "FAV",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(14),
+		TextColor3 = Theme.Colors.white,
+		Position = UDim2.fromOffset(S(32), 0),
+		Size = UDim2.new(1, -S(36), 1, 0),
+		Parent = favBtn,
+	})
+	favBtn.Activated:Connect(function()
+		favOnly = not favOnly
+		UI.punch(favBtn, 0.94, 0.15)
+		UI.sound(Theme.Sounds.toast, if favOnly then 1.5 else 1.1, 0.3)
+		scene.refresh()
+	end)
 	MetaUI.pills(panel, CATEGORIES, category, function(id)
 		if id ~= category then
 			category = id
@@ -83,6 +167,9 @@ local function renderMasks(scene: any, panel: Frame)
 		local own = profile ~= nil and profile.masks.owned[m.id] == true
 		table.insert(if own then ownedList else unownedList, m)
 	end
+	ownedList, unownedList = favFilter(profile, "mask", ownedList), favFilter(profile, "mask", unownedList)
+	favSort(profile, "mask", ownedList)
+	favSort(profile, "mask", unownedList)
 	local function tilesFor(list: { Masks.Mask }, header: string, order: number)
 		MetaUI.header(grid, order, header, #list)
 		if #list == 0 then
@@ -107,6 +194,9 @@ local function renderMasks(scene: any, panel: Frame)
 				source = if not own then m.saleType else nil,
 				pop = if isEq and equipPopFor(m.id) then "equip" elseif popSelect == m.id then "select" else nil,
 			})
+			MetaUI.favHeart(b, isFav(profile, "mask:" .. m.id), function()
+				toggleFav(scene, profile, "mask", m.id)
+			end)
 			b.Activated:Connect(function()
 				if selectedMask ~= m.id then
 					popSelect = m.id
@@ -125,6 +215,7 @@ local function renderMasks(scene: any, panel: Frame)
 		MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color), { id = mask.id })
 	local well = ic.Parent :: Frame
 	MetaUI.rarityChip(well, mask.rarity)
+	MetaUI.wellSource(well, mask.saleType) -- Round 24af
 	if equipped == mask.id then
 		MetaUI.wellCheck(well, equipPopFor(mask.id))
 	end
@@ -186,6 +277,9 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 		local own = profile ~= nil and profile.emotes ~= nil and profile.emotes.owned[e.id] == true
 		table.insert(if own then ownedList else unownedList, e)
 	end
+	ownedList, unownedList = favFilter(profile, "emote", ownedList), favFilter(profile, "emote", unownedList)
+	favSort(profile, "emote", ownedList)
+	favSort(profile, "emote", unownedList)
 	local function tilesFor(list: { Emotes.Emote }, header: string, order: number)
 		MetaUI.header(grid, order, header, #list)
 		if #list == 0 then
@@ -210,6 +304,9 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 				source = if not own then e.saleType else nil,
 				pop = if isEq and equipPopFor(e.id) then "equip" elseif popSelect == e.id then "select" else nil,
 			})
+			MetaUI.favHeart(b, isFav(profile, "emote:" .. e.id), function()
+				toggleFav(scene, profile, "emote", e.id)
+			end)
 			b.Activated:Connect(function()
 				if selectedEmote[category] ~= e.id then
 					popSelect = e.id
@@ -227,6 +324,7 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 	local ic = MetaUI.well(card, 1, Rarity.color(emote.rarity), "class", initial(emote.name), color)
 	local well = ic.Parent :: Frame
 	MetaUI.rarityChip(well, emote.rarity)
+	MetaUI.wellSource(well, emote.saleType)
 	if equipped == emote.id then
 		MetaUI.wellCheck(well, equipPopFor(emote.id))
 	end

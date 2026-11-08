@@ -298,6 +298,11 @@ local function chill(model: Model, power: number)
 	end
 end
 
+-- Round 24v: the cryo sprayer chills directly (the same slow / stack-to-freeze as a CRYO proc).
+function Elements.chillOn(model: Model, power: number)
+	chill(model, power)
+end
+
 local function knockback(model: Model, power: number, dir: Vector3?, at: Vector3, owner: Player, st: Types.Computed)
 	local d = Enemy.data(model)
 	if not d then

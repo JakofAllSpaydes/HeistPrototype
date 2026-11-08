@@ -153,9 +153,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	-- Back to the wave 1 state: every door closed, the hatch shut, nothing queued.
 	CloseAllDoors = function(_player, _state, _args)
-		if CrewCall.busy() then
-			CrewCall.finish(false, true)
-		end
+		CrewCall.clearAll()
 		VaultJob.resetRun()
 		Doors.resetRun()
 	end,
@@ -352,7 +350,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			PlayerState.reset(s, if World.inRun() then Config.StartingCash else Config.HubCash)
 		end
 		BigCrate.finishAll()
-		CrewCall.finish(false, true)
+		CrewCall.clearAll()
 		WeaponRoll.clearAll()
 		Abilities.clearAll()
 		Enemy.killAll()

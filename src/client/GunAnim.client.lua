@@ -408,9 +408,24 @@ local function setMagFade(rig: Rig, f: number)
 end
 
 ------------------------------------------------------------------ effects
+-- Round 24v: an Explosive / Elemental gun (no muzzle flash, no brass).
+local function specialGun(gun: BasePart?): boolean
+	local id = gun and gun:GetAttribute("WeaponId")
+	local w = if typeof(id) == "string" then Weapons.ById[id] else nil
+	return w ~= nil and w.mode ~= nil and w.mode ~= "hitscan"
+end
+
 local function muzzleFlash(rig: Rig)
 	local gun = rig.gun
 	local att = gun and gun:FindFirstChild("Muzzle")
+	-- Round 24g: none in first person (the real gun is hidden under the camera; its flash and brass flew
+	-- through the view).
+	if ClientState.firstPerson and rig.char == Players.LocalPlayer.Character then
+		return
+	end
+	if specialGun(gun) then
+		return -- Round 24v: launchers / elemental guns have their own fx
+	end
 	if not Config.GunMuzzleFlash or not att or not att:IsA("Attachment") then
 		return
 	end
@@ -454,6 +469,12 @@ end
 local function casing(rig: Rig)
 	local gun = rig.gun
 	local att = gun and gun:FindFirstChild("Eject")
+	if ClientState.firstPerson and rig.char == Players.LocalPlayer.Character then
+		return -- Round 24g: no brass in first person
+	end
+	if specialGun(gun) then
+		return
+	end
 	if not Config.GunShellCasings or not gun or not att or not att:IsA("Attachment") then
 		return
 	end
@@ -628,8 +649,12 @@ local function step(rig: Rig, dt: number, isLocal: boolean)
 	local char = rig.char
 	local gun = char:FindFirstChild("HeldGun")
 	if gun ~= rig.gun then
+		local swapped = rig.gun ~= nil and gun ~= nil
 		releaseRig(rig)
 		bindGun(rig, if gun and gun:IsA("BasePart") then gun else nil)
+		if swapped then
+			rig.weight = 0 -- Round 24aa: a swap: the new gun comes up from the carry pose (GunPoseBlendSec)
+		end
 	end
 	local joint = rig.joint
 	local want = Config.GunAnimEnabled
@@ -639,6 +664,7 @@ local function step(rig: Rig, dt: number, isLocal: boolean)
 		and (not ClientState.inHub() or rig.char:GetAttribute("InRange") == true)
 		and rig.hum.Health > 0
 		and not actionTrackPlaying(rig)
+		and rig.char:GetAttribute("Sprinting") ~= true -- Round 24aa: sprinting lowers the gun (the run anim plays)
 	rig.weight = approach(rig.weight, if want then 1 else 0, Config.GunPoseBlendSec, dt)
 	if rig.weight <= 0 or not joint or not rig.gun then
 		releaseRig(rig)

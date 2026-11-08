@@ -227,7 +227,16 @@ local Config = {
 	-- round barely tips the body); damage past the enemy's remaining HP adds up to RagdollOverkillMax more, so a
 	-- point-blank dump on a fresh enemy flies while a pistol finishing a sliver of HP flops. Explosions use their
 	-- own outward throw from the blast center, strongest at the middle. Fire and turret ticks just tip the body.
-	RagdollForceByArchetype = { Pistol = 1, SMG = 0.8, Rifle = 1.3, Shotgun = 2.8, Sniper = 2.4, LMG = 1.5 }, -- x RagdollImpulse / RagdollLift / RagdollSpin
+	RagdollForceByArchetype = {
+		Pistol = 1,
+		SMG = 0.8,
+		Rifle = 1.3,
+		Shotgun = 2.8,
+		Sniper = 2.4,
+		LMG = 1.5,
+		Explosive = 3,
+		Elemental = 0.6,
+	}, -- x RagdollImpulse / RagdollLift / RagdollSpin
 	RagdollOverkillMax = 1.5, -- extra multiplier when the overkill damage reaches the enemy's max HP (scales up to it)
 	RagdollVariance = 0.25, -- +/- random share on every throw so no two look alike
 	RagdollBlastImpulse = 90, -- studs/s outward from an explosion (claymore, Splash upgrade kill), at the center
@@ -264,6 +273,21 @@ local Config = {
 	KillSparks = 18, -- extra burst on a kill
 	-- Damage falloff by archetype: full damage out to `start` studs, scaling down to `min` at `finish`,
 	-- flat `min` beyond. The room is 200 studs across; the spawn ring is 90 out.
+	-- Round 24v: Explosive / Elemental weapons (Weapons.lua holds each gun's own numbers; Run/SpecialFire.lua).
+	ExplosiveEdgeDmg = 0.35, -- blast damage at the rim (full in the inner 60% of the radius)
+	ProjectileMaxLife = 6, -- seconds before an unlanded projectile blows anyway
+	LobMaxTargetStuds = 260, -- Round 24aa: lobbed rounds aim at the crosshair point when it is this close
+	GrenadeRollKeep = 0.75, -- horizontal speed kept per touch while a landed round rolls
+	ClusterScatter = 14, -- studs/s the bomblets fly out sideways...
+	ClusterScatterUp = 16, -- ...and up
+	StreamMaxTargets = 6, -- enemies one flame / frost tick can hit
+	StreamFalloff = 0.4, -- a stream does this much less at the end of its range
+	FlameBurnDpsMult = 0.5, -- the flamethrower's burn: this x the gun's damage per second per stack...
+	FlameBurnSec = 2.5, -- ...for this long
+	CryoSprayPower = 0.6, -- the cryo sprayer's chill per tick (a CRYO proc's power; stacks to a freeze)
+	PlasmaChargeColor = "5BFF9A",
+	PlasmaBeamHitPad = 0.35, -- studs added to half the beam width (Round 24ag: the beam now tests real body parts, not the root)
+	PlasmaBeamFadeSec = 0.35, -- the beam's fade on screen
 	FalloffByArchetype = {
 		Pistol = { start = 40, finish = 90, min = 0.55 },
 		SMG = { start = 30, finish = 70, min = 0.4 },
@@ -278,32 +302,121 @@ local Config = {
 	PlayerWalkSpeed = 16,
 	PlayerHPRegenPerSec = 1, -- base regen, scaled by the HP Regen upgrade
 	MouseSensitivity = 0.0022, -- radians per mouse pixel
-	TouchSensitivity = 0.006, -- radians per touch pixel
+	TouchSensitivity = 0.009, -- radians per touch pixel (Round 24b: up from 0.006)
 	TouchCameraStartX = 0.4, -- Round 24: a touch that begins right of this share of the screen width turns the camera (left = thumbstick)
 	-- Round 24 aim assist (touch / gamepad). The enemy nearest the crosshair inside the cone pulls the camera to its
 	-- torso; hold the crosshair above AimAssistHeadBias of the way from torso to head (on screen) and it pulls to the head.
 	AimAssistEnabled = true,
-	AimAssistMouse = false, -- true: mouse aim gets it too (off: a mouse player aims on their own)
+	AimAssistMouse = false, -- true: mouse aim gets the FULL touch / gamepad assist...
+	AimAssistMouseScale = 0.15, -- ...otherwise a faint one (Round 24aa): this share of the pull and the stickiness (0 = off)
+	AimAssistMouseCone = 0.6, -- and this share of the cone
 	AimAssistConeDeg = 11, -- hip fire: enemies within this many degrees of the crosshair pull
 	AimAssistAdsConeDeg = 15, -- ADS: a wider cone
 	AimAssistRange = 180, -- studs
-	AimAssistPull = 7, -- how fast the camera closes on the target (per second; higher = stronger)
+	AimAssistPull = 6, -- how fast the camera closes on the target (per second; higher = stronger)
 	AimAssistAdsPull = 10,
 	AimAssistFiringMult = 1.4, -- pull multiplier while shooting
 	AimAssistHeadBias = 0.55, -- 0 = torso centre, 1 = head centre: crosshair above this switches the pull to the head
 	AimAssistFrictionDeg = 5, -- inside this cone look input slows down...
-	AimAssistFriction = 0.5, -- ...to this share of normal sensitivity on the target's centre
+	AimAssistFriction = 0.6, -- ...to this share of normal sensitivity on the target's centre (Round 24g: was 0.5)
+	AimAssistPullAwayMult = 0.15, -- Round 24g: look input moving off the target keeps only this share of the pull (and no friction)...
+	AimAssistReleaseSec = 0.25, -- ...for this long after the last pull-away input
 	-- Round 24 mobile: every HUD button (combat + hub) is scaled by this on phones / tablets.
 	MobileButtonScale = 1.3,
+	MobileStoreTextScale = 1.2, -- Round 24d: premium shop labels on mobile read this much bigger
+	MobileFireRight = 200, -- FIRE's right edge this far (UI px) from the screen's right edge (clear of jump)
+	MobileFireUp = 110, -- FIRE's bottom edge this far above the screen's bottom (Round 24b: was 36)
 	-- Cursor unlocked (Ctrl / Alt): the camera stays put and the character turns to face the cursor's
 	-- world point, so you can aim all the way around. Shots go where the cursor is.
+	-- Round 24aa PROTOTYPE: sprint (PC, Shift while moving). The gun goes away: no fire, no ADS.
+	SprintEnabled = true,
+	SprintSpeedMult = 2,
 	CameraFov = 70,
+	CameraCenterRate = 8, -- Round 24aa: how fast the camera slides to centre when the cursor unlocks (and back)
 	FireFovKick = 2.5, -- degrees of FOV punch per shot
 	-- Zoom: scroll wheel / pinch changes the camera distance (studs behind the head).
 	CameraZoomDefault = 8,
 	CameraZoomMax = 16, -- outer limit
 	CameraZoomStep = 1.5, -- studs per scroll-wheel tick
 	CameraFirstPersonBelow = 2, -- zooming under this snaps to first person (character hidden locally)
+	-- Round 24b/c first person: the body hides, a steady eye, and a camera-locked viewmodel (FirstPersonView).
+	FirstPersonBobKeep = 0.2, -- share of the head's walk bob the view keeps (0 = rock steady, 1 = the raw head)
+	FirstPersonSteadyRate = 6, -- how fast the steady eye follows the head's offset (crouch, downed, lean)
+	-- Round 24r optics in first person: magnified zoom (FOV multipliers while aimed; plain ADS is AdsFovMult) and
+	-- the sniper scope's HUD ring: a dark (not black) surround outside a circle ScopeRingPct of the screen height.
+	ScopeFovMult = 0.28,
+	AcogFovMult = 0.55,
+	MediumScopeFovMult = 0.42, -- Round 24u: the mid scope (Mosin, SVD, FAL): between the ACOG and the sniper glass
+	ScopeRingPct = 0.86,
+	ScopeSurroundAlpha = 0.45, -- how dark the surround gets (0 = none, 1 = black)
+	FirstPersonDrawSec = 0.32, -- Round 24aa: a swapped-in gun rises into view over this long
+	FirstPersonGunScale = 0.5, -- Round 24e: the viewmodel gun's size vs the held gun (1 filled half the screen)
+	FirstPersonHipGrip = Vector3.new(0.36, -0.52, -0.95), -- hip fire: the gun's grip in camera space (right, up, -forward); Round 24q: up -0.4 -> -0.52
+	FirstPersonConverge = 40, -- Round 24p: hip fire: the barrel points at the crosshair line this many studs out
+	FirstPersonBareAdsGrip = Vector3.new(0.2, -0.5, -0.85), -- Round 24aa: aiming a gun with no sights: its grip here (low, near the centre)
+	FirstPersonHipTilt = Vector2.new(0, 0), -- hip fire: extra degrees pitch / yaw on top of that
+	-- ADS: the rear of the sight sits this far ahead of the eye, per gun kind (Round 24g: a pistol at arm's
+	-- length, long guns with the eye just behind the rear sight)...
+	FirstPersonAdsRelief = {
+		pistol = 0.9,
+		smg = 0.28, -- Round 24aa: long guns sit a little further out so the body blocks less of the view
+		rifle = 0.3,
+		bullpup = 0.26,
+		shotgun = 0.36,
+		sniper = 0.26,
+		lmg = 0.42,
+		launcher = 0.3,
+		energy = 0.25,
+		thrown = 0.7,
+		default = 0.25,
+	},
+	FirstPersonAdsDrop = 0.0, -- ...and this far below the crosshair line
+	FirstPersonSway = 0.6, -- how much the gun trails camera turns
+	FirstPersonSwayMaxDeg = 4, -- cap on that lag
+	FirstPersonSwayReturn = 10, -- how fast it settles back (per second)
+	FirstPersonBobSpeed = 9, -- walk bob cycle speed (radians per second)
+	FirstPersonBobX = 0.025, -- walk bob side sway, studs (ADS keeps 30%)
+	FirstPersonBobY = 0.03, -- walk bob dip, studs
+	-- Round 24n: first-person recoil per gun kind: kick = studs the viewmodel shoves back, rise = degrees the
+	-- muzzle flips up about the grip (stacks up to 2 shots, eases home at FirstPersonRecoilReturn per second).
+	FirstPersonRecoil = {
+		pistol = { kick = 0.08, rise = 7 },
+		smg = { kick = 0.035, rise = 2 },
+		rifle = { kick = 0.06, rise = 3 },
+		bullpup = { kick = 0.05, rise = 2.5 },
+		shotgun = { kick = 0.16, rise = 12 },
+		sniper = { kick = 0.22, rise = 16 },
+		lmg = { kick = 0.05, rise = 2.5 },
+		launcher = { kick = 0.2, rise = 10 },
+		energy = { kick = 0.06, rise = 3 },
+		thrown = { kick = 0.1, rise = 8 },
+	},
+	FirstPersonRecoilAdsMult = 0.7, -- aimed shots kick this hard
+	FirstPersonRecoilReturn = 9, -- how fast it settles (per second)
+	-- Round 24n: the camera's own punch per shot (degrees up, every view), easing home at CameraRecoilReturn.
+	CameraRecoilDeg = {
+		pistol = 0.6,
+		smg = 0.15,
+		rifle = 0.3,
+		bullpup = 0.25,
+		shotgun = 1.6,
+		sniper = 2.4,
+		lmg = 0.2,
+		launcher = 1.8,
+		energy = 0.4,
+		thrown = 0.6,
+	},
+	CameraRecoilReturn = 7,
+	-- Round 24h first-person reload: the gun tilts about its grip, the mag drops out and a fresh one rises in.
+	FirstPersonReloadTilt = Vector3.new(12, 10, 28), -- degrees: muzzle up, yaw in, roll in at the full pose
+	FirstPersonReloadPull = Vector3.new(-0.05, -0.1, 0.08), -- studs the gun moves at the full pose (camera space)
+	FirstPersonMagDrop = 1.2, -- studs (gun space, before FirstPersonGunScale) the mag falls before it vanishes
+	FirstPersonShellBump = 0.12, -- radians the gun nods as each shell goes in
+	FirstPersonArmWidth = 0.18, -- forearm block thickness
+	FirstPersonRunSwing = 1, -- Round 24j hub (empty hands): how far the arms pump while running (0..1)
+	FirstPersonRunSwingSpeed = 9, -- their cycle speed at walk speed 16 (radians per second)
+	FirstPersonElbowR = Vector3.new(0.6, -0.95, -0.25), -- camera-space points the forearms run back to
+	FirstPersonElbowL = Vector3.new(-0.3, -1.0, -0.45),
 	CameraShoulder = Vector2.new(2.6, 1.2), -- right / up offset at CameraZoomDefault; shrinks as you zoom in
 	CameraZoomSmoothing = 12, -- higher = snappier zoom
 	-- ADS: hold RMB (tap the ADS button on mobile).
@@ -725,6 +838,22 @@ local Config = {
 			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.4, 0.6), rot = Vector3.new(2, 5, 0) },
 			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.5, 0.7), rot = Vector3.new(0, 0, 0) },
 		},
+		-- Round 24v: launchers ride the shoulder, elemental guns sit at the hip like a rifle, TNT is held out.
+		launcher = {
+			blade = 40,
+			hip = { anchor = "grip", pos = Vector3.new(0.45, 0.05, -0.2), rot = Vector3.new(0, 3, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.25, 0.55, 0.45), rot = Vector3.new(0, 0, 0) },
+		},
+		energy = {
+			blade = 40,
+			hip = { anchor = "butt", pos = Vector3.new(0.4, -0.35, 0.6), rot = Vector3.new(-2, 4, 0) },
+			ads = { anchor = "sight", pos = Vector3.new(0.2, 0.5, 0.65), rot = Vector3.new(0, 0, 0) },
+		},
+		thrown = {
+			blade = 15,
+			hip = { anchor = "grip", pos = Vector3.new(0.35, -0.2, -0.8), rot = Vector3.new(-10, 5, 0) },
+			ads = { anchor = "grip", pos = Vector3.new(0.3, 0.1, -0.85), rot = Vector3.new(-5, 0, 0) },
+		},
 	},
 	-- Recoil per kind: kick = studs the gun jumps back, rise = degrees the muzzle flips up (each shot; a spring pulls
 	-- it home). Aimed shots kick GunAdsRecoilMult as hard.
@@ -736,6 +865,9 @@ local Config = {
 		shotgun = { kick = 0.3, rise = 14 },
 		sniper = { kick = 0.35, rise = 12 },
 		lmg = { kick = 0.09, rise = 3 },
+		launcher = { kick = 0.32, rise = 9 },
+		energy = { kick = 0.04, rise = 1 },
+		thrown = { kick = 0.12, rise = 6 },
 	},
 	GunAdsRecoilMult = 0.6,
 	GunRecoilSpring = 260, -- stiffness of the return (higher = snappier)
@@ -1003,7 +1135,7 @@ local Config = {
 	GarageCloseSec = 3, -- the garage rolls back down this long after the van has gone (everyone sees it)
 	HubDoorRollSec = 1.2, -- a roll-up door's travel time
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
-	DoorSupersedesSideJob = true, -- THE BANK: a door coming due ends the running side job (quietly) and is called at once
+	DoorSupersedesSideJob = false, -- THE BANK: true = a door coming due ends the running side job (quietly) and holds the only slot; false (Round 24) = doors have their own slot and the pills stack
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
 	PremiumSetAmbient = "4A4552", -- the ambient while a premium scene (pass, store, crate room) is up (was near-black)
@@ -1125,12 +1257,29 @@ local Config = {
 	StartingGold = 10000, -- fresh profile
 	ProfileAutosaveSec = 60,
 	ProfileSaveDebounceSec = 2, -- purchases / equips within this window write once
-	UpgDmgPct = 0.05, -- weapon base damage x (1 + UpgDmgPct x level)
-	UpgMagPct = 0.05, -- mag x (1 + UpgMagPct x level)
-	UpgReloadPct = 0.05, -- reload time / (1 + UpgReloadPct x level)
-	UpgFireRatePct = 0.03, -- fire rate x (1 + UpgFireRatePct x level)
+	-- Round 24ac: Armory levels are mostly damage; the rest soft-caps so the gun keeps its archetype.
+	UpgDmgPct = 0.06, -- weapon base damage x (1 + UpgDmgPct x level) (was 0.05)
+	UpgSoftCap = { mag = 0.25, reload = 0.2, rate = 0.1 }, -- the most a level can ever add: +25% mag, reload / 1.2, +10% fire rate
+	UpgSoftScale = 15, -- the level at which ~63% of that cap is reached (LV 30: ~86%)
 	RarityUpgCostMult = 1.0, -- upgrade cost = upgBaseCost x this ^ level
 	AbilityGrowthPct = 0.1, -- default growth per ability level for every upgradeable variable (AbilityGrowth.lua)
+	-- Round 24ae: soft caps. Variables whose name ends with these grow at the usual rate at first, then level off at
+	-- base x (1 + cap): a flashbang's reach can at most double, a slow can't creep toward 100%. Damage / heal / HP / DPS
+	-- aren't listed and keep growing in a straight line.
+	AbilitySoftCapBy = {
+		Radius = 1.0, -- reach: up to 2x
+		Range = 1.0,
+		SlowPct = 0.8, -- slows: up to 1.8x (Eagle Eye 35% -> 63%, Molotov / Oil Drum 30% -> 54%)
+		Duration = 1.0, -- stuns and the like: up to 2x
+		Pct = 1.5, -- buff percentages (fire rate, reload, move, accuracy, Overclock rate): up to 2.5x
+		Pierce = 2.0,
+		DmgPct = 0, -- 0 = no cap: damage buffs (Dead Eye) keep growing like damage does
+	},
+	-- Per-ability exceptions ("<abilityId>.<variable>"): Eagle Eye is the long-range read: up to 3x (60 -> 180 studs,
+	-- most of a map but not all of it).
+	AbilitySoftCap = {
+		["eagleeye.EagleEyeRadius"] = 2.0,
+	},
 	-- Character idle in the customization scene, per equipped class (default R15 idles stand in).
 	ClassIdleAnimationId = {
 		INITIATE = "rbxassetid://507766388",

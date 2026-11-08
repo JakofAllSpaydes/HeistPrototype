@@ -11,6 +11,7 @@ local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
+local Tracer = require(Client:WaitForChild("Tracer"))
 local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rarity"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local Ground = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Ground"))
@@ -97,31 +98,6 @@ local function trail(from: Vector3, to: Vector3, color: Color3, lifetime: number
 	beam.Transparency = NumberSequence.new(0)
 	beam.Parent = a0
 	task.delay(lifetime, function()
-		a0:Destroy()
-		a1:Destroy()
-	end)
-end
-
--- Bullet line, the same look as the local one in Gun.client.lua.
-local TRACER_COLOR = Color3.fromHex("FFE2A0")
-local function tracer(from: Vector3, to: Vector3)
-	local a0 = Instance.new("Attachment")
-	a0.WorldPosition = from
-	a0.Parent = Workspace.Terrain
-	local a1 = Instance.new("Attachment")
-	a1.WorldPosition = to
-	a1.Parent = Workspace.Terrain
-	local beam = Instance.new("Beam")
-	beam.Attachment0 = a0
-	beam.Attachment1 = a1
-	beam.Width0 = 0.12
-	beam.Width1 = 0.05
-	beam.FaceCamera = true
-	beam.LightEmission = 1
-	beam.Color = ColorSequence.new(TRACER_COLOR)
-	beam.Transparency = NumberSequence.new(0.1)
-	beam.Parent = a0
-	task.delay(0.05, function()
 		a0:Destroy()
 		a1:Destroy()
 	end)
@@ -540,7 +516,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				flashEnemy(data.model)
 			end
 			if typeof(data.position) == "Vector3" then
-				sparks(data.position, TRACER_COLOR, Config.HitSparks, 18)
+				sparks(data.position, Tracer.Color, Config.HitSparks, 18)
 			end
 			UI.sound(Theme.Sounds.hit, if data.headshot then 1.4 else 1, 0.2)
 			if data.killed then
@@ -568,16 +544,17 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			-- sound at their gun. No numbers, no hitmarker: that feedback is the shooter's.
 			local p = Players:GetPlayerByUserId(tonumber(data.userId) or 0)
 			local char = p and p.Character
-			local heldGun = char and char:FindFirstChild("HeldGun")
-			local muzzleAtt = heldGun and heldGun:FindFirstChild("Muzzle")
-			local from = if muzzleAtt and muzzleAtt:IsA("Attachment")
-				then muzzleAtt.WorldPosition
-				elseif typeof(data.from) == "Vector3" then data.from
-				else nil
+			-- Round 24i: the beam starts on their muzzle attachment, so it stays on the barrel as the gun kicks.
+			local from: (Attachment | Vector3)? = Tracer.muzzleOf(char)
+				or (if typeof(data.from) == "Vector3" then data.from else nil)
 			if from and typeof(data.ends) == "table" then
 				for _, to in data.ends do
 					if typeof(to) == "Vector3" then
-						tracer(from, to)
+						Tracer.draw(
+							from :: any,
+							to,
+							if typeof(data.tracer) == "string" then Color3.fromHex(data.tracer) else nil
+						)
 					end
 				end
 			end

@@ -858,7 +858,8 @@ end
 
 -- Start the next queued door when the objective slot is free.
 function Doors.pump()
-	if not onBank() or not World.inRun() or CrewCall.busy() or #queue == 0 then
+	local blocked = CrewCall.doorBusy() or (Config.DoorSupersedesSideJob and CrewCall.busy())
+	if not onBank() or not World.inRun() or blocked or #queue == 0 then
 		return
 	end
 	local group = table.remove(queue, 1) :: string

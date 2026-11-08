@@ -27,13 +27,21 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		return UI.S(n * G)
 	end
 
+	-- Round 24b: FIRE's centre, from the bottom-right corner (Config.MobileFireRight / MobileFireUp clear its edge);
+	-- ADS sits up-left of it on the diagonal, SWAP up-right.
+	local fireSize = S(96)
+	local fcx = UI.S(Config.MobileFireRight) + fireSize / 2
+	local fcy = UI.S(Config.MobileFireUp) + fireSize / 2
+	local ring = fireSize / 2 + S(56) / 2 + UI.S(10)
+	local diag = ring * 0.7071
+
 	local fire = UI.button({
 		Name = "FireButton",
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.25,
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -UI.S(200), 1, -UI.S(36)), -- left of the jump button
-		Size = UDim2.fromOffset(S(96), S(96)),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -fcx, 1, -fcy), -- left of and above the jump button
+		Size = UDim2.fromOffset(fireSize, fireSize),
 		Text = "FIRE",
 		FontFace = Theme.Fonts.display,
 		TextSize = S(22),
@@ -75,8 +83,8 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Name = "ADSButton",
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.25,
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -UI.S(200) - S(96) - UI.S(14), 1, -UI.S(36)), -- left of FIRE, bottoms level
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -fcx - diag, 1, -fcy - diag), -- up-left of FIRE
 		Size = UDim2.fromOffset(S(56), S(56)),
 		Text = "ADS",
 		FontFace = Theme.Fonts.display,
@@ -125,8 +133,8 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Name = "SwapButton",
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.25,
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -UI.S(200) - S(20), 1, -UI.S(36) - S(96) - UI.S(14)), -- above FIRE
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -fcx + diag, 1, -fcy - diag), -- up-right of FIRE
 		Size = UDim2.fromOffset(S(56), S(56)),
 		Text = "SWAP",
 		FontFace = Theme.Fonts.display,

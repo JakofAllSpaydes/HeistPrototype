@@ -19,6 +19,7 @@ local Mastery = require(script.Parent.Mastery)
 local Pause = require(script.Parent.Pause)
 local World = require(script.Parent.World)
 local Slot = require(script.Parent.Slot)
+local SpecialFire = require(script.Parent.SpecialFire)
 
 local Combat = {}
 
@@ -261,6 +262,8 @@ end
 function Combat.init()
 	local groundLoot = Workspace:WaitForChild("GroundLoot")
 	local effects = Workspace:WaitForChild("Effects")
+	SpecialFire.init()
+	SpecialFire.deal = dealDamage -- Round 24v: Explosive / Elemental damage goes through the same path
 
 	Remotes.AmmoReport.OnServerEvent:Connect(function(player: Player, mag: any)
 		rememberMag(PlayerState.get(player), mag)
@@ -291,7 +294,7 @@ function Combat.init()
 	end)
 
 	Remotes.FireShot.OnServerEvent:Connect(
-		function(player: Player, origin: any, direction: any, _clientTime: any, mag: any)
+		function(player: Player, origin: any, direction: any, _clientTime: any, mag: any, extra: any)
 			if typeof(origin) ~= "Vector3" or typeof(direction) ~= "Vector3" then
 				return
 			end
@@ -311,7 +314,12 @@ function Combat.init()
 			local state = PlayerState.get(player)
 			-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire; nobody
 			-- fires while the run is paused.
-			if state.bledOut or (state.downed and not Config.DownedCanShoot) or Pause.active() then
+			if
+				state.bledOut
+				or (state.downed and not Config.DownedCanShoot)
+				or Pause.active()
+				or (state :: any).sprinting
+			then
 				return
 			end
 			-- Brief 8: in the hub only the training range is live.
@@ -335,6 +343,11 @@ function Combat.init()
 				procs = Elements.roll(st),
 			}
 			local dir = direction.Unit
+			-- Round 24v: Explosive / Elemental weapons (projectile, charge, stream, chain) fire through SpecialFire.
+			if weapon.mode and weapon.mode ~= "hitscan" then
+				SpecialFire.fire(shooter, head.Position, dir, extra)
+				return
+			end
 			local baseFilter: { Instance } = { char, groundLoot, effects }
 			local spread = weapon.spread * st.spreadMult * (if state.downed then Config.DownedSpreadMult else 1)
 
@@ -359,8 +372,13 @@ function Combat.init()
 			-- Teammates see the shot: the same tracer from this gun's muzzle to where each bullet stopped, and the
 			-- shot sound at the gun. The shooter already drew its own.
 			if Config.RemoteTracers then
-				local payload =
-					{ userId = player.UserId, from = head.Position, ends = ends, archetype = weapon.archetype }
+				local payload = {
+					userId = player.UserId,
+					from = head.Position,
+					ends = ends,
+					archetype = weapon.archetype,
+					tracer = weapon.tracer, -- Round 24ad: energy guns' line colour
+				}
 				for _, other in World.runAudience() do
 					if other ~= player then
 						Remotes.Juice:FireClient(other, "RemoteShot", payload)

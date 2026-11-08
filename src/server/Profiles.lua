@@ -25,6 +25,8 @@ export type Profile = {
 	gold: number,
 	weapons: { [string]: WeaponEntry }, -- presence = owned
 	starterWeaponId: string,
+	starterWeaponId2: string?, -- Round 24z: the second starter (the run's second gun slot); nil = empty
+	favorites: { [string]: boolean }, -- Round 24y: weapon ids the player hearted (the Weapons tab sorts them first)
 	classes: { owned: { [string]: boolean }, equipped: string },
 	abilities: { [string]: number }, -- ability id -> level
 	masks: { owned: { [string]: boolean }, equipped: string },
@@ -148,6 +150,7 @@ function Profiles.fresh(): Profile
 			return owned
 		end)(),
 		starterWeaponId = Weapons.Starter,
+		favorites = {},
 		classes = { owned = { [Classes.Default] = true }, equipped = Classes.Default },
 		abilities = {},
 		masks = { owned = { [Masks.Default] = true }, equipped = Masks.Default },
@@ -246,6 +249,13 @@ local function migrate(raw: any): Profile
 		end
 	end
 
+	if
+		typeof(raw.starterWeaponId2) == "string"
+		and p.weapons[raw.starterWeaponId2]
+		and raw.starterWeaponId2 ~= raw.starterWeaponId
+	then
+		p.starterWeaponId2 = raw.starterWeaponId2
+	end
 	if typeof(raw.starterWeaponId) == "string" and p.weapons[raw.starterWeaponId] then
 		p.starterWeaponId = raw.starterWeaponId
 	elseif not p.weapons[p.starterWeaponId] then
@@ -295,6 +305,13 @@ local function migrate(raw: any): Profile
 		end
 		if typeof(raw.emotes.mvp) == "string" and p.emotes.owned[raw.emotes.mvp] then
 			p.emotes.mvp = raw.emotes.mvp
+		end
+	end
+	if typeof(raw.favorites) == "table" then
+		for id, v in raw.favorites do
+			if v == true and typeof(id) == "string" then
+				p.favorites[id] = true
+			end
 		end
 	end
 	if typeof(raw.wraps) == "table" and typeof(raw.wraps.owned) == "table" then

@@ -7,6 +7,26 @@ local UserInputService = game:GetService("UserInputService")
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 
+-- Round 24d: phones and tablets stay in landscape (either way up), never portrait.
+do
+	local Players = game:GetService("Players")
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
+	-- Round 24m: also baked into the place (default.project.json StarterGui), and re-asserted whenever anything
+	-- (a respawn, a core script) puts it back.
+	local LANDSCAPE = Enum.ScreenOrientation.LandscapeSensor
+	local function force()
+		if playerGui.ScreenOrientation ~= LANDSCAPE then
+			playerGui.ScreenOrientation = LANDSCAPE
+		end
+	end
+	StarterGui.ScreenOrientation = LANDSCAPE
+	force()
+	playerGui:GetPropertyChangedSignal("ScreenOrientation"):Connect(force)
+	Players.LocalPlayer.CharacterAdded:Connect(function()
+		task.defer(force)
+	end)
+end
+
 -- Our own health bar and no backpack. (The core player list follows hub / run below.)
 task.spawn(function()
 	for _ = 1, 10 do

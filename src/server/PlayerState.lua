@@ -252,6 +252,19 @@ function PlayerState.starterHeld(state: State): Types.Held
 	return held
 end
 
+-- Round 24z: the second starter (the profile's slot 2), or nil when the slot is empty.
+function PlayerState.starterOffhand(state: State): Types.Held?
+	local p = state.profile
+	local id = p and p.starterWeaponId2
+	if typeof(id) ~= "string" or not Weapons.ById[id] or id == (p and p.starterWeaponId) then
+		return nil
+	end
+	local held =
+		{ weaponId = id, rarity = Rarity.Common, level = PlayerState.weaponLevel(state, id), uid = state.nextUid }
+	state.nextUid += 1
+	return held
+end
+
 -- Owned weapon ids, in Weapons.List order (the roll pool).
 function PlayerState.ownedWeapons(state: State): { Weapons.Weapon }
 	local out = {}
@@ -449,7 +462,9 @@ function PlayerState.applyCharacterStats(state: State)
 	end
 	-- Brief 8: the warehouse is big; the hub (outside the range) walks at HubWalkSpeedMult.
 	local hubMult = if Runs.slotOf(state.player).isHub and not state.inRange then Config.HubWalkSpeedMult else 1
-	hum.WalkSpeed = if state.downed then Config.DownedWalkSpeed else st.moveSpeed * hubMult
+	-- Round 24aa prototype: sprinting (Shift) puts the gun away and runs SprintSpeedMult faster.
+	local sprintMult = if (state :: any).sprinting then Config.SprintSpeedMult else 1
+	hum.WalkSpeed = if state.downed then Config.DownedWalkSpeed else st.moveSpeed * hubMult * sprintMult
 end
 
 -- Installed by Hub: where a freshly loaded character goes (nil = the SpawnLocation).
@@ -459,7 +474,7 @@ PlayerState.spawnCFrame = nil :: ((Player) -> CFrame?)?
 function PlayerState.applyProfile(state: State)
 	state.profile = Profiles.get(state.player)
 	state.held = PlayerState.starterHeld(state)
-	state.offhand = nil
+	state.offhand = PlayerState.starterOffhand(state)
 	state.activeSlot = 1
 	state.stowed = nil
 	PlayerState.applyMask(state)
@@ -475,6 +490,7 @@ function PlayerState.reset(state: State, cash: number?)
 	state.profile = Profiles.get(state.player)
 	state.cash = cash or Config.StartingCash
 	state.held = PlayerState.starterHeld(state)
+	state.offhand = PlayerState.starterOffhand(state) -- Round 24z: both starters go in
 	local char = state.player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if hum then

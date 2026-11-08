@@ -43,6 +43,7 @@ local Markers = {}
 
 local player = Players.LocalPlayer
 local markers: { [string]: Marker } = {}
+local jobMarkerId: any = nil -- the side job call the "job" marker belongs to
 
 local function fmtTime(seconds: number): string
 	local s = math.max(0, math.ceil(seconds))
@@ -426,6 +427,7 @@ function Markers.init()
 			-- The door's own beacons turn blue (DoorState); no separate job marker.
 			return
 		elseif name == "CallStart" and typeof(data.position) == "Vector3" then
+			jobMarkerId = data.id -- Round 24: a door call ending must not take the side job's beacon with it
 			local capture = data.jobKind == "capture"
 			local vault = data.jobKind == "vault"
 			Markers.add(
@@ -475,7 +477,8 @@ function Markers.init()
 			else
 				Markers.setSub("job", Lines.capture.markerHint, nil, flipped)
 			end
-		elseif name == "CallEnd" or name == "CallCleared" then
+		elseif (name == "CallEnd" or name == "CallCleared") and (data.id == jobMarkerId or jobMarkerId == nil) then
+			jobMarkerId = nil
 			Markers.remove("job")
 		elseif name == "BagSpawned" and typeof(data.position) == "Vector3" then
 			-- Bag beacons read through walls: kind and value; a $ / ◆ badge far away. No key hint: walking up
@@ -542,7 +545,13 @@ function Markers.init()
 		acc += dt
 		pulse += dt * 6
 		-- The vault diamond turns every frame; the rest refreshes ten times a second.
+		-- Round 24: cutscenes (run start / end, the boss) show no world markers.
+		local hide = ClientState.cameraMode == "cinematic"
 		for _, m in markers do
+			local bb = m.att:FindFirstChildOfClass("BillboardGui")
+			if bb and bb.Enabled == hide then
+				bb.Enabled = not hide
+			end
 			local dm = m.diamond
 			if dm then
 				dm.Rotation = (dm.Rotation + dt * 120) % 360

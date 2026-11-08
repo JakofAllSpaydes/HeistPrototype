@@ -28,9 +28,33 @@ local CARD_H = 112
 local PILL_H = 38
 local SLIDE = 420 -- px (pre-scale) the box travels when sliding in from / out to the right edge
 
--- One box at a time. { data, box, inner, timerLabel, stroke, token }
-local active: any = nil
+-- Round 24: one box per slot, stacked in the top-right column: "door" (a door objective, top), "job" (the side
+-- job), "vault" (the open vault's pill), "line" (a crew line with no job). Each { data, box, inner, timerLabel,
+-- stroke, token }. A door no longer ends the side job, so both pills run at once.
+local slots: { [string]: any } = {}
 local callToken = 0
+local SLOT_ORDER = { door = 0, job = 1, vault = 1, line = 1 }
+
+local function slotKey(data: any): string
+	if data.id == "vault" then
+		return "vault"
+	elseif data.id == "line" then
+		return "line"
+	elseif data.jobKind == "door" then
+		return "door"
+	end
+	return "job"
+end
+
+-- The slot showing call `id`, if any.
+local function slotOf(id: any): string?
+	for key, call in slots do
+		if call.data and call.data.id == id then
+			return key
+		end
+	end
+	return nil
+end
 
 local function centerSlot()
 	return HUD.get("callSlot")
@@ -45,15 +69,16 @@ local function fmtTime(seconds: number): string
 	return string.format("%d:%02d", s // 60, s % 60)
 end
 
-local function destroyActive()
-	if active and active.box then
-		active.box:Destroy()
+local function destroySlot(key: string)
+	local call = slots[key]
+	if call and call.box then
+		call.box:Destroy()
 	end
-	active = nil
+	slots[key] = nil
 end
 
 -- The outer box clips; `inner` is what slides. Content frames are parented to inner.
-local function buildBox(height: number): (Frame, Frame)
+local function buildBox(height: number, order: number?): (Frame, Frame)
 	local S = UI.S
 	local h = home()
 	local box = UI.frame({
@@ -69,11 +94,11 @@ local function buildBox(height: number): (Frame, Frame)
 		Position = UDim2.fromOffset(0, 0),
 		Parent = box,
 	})
-	h.add(box, 1)
+	h.add(box, order or 1)
 	return box, inner
 end
 
-local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStroke)
+local function buildPill(parent: Instance, data: any, progress: number?): (Frame, TextLabel, UIStroke)
 	local S = UI.S
 	local color = KIND_COLORS[data.kind] or Theme.Colors.blue
 	local pill = UI.frame({
@@ -143,7 +168,7 @@ local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStro
 		local fill = UI.frame({
 			Name = "Fill",
 			BackgroundColor3 = Theme.Colors.cash,
-			Size = UDim2.fromScale(active and active.progress or 0, 1),
+			Size = UDim2.fromScale(progress or 0, 1),
 			ZIndex = 3,
 			Parent = bar,
 		})
@@ -152,11 +177,11 @@ local function buildPill(parent: Instance, data: any): (Frame, TextLabel, UIStro
 	return pill, timer, stroke
 end
 
-local function setPillProgress(progress: number, inside: boolean)
-	if not active or not active.box then
+local function setPillProgress(call: any, progress: number, inside: boolean)
+	if not call or not call.box then
 		return
 	end
-	local bar = active.box:FindFirstChild("Progress", true)
+	local bar = call.box:FindFirstChild("Progress", true)
 	local fill = bar and bar:FindFirstChild("Fill")
 	if fill and fill:IsA("Frame") then
 		fill.Size = UDim2.fromScale(math.clamp(progress, 0, 1), 1)
@@ -380,10 +405,11 @@ local function resizeBox(box: Frame, height: number): Tween
 end
 
 local function onCallStart(data: any)
-	destroyActive()
+	local key = slotKey(data)
+	destroySlot(key)
 	callToken += 1
 	local token = callToken
-	local box, inner = buildBox(CARD_H)
+	local box, inner = buildBox(CARD_H, SLOT_ORDER[key])
 	local card, timer, stroke = buildCard(inner, {
 		kind = data.kind,
 		crewLead = data.crewLead,
@@ -393,7 +419,7 @@ local function onCallStart(data: any)
 		showTimer = true,
 		duration = data.duration,
 	})
-	active = {
+	local call = {
 		data = data,
 		box = box,
 		inner = inner,
@@ -403,15 +429,16 @@ local function onCallStart(data: any)
 		progress = 0,
 		lastTick = 0,
 	}
+	slots[key] = call
 	slideIn(inner)
 	UI.sound(Theme.Sounds.call, 1, 0.6)
 
 	task.delay(Config.CallHoldSec, function()
-		if not active or active.token ~= token then
+		if slots[key] ~= call then
 			return
 		end
 		-- Collapse in place: shrink the box to pill height while the pill takes over.
-		local pill, pillTimer, pillStroke = buildPill(inner, data)
+		local pill, pillTimer, pillStroke = buildPill(inner, data, call.progress)
 		pill.BackgroundTransparency = 1
 		pill.ZIndex = 2
 		UI.tween(card, { BackgroundTransparency = 1 }, 0.15)
@@ -427,21 +454,22 @@ local function onCallStart(data: any)
 		UI.tween(pill, { BackgroundTransparency = 0 }, 0.2, nil, nil, 0.1)
 		local shrink = resizeBox(box, PILL_H)
 		shrink.Completed:Wait()
-		if not active or active.token ~= token then
+		if slots[key] ~= call then
 			return
 		end
 		card:Destroy()
 		UI.punch(pill, 1.1, 0.3)
-		active.timerLabel = pillTimer
-		active.stroke = pillStroke
+		call.timerLabel = pillTimer
+		call.stroke = pillStroke
 	end)
 end
 
 -- Half-time reminder: the pill expands back into a card with the nudge, then collapses again. The capture
 -- progress and the timer carry over.
 local function onCallReminder(data: any)
-	local call = active
-	if not call or not call.data or call.data.id ~= data.id then
+	local key = slotOf(data.id)
+	local call = key and slots[key]
+	if not call then
 		return
 	end
 	local progress = call.progress or 0
@@ -449,28 +477,31 @@ local function onCallReminder(data: any)
 	d.text = data.text or d.text
 	d.typeLabel = data.title or d.typeLabel
 	onCallStart(d)
-	if active then
-		active.progress = progress
-		active.wasInside = call.wasInside
+	local now = slots[slotKey(d)]
+	if now then
+		now.progress = progress
+		now.wasInside = call.wasInside
 	end
 	centerSlot().toast(tostring(data.title or "STILL OPEN"), Theme.Colors.amber, 1.2)
 end
 
 -- Result: expand from the pill into a "nice work" / "too slow" card, hold, slide out. Toast in the center.
 local function onCallEnd(data: any)
+	local key = slotOf(data.id) or slotKey(data)
 	callToken += 1
 	local token = callToken
 	local color = if data.success then Theme.Colors.cash else Theme.Colors.red
 	local box: Frame
 	local inner: Frame
-	if active and active.box and active.box.Parent then
-		box = active.box
-		inner = active.inner
+	local old = slots[key]
+	if old and old.box and old.box.Parent and old.data and old.data.id == data.id then
+		box = old.box
+		inner = old.inner
 		for _, c in inner:GetChildren() do
 			c:Destroy()
 		end
 	else
-		box, inner = buildBox(PILL_H)
+		box, inner = buildBox(PILL_H, SLOT_ORDER[key])
 		slideIn(inner)
 	end
 	-- Round 16: a success is the completer's card (their headshot, name, their own line), not MARLOW's.
@@ -496,7 +527,8 @@ local function onCallEnd(data: any)
 		showTimer = false,
 		portraitImage = portraitImage,
 	})
-	active = { data = data, box = box, inner = inner, timerLabel = nil, stroke = nil, token = token }
+	local call = { data = data, box = box, inner = inner, timerLabel = nil, stroke = nil, token = token }
+	slots[key] = call
 	resizeBox(box, CARD_H)
 	UI.sound(if data.success then Theme.Sounds.legendary else Theme.Sounds.deny, if data.success then 1.1 else 0.8, 0.6)
 	if data.success then
@@ -513,8 +545,8 @@ local function onCallEnd(data: any)
 		end
 		local out = slideOut(inner)
 		out.Completed:Wait()
-		if active and active.token == token then
-			destroyActive()
+		if slots[key] == call then
+			destroySlot(key)
 		else
 			box:Destroy()
 		end
@@ -523,10 +555,10 @@ end
 
 -- A line with no job behind it (MARLOW's boss call): the card slides in, holds, slides out.
 local function onCrewLine(data: any)
-	destroyActive()
+	destroySlot("line")
 	callToken += 1
 	local token = callToken
-	local box, inner = buildBox(CARD_H)
+	local box, inner = buildBox(CARD_H, SLOT_ORDER.line)
 	buildCard(inner, {
 		kind = tostring(data.kind or "door"),
 		crewLead = tostring(data.crewLead or Lines.job.crewLead),
@@ -535,42 +567,43 @@ local function onCrewLine(data: any)
 		rewardLine = "",
 		showTimer = false,
 	})
-	active = { data = { id = "line" }, box = box, inner = inner, timerLabel = nil, stroke = nil, token = token }
+	local call = { data = { id = "line" }, box = box, inner = inner, timerLabel = nil, stroke = nil, token = token }
+	slots.line = call
 	slideIn(inner)
 	UI.sound(Theme.Sounds.call, 0.9, 0.6)
 	task.delay(tonumber(data.hold) or Config.CallHoldSec, function()
-		if not active or active.token ~= token or not box.Parent then
+		if slots.line ~= call or not box.Parent then
 			return
 		end
 		local out = slideOut(inner)
 		out.Completed:Wait()
-		if active and active.token == token then
-			destroyActive()
+		if slots.line == call then
+			destroySlot("line")
 		end
 	end)
 end
 
 -- A pill with no card first (the open vault's VAULT · 0:60 timer).
 local function showPill(data: any)
-	destroyActive()
+	local key = slotKey(data)
+	destroySlot(key)
 	callToken += 1
-	local box, inner = buildBox(PILL_H)
+	local box, inner = buildBox(PILL_H, SLOT_ORDER[key])
 	local pill, timer, stroke = buildPill(inner, data)
-	active = { data = data, box = box, inner = inner, timerLabel = timer, stroke = stroke, token = callToken }
+	slots[key] = { data = data, box = box, inner = inner, timerLabel = timer, stroke = stroke, token = callToken }
 	slideIn(inner)
 	UI.punch(pill, 1.1, 0.3)
 end
 
-local function slideOutActive()
-	local call = active
+local function slideOutSlot(key: string)
+	local call = slots[key]
 	if not call or not call.box or not call.box.Parent then
 		return
 	end
-	local token = call.token
 	local out = slideOut(call.inner)
 	out.Completed:Wait()
-	if active and active.token == token then
-		destroyActive()
+	if slots[key] == call then
+		destroySlot(key)
 	end
 end
 
@@ -609,7 +642,7 @@ local function onVaultGas(data: any)
 			duration = Config.VaultGasWarnSec,
 		})
 	else
-		local call = active
+		local call = slots.vault
 		if call and call.data and call.data.id == "vault" then
 			call.data.endsAt = nil
 			if call.timerLabel then
@@ -710,10 +743,11 @@ function CrewCallUI.init()
 			onCrewLine(data)
 		elseif name == "Resumed" then
 			-- The pause stopped the job / vault clocks on the server; the pill follows.
-			local call = active
 			local d = tonumber(data and data.duration) or 0
-			if call and call.data and typeof(call.data.endsAt) == "number" then
-				call.data.endsAt += d
+			for _, call in slots do
+				if call.data and typeof(call.data.endsAt) == "number" then
+					call.data.endsAt += d
+				end
 			end
 		elseif name == "AllyCallout" and typeof(data) == "table" then
 			data.queuedAt = os.clock()
@@ -727,16 +761,16 @@ function CrewCallUI.init()
 		elseif name == "VaultGas" then
 			onVaultGas(data)
 		elseif name == "VaultSealed" then
-			local call = active
-			if call and call.data and call.data.id == "vault" then
-				task.spawn(slideOutActive)
+			if slots.vault then
+				task.spawn(slideOutSlot, "vault")
 			end
 		elseif name == "JobProgress" then
-			local call = active
-			if call and call.data and call.data.id == data.id then
+			local key = slotOf(data.id)
+			local call = key and slots[key]
+			if call then
 				local progress = data.progress or 0
 				call.progress = progress
-				setPillProgress(progress, data.inside == true)
+				setPillProgress(call, progress, data.inside == true)
 				-- A tick every 10% while holding, pitch climbing; a low buzz when you step off.
 				local step = math.floor(progress * 10)
 				if data.inside and step > (call.lastTick or 0) then
@@ -767,49 +801,57 @@ function CrewCallUI.init()
 			ClientState.Juice:Fire("Shake", { amp = 0.35, dur = 0.3 })
 		elseif name == "CallCleared" then
 			-- The run ended (or debug reset) with a job open: no result card, the box just goes.
-			destroyActive()
+			local key = slotOf(data.id)
+			if key then
+				destroySlot(key)
+			end
 		end
 	end)
 
 	HUD.Rebuilt:Connect(function()
-		-- The HUD was rebuilt; re-add the live pill if a job is running.
-		local call = active
-		active = nil
-		if
-			call
-			and call.data
-			and call.data.endsAt
-			and (call.data.noTimer or call.data.endsAt > ClientState.serverNow())
-		then
-			local box, inner = buildBox(PILL_H)
-			local _, timer, stroke = buildPill(inner, call.data)
-			active =
-				{ data = call.data, box = box, inner = inner, timerLabel = timer, stroke = stroke, token = call.token }
+		-- The HUD was rebuilt; re-add every live pill.
+		local old = slots
+		slots = {}
+		for key, call in old do
+			if call.data and call.data.endsAt and (call.data.noTimer or call.data.endsAt > ClientState.serverNow()) then
+				local box, inner = buildBox(PILL_H, SLOT_ORDER[key])
+				local _, timer, stroke = buildPill(inner, call.data, call.progress)
+				slots[key] = {
+					data = call.data,
+					box = box,
+					inner = inner,
+					timerLabel = timer,
+					stroke = stroke,
+					token = call.token,
+					progress = call.progress,
+				}
+			end
 		end
 	end)
 
-	-- Timer tick.
+	-- Timer tick, every live pill.
 	local pulse = 0
 	RunService.Heartbeat:Connect(function(dt)
-		local call = active
-		if not call or not call.timerLabel or not call.box.Parent or not call.data.endsAt then
-			return
-		end
-		if call.data.noTimer then
-			-- Brief 7: a door objective never expires: the clock reads ∞.
-			call.timerLabel.Text = "∞"
-			return
-		end
-		local remaining = call.data.endsAt - ClientState.serverNow()
-		call.timerLabel.Text = fmtTime(remaining)
-		if remaining < Config.CallPillWarnSec then
-			pulse += dt * 6
-			call.timerLabel.TextColor3 = Theme.Colors.red
-			local stroke = call.stroke
-			if stroke then
-				stroke.Color = Theme.Colors.red
-				stroke.Transparency = 0.25 + 0.25 * math.sin(pulse)
-				stroke.Thickness = UI.S(2) + UI.S(1.5) * (0.5 + 0.5 * math.sin(pulse))
+		pulse += dt * 6
+		for _, call in slots do
+			if not call.timerLabel or not call.box.Parent or not call.data.endsAt then
+				continue
+			end
+			if call.data.noTimer then
+				-- Brief 7: a door objective never expires: the clock reads ∞.
+				call.timerLabel.Text = "∞"
+				continue
+			end
+			local remaining = call.data.endsAt - ClientState.serverNow()
+			call.timerLabel.Text = fmtTime(remaining)
+			if remaining < Config.CallPillWarnSec then
+				call.timerLabel.TextColor3 = Theme.Colors.red
+				local stroke = call.stroke
+				if stroke then
+					stroke.Color = Theme.Colors.red
+					stroke.Transparency = 0.25 + 0.25 * math.sin(pulse)
+					stroke.Thickness = UI.S(2) + UI.S(1.5) * (0.5 + 0.5 * math.sin(pulse))
+				end
 			end
 		end
 	end)

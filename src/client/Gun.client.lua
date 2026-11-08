@@ -11,8 +11,10 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
+local Tracer = require(script.Parent:WaitForChild("Tracer"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 
 local player = Players.LocalPlayer
@@ -60,7 +62,7 @@ local function shellReload(token: number)
 			end
 			mag = math.min(h.magSize, mag + 1)
 			Remotes.AmmoReport:FireServer(mag)
-			UI.sound(Theme.Sounds.take, 1.1 + (mag / h.magSize) * 0.4, 0.35)
+			UI.sound(Theme.Sounds.shellLoad, 1 + (mag / h.magSize) * 0.12, 0.45) -- Round 24o: a click, near natural pitch
 			if mag >= h.magSize then
 				reloading = false
 				publishAmmo()
@@ -156,30 +158,80 @@ local function aimPoint(char: Model): Vector3
 	return ClientState.cursorAimPoint(char)
 end
 
-local function tracer(from: Vector3, to: Vector3, color: Color3)
-	local a0 = Instance.new("Attachment")
-	a0.WorldPosition = from
-	a0.Parent = Workspace.Terrain
-	local a1 = Instance.new("Attachment")
-	a1.WorldPosition = to
-	a1.Parent = Workspace.Terrain
-	local beam = Instance.new("Beam")
-	beam.Attachment0 = a0
-	beam.Attachment1 = a1
-	beam.Width0 = 0.12
-	beam.Width1 = 0.05
-	beam.FaceCamera = true
-	beam.LightEmission = 1
-	beam.Color = ColorSequence.new(color)
-	beam.Transparency = NumberSequence.new(0.1)
-	beam.Parent = a0
-	task.delay(0.05, function()
-		a0:Destroy()
-		a1:Destroy()
-	end)
+-- Round 24v: Explosive / Elemental weapons. No tracer (the server's projectile, or the stream / arc fx, is the
+-- feedback); each shot / tick spends one round, a charged plasma shot up to its maxCost.
+local SPECIAL_SOUND = {
+	projectile = { id = "shot", pitch = 0.42, vol = 0.45 },
+	charge = { id = "laser", pitch = 0.8, vol = 0.4 },
+	stream = { id = "hiss", pitch = 1.1, vol = 0.12 },
+	chain = { id = "laser", pitch = 1.6, vol = 0.12 },
+}
+local function specialOf(h: Types.HeldView?): any
+	local w = h and Weapons.ById[h.weaponId]
+	return if w and w.mode and w.mode ~= "hitscan" then w else nil
 end
 
-local function fire()
+local function fireSpecial(h: Types.HeldView, w: any, head: BasePart, char: Model, chargeT: number)
+	local cost = 1
+	if w.mode == "charge" then
+		cost = 1 + math.floor(chargeT * (w.charge.maxCost - 1) + 0.5)
+	end
+	cost = math.min(cost, mag)
+	mag -= cost
+	publishAmmo()
+	local headPos = head.Position
+	local dir = (aimPoint(char) - headPos).Unit
+	if w.mode == "projectile" and h.spread > 0 then
+		dir = coneSpread(dir, h.spread * (if ClientState.ads then Config.AdsSpreadMult else 1))
+	end
+	-- Round 24aa: lobbed rounds are solved onto the crosshair point on the server.
+	Remotes.FireShot:FireServer(
+		headPos,
+		dir,
+		Workspace:GetServerTimeNow(),
+		mag,
+		{ charge = chargeT, target = aimPoint(char) }
+	)
+	local snd = SPECIAL_SOUND[w.mode]
+	if w.id == "TNT" then
+		UI.sound(Theme.Sounds.swap, 1.6, 0.45)
+	elseif snd then
+		UI.sound(
+			(Theme.Sounds :: any)[snd.id],
+			snd.pitch * (if w.mode == "charge" then 1 + chargeT * 0.4 else 1),
+			snd.vol
+		)
+	end
+	if w.mode == "stream" then
+		ClientState.Juice:Fire("LocalStream", { element = w.stream.element })
+	end
+	-- Round 24ab: a held plasma beam follows the cursor while it lasts: stream the aim point to the server.
+	if w.mode == "charge" then
+		local c = w.charge
+		local dur = c.minDur + (c.maxDur - c.minDur) * chargeT
+		if dur > 0.12 then
+			task.spawn(function()
+				local t0 = os.clock()
+				while os.clock() - t0 < dur do
+					local ch = player.Character
+					if ch then
+						Remotes.BeamAim:FireServer(aimPoint(ch))
+					end
+					task.wait(0.07)
+				end
+			end)
+		end
+	end
+	-- Streams and the arc tick ten times a second: no per-tick kick or flash, only the projectile guns kick.
+	if w.mode == "projectile" or w.mode == "charge" then
+		ClientState.Juice:Fire("LocalFire", { weaponId = h.weaponId })
+	end
+	if mag <= 0 then
+		task.delay(0.15, reload)
+	end
+end
+
+local function fire(chargeT: number?)
 	local h = held
 	local char = player.Character
 	local head = char and char:FindFirstChild("Head") :: BasePart?
@@ -193,6 +245,11 @@ local function fire()
 		reload()
 		return
 	end
+	local special = specialOf(h)
+	if special then
+		fireSpecial(h, special, head, char, chargeT or 0)
+		return
+	end
 	mag -= 1
 	publishAmmo()
 
@@ -203,16 +260,28 @@ local function fire()
 	local sendDir = if h.pellets > 1 then dir else coneSpread(dir, spread)
 	Remotes.FireShot:FireServer(headPos, sendDir, Workspace:GetServerTimeNow(), mag)
 
-	local heldGun = char:FindFirstChild("HeldGun")
-	local muzzleAtt = heldGun and heldGun:FindFirstChild("Muzzle") :: Attachment?
-	local muzzle = if muzzleAtt then muzzleAtt.WorldPosition else headPos
-	local color = Color3.fromHex("FFE2A0")
+	-- Round 24i: the line leaves the gun's muzzle in every view (feedback only; the hit rays above and below
+	-- start at the head). In first person the real gun is hidden under the camera: the viewmodel's muzzle.
+	local fpMuzzle = if ClientState.firstPerson then ClientState.viewMuzzleAtt else nil
+	-- Round 24p: in first person the start is pinned where the muzzle is now, before this shot's kick flips the
+	-- viewmodel up (a start riding the flip made every line run downhill).
+	-- Round 24q: ...but in camera space, so it moves with the view while you walk and turn.
+	local from: any = Tracer.muzzleOf(char) or headPos
+	if fpMuzzle then
+		local cam = Workspace.CurrentCamera :: Camera
+		local localStart = cam.CFrame:PointToObjectSpace(fpMuzzle.WorldPosition)
+		from = function(): Vector3
+			return cam.CFrame:PointToWorldSpace(localStart)
+		end
+	end
+	local wdef = Weapons.ById[h.weaponId]
+	local tracerColor = if wdef and wdef.tracer then Color3.fromHex(wdef.tracer) else nil -- Round 24ad
 	local params = rayParams(char)
 	for i = 1, h.pellets do
 		local d = if h.pellets > 1 then coneSpread(dir, spread) else sendDir
 		local result = Workspace:Raycast(headPos, d * Config.MaxShotRange, params)
 		local endPoint = if result then result.Position else headPos + d * Config.MaxShotRange
-		tracer(muzzle, endPoint, color)
+		Tracer.draw(from, endPoint, tracerColor, fpMuzzle ~= nil)
 	end
 
 	UI.sound(Theme.Sounds.shot, Config.ShotPitchByArchetype[h.archetype] or 1, 0.35)
@@ -226,8 +295,42 @@ end
 -- Burst guns: one pull fires `burst` shots at fireRate, then burstDelay before the next burst.
 local burstLeft = 0
 local burstEndedAt = -math.huge
+local chargeStart: number? = nil -- Round 24v: the plasma trigger went down at this clock
+
+-- Round 24aa prototype: sprint. Hold Shift while moving: the gun goes away (no fire, no ADS) and the server runs
+-- you SprintSpeedMult faster. Letting go, stopping, or a menu ends it.
+local shiftHeld = false
+local function updateSprint()
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local moving = hum ~= nil and hum.MoveDirection.Magnitude > 0.1
+	local want = Config.SprintEnabled
+		and shiftHeld
+		and moving
+		and not ClientState.downed
+		and not ClientState.blocked()
+		and ClientState.cameraMode == "gameplay"
+	if want ~= ClientState.sprinting then
+		ClientState.sprinting = want
+		Remotes.SetSprint:FireServer(want)
+		if want then
+			ClientState.setAds(false)
+			chargeStart = nil
+			ClientState.chargeProgress = 0
+		end
+	end
+end
+ContextActionService:BindActionAtPriority("GHSSprint", function(_name, inputState: Enum.UserInputState)
+	if inputState == Enum.UserInputState.Begin then
+		shiftHeld = true
+	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
+		shiftHeld = false
+	end
+	return Enum.ContextActionResult.Pass
+end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift)
 
 RunService.Heartbeat:Connect(function()
+	updateSprint()
 	local h = held
 	-- Downed: the sidearm still fires while crawling (Config.DownedCanShoot); a bled-out spectator never does.
 	if
@@ -235,11 +338,38 @@ RunService.Heartbeat:Connect(function()
 		or ClientState.blocked()
 		or ClientState.combatOff()
 		or (ClientState.downed and not Config.DownedCanShoot)
+		or ClientState.sprinting
 	then
 		burstLeft = 0
 		return
 	end
 	local now = os.clock()
+	-- Round 24v: charge weapons: hold to charge (the crosshair ring fills), release to fire. A full charge costs
+	-- maxCost rounds, so the charge stops growing at what the mag can pay for.
+	local special = specialOf(h)
+	if special and special.mode == "charge" then
+		local want = firing or ClientState.touchFire
+		if want and not chargeStart and mag > 0 and not reloading and now - lastShot >= 1 / h.fireRate then
+			chargeStart = now
+		end
+		local start = chargeStart
+		if start then
+			local c = special.charge
+			local cap = if c.maxCost > 1 then math.clamp((mag - 1) / (c.maxCost - 1), 0, 1) else 1
+			local t = math.min(cap, (now - start) / c.sec)
+			ClientState.chargeProgress = t
+			if not want then
+				chargeStart = nil
+				ClientState.chargeProgress = 0
+				lastShot = now
+				fire(t)
+			end
+		end
+		return
+	elseif chargeStart then
+		chargeStart = nil
+		ClientState.chargeProgress = 0
+	end
 	if now - lastShot < 1 / h.fireRate then
 		return
 	end
@@ -289,8 +419,14 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		firing = true
 	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-		-- No ADS while downed: the sidearm is hip-fire only.
-		if not ClientState.blocked() and not ClientState.downed then
+		-- No ADS while downed: the sidearm is hip-fire only. Round 24d: none in the hub either (outside the range):
+		-- there RMB only drags the camera round.
+		if
+			not ClientState.blocked()
+			and not ClientState.downed
+			and not ClientState.combatOff()
+			and not ClientState.sprinting
+		then
 			ClientState.setAds(true)
 		end
 	elseif input.KeyCode == Enum.KeyCode.R then
@@ -308,7 +444,8 @@ ContextActionService:BindActionAtPriority("GHSSwitchWeapon", function(_name, inp
 	if inputState ~= Enum.UserInputState.Begin then
 		return Enum.ContextActionResult.Pass
 	end
-	if UserInputService:GetFocusedTextBox() or ClientState.inHub() then
+	-- Round 24aa: the training range is armed too (it was blocked with the rest of the hub).
+	if UserInputService:GetFocusedTextBox() or ClientState.combatOff() then
 		return Enum.ContextActionResult.Pass
 	end
 	Remotes.SwitchWeapon:FireServer()

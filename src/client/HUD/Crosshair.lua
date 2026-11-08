@@ -7,6 +7,8 @@ local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"))
+local Players = game:GetService("Players")
 
 local Crosshair = {}
 
@@ -53,6 +55,125 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	UI.corner(dot, S(2))
 
+	-- Round 24n: the optic reticle. Aiming an optic in first person fades the optic's body, so it needs an aim
+	-- guide: a red dot for red-dot sights, fine black crosshair lines plus the red dot for scopes.
+	local RED = Color3.fromHex("FF2A1A")
+	local reticle = UI.frame({
+		Name = "OpticReticle",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(S(4), S(4)),
+		Visible = false,
+		Parent = root,
+	})
+	local reticleDot = UI.frame({
+		BackgroundColor3 = RED,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(S(3), S(3)), -- Round 24r: smaller (was 5)
+		ZIndex = 3,
+		Parent = reticle,
+	})
+	UI.corner(reticleDot, S(2))
+	UI.stroke(reticleDot, Theme.Colors.black, 1, 0.4)
+	local scopeLines: { Frame } = {}
+	local RLEN, RGAP, RTHICK = S(160), S(10), math.max(1, S(1.5))
+	for _, dir in { Vector2.new(0, -1), Vector2.new(0, 1), Vector2.new(-1, 0), Vector2.new(1, 0) } do
+		local vertical = dir.X == 0
+		local l = UI.frame({
+			BackgroundColor3 = Theme.Colors.black,
+			BackgroundTransparency = 0.1,
+			AnchorPoint = Vector2.new(
+				if dir.X < 0 then 1 elseif dir.X > 0 then 0 else 0.5,
+				if dir.Y < 0 then 1 elseif dir.Y > 0 then 0 else 0.5
+			),
+			Position = UDim2.new(0.5, dir.X * RGAP, 0.5, dir.Y * RGAP),
+			Size = if vertical then UDim2.fromOffset(RTHICK, RLEN) else UDim2.fromOffset(RLEN, RTHICK),
+			ZIndex = 2,
+			Parent = reticle,
+		})
+		table.insert(scopeLines, l)
+	end
+	-- Round 24r: the holo's ring round the dot, the ACOG's chevron, and the sniper scope's ring with a dark
+	-- (not black) surround outside it (Config.ScopeRingPct / ScopeSurroundAlpha).
+	local holoRing = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(S(30), S(30)),
+		Visible = false,
+		Parent = reticle,
+	})
+	UI.corner(holoRing, S(15))
+	UI.stroke(holoRing, RED, math.max(1, S(1.5)), 0.1)
+	local chevron = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(S(24), S(40)),
+		Visible = false,
+		Parent = reticle,
+	})
+	local AMBER = Color3.fromHex("FF7A2A")
+	for _, side in { -1, 1 } do
+		UI.frame({
+			BackgroundColor3 = AMBER,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, side * S(4), 0, S(1)),
+			Size = UDim2.fromOffset(math.max(1, S(2)), S(11)),
+			Rotation = side * -35,
+			Parent = chevron,
+		})
+	end
+	UI.frame({
+		BackgroundColor3 = Theme.Colors.black,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, S(12)),
+		Size = UDim2.fromOffset(math.max(1, S(1.5)), S(26)),
+		Parent = chevron,
+	})
+	local scopeRing = UI.frame({
+		Name = "ScopeRing",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(Config.ScopeRingPct, Config.ScopeRingPct),
+		Visible = false,
+		ZIndex = 0,
+		Parent = gui,
+	})
+	UI.new("UIAspectRatioConstraint", { AspectRatio = 1, DominantAxis = Enum.DominantAxis.Height, Parent = scopeRing })
+	UI.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = scopeRing })
+	-- The surround: a stroke far wider than the screen, drawn outward from the circle's edge.
+	local surround = UI.new("UIStroke", {
+		Color = Color3.new(0, 0, 0),
+		Thickness = 4000,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = scopeRing,
+	}) :: UIStroke
+	local rim = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Parent = scopeRing,
+	})
+	UI.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = rim })
+	local rimStroke = UI.new("UIStroke", {
+		Color = Color3.new(0, 0, 0),
+		Thickness = math.max(2, S(5)),
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = rim,
+	}) :: UIStroke
+
+	local function heldSight(): string?
+		local char = Players.LocalPlayer.Character
+		local gun = char and char:FindFirstChild("HeldGun")
+		local v = gun and gun:GetAttribute("Sight")
+		return if typeof(v) == "string" then v else nil
+	end
+
 	-- Reload ring: 24 ticks around the crosshair that light up clockwise as the reload progresses.
 	local TICKS = 24
 	local ringRadius = S(26)
@@ -73,7 +194,36 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end
 	local ringShown = false
 	local followingCursor = false
+	local aimHidden = false
 	track(RunService.Heartbeat:Connect(function()
+		-- Round 24l: aiming down sights in first person, the sights are the crosshair: the lines and dot hide
+		-- (the hitmarker and the reload ring stay).
+		local hide = ClientState.firstPerson == true and ClientState.ads and heldSight() ~= "bare" -- Round 24aa: sightless guns keep it
+		local sight = if hide then heldSight() else nil
+		local optic = sight == "red" or sight == "holo" or sight == "acog" or sight == "medium" or sight == "scope"
+		reticle.Visible = optic
+		if optic then
+			for _, l in scopeLines do
+				l.Visible = sight == "scope" or sight == "medium"
+			end
+			holoRing.Visible = sight == "holo"
+			chevron.Visible = sight == "acog"
+			reticleDot.Visible = sight ~= "acog"
+		end
+		-- The scope surround fades in over the last part of the aim-in.
+		local scopeK = if sight == "scope" then math.clamp((ClientState.fpAdsT - 0.6) / 0.4, 0, 1) else 0
+		scopeRing.Visible = scopeK > 0
+		if scopeK > 0 then
+			surround.Transparency = 1 - Config.ScopeSurroundAlpha * scopeK
+			rimStroke.Transparency = 1 - 0.85 * scopeK
+		end
+		if hide ~= aimHidden then
+			aimHidden = hide
+			for _, line in lines do
+				line.Visible = not hide
+			end
+			dot.Visible = not hide
+		end
 		-- Cursor unlocked (Ctrl / Alt): the crosshair rides the cursor, since that is where shots go.
 		if ClientState.isMouseFree() and not ClientState.blocked() then
 			local m = UserInputService:GetMouseLocation()
@@ -88,6 +238,10 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local ringColor = Theme.Colors.gold
 		if a.reloading and a.reloadEndsAt > a.reloadStartedAt then
 			progress = math.clamp((os.clock() - a.reloadStartedAt) / (a.reloadEndsAt - a.reloadStartedAt), 0, 1)
+		elseif ClientState.chargeProgress > 0 then
+			-- Round 24v: the plasma charge.
+			progress = ClientState.chargeProgress
+			ringColor = Color3.fromHex(Config.PlasmaChargeColor)
 		elseif ClientState.reviveProgress > 0 then
 			-- Holding a revive on a teammate: the same ring fills green.
 			progress = ClientState.reviveProgress

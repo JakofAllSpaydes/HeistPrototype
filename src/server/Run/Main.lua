@@ -71,7 +71,7 @@ end
 local function clearArena()
 	Enemy.killAll()
 	BigCrate.finishAll()
-	CrewCall.finish(false, true)
+	CrewCall.clearAll()
 	WeaponRoll.clearAll()
 	Abilities.clearAll()
 	Squad.clear()

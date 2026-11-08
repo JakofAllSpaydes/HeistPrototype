@@ -18,12 +18,15 @@ local MasteryCopy = require(Shared:WaitForChild("MasteryCopy"))
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 local MetaUI = require(script.Parent:WaitForChild("MetaUI"))
+local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 
 local WeaponsTab = {}
 
 local selected: string? = nil
 local filter = "ALL"
+local pickFirst = false -- Round 24aa: a category switch selects the first gun shown (owned first)
 local search = ""
 local customize = false
 local wrapsOpen = false
@@ -43,21 +46,39 @@ local function markEquipPop(id: string)
 	popEquipAt = os.clock()
 end
 
+-- Round 24x: icon tiles (a representative gun per type) so every category fits the row at one size.
 local FILTERS = {
 	{ id = "ALL", name = "ALL" },
-	{ id = "Pistol", name = "PISTOL" },
-	{ id = "SMG", name = "SMG" },
-	{ id = "Rifle", name = "RIFLE" },
-	{ id = "Shotgun", name = "SHOTGUN" },
-	{ id = "Sniper", name = "SNIPER" },
-	{ id = "LMG", name = "LMG" },
+	{ id = "FAV", name = "FAVORITES", glyph = "heart" }, -- Round 24y
+	{ id = "Pistol", name = "PISTOL", weaponId = "M1911" },
+	{ id = "SMG", name = "SMG", weaponId = "UZI" },
+	{ id = "Rifle", name = "RIFLE", weaponId = "AK-47" },
+	{ id = "Shotgun", name = "SHOTGUN", weaponId = "SPAS-12" },
+	{ id = "Sniper", name = "SNIPER", weaponId = "AWP" },
+	{ id = "LMG", name = "LMG", weaponId = "M249" },
+	{ id = "Explosive", name = "EXPLOSIVE", weaponId = "RPG7" },
+	{ id = "Elemental", name = "ELEMENTAL", weaponId = "Flamethrower" },
 }
+local FILTER_H = 60 -- the filter row's height (pre-scale)
 
 -- Actions the stats can't tell apart (a bolt sniper and a semi-auto one share every flag).
 local FIRE_MODE_BY_ID = {
 	AWP = "BOLT-ACTION",
 	Mosin = "BOLT-ACTION",
 	Model1887 = "LEVER-ACTION",
+	Kar98k = "BOLT-ACTION", -- Round 24s
+	Python = "REVOLVER",
+	SVD = "SEMI-AUTO",
+	RPG7 = "ROCKET",
+	M32 = "GRENADE · 0.25s FUSE",
+	ClusterLauncher = "CLUSTER · 0.5s FUSE",
+	TNT = "THROWN · 1s FUSE",
+	Flamethrower = "FLAME STREAM",
+	CryoSprayer = "FROST STREAM",
+	ArcGun = "CHAIN LIGHTNING",
+	PlasmaCaster = "CHARGE BEAM",
+	Railcaster = "CHARGED RAIL", -- Round 24ad
+	Exogun = "ENERGY · FULL-AUTO",
 	SawedOff = "DOUBLE-BARREL",
 }
 
@@ -98,8 +119,22 @@ local function fmtReload(t: number): string
 	return string.format("%.2fs", t)
 end
 
-local function passes(name: string, archetype: string): boolean
-	if filter ~= "ALL" and archetype ~= filter then
+-- Round 24y: favourites. The heart flips at once here (optimistic) and the server saves it to the profile.
+local favLocal: { [string]: boolean } = {}
+local function isFav(profile: any, id: string): boolean
+	local v = favLocal[id]
+	if v ~= nil then
+		return v
+	end
+	return profile ~= nil and profile.favorites ~= nil and profile.favorites[id] == true
+end
+
+local function passes(name: string, archetype: string, id: string?, profile: any): boolean
+	if filter == "FAV" then
+		if not (id and isFav(profile, id)) then
+			return false
+		end
+	elseif filter ~= "ALL" and archetype ~= filter then
 		return false
 	end
 	if search ~= "" and not string.find(string.lower(name), string.lower(search), 1, true) then
@@ -124,7 +159,102 @@ local function fireMode(w: Weapons.Weapon): string
 end
 
 local function isEquipped(profile: any, id: string): boolean
-	return profile ~= nil and profile.starterWeaponId == id
+	return profile ~= nil and (profile.starterWeaponId == id or profile.starterWeaponId2 == id)
+end
+
+-- Round 24z: both starter slots are full: a popup with the two equipped guns; tap the one to replace.
+local function pickSlot(scene: any, anchor: Instance, w: Weapons.Weapon, profile: any)
+	local S = UI.S
+	local gui = anchor:FindFirstAncestorOfClass("ScreenGui")
+	if not gui then
+		return
+	end
+	local dim = UI.button({
+		Name = "SlotPicker",
+		Text = "",
+		AutoButtonColor = false,
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.45,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 50,
+		Parent = gui,
+	})
+	local function close()
+		dim:Destroy()
+	end
+	dim.Activated:Connect(close)
+	local box = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(S(460), S(270)),
+		ZIndex = 51,
+		Parent = dim,
+	})
+	UI.corner(box, S(6))
+	UI.stroke(box, Theme.Colors.white, S(1.5), 0.6)
+	UI.punch(box, 1.06, 0.2)
+	UI.text({
+		Text = "REPLACE WHICH SLOT?",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(22),
+		TextColor3 = Theme.Colors.white,
+		Position = UDim2.fromOffset(0, S(12)),
+		Size = UDim2.new(1, 0, 0, S(28)),
+		ZIndex = 52,
+		Parent = box,
+	})
+	UI.text({
+		Text = "EQUIPPING " .. w.displayName,
+		FontFace = Theme.Fonts.body,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.grey,
+		Position = UDim2.fromOffset(0, S(40)),
+		Size = UDim2.new(1, 0, 0, S(18)),
+		ZIndex = 52,
+		Parent = box,
+	})
+	for slot = 1, 2 do
+		local id = if slot == 1 then profile.starterWeaponId else profile.starterWeaponId2
+		local cur = id and Weapons.ById[id]
+		local b = UI.button({
+			Text = "",
+			BackgroundColor3 = if cur then Rarity.color(cur.rarity) else Theme.Colors.panel,
+			AnchorPoint = Vector2.new(if slot == 1 then 1 else 0, 0),
+			Position = UDim2.new(0.5, if slot == 1 then -S(8) else S(8), 0, S(70)),
+			Size = UDim2.fromOffset(S(200), S(150)),
+			ZIndex = 52,
+			Parent = box,
+		})
+		UI.corner(b, S(4))
+		MetaUI.hover(b, 1.04)
+		if cur then
+			local vp =
+				ModelIcon.weapon(b, cur.id, UDim2.new(1, -S(16), 0, S(90)), { motion = "hover", hoverTarget = b })
+			vp.AnchorPoint = Vector2.new(0.5, 0)
+			vp.Position = UDim2.new(0.5, 0, 0, S(8))
+			vp.ZIndex = 53
+		end
+		UI.text({
+			Text = string.format("SLOT %d · %s", slot, if cur then cur.displayName else "EMPTY"),
+			FontFace = Theme.Fonts.display,
+			TextSize = S(15),
+			TextColor3 = Theme.Colors.white,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -S(10)),
+			Size = UDim2.new(1, -S(12), 0, S(22)),
+			ZIndex = 53,
+			Parent = b,
+		})
+		b.Activated:Connect(function()
+			close()
+			local r = scene.request("equipStarter", { weaponId = w.id, slot = slot })
+			if r.ok then
+				markEquipPop(w.id)
+				scene.refresh()
+			end
+		end)
+	end
 end
 
 ------------------------------------------------------------------ Detail card
@@ -145,11 +275,12 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 		archetype = if show then show.archetype else nil,
 	})
 	local well = ic.Parent :: Frame
-	well.Size = UDim2.new(1, 0, 0, S(if scene.mobile then 100 else 116))
+	well.Size = UDim2.new(1, 0, 0, S(if scene.mobile then 80 else 88)) -- Round 24aa: shorter so the panel fits unscrolled
 	if not ic:IsA("ViewportFrame") then
 		ic.Size = UDim2.fromOffset(S(if scene.mobile then 96 else 110), S(if scene.mobile then 96 else 110))
 	end
 	MetaUI.rarityChip(well, rarity)
+	MetaUI.wellSource(well, if w then w.saleType else (show and show.saleType or nil)) -- Round 24af
 	if equipped then
 		MetaUI.wellCheck(well, equipPopFor(id))
 	end
@@ -253,6 +384,8 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 			if r.ok then
 				markEquipPop(w.id)
 				scene.refresh()
+			elseif r.needSlot then
+				pickSlot(scene, card, w, scene.profile())
 			end
 		end)
 	local custom = MetaUI.button(pair, 2, "CUSTOMIZE", "pink", function()
@@ -614,12 +747,15 @@ function WeaponsTab.render(scene: any)
 	scene.preview.weapon(selected)
 
 	-- Filters and search.
-	local pills = MetaUI.pills(panel, FILTERS, filter, function(id)
+	local pills = MetaUI.iconPills(panel, FILTERS :: any, filter, function(id)
+		if filter ~= id then
+			pickFirst = true
+		end
 		filter = id
 		UI.sound(Theme.Sounds.toast, 1.2, 0.3)
 		scene.refresh()
-	end)
-	pills.Size = UDim2.new(1, -S(180), 0, S(34))
+	end, S(FILTER_H))
+	pills.Size = UDim2.new(1, -S(180), 0, S(FILTER_H))
 	local searchBox = UI.new("TextBox", {
 		PlaceholderText = "Search…",
 		Text = search,
@@ -645,20 +781,50 @@ function WeaponsTab.render(scene: any)
 	end)
 
 	local rightW = if scene.mobile then S(200) else S(250)
-	local grid, card = MetaUI.columns(panel, rightW, S(44), "weapons")
+	local grid, card = MetaUI.columns(panel, rightW, S(FILTER_H + 10), "weapons")
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 	local perRow = 4
 	local tileW = MetaUI.tileWidth(grid, perRow)
 
 	local ownedList: { any }, unownedList: { any } = {}, {}
 	for _, w in Weapons.List do
-		if passes(w.displayName, w.archetype) then
+		if passes(w.displayName, w.archetype, w.id, profile) then
 			table.insert(if owned(profile, w.id) then ownedList else unownedList, { weapon = w })
 		end
 	end
 	for _, s in Weapons.Showcase do
-		if passes(s.displayName, s.archetype) then
+		if passes(s.displayName, s.archetype, s.id, profile) then
 			table.insert(unownedList, { showcase = s })
+		end
+	end
+	-- Round 24y: favourites first (highest rarity first), then everything else lowest rarity to highest.
+	local function sortKey(e: any): (string, number, string)
+		local id = if e.weapon then e.weapon.id else e.showcase.id
+		local rarity = if e.weapon then e.weapon.rarity else e.showcase.rarity
+		local name = if e.weapon then e.weapon.displayName else e.showcase.displayName
+		return id, rarity, name
+	end
+	local function byFavThenRarity(a: any, b: any): boolean
+		local ia, ra, na = sortKey(a)
+		local ib, rb, nb = sortKey(b)
+		local fa, fb = isFav(profile, ia), isFav(profile, ib)
+		if fa ~= fb then
+			return fa
+		end
+		if ra ~= rb then
+			return if fa then ra > rb else ra < rb
+		end
+		return na < nb
+	end
+	table.sort(ownedList, byFavThenRarity)
+	table.sort(unownedList, byFavThenRarity)
+	if pickFirst then
+		pickFirst = false
+		local first = ownedList[1] or unownedList[1]
+		if first then
+			selected = if first.weapon then first.weapon.id else first.showcase.id
+			popSelect = selected
+			scene.preview.weapon(selected)
 		end
 	end
 
@@ -701,6 +867,42 @@ function WeaponsTab.render(scene: any)
 			if w and isOwned then
 				MetaUI.masteryBar(b, "weapon", w.id, masteryXp(profile, w.id))
 			end
+			-- Round 24y: the favourite heart, top-right. Hearted: solid red; not: a faint outline-grey heart.
+			local fav = isFav(profile, id)
+			local heartBtn = UI.button({
+				Name = "Favorite",
+				Text = "",
+				BackgroundTransparency = 1,
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -S(3), 0, S(3)),
+				Size = UDim2.fromOffset(S(24), S(24)),
+				ZIndex = 20,
+				Parent = b,
+			})
+			local glyph = Icons.fit(
+				heartBtn,
+				"heart",
+				0.8,
+				if fav then Theme.Colors.red else Theme.Colors.white,
+				Theme.Colors.white
+			)
+			if not fav then
+				Icons.setTransparency(glyph, 0.55)
+			end
+			heartBtn.Activated:Connect(function()
+				local now = not isFav(profile, id)
+				favLocal[id] = now
+				UI.punch(heartBtn, if now then 1.35 else 0.85, 0.2)
+				UI.sound(Theme.Sounds.toast, if now then 1.5 else 1.0, 0.3)
+				task.spawn(function()
+					local r = scene.request("toggleFavorite", { weaponId = id })
+					if not (r and r.ok) then
+						favLocal[id] = nil
+						scene.refresh()
+					end
+				end)
+				scene.refresh()
+			end)
 			b.Activated:Connect(function()
 				if selected ~= id then
 					popSelect = id
