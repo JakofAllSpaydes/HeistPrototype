@@ -2,7 +2,7 @@
 -- Floor height under a point (brief 7). The arena is one flat floor (Config.FloorTop); THE BANK has a street,
 -- a lobby, a mezzanine, a vault level and a tunnel, so anything that lands on "the floor" (bags, crates,
 -- telegraph discs, fire patches, bodies, the dealer) asks for the ground under where it is. Only map geometry
--- counts (Workspace.Room and Workspace.Bank.Geometry): characters, enemies, effects and loot never do.
+-- counts (Workspace.Room, Workspace.Bank.Geometry and Workspace.Hub.Geometry): characters, enemies, effects and loot never do.
 local Workspace = game:GetService("Workspace")
 
 local Config = require(script.Parent.Config)
@@ -25,10 +25,12 @@ local function refreshFilter()
 	if room then
 		table.insert(list, room)
 	end
-	local bank = Workspace:FindFirstChild("Bank")
-	local geo = bank and bank:FindFirstChild("Geometry")
-	if geo then
-		table.insert(list, geo)
+	for _, root in { "Bank", "Hub" } do -- brief 8: the warehouse hub too (the range)
+		local m = Workspace:FindFirstChild(root)
+		local geo = m and m:FindFirstChild("Geometry")
+		if geo then
+			table.insert(list, geo)
+		end
 	end
 	params.FilterDescendantsInstances = list
 end

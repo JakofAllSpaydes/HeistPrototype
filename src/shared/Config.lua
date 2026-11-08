@@ -955,6 +955,18 @@ local Config = {
 	------------------------------------------------------------------ Maps (brief 7; the rows live in src/shared/Maps.lua)
 	DefaultMap = "TheBank", -- the map a fresh Create Match card picks (and the fallback for an unknown id)
 	BankOrigin = CFrame.new(0, 0, -1000), -- where THE BANK model is pivoted on load (the import baked it here)
+
+	------------------------------------------------------------------ The hub (brief 8: the warehouse)
+	HubOrigin = CFrame.new(0, 0, 1000), -- where the hub bakes: the floor logo (the star, the spawn) lands here
+	HubImportDrop = { "Helicopter" }, -- models tools/importhub.luau drops (matched against the part names inside)
+	BoothMannequin = true, -- each booth's rig wears your mask and class idle and holds your starter gun (your own view)
+	RangeDoorOpen = true, -- the range's roll-up door stays up (false: it stays down and the range is shut)
+	HubDepartSec = 2.5, -- run start: the party fades into the hub van, the garage rolls up, the van pulls out
+	GarageCloseSec = 3, -- the garage rolls back down this long after the van has gone (everyone sees it)
+	HubDoorRollSec = 1.2, -- a roll-up door's travel time
+	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
+	BoothPromptDistance = 12, -- OPEN at a booth's counter edge reaches this far (the booths stand on a stage)
+	BoardPromptDistance = 12, -- OPEN at MARLOW's board
 	CrewZoneSyncSec = 0.5, -- the crew zone (the zone holding the most standing players) is recomputed this often
 	JobPoolBankEnabled = false, -- true adds JobPool.BankDaily (OPEN 3 DOORS ON THE BANK, ESCAPE THROUGH THE TUNNEL) to the dailies
 
@@ -1008,6 +1020,17 @@ local Config = {
 		VaultRoom = "8FE3A1",
 		Fences = "C9C4B8", -- Round 19c
 		Offices = "E69D5E", -- Round 19f
+		-- Brief 8: the hub's types.
+		Spawn = "8FE3A1",
+		QueuePads = "4D9FE8",
+		Stations = "E8B64C",
+		Board = "F2C14E",
+		GarageDoor = "C9C4B8",
+		RangeDoor = "C9C4B8",
+		Range = "E8554D",
+		Dummies = "E8554D",
+		PropSpots = "6FB8FF",
+		TierPad = "6FB8FF",
 	},
 	-- Round 19c: Fence nodes (the strip behind the bank) become solid site hoardings in these colours.
 	FenceColor = "3B4048",

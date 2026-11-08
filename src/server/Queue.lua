@@ -21,6 +21,7 @@ local Maps = require(Shared.Maps)
 local Room = require(script.Parent.Run.Room)
 local World = require(script.Parent.Run.World)
 local Runs = require(script.Parent.Runs)
+local HubMap = require(script.Parent.HubMap)
 local Log = require(script.Parent.Log)
 local PlayerState = require(script.Parent.PlayerState)
 
@@ -718,7 +719,9 @@ function Queue.zoneCount(): number
 end
 
 function Queue.init()
-	for _, rz in Room.zones do
+	-- Brief 8: the warehouse's four pads (QueuePad nodes); the old yard's zones only without the hub.
+	local source = if HubMap.view and #HubMap.view.pads > 0 then HubMap.view.pads else Room.zones
+	for _, rz in source do
 		local z: Zone = {
 			index = rz.index,
 			room = rz,

@@ -25,6 +25,17 @@ NodeOverlay.TYPES = {
 	"VaultRoom",
 	"Fences",
 	"Offices", -- Round 19f
+	-- Brief 8: the hub (Workspace.Hub.Nodes) and the arena's Van / Lineup (Workspace.Room.Nodes).
+	"Spawn",
+	"QueuePads",
+	"Stations",
+	"Board",
+	"GarageDoor",
+	"RangeDoor",
+	"Range",
+	"Dummies",
+	"PropSpots",
+	"TierPad",
 }
 local SHORT = {
 	Zones = "ZONE",
@@ -40,6 +51,16 @@ local SHORT = {
 	VaultRoom = "VAULT",
 	Fences = "FENCE",
 	Offices = "OFFICE",
+	Spawn = "SPAWN",
+	QueuePads = "PAD",
+	Stations = "BOOTH",
+	Board = "BOARD",
+	GarageDoor = "GARAGE",
+	RangeDoor = "RANGE DOOR",
+	Range = "RANGE",
+	Dummies = "DUMMY",
+	PropSpots = "PROP",
+	TierPad = "TIER",
 }
 -- Which attributes the billboard shows per type (the rest stay in Studio's Properties panel).
 local KEYS = {
@@ -56,12 +77,22 @@ local KEYS = {
 	VaultRoom = { "Door" },
 	Fences = {},
 	Offices = { "Zone", "Label" },
+	Spawn = {},
+	QueuePads = { "Index" },
+	Stations = { "Tab", "Rig" },
+	Board = {},
+	GarageDoor = { "Mesh", "OpenSec" },
+	RangeDoor = { "Mesh" },
+	Range = {},
+	Dummies = { "Plates" },
+	PropSpots = { "Game" },
+	TierPad = {},
 }
 
 NodeOverlay.on = false
 NodeOverlay.shown = {} :: { [string]: boolean }
 for _, t in NodeOverlay.TYPES do
-	NodeOverlay.shown[t] = t ~= "Zones" -- zones are big: off until asked for
+	NodeOverlay.shown[t] = t ~= "Zones" and t ~= "Range" -- volumes are big: off until asked for
 end
 
 local drawn: { [BasePart]: { transparency: number, gui: BillboardGui } } = {}
@@ -96,46 +127,52 @@ function NodeOverlay.refresh()
 	if not NodeOverlay.on then
 		return
 	end
-	local bank = Workspace:FindFirstChild("Bank")
-	local nodes = bank and bank:FindFirstChild("Nodes")
-	if not nodes then
-		return
+	-- Brief 8: every map folder with nodes (THE BANK, the hub, the arena room).
+	local folders = {}
+	for _, root in { "Bank", "Hub", "Room" } do
+		local m = Workspace:FindFirstChild(root)
+		local n = m and m:FindFirstChild("Nodes")
+		if n then
+			table.insert(folders, n)
+		end
 	end
 	for _, typeName in NodeOverlay.TYPES do
-		local f = nodes:FindFirstChild(typeName)
-		if not f or not NodeOverlay.shown[typeName] then
-			continue
-		end
-		local hex = (Config.NodeShowColor :: any)[typeName] or "FFFFFF"
-		local color = Color3.fromHex(hex)
-		for _, p in f:GetChildren() do
-			if not p:IsA("BasePart") then
+		for _, nodes in folders do
+			local f = nodes:FindFirstChild(typeName)
+			if not f or not NodeOverlay.shown[typeName] then
 				continue
 			end
-			local before = p.Transparency
-			p.Color = color
-			p.Material = Enum.Material.ForceField
-			p.Transparency = if typeName == "Zones" then 0.9 else 0.55
-			local gui = Instance.new("BillboardGui")
-			gui.Name = "NodeTag"
-			gui.Adornee = p
-			gui.AlwaysOnTop = false -- behind walls and floors: one room at a time
-			gui.LightInfluence = 0
-			gui.MaxDistance = if typeName == "Zones" then 150 else 60
-			gui.Size = UDim2.fromOffset(170, 16)
-			gui.StudsOffsetWorldSpace = Vector3.new(0, p.Size.Y / 2 + 1, 0)
-			local t = Instance.new("TextLabel")
-			t.BackgroundTransparency = 0.4
-			t.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
-			t.BorderSizePixel = 0
-			t.Size = UDim2.fromScale(1, 1)
-			t.Font = Enum.Font.GothamBold
-			t.TextSize = 10
-			t.TextColor3 = color
-			t.Text = label(p, typeName)
-			t.Parent = gui
-			gui.Parent = p
-			drawn[p] = { transparency = before, gui = gui }
+			local hex = (Config.NodeShowColor :: any)[typeName] or "FFFFFF"
+			local color = Color3.fromHex(hex)
+			for _, p in f:GetChildren() do
+				if not p:IsA("BasePart") then
+					continue
+				end
+				local before = p.Transparency
+				p.Color = color
+				p.Material = Enum.Material.ForceField
+				p.Transparency = if typeName == "Zones" or typeName == "Range" then 0.9 else 0.55
+				local gui = Instance.new("BillboardGui")
+				gui.Name = "NodeTag"
+				gui.Adornee = p
+				gui.AlwaysOnTop = false -- behind walls and floors: one room at a time
+				gui.LightInfluence = 0
+				gui.MaxDistance = if typeName == "Zones" or typeName == "Range" then 150 else 60
+				gui.Size = UDim2.fromOffset(170, 16)
+				gui.StudsOffsetWorldSpace = Vector3.new(0, p.Size.Y / 2 + 1, 0)
+				local t = Instance.new("TextLabel")
+				t.BackgroundTransparency = 0.4
+				t.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+				t.BorderSizePixel = 0
+				t.Size = UDim2.fromScale(1, 1)
+				t.Font = Enum.Font.GothamBold
+				t.TextSize = 10
+				t.TextColor3 = color
+				t.Text = label(p, typeName)
+				t.Parent = gui
+				gui.Parent = p
+				drawn[p] = { transparency = before, gui = gui }
+			end
 		end
 	end
 end

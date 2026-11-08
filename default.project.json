@@ -3,25 +3,49 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "Shared": { "$path": "src/shared" },
-      "Assets": { "$path": "src/assets" }
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Assets": {
+        "$path": "src/assets"
+      }
     },
     "ServerScriptService": {
-      "Server": { "$path": "src/server" }
+      "Server": {
+        "$path": "src/server"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Client": { "$path": "src/client" }
+        "Client": {
+          "$path": "src/client"
+        }
       }
     },
     "Workspace": {
       "$ignoreUnknownInstances": true,
-      "Room": { "$path": "src/map/Room.model.json" },
+      "Room": {
+        "$path": "src/map/Room.model.json"
+      },
       "Bank": {
         "$className": "Model",
         "$ignoreUnknownInstances": true,
-        "Geometry": { "$path": "src/map/Bank.rbxm" },
-        "Nodes": { "$path": "src/map/Bank.nodes.model.json" }
+        "Geometry": {
+          "$path": "src/map/Bank.rbxm"
+        },
+        "Nodes": {
+          "$path": "src/map/Bank.nodes.model.json"
+        }
+      },
+      "Hub": {
+        "$className": "Model",
+        "$ignoreUnknownInstances": true,
+        "Geometry": {
+          "$path": "src/map/Hub.rbxm"
+        },
+        "Nodes": {
+          "$path": "src/map/Hub.nodes.model.json"
+        }
       }
     }
   }

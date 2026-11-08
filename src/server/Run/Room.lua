@@ -68,6 +68,7 @@ export type MapView = {
 	van: CFrame?, -- where the van parks on run start (nil: the arena's drive in from the yard)
 	lineup: CFrame?, -- the crew's line on run start, facing along LookVector (nil: the arena spawn)
 	runEndLine: CFrame?, -- the run end line (nil: where the crew stands, as on the arena)
+	hub: any?, -- brief 8: Room.forMap("Hub") only: the hub's view (HubMap.View: spawn, pads, booths, board, van, range)
 }
 
 local Room = {
@@ -599,7 +600,7 @@ function Room.outsideZone(zone: Zone, x: number?): CFrame
 	local px = if x
 		then math.clamp(x, pad.Position.X - pad.Size.X / 2 + 2, pad.Position.X + pad.Size.X / 2 - 2)
 		else pad.Position.X
-	return CFrame.new(px, Config.FloorTop + 3, pad.Position.Z + pad.Size.Z / 2 + 3)
+	return CFrame.new(px, pad.Position.Y + 3, pad.Position.Z + pad.Size.Z / 2 + 3)
 end
 
 -- Inside a queue pad (XZ), with a little margin so the edge never flickers.

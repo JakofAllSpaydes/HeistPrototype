@@ -5,6 +5,7 @@
 -- nameplate data (level, class, best wave, VIP) each character shows while they stand in the hub.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage.Shared
 local Fonts = require(Shared.Fonts)
@@ -14,6 +15,7 @@ local Maps = require(Shared.Maps)
 local Room = require(script.Parent.Run.Room)
 local World = require(script.Parent.Run.World) -- the hub slot's World (the session-wide minigame tier)
 local Runs = require(script.Parent.Runs)
+local HubMap = require(script.Parent.HubMap)
 local Log = require(script.Parent.Log)
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
@@ -105,6 +107,29 @@ function Hub.refreshAllTags()
 end
 
 ------------------------------------------------------------------ Dressing
+-- OPEN at a customization station: the scene on that tab (not from inside a run, not while downed).
+local function stationPrompt(part: BasePart, tab: string, distance: number)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "Prompt"
+	prompt.ActionText = "OPEN"
+	prompt.ObjectText = tab
+	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = distance
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = part
+	prompt.Triggered:Connect(function(player)
+		local state = PlayerState.get(player)
+		if Runs.inRunCycle(player) then
+			return
+		end
+		if not PlayerState.isStanding(state) then
+			return
+		end
+		Remotes.Juice:FireClient(player, "OpenMeta", { tab = tab })
+	end)
+end
+
 -- Labels on the props, the tier pad and the stations; prompts on the pad buttons and the stations.
 local function decorate()
 	for name, prop in Room.props do
@@ -136,32 +161,85 @@ local function decorate()
 	for _, station in Room.stations do
 		surfaceLabel(station.label, Enum.NormalId.Top, station.tab, GOLD, 60)
 		surfaceLabel(station.panel, Enum.NormalId.Right, station.tab, TEXT, 48)
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.Name = "Prompt"
-		prompt.ActionText = "OPEN"
-		prompt.ObjectText = station.tab
-		prompt.KeyboardKeyCode = Enum.KeyCode.F
-		prompt.HoldDuration = 0
-		prompt.MaxActivationDistance = 9
-		prompt.RequiresLineOfSight = false
-		prompt.Parent = station.panel
-		prompt.Triggered:Connect(function(player)
-			local state = PlayerState.get(player)
-			if Runs.inRunCycle(player) then
-				return
-			end
-			if not PlayerState.isStanding(state) then
-				return
-			end
-			Remotes.Juice:FireClient(player, "OpenMeta", { tab = station.tab })
-		end)
+		stationPrompt(station.panel, station.tab, 9)
+	end
+	-- Brief 8: the warehouse's three booths (their signs are the asset's): OPEN on each counter edge.
+	local view = HubMap.view
+	if view then
+		for _, station in view.stations do
+			stationPrompt(station.part, station.tab, Config.BoothPromptDistance)
+		end
 	end
 end
 
 ------------------------------------------------------------------ MARLOW's job board (brief 6)
--- A corkboard by a planning table in the yard with the four Job cards pinned to it, a JOBS sign and a beacon (the
+-- Brief 8: the warehouse's own bulletin board on the north wall (the Board node). The client finds the model named
+-- JobBoard: `Cork` is where the camera pushes in (its back faces the room), `Beacon` the strip it pulses until the
+-- day's board is seen. F (OPEN) at the board opens the JOBS screen.
+local function boardPrompt(parent: BasePart, distance: number)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "Prompt"
+	prompt.ActionText = "OPEN"
+	prompt.ObjectText = "MARLOW'S JOBS"
+	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = distance
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = parent
+	prompt.Triggered:Connect(function(player)
+		if Runs.inRunCycle(player) then
+			return
+		end
+		Remotes.Juice:FireClient(player, "OpenJobs", {})
+	end)
+end
+
+local function buildHubBoard(node: BasePart)
+	local m = Instance.new("Model")
+	m.Name = "JobBoard"
+	local function part(name: string, size: Vector3, cf: CFrame): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Size = size
+		p.CFrame = cf
+		p.Parent = m
+		return p
+	end
+	-- The node faces the room; the client reads the Cork's back as the board's front.
+	local front = node.CFrame.LookVector
+	local cork = part("Cork", node.Size, CFrame.lookAt(node.Position, node.Position - front))
+	cork.Transparency = 1
+	local top = node.Position + Vector3.new(0, node.Size.Y / 2 + 0.35, 0) + front * 0.2
+	local beacon = part("Beacon", Vector3.new(node.Size.X, 0.18, 0.2), CFrame.lookAt(top, top + front))
+	beacon.Color = GOLD
+	beacon.Material = Enum.Material.Neon
+	local light = Instance.new("PointLight")
+	light.Name = "BeaconLight"
+	light.Color = GOLD
+	light.Range = 14
+	light.Brightness = 1.5
+	light.Parent = beacon
+	-- The prompt sits low on the board's face so it reaches the floor in front of it.
+	local low = node.Position - Vector3.new(0, node.Size.Y / 2, 0) + front * 1
+	local anchor = part("PromptAnchor", Vector3.new(1, 1, 1), CFrame.new(low))
+	anchor.Transparency = 1
+	boardPrompt(anchor, Config.BoardPromptDistance)
+	m.Parent = HubMap.model or workspace
+	Hub.jobBoard = m
+end
+
+-- The yard's corkboard by a planning table with the four Job cards pinned to it, a JOBS sign and a beacon (the
 -- client pulses it until the day's board is opened); F opens the JOBS screen.
 local function buildJobBoard()
+	local hubBoard = HubMap.view and HubMap.view.board
+	if hubBoard then
+		buildHubBoard(hubBoard)
+		return
+	end
 	local base = Config.JobBoardPosition
 	local floor = Config.FloorTop
 	local m = Instance.new("Model")
@@ -279,30 +357,81 @@ local function buildJobBoard()
 	surfaceLabel(map, Enum.NormalId.Top, "THE BANK", Color3.fromRGB(220, 235, 255), 40)
 	local _ = cork
 	local _2 = frame
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "Prompt"
-	prompt.ActionText = "OPEN"
-	prompt.ObjectText = "MARLOW'S JOBS"
-	prompt.KeyboardKeyCode = Enum.KeyCode.F
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 10
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = top
-	prompt.Triggered:Connect(function(player)
-		if Runs.inRunCycle(player) then
-			return
-		end
-		Remotes.Juice:FireClient(player, "OpenJobs", {})
-	end)
+	boardPrompt(top, 10)
 	m.Parent = Room.folder or workspace
 	Hub.jobBoard = m
 end
+
+------------------------------------------------------------------ Roll-up doors (brief 8)
+-- The warehouse's two openings (the garage, the range) have no door panel in the asset: each gets a corrugated
+-- shutter filling its node. Down fills the opening; up rolls it into a short drum under the lintel. Everyone sees
+-- and hears it (the shutter clip at the door).
+local ROLLED = 0.9 -- studs of shutter left showing when it is up
+
+function Hub.setShutter(shutter: BasePart?, open: boolean, instant: boolean?)
+	if not shutter then
+		return
+	end
+	local closed = shutter:GetAttribute("Closed")
+	local height = shutter:GetAttribute("Height")
+	if typeof(closed) ~= "CFrame" or typeof(height) ~= "number" then
+		return
+	end
+	if shutter:GetAttribute("Open") == open and not instant then
+		return
+	end
+	shutter:SetAttribute("Open", open)
+	local y = if open then ROLLED else height
+	local size = Vector3.new(shutter.Size.X, y, shutter.Size.Z)
+	local cf = closed * CFrame.new(0, (height - y) / 2, 0)
+	shutter.CanCollide = not open
+	if instant then
+		shutter.Size = size
+		shutter.CFrame = cf
+		return
+	end
+	local sec = shutter:GetAttribute("RollSec")
+	TweenService:Create(
+		shutter,
+		TweenInfo.new(if typeof(sec) == "number" then sec else Config.HubDoorRollSec, Enum.EasingStyle.Quad),
+		{ Size = size, CFrame = cf }
+	):Play()
+	Remotes.Juice:FireAllClients("HubDoor", { position = closed.Position, open = open })
+end
+
+local function buildShutter(name: string, door: HubMap.Door?, open: boolean): BasePart?
+	if not door then
+		return nil
+	end
+	local node = door.part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CastShadow = true
+	p.Material = Enum.Material.CorrugatedPlate
+	p.Color = Color3.fromRGB(92, 96, 104)
+	p.Size = Vector3.new(node.Size.X, node.Size.Y, 0.4)
+	p.CFrame = node.CFrame
+	p:SetAttribute("Closed", node.CFrame)
+	p:SetAttribute("Height", node.Size.Y)
+	p:SetAttribute("RollSec", door.openSec)
+	p.Parent = HubMap.model or workspace
+	Hub.setShutter(p, open, true)
+	return p
+end
+
+Hub.garageShutter = nil :: BasePart?
+Hub.rangeShutter = nil :: BasePart?
 
 ------------------------------------------------------------------ State housekeeping
 -- (Brief 8: clearing a map after a run is the run slot's job: Run/Main clearArena.)
 
 -- Where a freshly loaded character belongs: always the hub spawn (late joiners never land in the arena).
 function Hub.spawnCFrame(_player: Player): CFrame?
+	local view = HubMap.view
+	if view then
+		return view.spawn + Vector3.new(0, 3, 0) -- on the star, facing the pads
+	end
 	return Room.yardSpawn
 end
 
@@ -333,7 +462,13 @@ function Hub.beginRun(players: { Player })
 end
 
 function Hub.init()
+	HubMap.init()
 	PlayerState.spawnCFrame = Hub.spawnCFrame
+	local view = HubMap.view
+	if view then
+		Hub.garageShutter = buildShutter("GarageShutter", view.garage, false)
+		Hub.rangeShutter = buildShutter("RangeShutter", view.rangeDoor, Config.RangeDoorOpen)
+	end
 	-- The yard's van is only a template now: each run slot drives its own copy.
 	if Room.van then
 		Room.van.Parent = nil

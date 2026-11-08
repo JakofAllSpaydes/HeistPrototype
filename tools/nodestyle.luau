@@ -28,6 +28,17 @@ local SHORT = {
 	VaultRoom = "VAULT",
 	Fences = "FENCE",
 	Offices = "OFFICE", -- Round 19f
+	-- Brief 8: the hub.
+	Spawn = "SPAWN",
+	QueuePads = "PAD",
+	Stations = "BOOTH",
+	Board = "BOARD",
+	GarageDoor = "GARAGE",
+	RangeDoor = "RANGE DOOR",
+	Range = "RANGE",
+	Dummies = "DUMMY",
+	PropSpots = "PROP",
+	TierPad = "TIER",
 }
 -- The attributes the label shows per type (the rest are in the Properties panel).
 local KEYS = {
@@ -44,6 +55,16 @@ local KEYS = {
 	VaultRoom = { "Door" },
 	Fences = {},
 	Offices = { "Zone" },
+	Spawn = {},
+	QueuePads = { "Index" },
+	Stations = { "Tab" },
+	Board = {},
+	GarageDoor = { "Mesh" },
+	RangeDoor = { "Mesh" },
+	Range = {},
+	Dummies = { "Plates" },
+	PropSpots = { "Game" },
+	TierPad = {},
 }
 
 local function hexColor(hex: string): { number }
@@ -63,7 +84,7 @@ end
 return function(typeName: string, node: any): any
 	local hex = (Config.NodeShowColor :: any)[typeName] or "FFFFFF"
 	local color = hexColor(hex)
-	local zone = typeName == "Zones"
+	local zone = typeName == "Zones" or typeName == "Range" -- volumes: Locked so clicks reach what is inside
 	local props = node.properties
 	props.Anchored = true
 	props.CanCollide = false
