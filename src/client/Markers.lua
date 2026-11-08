@@ -318,9 +318,59 @@ function Markers.setProgress(id: string, progress: number, active: boolean)
 	m.barFill.BackgroundColor3 = if active then Theme.Colors.cash else Theme.Colors.malus
 end
 
+-- Brief 7: door beacons on THE BANK. Closed: amber, the door's label and its UNLOCKS line, a ▲ badge far off.
+-- Called: job blue with the objective's name and HOLD F (a turning diamond for DoorPingDuration). Open: gone.
+local doorPing: { [string]: number } = {} -- group -> os.clock() the loud pulse ends
+local doorList: { any } = {}
+
+local function drawDoors()
+	local live: { [string]: boolean } = {}
+	for _, d in doorList do
+		local id = "door_" .. tostring(d.name)
+		if d.state == "open" then
+			continue
+		end
+		live[id] = true
+		local called = d.state == "called"
+		local loud = called and (doorPing[d.group] or 0) > os.clock()
+		local m = markers[id]
+		local want = if called then (if loud then "loud" else "called") else "closed"
+		if m and (m :: any).doorState == want then
+			continue
+		end
+		Markers.add(
+			id,
+			d.position,
+			if called then Theme.Colors.blue else Theme.Colors.amber,
+			if called then tostring(d.ping) else tostring(d.label),
+			if called then Lines.door.markerHint else tostring(d.sign),
+			0,
+			"▲",
+			{ scale = if called then 1 else 0.8, diamond = loud, noCompact = loud }
+		);
+		(markers[id] :: any).doorState = want
+	end
+	for id in table.clone(markers) do
+		if string.sub(id, 1, 5) == "door_" and not live[id] then
+			Markers.remove(id)
+		end
+	end
+end
+
 function Markers.init()
 	ClientState.Juice:Connect(function(name: string, data: any)
-		if name == "CallStart" and typeof(data.position) == "Vector3" then
+		if name == "DoorState" and typeof(data.doors) == "table" then
+			doorList = data.doors
+			drawDoors()
+		elseif name == "DoorPing" then
+			local sec = tonumber(data.sec) or Config.DoorPingDuration
+			doorPing[tostring(data.group)] = os.clock() + sec
+			drawDoors()
+			task.delay(sec + 0.05, drawDoors)
+		elseif name == "CallStart" and data.jobKind == "door" then
+			-- The door's own beacons turn blue (DoorState); no separate job marker.
+			return
+		elseif name == "CallStart" and typeof(data.position) == "Vector3" then
 			local capture = data.jobKind == "capture"
 			local vault = data.jobKind == "vault"
 			Markers.add(

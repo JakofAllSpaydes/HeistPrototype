@@ -478,6 +478,18 @@ local function build()
 		end, Theme.Colors.blue)
 		b.TextSize = S(9)
 	end
+	-- Open a door group (completes its objective) / close every door.
+	local rDoor = row(panel, 30.17, rh)
+	for _, gid in { "D1", "D2", "D3", "D4" } do
+		local b = btn(rDoor, "Open " .. gid, 0.2, function()
+			send("OpenDoor", gid)
+		end, Theme.Colors.amber)
+		b.TextSize = S(9)
+	end
+	local closeBtn = btn(rDoor, "Close all", 0.2, function()
+		send("CloseAllDoors")
+	end, Theme.Colors.malus)
+	closeBtn.TextSize = S(9)
 	local rBox = row(panel, 30.18, rh)
 	local boxBtn: TextButton
 	boxBtn = btn(rBox, "Spawn at: nearest", 1, function()

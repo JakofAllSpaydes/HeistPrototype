@@ -748,6 +748,12 @@ local Config = {
 	DoorTriggerWave = { D1 = 3, D3 = 6, D2 = 8 }, -- overrides a Door node's TriggerWave when set (D4 is the vault draw)
 	DoorInteractTime = 3, -- hold length at a door (a node's InteractTime overrides)
 	DoorOpenCashReward = 400, -- per player when a door opens (a node's CashReward overrides)
+	DoorHoldSec = 2, -- a released hold keeps its fill this long, then resets
+	DoorPingDuration = 15, -- the called door's loud beacon and floor chevrons last this long
+	DoorOpenShake = 0.6, -- camera shake when a door opens
+	DoorSignText = "UNLOCKS · WAVE %d", -- the sign board on a closed door
+	ZoneOpenCashBags = 3, -- a door's done drops this many cash bags on the opened zone's spots (bypasses the cap)...
+	ZoneOpenGoldBags = 1, -- ...and this many gold bags
 	BagOtherZoneMult = 2, -- bag spots outside the crew zone weigh this much more (bags pull the crew through the map)
 	JobOtherZoneMult = 1.5, -- the same for side-job spots
 

@@ -36,6 +36,7 @@ local CrateOpen = require(script.Parent.CrateOpen)
 local Pass = require(script.Parent.Pass)
 local Jobs = require(script.Parent.Jobs)
 local MapLoader = require(script.Parent.MapLoader)
+local Doors = require(script.Parent.Doors)
 
 local Debug = {}
 
@@ -56,6 +57,19 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			end
 		end
 		toast(player, "NO SPOT IN ZONE " .. zone)
+	end,
+	-- Brief 7 MAP: complete a door group's objective at once (D4 opens the vault, step 6).
+	OpenDoor = function(player, _state, args)
+		local group = tostring(args)
+		if not MapLoader.doors[group] then
+			toast(player, "NO DOOR " .. group)
+			return
+		end
+		Doors.open(group, nil)
+	end,
+	-- Back to the wave 1 state: every door closed, the hatch shut, nothing queued.
+	CloseAllDoors = function(_player, _state, _args)
+		Doors.resetRun()
 	end,
 	RecomputeNodes = function(player, _state, _args)
 		MapLoader.read()

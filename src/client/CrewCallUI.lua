@@ -774,7 +774,12 @@ function CrewCallUI.init()
 		-- The HUD was rebuilt; re-add the live pill if a job is running.
 		local call = active
 		active = nil
-		if call and call.data and call.data.endsAt and call.data.endsAt > ClientState.serverNow() then
+		if
+			call
+			and call.data
+			and call.data.endsAt
+			and (call.data.noTimer or call.data.endsAt > ClientState.serverNow())
+		then
 			local box, inner = buildBox(PILL_H)
 			local _, timer, stroke = buildPill(inner, call.data)
 			active =
@@ -787,6 +792,11 @@ function CrewCallUI.init()
 	RunService.Heartbeat:Connect(function(dt)
 		local call = active
 		if not call or not call.timerLabel or not call.box.Parent or not call.data.endsAt then
+			return
+		end
+		if call.data.noTimer then
+			-- Brief 7: a door objective never expires: the clock reads ∞.
+			call.timerLabel.Text = "∞"
 			return
 		end
 		local remaining = call.data.endsAt - ClientState.serverNow()

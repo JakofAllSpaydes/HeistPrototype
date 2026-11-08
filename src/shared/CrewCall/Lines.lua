@@ -118,6 +118,30 @@ local Lines = {
 		},
 		sealedLabel = "SEALED",
 	},
+	-- Brief 7: door objectives on THE BANK. The card's first line is lines[<door group>] (default when unset).
+	door = {
+		crewLead = "MARLOW",
+		typeLabel = "DOOR",
+		kind = "job",
+		lines = {
+			D1 = "Front doors. Make some noise.",
+			D2 = "They chained the stairs. Cut it.",
+			D3 = "Shutters are down. Get them up.",
+			default = "That door's locked. Get it open.",
+		},
+		extraText = "Hold F at it. No clock on this one.",
+		rewardLine = "+$%d CASH · OPENS %s",
+		markerHint = "HOLD F",
+		promptAction = "OPEN",
+		lockedAction = "LOCKED",
+		busyTag = "OPENING",
+		holdText = "OPENING · %.1fs",
+		doneTitle = "NICE WORK",
+		doneText = { "That's open.", "Keep moving." },
+		doneByText = { "It's open.", "Move up." },
+		openedToast = "%s OPENED THE %s",
+		vaultSign = "UNLOCKS · VAULT JOB",
+	},
 	-- The boss cutscene call and the kill stamp.
 	boss = {
 		crewLead = "MARLOW",

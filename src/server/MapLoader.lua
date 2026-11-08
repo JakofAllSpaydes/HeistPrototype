@@ -454,7 +454,7 @@ local function readSingles(nodes: Instance)
 			),
 			ladderTop = hatch.CFrame:PointToWorldSpace(if typeof(top) == "Vector3" then top else Vector3.new(-5, 0, 0)),
 		}
-		if mesh ~= "" and #MapLoader.meshParts(hatch.CFrame, hatch.Size, mesh, MapLoader.hatch.meshMargin) == 0 then
+		if mesh ~= "" and #MapLoader.meshParts(hatch.CFrame, hatch.Size, mesh, num(hatch, "MeshMargin", 0)) == 0 then
 			fail(hatch.Name, "Mesh '" .. mesh .. "' matches no geometry part inside the node")
 		end
 		Log.event("Map", "Hatch %s zone %s", hatch.Name, zid)
@@ -549,6 +549,10 @@ function MapLoader.read()
 		if MapLoader.errors == 1 then "" else "s"
 	)
 	Room.invalidate(MapLoader.MAP_ID)
+	local after = MapLoader.onRead
+	if after then
+		after()
+	end
 	if MapLoader.bank and MapLoader.bank:FindFirstChild("LadderLink") then
 		MapLoader.rebuildLadder()
 		MapLoader.setHatch(MapLoader.hatchOpen, true)
@@ -568,6 +572,9 @@ MapLoader.boxOpen = function(b: any): boolean
 	end
 	return MapLoader.zoneOpen(b.zone)
 end
+
+-- Doors installs this: the props re-dress after a re-read (Recompute nodes).
+MapLoader.onRead = nil :: (() -> ())?
 
 -- Can a run start on THE BANK? (MapLoaderStrict refuses one on a map with node errors.)
 function MapLoader.playable(): boolean

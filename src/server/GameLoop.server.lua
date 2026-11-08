@@ -17,6 +17,7 @@ Room.build()
 local MapLoader = require(script.Parent.MapLoader)
 MapLoader.init()
 local EnemyPath = require(script.Parent.EnemyPath)
+local Doors = require(script.Parent.Doors)
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
@@ -122,6 +123,7 @@ VaultJob.init()
 RunEnd.init()
 Roster.init()
 Debug.init()
+Doors.init()
 
 local function setState(state: string)
 	World.state = state
@@ -185,6 +187,7 @@ local function runWaves()
 			if World.isBossWave(wave) then " (boss wave)" else ""
 		)
 		BigCrate.onWaveStart(wave)
+		Doors.onWaveStart(wave) -- brief 7: a door due by this wave takes the slot before the side-job draw
 		CrewCall.onWaveStart(wave)
 		Bags.onWaveStart(wave)
 
@@ -235,6 +238,7 @@ local function runWaves()
 		SkipVote.reset()
 		setState("Intermission")
 		World.fireRun("Intermission", { wave = wave, endsAt = World.intermissionEndsAt })
+		Doors.onIntermission(wave + 1) -- brief 7: doors due next wave are called now
 		waitIntermission()
 		-- Debug "Open dealer now" during the intermission: the break runs, then the next wave.
 		if Dealer.requested and not World.runOver and not World.pendingWave then
@@ -266,6 +270,7 @@ task.spawn(function()
 		Pause.reset()
 		Queue.onRunEnded(choice)
 		Hub.enter(lastParty)
+		Doors.resetRun()
 		-- Brief 6: back in the hub after a reset, MARLOW announces the new Jobs.
 		for _, p in lastParty do
 			task.delay(2.5, Jobs.announce, p)
@@ -310,11 +315,13 @@ task.spawn(function()
 		Heat.reset()
 		EnemyPath.resetRun()
 		MapLoader.resetRun()
+		Doors.resetRun()
 		Hub.beginRun()
 		Economy.resetRun(World.partyPlayers())
 		Mastery.beginRun(World.partyPlayers())
 		Jobs.beginRun(World.partyPlayers())
 		setState("Intro")
+		Doors.sendState() -- brief 7: the door beacons for the party
 		Log.event(
 			"Run",
 			"Run %d start for a party of %d (%s), first wave in %.1fs",

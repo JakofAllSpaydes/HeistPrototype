@@ -37,6 +37,18 @@ type Job = {
 	insideSet: { [Player]: boolean }, -- capture: who is in it (CAPTURING tag over their head)
 	lastSent: number,
 	reminded: boolean, -- the half-time reminder line went out
+	door: DoorInfo?, -- brief 7: kind "door" (never expires, its own reward and copy)
+}
+
+-- Brief 7: what Doors hands the crew call for a door objective.
+export type DoorInfo = {
+	group: string,
+	position: Vector3,
+	name: string, -- the pill's name (OPEN THE BANK)
+	label: string, -- FRONT DOORS
+	line: string, -- MARLOW's line for this door
+	cashReward: number,
+	opens: string, -- the zone labels it opens
 }
 
 local CrewCall = {}
@@ -320,6 +332,10 @@ end
 
 -- `forceKind` skips the roll (the forced vault draw, debug).
 function CrewCall.trigger(forceKind: string?)
+	if job and job.kind == "door" then
+		Log.event("Call", "a door holds the objective slot; no side job drawn")
+		return
+	end
 	if job then
 		CrewCall.finish(false, true)
 	end
@@ -435,20 +451,37 @@ function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 	end
 	updateInsideSet(j, {}) -- nobody is capturing a finished job
 	local copy = copyFor(j.kind)
+	local door = j.door
+	-- A door pays its own CashReward (no Gold, no crate) and speaks its own copy.
+	local reward = if door then door.cashReward else Config.SideJobReward
+	local gold = if door then 0 else Config.SideJobGold
+	if door then
+		local d = Lines.door
+		copy = {
+			name = door.name,
+			crewLead = d.crewLead,
+			kind = d.kind,
+			doneTitle = d.doneTitle,
+			doneText = d.doneText,
+			doneByText = d.doneByText,
+			failText = d.doneText,
+			rewardLine = "+$%d CASH",
+		}
+	end
 	if success then
 		for _, p in World.runAudience() do
 			local state = PlayerState.get(p)
-			Economy.addEarned(state, Config.SideJobReward) -- x CASH GAIN
-			state.gold += Config.SideJobGold
-			state.jobsDone += 1
-			RunEvents.emit(p, "sidejob", 1) -- brief 6 Jobs
+			Economy.addEarned(state, reward) -- x CASH GAIN
+			state.gold += gold
+			state.jobsDone += 1 -- doors count as jobs (summary rows, MVP score)
+			RunEvents.emit(p, if door then "door" else "sidejob", 1) -- brief 6 Jobs
 			if j.kind == "vault" then
 				RunEvents.emit(p, "vault", 1)
 			end
 		end
 		World.addObjective()
-		-- The vault's reward is the room itself: no crate for that kind.
-		if Config.SideJobRewardCrate and j.kind ~= "vault" then
+		-- The vault's reward is the room itself: no crate for that kind (nor for a door).
+		if Config.SideJobRewardCrate and j.kind ~= "vault" and not door then
 			BigCrate.drop(j.position)
 		end
 		Heat.onJobDone() -- lands as +HeatJob at this wave's end
@@ -467,7 +500,7 @@ function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 			jobKind = j.kind,
 			success = success,
 			position = j.position,
-			reward = Config.SideJobReward,
+			reward = reward,
 			name = copy.name,
 			crewLead = copy.crewLead,
 			kind = copy.kind,
@@ -486,15 +519,85 @@ function CrewCall.finish(success: boolean, silent: boolean?, by: { Player }?)
 				end)()
 				else nil,
 			byText = if success then copy.doneByText else nil,
-			rewardLine = if success
-				then string.format(copy.rewardLine, Config.SideJobReward, Config.SideJobGold)
-				else "",
-			toast = if success
-				then string.format(Lines.doneToast, copy.name, Config.SideJobReward, Config.SideJobGold)
+			rewardLine = if success then string.format(copy.rewardLine, reward, gold) else "",
+			toast = if success and door
+				then string.format(
+					Lines.door.openedToast,
+					string.upper(if by and by[1] then by[1].Name else "THE CREW"),
+					door.label
+				)
+				elseif success then string.format(Lines.doneToast, copy.name, reward, gold)
 				else Lines.failToast,
 		})
 	end
-	Log.event("Call", "Side Job #%d %s", j.id, if success then "complete, paid $" .. Config.SideJobReward else "failed")
+	Log.event("Call", "Side Job #%d %s", j.id, if success then "complete, paid $" .. reward else "failed")
+	-- Brief 7: a queued door takes the slot the moment it is free.
+	local free = CrewCall.onSlotFree
+	if free then
+		task.defer(free)
+	end
+end
+
+-- Brief 7 hooks (installed by Doors): the slot is free again; a door owns or waits for the slot.
+CrewCall.onSlotFree = nil :: (() -> ())?
+CrewCall.supersedes = nil :: (() -> boolean)?
+
+-- Is the one objective slot taken?
+function CrewCall.busy(): boolean
+	return job ~= nil and job.active
+end
+
+-- A door objective on the crew-call shell: MARLOW's card, the pill with no clock, never expires.
+function CrewCall.triggerDoor(info: DoorInfo)
+	if job then
+		return
+	end
+	nextId += 1
+	local d = Lines.door
+	local thisJob: Job = {
+		id = nextId,
+		kind = "door",
+		endsAt = math.huge,
+		beacon = nil,
+		fill = nil,
+		active = true,
+		position = info.position,
+		progress = 0,
+		inside = false,
+		insideSet = {},
+		lastSent = 0,
+		reminded = true,
+		door = info,
+	}
+	job = thisJob
+	World.fireRun("CallStart", {
+		id = thisJob.id,
+		jobKind = "door",
+		group = info.group,
+		kind = d.kind,
+		name = info.name,
+		crewLead = d.crewLead,
+		typeLabel = d.typeLabel,
+		text = { info.line, d.extraText },
+		rewardLine = string.format(d.rewardLine, info.cashReward, info.opens),
+		rewardShort = string.format("+$%d", info.cashReward),
+		reward = info.cashReward,
+		gold = 0,
+		endsAt = 0,
+		noTimer = true,
+		duration = 0,
+		position = info.position,
+		markerHint = d.markerHint,
+	})
+	Log.event("Call", "Door #%d (%s) called: %s", thisJob.id, info.group, info.name)
+end
+
+-- The door's group opened while its call was up: the call completes, credited to the opener.
+function CrewCall.finishDoor(group: string, by: Player?)
+	local j = job
+	if j and j.active and j.door and j.door.group == group then
+		CrewCall.finish(true, nil, if by then { by } else nil)
+	end
 end
 
 -- Testing: the vault job is forced at every VaultJobEveryWaves wave (when the vault can be drawn).
@@ -504,6 +607,12 @@ local function vaultDue(wave: number): boolean
 end
 
 function CrewCall.onWaveStart(wave: number)
+	-- Brief 7: a door due (or open as the objective) supersedes this wave's side-job draw.
+	local sup = CrewCall.supersedes
+	if sup and sup() then
+		Log.event("Call", "wave %d side job skipped: a door holds the objective slot", wave)
+		return
+	end
 	if vaultDue(wave) then
 		CrewCall.trigger("vault")
 	elseif wave >= Config.SideJobFirstWave and (wave - Config.SideJobFirstWave) % Config.SideJobEveryWaves == 0 then
@@ -531,7 +640,7 @@ function CrewCall.init()
 		end
 		-- Half-time reminder: the card comes back with a nudge while the job is still open.
 		local window = if j.kind == "vault" then Config.VaultJobDurationSec else Config.SideJobDurationSec
-		if not j.reminded and now >= j.endsAt - window * (1 - Config.SideJobReminderPct) then
+		if not j.reminded and j.kind ~= "door" and now >= j.endsAt - window * (1 - Config.SideJobReminderPct) then
 			j.reminded = true
 			World.fireRun("CallReminder", { id = j.id, title = Lines.reminder.title, text = Lines.reminder.text })
 			Log.event("Call", "Side Job #%d reminder at %d%%", j.id, math.round(Config.SideJobReminderPct * 100))
