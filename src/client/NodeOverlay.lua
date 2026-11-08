@@ -60,12 +60,15 @@ end
 
 local drawn: { [BasePart]: { transparency: number, gui: BillboardGui } } = {}
 
-local function label(part: BasePart, typeName: string): string
+-- Type and name; `full` adds the key attributes (unused for now: they read in Studio's Properties panel).
+local function label(part: BasePart, typeName: string, full: boolean?): string
 	local bits = { SHORT[typeName] or typeName, part.Name }
-	for _, k in KEYS[typeName] or {} do
-		local v = part:GetAttribute(k)
-		if v ~= nil and v ~= "" then
-			table.insert(bits, string.format("%s %s", k, tostring(v)))
+	if full then
+		for _, k in KEYS[typeName] or {} do
+			local v = part:GetAttribute(k)
+			if v ~= nil and v ~= "" then
+				table.insert(bits, string.format("%s %s", k, tostring(v)))
+			end
 		end
 	end
 	return table.concat(bits, " · ")
@@ -110,10 +113,10 @@ function NodeOverlay.refresh()
 			local gui = Instance.new("BillboardGui")
 			gui.Name = "NodeTag"
 			gui.Adornee = p
-			gui.AlwaysOnTop = true
+			gui.AlwaysOnTop = false -- behind walls and floors: one room at a time
 			gui.LightInfluence = 0
-			gui.MaxDistance = if typeName == "Zones" then 400 else 160
-			gui.Size = UDim2.fromOffset(260, 18)
+			gui.MaxDistance = if typeName == "Zones" then 150 else 60
+			gui.Size = UDim2.fromOffset(170, 16)
 			gui.StudsOffsetWorldSpace = Vector3.new(0, p.Size.Y / 2 + 1, 0)
 			local t = Instance.new("TextLabel")
 			t.BackgroundTransparency = 0.4
@@ -121,7 +124,7 @@ function NodeOverlay.refresh()
 			t.BorderSizePixel = 0
 			t.Size = UDim2.fromScale(1, 1)
 			t.Font = Enum.Font.GothamBold
-			t.TextSize = 11
+			t.TextSize = 10
 			t.TextColor3 = color
 			t.Text = label(p, typeName)
 			t.Parent = gui

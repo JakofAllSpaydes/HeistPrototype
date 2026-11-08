@@ -49,15 +49,10 @@ local function hexColor(hex: string): { number }
 	return { math.round(r / 255 * 1000) / 1000, math.round(g / 255 * 1000) / 1000, math.round(b / 255 * 1000) / 1000 }
 end
 
-local function label(typeName: string, name: string, attrs: { [string]: any }): string
-	local bits = { SHORT[typeName] or typeName, name }
-	for _, k in KEYS[typeName] or {} do
-		local v = attrs[k]
-		if v ~= nil and v ~= "" and type(v) ~= "table" then
-			table.insert(bits, string.format("%s %s", k, tostring(v)))
-		end
-	end
-	return table.concat(bits, " · ")
+-- Type and name only: the attributes are in the Properties panel when the node is selected.
+local function label(typeName: string, name: string, _attrs: { [string]: any }): string
+	local _ = KEYS
+	return (SHORT[typeName] or typeName) .. " · " .. name
 end
 
 -- Dress a node (a model.json table: name, properties, attributes) of `typeName` in place and return it.
@@ -81,10 +76,11 @@ return function(typeName: string, node: any): any
 			name = "NodeTag",
 			className = "BillboardGui",
 			properties = {
-				AlwaysOnTop = true,
+				-- Behind walls and floors, and only near: the labels read one room at a time.
+				AlwaysOnTop = false,
 				LightInfluence = 0,
-				MaxDistance = if zone then 600 else 220,
-				Size = { UDim2 = { { 0, 260 }, { 0, 18 } } },
+				MaxDistance = if zone then 150 else 60,
+				Size = { UDim2 = { { 0, 170 }, { 0, 16 } } },
 				StudsOffsetWorldSpace = { 0, (size[2] or 1) / 2 + 1, 0 },
 			},
 			children = {
@@ -97,7 +93,7 @@ return function(typeName: string, node: any): any
 						BorderSizePixel = 0,
 						Size = { UDim2 = { { 1, 0 }, { 1, 0 } } },
 						Font = "GothamBold",
-						TextSize = 11,
+						TextSize = 10,
 						TextColor3 = color,
 						Text = label(typeName, node.name, node.attributes or {}),
 					},
