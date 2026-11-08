@@ -1138,7 +1138,9 @@ local Config = {
 	MinigameTier = 1, -- starting tier for every game (1..3); the tier pad and the debug panel change it per session
 	MinigamePanelPct = 0.55, -- panel width as a share of the shorter screen edge
 	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
-	MinigameMinSec = { Lockpick = 1.5, Hotwire = 1.5, Keypad = 1.5, Charges = 1.5, Safe = 2, Freq = 1, Cut = 0.8 },
+	-- A result faster than this (server clock, from the open) is treated as a script, not a player, and fails. Round 20u:
+	-- halved or less (a fast tier 1 Keypad measured 1.48 s against the old 1.5 floor and was failed).
+	MinigameMinSec = { Lockpick = 0.7, Hotwire = 0.7, Keypad = 0.6, Charges = 0.7, Safe = 1, Freq = 0.5, Cut = 0.4 },
 	MinigameHaptics = true, -- HapticService pulses on hits and locks (mobile / gamepad)
 	MinigameCloseDistance = 14, -- walking further than this from the prop closes the panel (counts as cancel)
 	MinigameWalkAwayGraceSec = 0.75, -- Round 19i: out of range this long before the cancel (a game finishing as you walk off still counts)
