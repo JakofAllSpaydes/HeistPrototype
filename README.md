@@ -28,7 +28,8 @@ ragdolls and hit sparks), the brief 4 build (Round 14: roster, boss, heat as pac
 the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause) with its feedback
 rounds 15b–15m, the Round 16 / 16b feedback passes, and the brief 6 build (Round 17: fake purchase flow, store,
 crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c and 18–18d,
-and the brief 7 build (Round 19: THE BANK, doors, the vault ring, spawn boxes, pathfinding; one commit per step).
+and the brief 7 build (Round 19: THE BANK, doors, the vault ring, spawn boxes, pathfinding; one commit per step)
+with its first feedback round 19b.
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -1011,23 +1012,30 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
    `THE BANK · NORMAL`; the summary header names the map; PLAY AGAIN keeps it.
 4. Run start: the van drives onto the grass, the crew steps out facing the bank, WAVE 1 on the street. Spawns come
    from behind the fence ends; the scoreboard header reads `· STREET`; amber ▲ beacons and signs on every door.
-5. Doors: the intermission before wave 3 → MARLOW `Front doors. Make some noise.`, blue beacons, chevrons, the pill
-   `OPEN THE BANK` with ∞, no side job that wave; hold F at the doors (release: the bar keeps its fill 2 s) → the doors
-   swing, flash and shake, +$400 each, your card, `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby,
-   `[GHS Door] D1 opened …`. Same for D3 (wave 6, either shutter; the counter grille rolls up with them) and D2
-   (wave 8, either chain). Debug `Open D1..D3` / `Close all` to jump.
+5. Doors: only the next unlock has a beacon (later doors keep their signs). The intermission before wave 3 → MARLOW
+   `Front doors. Make some noise.`, blue beacons, chevrons along the walking route to the doors, the pill
+   `OPEN THE BANK` with ∞, no side job that wave; F at the doors (BREACH) opens the Charges minigame → done: the doors
+   swing and fade, the asset's door leaves vanish, flash and shake, +$400 each, your card,
+   `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby, `[GHS Door] D1 opened …`. D3 (wave 6) and D2
+   (wave 8) are holds at either part (RAISE / CUT; release: the bar keeps its fill 2 s); the chevrons for D2 climb the
+   stairs to the chains at the top; the counter grille rolls up with the shutters. Debug `Open D1..D3` /
+   `Close all` to jump.
 6. Pathfinding: debug `Pin LOBBY` + `Spawn at:` a box + an archetype; enemies take the stairs, both passages, the
    stairwells; `Path debug` draws their routes (red when stuck). With the vault open, spawn at `tunnel_far`: they climb
    the ladder (lifted) to the pavement. A barricade across a passage: they route round it, or hit it when it is the
    only way. `[GHS Path]` per wave.
 7. Vault (D3 open, wave 10 or debug `Open vault`): `Vault's at the bottom of the stairwell…`, F at the wheel → Safe
    dial → `WE'RE IN`, the wheel spins, both doors swing, the burst, the pill `TUNNEL OPEN`, the hatch lid swings up with a
-   blue TUNNEL beacon. Walk the ring vault → server room → tunnel → ladder → street. Gas at 10 s left; the doors close
+   blue TUNNEL beacon; the vault's back wall (the server door was painted on it) is gone for the window. Walk the ring
+   vault → server room → tunnel → ladder → street. Gas at 10 s left; the doors close
    only once nobody is in the room; `[GHS Vault] window used … exit tunnel <you>`; the hatch stays open.
 8. TITAN (wave 10): the wall blows on the crew zone's boss wall (the street: the west fence end) and it walks in; lead it
    into the building: it follows through openings it fits, otherwise holds and Volleys.
 9. Dealer after the boss: the stall stands on the crew zone's dealer spot (the grass, the lobby under the stairs, the
    corridor, the landing), facing the right way; TELEPORT lands in front of it.
+9b. Round 19b: enemies walk up the stairs without hopping each step and through the street barriers (players cannot);
+    one far off for 6 s reappears closer on its route out of sight (`[GHS Path] … catch-ups N`); shoot a bank window →
+    it shatters and stays open; no bags spawn outside the bank.
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
