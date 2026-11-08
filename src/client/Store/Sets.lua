@@ -297,27 +297,73 @@ local function buildPassStage(): Set
 	rim.Transparency = 0.2
 	local key = part(m, Vector3.new(1, 1, 1), origin * CFrame.new(-6, 14, 9), orange, Enum.Material.Neon)
 	local fill = part(m, Vector3.new(1, 1, 1), origin * CFrame.new(5, 6, 6), orange, Enum.Material.Neon)
-	-- A front key aimed at the hero from the camera's side and a top light over the pedestal (the first key points
-	-- down beside the stage and left the figure in the dark). PassStageLight scales both.
-	local heroAt = (origin * CFrame.new(0, 2.6, 0)).Position
-	local frontPos = (origin * CFrame.new(1.5, 5, 9)).Position
-	local front = part(m, Vector3.new(1, 1, 1), CFrame.lookAt(frontPos, heroAt), orange, Enum.Material.Neon)
-	local top = part(m, Vector3.new(1, 1, 1), origin * CFrame.new(0, 11, 0.5), orange, Enum.Material.Neon)
-	local frontLight = light(front, "spot", Color3.fromHex("FFF1E0"), 6 * Config.PassStageLight, 26, 60)
-	local frontSpot: any = frontLight
-	frontSpot.Face = Enum.NormalId.Front
-	frontSpot.Shadows = false -- nothing in the room may block the key light on the hero
+	-- Round 20o: one spotlight over the pedestal, the reward lit and the rest of the room left dark. A lamp housing hangs
+	-- above with a visible cone of light (a beam) down to the floor; the light itself is a shadowless spot from the
+	-- lamp plus a shadowless soft light just in front of the hero, so it reads whatever the place's Lighting is.
+	-- PassStageLight scales both (0 = off).
+	local lampAt = origin * CFrame.new(0, 12, 0)
+	local housing = part(
+		m,
+		Vector3.new(2.2, 1.6, 1.6),
+		lampAt * CFrame.new(0, 0.6, 0),
+		Color3.fromRGB(30, 30, 34),
+		Enum.Material.Metal,
+		Enum.PartType.Cylinder
+	)
+	housing.CFrame = lampAt * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, 0, math.rad(90))
+	local lens = part(
+		m,
+		Vector3.new(0.15, 1.5, 1.5),
+		lampAt * CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromHex("FFF1D6"),
+		Enum.Material.Neon,
+		Enum.PartType.Cylinder
+	)
+	lens.CanCollide = false
+	local spot = light(lens, "spot", Color3.fromHex("FFF1D6"), 8 * Config.PassStageLight, 24, 40)
+	spot.Shadows = false
+	-- SpotLight.Face is in the lens part's own axes (turned 90 degrees round Z): its Left face points down.
+	local spotAny: any = spot
+	spotAny.Face = Enum.NormalId.Left
+	local soft = part(m, Vector3.new(0.5, 0.5, 0.5), origin * CFrame.new(0, 3.2, 3.5), orange, Enum.Material.Neon)
+	soft.Transparency = 1
+	local softLight = light(soft, "point", Color3.fromHex("FFE6C8"), 2.5 * Config.PassStageLight, 11)
+	softLight.Shadows = false
+	-- The visible cone: a camera-facing beam from the lens to the floor, wide at the bottom, fading out.
+	local a0 = Instance.new("Attachment")
+	a0.WorldPosition = lampAt.Position - Vector3.new(0, 0.2, 0)
+	a0.Parent = lens
+	local floorHolder = part(m, Vector3.new(0.2, 0.2, 0.2), origin * CFrame.new(0, 0.9, 0), orange, Enum.Material.Neon)
+	floorHolder.Transparency = 1
+	floorHolder.CanCollide = false
+	local a1 = Instance.new("Attachment")
+	a1.WorldPosition = (origin * CFrame.new(0, 0.9, 0)).Position
+	a1.Parent = floorHolder
+	local cone = Instance.new("Beam")
+	cone.Name = "LightCone"
+	cone.Attachment0 = a0
+	cone.Attachment1 = a1
+	cone.Width0 = 1.4
+	cone.Width1 = 7.5
+	cone.FaceCamera = true
+	cone.LightEmission = 1
+	cone.LightInfluence = 0
+	cone.Color = ColorSequence.new(Color3.fromHex("FFE9C4"))
+	cone.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55),
+		NumberSequenceKeypoint.new(0.7, 0.85),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	cone.Enabled = Config.PassStageLight > 0
+	cone.Parent = lens
 	local lights = {
 		light(key, "spot", Color3.fromHex("FFC890"), 6, 40, 60),
 		light(fill, "point", Color3.fromHex("7FB8FF"), 1.2, 16),
-		frontLight,
-		light(top, "spot", Color3.fromHex("FFD8A8"), 4 * Config.PassStageLight, 18, 55),
+		spot,
+		softLight,
 	}
-	lights[4].Shadows = false
 	key.Transparency = 1
 	fill.Transparency = 1
-	front.Transparency = 1
-	top.Transparency = 1
 	-- The hero sits center-frame, a little high (the track takes the bottom of the screen).
 	local shot = CFrame.lookAt((origin * CFrame.new(0, 2.2, 10)).Position, (origin * CFrame.new(0, 1.0, 0)).Position)
 	return {
