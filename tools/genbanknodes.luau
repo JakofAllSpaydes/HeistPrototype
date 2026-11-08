@@ -206,7 +206,15 @@ table.insert(doors, d3l)
 table.insert(doors, d3r)
 door("D3_counter", { 0, 14.6, -3.6 }, { 74.6, 18.2, 0.6 }, 0, table.clone(d3))
 -- D4: the wheel door onto the vault (the vault job's Safe dial) and the server door behind it, same group.
-local d4 = { Group = "D4", TriggerWave = 0, DoorStyle = "wheel", Mesh = "vault", CashReward = 0, Priority = 4 }
+local d4 = {
+	Group = "D4",
+	TriggerWave = 0,
+	DoorStyle = "wheel",
+	Mesh = "vault",
+	CashReward = 0,
+	Priority = 4,
+	PingText = "CRACK THE VAULT",
+}
 door(
 	"D4_vault",
 	{ vaultFront[1] - 0.8, vaultFront[2], vaultFront[3] },

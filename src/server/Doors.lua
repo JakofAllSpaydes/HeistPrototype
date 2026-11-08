@@ -56,6 +56,7 @@ local SHUTTER = Color3.fromRGB(118, 122, 128)
 local WOOD = Color3.fromRGB(92, 58, 40)
 
 local props: { Prop } = {}
+local buildVaultRoom: (Folder) -> ()
 local groups: { [string]: GroupState } = {}
 local queue: { string } = {}
 local folder: Folder? = nil
@@ -516,7 +517,10 @@ end
 
 -- Open a group: the props break, and (unless `quiet`) the zone-open burst, the logs and the call's finish.
 -- `by` is the opener (nil for debug and the vault's own open).
-function Doors.open(group: string, by: Player?, quiet: boolean?)
+-- `mode`: nil (an objective done: burst, logs, shake), "load" (dressing doors: instant and silent) or "vault"
+-- (D4 opened by the vault job: animated, logged, no zone burst: the vault has its own).
+function Doors.open(group: string, by: Player?, mode: string?)
+	local quiet = mode == "load"
 	local g = stateOf(group)
 	local door = MapLoader.doors[group]
 	if not door or g.state == "open" then
@@ -541,9 +545,9 @@ function Doors.open(group: string, by: Player?, quiet: boolean?)
 		group = group,
 		position = door.parts[1].cframe.Position,
 		label = door.label,
-		shake = if quiet then 0 else Config.DoorOpenShake,
+		shake = if quiet or mode == "vault" then 0 else Config.DoorOpenShake,
 	})
-	if not quiet then
+	if not quiet and mode ~= "vault" then
 		-- A freshly opened zone pays for the risk of moving: a burst on its spots, bypassing the cap.
 		local spots = {}
 		for _, s in MapLoader.bagSpots do
@@ -562,6 +566,8 @@ function Doors.open(group: string, by: Player?, quiet: boolean?)
 			if by then by.Name else "debug",
 			if g.calledAt > 0 then os.clock() - g.calledAt else 0
 		)
+	end
+	if not quiet then
 		Doors.openedLog = Doors.openedLog or {}
 		table.insert(Doors.openedLog, { group = group, wave = World.wave, by = if by then by.Name else "debug" })
 	end
@@ -806,6 +812,7 @@ function Doors.build()
 		f = nf
 	end
 	folder = f :: Folder
+	buildVaultRoom(f :: Folder)
 	for gid, door in MapLoader.doors do
 		for _, dp in door.parts do
 			local prop = buildProp(dp, door)
@@ -814,6 +821,169 @@ function Doors.build()
 		end
 	end
 	Doors.resetRun()
+end
+
+------------------------------------------------------------------ The vault on THE BANK (step 6)
+-- The vault room gets generated lights (off until the door opens) and a gas anchor the size of the VaultRoom
+-- node; the anchor carries the VaultGas path cost while the gas is in.
+local vaultLights: { BasePart } = {}
+local gasAnchor: BasePart? = nil
+local gasModifier: PathfindingModifier? = nil
+
+function buildVaultRoom(f: Folder)
+	for _, l in vaultLights do
+		l:Destroy()
+	end
+	vaultLights = {}
+	if gasAnchor then
+		gasAnchor:Destroy()
+		gasAnchor = nil
+	end
+	local vr = MapLoader.vaultRoom
+	if not vr then
+		return
+	end
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			local l = part({
+				Name = "VaultLight",
+				Size = Vector3.new(0.4, 0.3, math.max(2, vr.size.Z / 3)),
+				CFrame = vr.cframe * CFrame.new(sx * vr.size.X / 4, vr.size.Y / 2 - 1.2, sz * vr.size.Z / 4),
+				Color = Color3.fromRGB(255, 242, 217),
+				Material = Enum.Material.Neon,
+				Transparency = 0.6,
+				CanCollide = false,
+				CanQuery = false,
+				Parent = f,
+			})
+			local light = Instance.new("PointLight")
+			light.Range = 24
+			light.Brightness = 1.6
+			light.Enabled = false
+			light.Parent = l
+			table.insert(vaultLights, l)
+		end
+	end
+	gasAnchor = part({
+		Name = "VaultGas",
+		Size = vr.size,
+		CFrame = vr.cframe,
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		Parent = f,
+	})
+	local m = Instance.new("PathfindingModifier")
+	m.Label = "VaultGas"
+	m.PassThrough = true
+	gasModifier = m
+end
+
+-- The D4 part that opens the vault itself (its Opens is the vault room's zone).
+local function vaultDoorPart(): (MapLoader.DoorPart?, Prop?)
+	local vr = MapLoader.vaultRoom
+	local door = vr and MapLoader.doors[vr.door]
+	if not door then
+		return nil, nil
+	end
+	local pick = door.parts[1]
+	for _, dp in door.parts do
+		if dp.opens == "vault" then
+			pick = dp
+		end
+	end
+	for _, prop in props do
+		if prop.part == pick then
+			return pick, prop
+		end
+	end
+	return pick, nil
+end
+
+local function installVaultSite()
+	local VaultJob = require(script.Parent.VaultJob) :: any
+	local function vaultGroup(): string
+		return if MapLoader.vaultRoom then MapLoader.vaultRoom.door else "D4"
+	end
+	VaultJob.site = {
+		inside = function(p: Vector3): boolean
+			local vr = MapLoader.vaultRoom
+			return vr ~= nil and MapLoader.inVolume(vr.cframe, vr.size, p)
+		end,
+		front = function(): Vector3
+			local dp = vaultDoorPart()
+			if not dp then
+				return Vector3.zero
+			end
+			return Ground.at(dp.cframe.Position - towardZone(dp) * 6)
+		end,
+		doorPart = function(): BasePart?
+			local _, prop = vaultDoorPart()
+			return if prop then prop.blocker else nil
+		end,
+		open = function()
+			Doors.open(vaultGroup(), nil, "vault")
+		end,
+		close = function()
+			if Doors.isOpen(vaultGroup()) then
+				Doors.close(vaultGroup())
+			end
+		end,
+		setCalled = function(on: boolean)
+			local g = stateOf(vaultGroup())
+			if g.state ~= "open" then
+				g.state = if on then "called" else "closed"
+				Doors.sendState()
+				if on then
+					World.fireRun("DoorPing", { group = vaultGroup(), sec = Config.VaultArrowSec })
+				end
+			end
+		end,
+		lights = function(): { BasePart }
+			return vaultLights
+		end,
+		gasAnchor = function(): BasePart?
+			return gasAnchor
+		end,
+		gasCost = function(on: boolean)
+			local m = gasModifier
+			if m then
+				m.Parent = if on then gasAnchor else nil
+			end
+		end,
+		ready = function(): boolean
+			local dp = vaultDoorPart()
+			if not dp then
+				return false
+			end
+			local z = MapLoader.nearestZone(dp.cframe.Position - towardZone(dp) * 6)
+			return z ~= nil and MapLoader.zoneOpen(z)
+		end,
+		openHatch = function()
+			if not MapLoader.hatchOpen then
+				MapLoader.setHatch(true)
+			end
+		end,
+		hatchPosition = function(): Vector3?
+			return if MapLoader.hatch then MapLoader.hatch.cframe.Position else nil
+		end,
+		afterSeal = function()
+			if Config.HatchOneWayAfterSeal or not MapLoader.hatchOpen then
+				return
+			end
+			-- Never a trap: the lid only shuts when nobody is in the tunnel.
+			for _, p in World.runAudience() do
+				local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if root and MapLoader.zoneAt(root.Position) == "tunnel" then
+					return
+				end
+			end
+			MapLoader.setHatch(false)
+		end,
+		zoneAt = function(p: Vector3): string?
+			return MapLoader.nearestZone(p)
+		end,
+	}
 end
 
 -- Run start / hub / debug Close all doors: every door closed (dressing doors open), nothing queued.
@@ -832,7 +1002,7 @@ function Doors.resetRun()
 		g.holders = {}
 		setPrompts(gid, false)
 		if door.triggerWave < 0 then
-			Doors.open(gid, nil, true)
+			Doors.open(gid, nil, "load")
 		end
 	end
 	MapLoader.setHatch(false, true)
@@ -844,6 +1014,7 @@ function Doors.init()
 		return
 	end
 	Doors.build()
+	installVaultSite()
 	MapLoader.zoneOpen = zoneOpen
 	MapLoader.boxOpen = boxOpen
 	MapLoader.onRead = Doors.build

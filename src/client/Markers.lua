@@ -434,6 +434,18 @@ function Markers.init()
 		elseif name == "BagCollected" or name == "BagFizzled" then
 			Markers.remove("bag" .. tostring(data.id))
 		elseif name == "VaultOpen" and typeof(data.position) == "Vector3" then
+			-- Brief 7: on THE BANK the hatch gets a blue beacon on the street side for the window.
+			if typeof(data.hatch) == "Vector3" then
+				Markers.add(
+					"hatch",
+					data.hatch,
+					Theme.Colors.blue,
+					Lines.vault.hatchTitle,
+					Lines.vault.hatchHint,
+					0,
+					"▲"
+				)
+			end
 			Markers.add(
 				"vault",
 				data.position,
@@ -452,6 +464,7 @@ function Markers.init()
 			end
 		elseif name == "VaultSealed" or name == "HubEnter" then
 			Markers.remove("vault")
+			Markers.remove("hatch")
 			if name == "HubEnter" then
 				for id in table.clone(markers) do
 					Markers.remove(id)

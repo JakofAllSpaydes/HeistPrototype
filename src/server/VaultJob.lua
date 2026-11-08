@@ -28,6 +28,44 @@ local Abilities = require(script.Parent.Abilities)
 
 local VaultJob = {}
 
+-- Brief 7: THE BANK's vault, installed by Doors (VaultJob cannot require it: CrewCall -> VaultJob). The shell is
+-- the same on both maps; only these pieces differ: the wheel door (D4) and its server door, the VaultRoom
+-- volume, the lights and gas anchor generated in the room, and the hatch that opens with the first window.
+export type Site = {
+	inside: (Vector3) -> boolean,
+	front: () -> Vector3, -- floor point on the landing side of the wheel door
+	doorPart: () -> BasePart?, -- where the CRACK prompt and the pulse light sit
+	open: () -> (), -- the wheel spins, the vault door and the server door swing (D4)
+	close: () -> (), -- both back shut
+	setCalled: (boolean) -> (), -- the D4 beacons turn job blue while drawn
+	lights: () -> { BasePart },
+	gasAnchor: () -> BasePart?,
+	gasCost: (boolean) -> (), -- the VaultGas path cost on the room while gassed
+	ready: () -> boolean, -- the draw is legal: the stairwell is open
+	openHatch: () -> (),
+	hatchPosition: () -> Vector3?,
+	afterSeal: () -> (), -- HatchOneWayAfterSeal false: shut the hatch when the tunnel is empty
+	zoneAt: (Vector3) -> string?,
+}
+VaultJob.site = nil :: Site?
+
+-- The site in play: THE BANK's on any map but the arena, nil on the arena (its closet vault).
+local function site(): Site?
+	if World.map == "Arena" then
+		return nil
+	end
+	return VaultJob.site
+end
+
+-- Inside the vault (the arena closet's floor volume, or the VaultRoom node).
+function VaultJob.inside(position: Vector3): boolean
+	local s = site()
+	if s then
+		return s.inside(position)
+	end
+	return Room.insideVault(position)
+end
+
 local AMBER = Color3.fromHex("E8B64C")
 local BLUE = Color3.fromHex("4D9FE8")
 local GREY = Color3.fromHex("5A5E66")
@@ -39,6 +77,8 @@ VaultJob.phase = "closed"
 VaultJob.doneThisRun = false
 
 local prompt: ProximityPrompt? = nil
+local exits: { [Player]: any } = {}
+local trackExits: () -> ()
 local fog: ParticleEmitter? = nil
 local endsAt = 0 -- server time the loot window ends
 local warnAt = 0
@@ -51,6 +91,11 @@ local function now(): number
 end
 
 local function paintBeacons(color: Color3)
+	local s = site()
+	if s then
+		s.setCalled(color == BLUE)
+		return
+	end
 	local v = Room.vault
 	if not v then
 		return
@@ -61,11 +106,10 @@ local function paintBeacons(color: Color3)
 end
 
 local function setLights(on: boolean, color: Color3?)
+	local s = site()
 	local v = Room.vault
-	if not v then
-		return
-	end
-	for _, l in v.lights do
+	local lights = if s then s.lights() elseif v then v.lights else {}
+	for _, l in lights do
 		l.Color = color or Color3.fromRGB(255, 242, 217)
 		l.Transparency = if on then 0 else 0.6
 		local light = l:FindFirstChildOfClass("PointLight")
@@ -77,6 +121,15 @@ local function setLights(on: boolean, color: Color3?)
 end
 
 local function slideDoor(open: boolean)
+	local s = site()
+	if s then
+		if open then
+			s.open()
+		else
+			s.close()
+		end
+		return
+	end
 	local v = Room.vault
 	if not v then
 		return
@@ -90,11 +143,23 @@ local function slideDoor(open: boolean)
 	):Play()
 end
 
+local fogAnchor: BasePart? = nil
 local function setFog(on: boolean)
+	local s = site()
 	local v = Room.vault
-	if not v or not v.gas then
+	local anchor = if s then s.gasAnchor() elseif v then v.gas else nil
+	if s then
+		s.gasCost(on)
+	end
+	if not anchor then
 		return
 	end
+	-- The emitter moves with the map in play (the arena closet or THE BANK's vault room).
+	if fog and fogAnchor ~= anchor then
+		fog:Destroy()
+		fog = nil
+	end
+	fogAnchor = anchor
 	if not fog then
 		local e = Instance.new("ParticleEmitter")
 		e.Name = "Gas"
@@ -107,7 +172,7 @@ local function setFog(on: boolean)
 		e.Color = ColorSequence.new(GAS)
 		e.Acceleration = Vector3.new(0, -2, 0)
 		e.Drag = 1
-		e.Parent = v.gas
+		e.Parent = anchor
 		fog = e
 	end
 	local e = fog :: ParticleEmitter
@@ -128,7 +193,7 @@ local function playersInside(): { Player }
 	for _, player in World.runAudience() do
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if root and Room.insideVault(root.Position) then
+		if root and VaultJob.inside(root.Position) then
 			table.insert(out, player)
 		end
 	end
@@ -144,11 +209,12 @@ end
 
 -- While the job is drawn and not yet cracked the door pulses amber with a light (VaultDoorPulseSec a cycle).
 local function pulseDoor()
+	local s = site()
 	local v = Room.vault
-	if not v then
+	local door = if s then s.doorPart() elseif v then v.door else nil
+	if not door then
 		return
 	end
-	local door = v.door
 	local baseColor = door.Color
 	local light = door:FindFirstChild("PulseLight") :: PointLight?
 	if not light then
@@ -180,7 +246,12 @@ end
 
 -- Can CRACK THE VAULT be drawn this wave?
 function VaultJob.available(wave: number): boolean
-	if not Room.vault or World.map ~= "Arena" then
+	local s = site()
+	if World.map == "Arena" and not Room.vault then
+		return false
+	end
+	-- THE BANK: legal only once the stairwell is open (D3), like a job spot in a closed zone.
+	if World.map ~= "Arena" and (not s or not s.ready()) then
 		return false
 	end
 	-- Closed, or sealed from an earlier draw when the vault may come back (VaultJobOnce false).
@@ -197,6 +268,10 @@ function VaultJob.available(wave: number): boolean
 end
 
 function VaultJob.front(): Vector3
+	local s = site()
+	if s then
+		return s.front()
+	end
 	local v = Room.vault
 	return if v then v.front else Vector3.zero
 end
@@ -209,16 +284,21 @@ end
 -- The job was drawn: blue frame, a CRACK prompt on the door that opens the Safe dial. `onCracked` is
 -- CrewCall finishing the job (which then calls VaultJob.open).
 function VaultJob.startJob(onCracked: (Player) -> ())
+	local s = site()
 	local v = Room.vault
-	if not v then
+	local doorPart = if s then s.doorPart() elseif v then v.door else nil
+	if not doorPart then
 		return
 	end
+	local front = VaultJob.front()
 	if VaultJob.phase == "sealed" then
 		-- Drawn again after a seal (VaultJobOnce false): back to a closed, unlit vault.
 		runToken += 1
 		setFog(false)
 		setLights(false)
-		v.door.CFrame = v.doorClosed
+		if v and not s then
+			v.door.CFrame = v.doorClosed
+		end
 	end
 	VaultJob.phase = "job"
 	World.vaultLive = true
@@ -237,7 +317,7 @@ function VaultJob.startJob(onCracked: (Player) -> ())
 		end
 	end
 	if n > 0 then
-		World.fireRun("VaultArrows", { from = sum / n, to = v.front, sec = Config.VaultArrowSec })
+		World.fireRun("VaultArrows", { from = sum / n, to = front, sec = Config.VaultArrowSec })
 	end
 	local p = Instance.new("ProximityPrompt")
 	p.ActionText = Lines.vault.promptAction
@@ -246,13 +326,13 @@ function VaultJob.startJob(onCracked: (Player) -> ())
 	p.HoldDuration = 0
 	p.MaxActivationDistance = 9
 	p.RequiresLineOfSight = false
-	p.Parent = v.door
+	p.Parent = doorPart
 	p.Triggered:Connect(function(player: Player)
 		if VaultJob.phase ~= "job" then
 			return
 		end
 		Minigames.open(player, "Safe", {
-			position = v.front,
+			position = front,
 			tier = tierFor(World.wave),
 			onDone = function(pl: Player)
 				if VaultJob.phase == "job" then
@@ -294,7 +374,12 @@ local function seal()
 		tint(player, false)
 	end
 	-- Nothing stays behind the door: a turret or barricade left inside would be out of every enemy's reach.
-	local cleared = Abilities.clearWhere(Room.insideVault, "sealed in the vault")
+	local cleared = Abilities.clearWhere(VaultJob.inside, "sealed in the vault")
+	local s = site()
+	if s then
+		s.afterSeal()
+	end
+	VaultJob.logExits()
 	World.fireRun("VaultSealed", { position = VaultJob.front(), label = Lines.vault.sealedLabel })
 	Log.event("Vault", "sealed (%d placeables / fields inside cleared)", cleared)
 end
@@ -340,9 +425,10 @@ end
 
 -- Open the door onto the bag burst and start the loot window.
 function VaultJob.open()
+	local s = site()
 	local v = Room.vault
 	if
-		not v
+		(not v and not s)
 		or VaultJob.phase == "open"
 		or VaultJob.phase == "warn"
 		or VaultJob.phase == "gas"
@@ -360,10 +446,19 @@ function VaultJob.open()
 	warnAt = endsAt - Config.VaultGasWarnSec
 	slideDoor(true)
 	setLights(true)
-	paintBeacons(AMBER)
+	if not s then
+		paintBeacons(AMBER)
+	end
 	Bags.burstAtSpots(Room.current().vaultSpots, Config.VaultBurstCash, Config.VaultBurstGold, true)
+	-- THE BANK: the hatch opens with the first window (the tunnel's way out), with a beacon on the street side.
+	if s then
+		s.openHatch()
+	end
+	VaultJob.windowStart()
 	World.fireRun("VaultOpen", {
-		position = v.front,
+		position = VaultJob.front(),
+		tunnelText = if s then Config.VaultPillTunnelText else nil,
+		hatch = if s then s.hatchPosition() else nil,
 		endsAt = endsAt,
 		warnAt = warnAt,
 		openSec = Config.VaultOpenSec,
@@ -382,6 +477,60 @@ function VaultJob.open()
 			startGas()
 		end
 	end)
+end
+
+------------------------------------------------------------------ The window's exits (brief 7)
+-- Per member per window: when they last left the vault room and which way (the zone they stepped into:
+-- stairs or tunnel), logged at the seal as [GHS Vault] window used <sec> exit <stairs|tunnel|none> <name>.
+type Exit = { inside: boolean, entered: boolean, leftAt: number, way: string }
+exits = {} :: { [Player]: Exit }
+local windowAt = 0
+
+function VaultJob.windowStart()
+	windowAt = os.clock()
+	exits = {}
+end
+
+function trackExits()
+	if VaultJob.phase ~= "open" and VaultJob.phase ~= "warn" and VaultJob.phase ~= "gas" then
+		return
+	end
+	local s = site()
+	for _, player in World.runAudience() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not root then
+			continue
+		end
+		local e = exits[player]
+		if not e then
+			e = { inside = false, entered = false, leftAt = 0, way = "none" }
+			exits[player] = e
+		end
+		local inside = VaultJob.inside(root.Position)
+		if inside then
+			e.entered = true
+		elseif e.inside then
+			e.leftAt = os.clock()
+			local z = if s then s.zoneAt(root.Position) else nil
+			e.way = if z == "tunnel" then "tunnel" elseif z == "stairs" then "stairs" else "none"
+		end
+		e.inside = inside
+	end
+end
+
+function VaultJob.logExits()
+	for player, e in exits do
+		if e.entered then
+			Log.event(
+				"Vault",
+				"window used %.1f exit %s %s",
+				if e.leftAt > 0 then e.leftAt - windowAt else os.clock() - windowAt,
+				e.way,
+				player.Name
+			)
+		end
+	end
+	exits = {}
 end
 
 -- Debug: jump to the gas now.
@@ -406,6 +555,12 @@ function VaultJob.resetRun()
 	if v then
 		v.door.CFrame = v.doorClosed
 	end
+	local s = site()
+	if s then
+		s.close()
+		s.gasCost(false)
+	end
+	exits = {}
 	for player in table.clone(tinted) do
 		tint(player, false)
 	end
@@ -445,6 +600,7 @@ function VaultJob.init()
 		label.Parent = gui
 	end
 	RunService.Heartbeat:Connect(function()
+		trackExits()
 		if VaultJob.phase ~= "gas" then
 			return
 		end

@@ -92,6 +92,13 @@ local Lines = {
 			"Vault's on the north wall. Crack it and clean it out,",
 			"you won't get long.",
 		},
+		-- Brief 7: THE BANK's vault call.
+		textBank = {
+			"Vault's at the bottom of the stairwell. Crack the wheel,",
+			"clean it out, and take the tunnel if you have to.",
+		},
+		hatchTitle = "TUNNEL",
+		hatchHint = "THE BACK WAY",
 		rewardLine = "+$%d CASH · +%d GOLD · THE VAULT",
 		markerHint = "CRACK THE DOOR",
 		promptAction = "CRACK",

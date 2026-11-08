@@ -65,10 +65,25 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			toast(player, "NO DOOR " .. group)
 			return
 		end
+		-- The vault's wheel door opens through the vault job (its window, burst, gas and seal).
+		if MapLoader.vaultRoom and group == MapLoader.vaultRoom.door then
+			if VaultJob.phase == "job" then
+				CrewCall.finish(true)
+			elseif VaultJob.phase == "closed" then
+				VaultJob.open()
+			else
+				toast(player, "VAULT IS " .. string.upper(VaultJob.phase))
+			end
+			return
+		end
 		Doors.open(group, nil)
 	end,
 	-- Back to the wave 1 state: every door closed, the hatch shut, nothing queued.
 	CloseAllDoors = function(_player, _state, _args)
+		if CrewCall.busy() then
+			CrewCall.finish(false, true)
+		end
+		VaultJob.resetRun()
 		Doors.resetRun()
 	end,
 	RecomputeNodes = function(player, _state, _args)
@@ -349,6 +364,13 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		else
 			toast(player, "VAULT IS " .. string.upper(VaultJob.phase))
 		end
+	end,
+	-- Brief 7: the seal waits for an empty room as always: this brings the gas in now.
+	SealVault = function(player, _state, _args)
+		if VaultJob.phase == "open" or VaultJob.phase == "warn" then
+			VaultJob.debugGas()
+		end
+		toast(player, "VAULT SEALS WHEN EMPTY")
 	end,
 	GasVault = function(player, _state, _args)
 		if VaultJob.phase == "open" or VaultJob.phase == "warn" then

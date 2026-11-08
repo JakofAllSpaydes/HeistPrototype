@@ -1208,6 +1208,7 @@
             "Label": "VAULT DOOR",
             "Mesh": "vault",
             "Opens": "vault",
+            "PingText": "CRACK THE VAULT",
             "Priority": 4,
             "TriggerWave": 0
           },
@@ -1264,6 +1265,7 @@
             "Label": "SERVER ROOM",
             "Mesh": "vault",
             "Opens": "tunnel",
+            "PingText": "CRACK THE VAULT",
             "Priority": 4,
             "TriggerWave": 0
           },

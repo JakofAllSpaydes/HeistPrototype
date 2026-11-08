@@ -583,6 +583,11 @@ local Config = {
 	VaultStampSec = 1.5, -- the center VAULT JOB stamp
 	VaultDoorPulseSec = 1.2, -- the door pulses amber (with a light) once per this, until cracked
 	VaultArrowSec = 10, -- the chevron strip from the crew to the door stays this long
+	-- Brief 7: THE BANK's vault is the wheel door at the foot of the stairwell (D4).
+	VaultWheelSpinSec = 1.2, -- the wheel spins this long...
+	VaultDoorSwingSec = 1.5, -- ...then the door swings in over this long (the server door with it)
+	VaultPillTunnelText = "TUNNEL OPEN", -- the vault pill's line while the tunnel is open (the map is a ring)
+	HatchOneWayAfterSeal = true, -- the hatch stays open for the rest of the run once the vault has opened
 
 	------------------------------------------------------------------ Progression (account level; Progression.lua, LevelRewards.lua)
 	-- XP per run, per player: XpPerWave x waves cleared + XpPerKill x kills + XpPerJob x jobs + XpPerBoss x boss kills

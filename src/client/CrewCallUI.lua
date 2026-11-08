@@ -586,7 +586,8 @@ local function onVaultOpen(data: any)
 		typeLabel = Lines.vault.typeLabel,
 		text = {},
 		rewardLine = "",
-		rewardShort = tostring(data.hint or Lines.vault.lootHint),
+		-- Brief 7: on THE BANK the pill's side line says the tunnel is open (the back way out).
+		rewardShort = tostring(data.tunnelText or data.hint or Lines.vault.lootHint),
 		endsAt = tonumber(data.endsAt) or 0,
 		duration = tonumber(data.openSec) or Config.VaultOpenSec,
 	})

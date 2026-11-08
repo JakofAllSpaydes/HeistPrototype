@@ -73,6 +73,11 @@ local function copyFor(kind: string): any
 	if kind == "capture" then
 		return Lines.capture
 	elseif kind == "vault" then
+		if World.map ~= "Arena" and Lines.vault.textBank then
+			local c = table.clone(Lines.vault) :: any
+			c.text = Lines.vault.textBank
+			return c
+		end
 		return Lines.vault
 	elseif not isMinigame(kind) then
 		return Lines.job
