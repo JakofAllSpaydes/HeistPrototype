@@ -961,6 +961,9 @@ local Config = {
 	HubVanDriveStuds = 60, -- how far the van drives out through the garage before it fades
 	DoorSupersedesSideJob = true, -- THE BANK: a door coming due ends the running side job (quietly) and is called at once
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
+	RangeLamp = true, -- one street lamp on the range's south wall
+	RangeLampAt = 0.45, -- where along the range it stands: 0 = by the door, 1 = by the far wall (the dummies)
+	RangeLampBrightness = 5, -- its light (the downward spot; a soft glow at 0.3 of it)
 	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
 	PremiumSetAmbient = "4A4552", -- the ambient while a premium scene (pass, store, crate room) is up (was near-black)
 	PassDragTurn = 0.012, -- radians per pixel when you drag the battle pass mannequin

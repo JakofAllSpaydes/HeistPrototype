@@ -536,6 +536,82 @@ local function buildProps()
 	end
 end
 
+------------------------------------------------------------------ The range's streetlight (Round 20s)
+-- One street lamp on the bay's south wall (RangeLampAt: the share of the way from the door to the far wall), its arm
+-- out over the bay and a wide warm light down on the dummies and the firing line.
+local function buildRangeLamp()
+	local view = HubMap.view
+	local r = view and view.range
+	if not r or not Config.RangeLamp then
+		return
+	end
+	local half = r.size / 2
+	local floorY = r.cframe.Position.Y - half.Y
+	-- The door is on the range's +X side (east); the far wall on -X; south is +Z.
+	local x = half.X - r.size.X * Config.RangeLampAt
+	local base = r.cframe * CFrame.new(x, -half.Y, half.Z - 1.2)
+	local inward = r.cframe.LookVector * Vector3.new(1, 0, 1) -- north, from the south wall toward the middle
+	local height = 16
+	local folder = Instance.new("Model")
+	folder.Name = "RangeLamp"
+	local metal = Color3.fromRGB(38, 40, 46)
+	local function piece(name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = material
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = folder
+		return p
+	end
+	local foot = Vector3.new(base.X, floorY, base.Z)
+	piece(
+		"Pole",
+		Vector3.new(0.5, height, 0.5),
+		CFrame.new(foot + Vector3.new(0, height / 2, 0)),
+		metal,
+		Enum.Material.Metal
+	)
+	local top = foot + Vector3.new(0, height, 0)
+	local reach = 5
+	piece(
+		"Arm",
+		Vector3.new(0.35, 0.35, reach),
+		CFrame.lookAt(top + inward * (reach / 2), top + inward * reach),
+		metal,
+		Enum.Material.Metal
+	).CanCollide =
+		false
+	local headAt = top + inward * reach - Vector3.new(0, 0.3, 0)
+	local head = piece(
+		"Head",
+		Vector3.new(1.8, 0.4, 1.1),
+		CFrame.lookAt(headAt, headAt + inward),
+		Color3.fromHex("FFE2B0"),
+		Enum.Material.Neon
+	)
+	head.CanCollide = false
+	local spot = Instance.new("SpotLight")
+	spot.Face = Enum.NormalId.Bottom
+	spot.Angle = 120
+	spot.Range = 60
+	spot.Brightness = Config.RangeLampBrightness
+	spot.Color = Color3.fromHex("FFE2B0")
+	spot.Shadows = true
+	spot.Parent = head
+	local glow = Instance.new("PointLight")
+	glow.Range = 30
+	glow.Brightness = Config.RangeLampBrightness * 0.3
+	glow.Color = Color3.fromHex("FFE2B0")
+	glow.Shadows = false
+	glow.Parent = head
+	folder.Parent = HubMap.model or workspace
+end
+
 ------------------------------------------------------------------ The van and the garage (brief 8)
 -- The asset's van stands in the garage all the time, nose to the roll-up door. Its pivot is normalized at load to
 -- the middle of its underside facing its nose, so PivotTo(a floor point facing a way) parks it there; the run
@@ -756,6 +832,7 @@ function Hub.init()
 		end
 	end
 	buildProps()
+	buildRangeLamp()
 	decorate()
 	buildJobBoard()
 	startBoothWalkIns()
