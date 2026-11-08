@@ -103,12 +103,13 @@ local function busy(player: Player, on: boolean)
 end
 
 -- Round 22: cash duffel — tapered body, two handle straps, a neon zipper line and the $ stamp.
+-- Round 23: scaled up ~30% for better visibility.
 local function buildCashBag(model: Model, pos: Vector3, yaw: number)
-	local cf = CFrame.new(pos + Vector3.new(0, 0.75, 0)) * CFrame.Angles(0, yaw, 0)
+	local cf = CFrame.new(pos + Vector3.new(0, 0.95, 0)) * CFrame.Angles(0, yaw, 0)
 	-- Main body: a wide rounded duffel shape.
 	local body = part({
 		Name = "Body",
-		Size = Vector3.new(2.4, 1.4, 1.4),
+		Size = Vector3.new(3.1, 1.8, 1.8),
 		CFrame = cf,
 		Color = CASH_BODY,
 		Material = Enum.Material.Fabric,
@@ -119,8 +120,8 @@ local function buildCashBag(model: Model, pos: Vector3, yaw: number)
 	for _, sx in { -1, 1 } do
 		part({
 			Name = "End",
-			Size = Vector3.new(0.35, 1.2, 1.2),
-			CFrame = cf * CFrame.new(sx * 1.15, 0, 0),
+			Size = Vector3.new(0.45, 1.55, 1.55),
+			CFrame = cf * CFrame.new(sx * 1.5, 0, 0),
 			Color = CASH_BODY:Lerp(DARK, 0.15),
 			Material = Enum.Material.Fabric,
 			CanQuery = false,
@@ -130,19 +131,19 @@ local function buildCashBag(model: Model, pos: Vector3, yaw: number)
 	-- Zipper line across the top.
 	part({
 		Name = "Zipper",
-		Size = Vector3.new(2.5, 0.08, 0.12),
-		CFrame = cf * CFrame.new(0, 0.7, 0),
+		Size = Vector3.new(3.2, 0.1, 0.15),
+		CFrame = cf * CFrame.new(0, 0.9, 0),
 		Color = CASH,
 		Material = Enum.Material.Neon,
 		CanQuery = false,
 		Parent = model,
 	})
 	-- Two handle straps on top.
-	for _, sx in { -0.35, 0.35 } do
+	for _, sx in { -0.45, 0.45 } do
 		part({
 			Name = "Handle",
-			Size = Vector3.new(0.12, 0.5, 0.12),
-			CFrame = cf * CFrame.new(sx, 0.95, 0),
+			Size = Vector3.new(0.14, 0.6, 0.14),
+			CFrame = cf * CFrame.new(sx, 1.22, 0),
 			Color = DARK,
 			Material = Enum.Material.SmoothPlastic,
 			CanQuery = false,
@@ -152,8 +153,8 @@ local function buildCashBag(model: Model, pos: Vector3, yaw: number)
 	-- Handle crossbar.
 	part({
 		Name = "HandleBar",
-		Size = Vector3.new(0.8, 0.12, 0.12),
-		CFrame = cf * CFrame.new(0, 1.2, 0),
+		Size = Vector3.new(1.0, 0.14, 0.14),
+		CFrame = cf * CFrame.new(0, 1.52, 0),
 		Color = DARK,
 		Material = Enum.Material.SmoothPlastic,
 		CanQuery = false,
@@ -178,46 +179,49 @@ local function buildCashBag(model: Model, pos: Vector3, yaw: number)
 end
 
 -- Round 22: gold briefcase — hard shell with latches, handle, and a visible gold bar in a recess on the lid.
+-- Round 23: scaled up ~30%, shinier reflectance on gold surfaces.
 local function buildGoldBag(model: Model, pos: Vector3, yaw: number)
-	local cf = CFrame.new(pos + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, yaw, 0)
+	local cf = CFrame.new(pos + Vector3.new(0, 0.75, 0)) * CFrame.Angles(0, yaw, 0)
 	-- Main case body.
 	local body = part({
 		Name = "Body",
-		Size = Vector3.new(2.2, 1.1, 1.5),
+		Size = Vector3.new(2.9, 1.4, 2.0),
 		CFrame = cf,
 		Color = GOLD,
 		Material = Enum.Material.Metal,
+		Reflectance = 0.3,
 		CanQuery = true,
 		Parent = model,
 	})
 	-- Lid seam: a dark line separating the top and bottom halves.
 	part({
 		Name = "Seam",
-		Size = Vector3.new(2.25, 0.06, 1.55),
-		CFrame = cf * CFrame.new(0, 0.15, 0),
+		Size = Vector3.new(2.95, 0.07, 2.05),
+		CFrame = cf * CFrame.new(0, 0.2, 0),
 		Color = DARK,
 		Material = Enum.Material.SmoothPlastic,
 		CanQuery = false,
 		Parent = model,
 	})
 	-- Two latches on the front.
-	for _, sx in { -0.55, 0.55 } do
+	for _, sx in { -0.72, 0.72 } do
 		part({
 			Name = "Latch",
-			Size = Vector3.new(0.2, 0.18, 0.08),
-			CFrame = cf * CFrame.new(sx, 0.15, -0.78),
+			Size = Vector3.new(0.26, 0.22, 0.1),
+			CFrame = cf * CFrame.new(sx, 0.2, -1.03),
 			Color = Color3.fromRGB(180, 160, 100),
 			Material = Enum.Material.Metal,
+			Reflectance = 0.2,
 			CanQuery = false,
 			Parent = model,
 		})
 	end
 	-- Handle on top.
-	for _, sx in { -0.3, 0.3 } do
+	for _, sx in { -0.4, 0.4 } do
 		part({
 			Name = "HandlePost",
-			Size = Vector3.new(0.1, 0.35, 0.1),
-			CFrame = cf * CFrame.new(sx, 0.72, 0),
+			Size = Vector3.new(0.12, 0.45, 0.12),
+			CFrame = cf * CFrame.new(sx, 0.92, 0),
 			Color = DARK,
 			Material = Enum.Material.SmoothPlastic,
 			CanQuery = false,
@@ -226,8 +230,8 @@ local function buildGoldBag(model: Model, pos: Vector3, yaw: number)
 	end
 	part({
 		Name = "HandleGrip",
-		Size = Vector3.new(0.7, 0.12, 0.14),
-		CFrame = cf * CFrame.new(0, 0.9, 0),
+		Size = Vector3.new(0.9, 0.14, 0.16),
+		CFrame = cf * CFrame.new(0, 1.15, 0),
 		Color = DARK,
 		Material = Enum.Material.SmoothPlastic,
 		CanQuery = false,
@@ -236,8 +240,8 @@ local function buildGoldBag(model: Model, pos: Vector3, yaw: number)
 	-- Gold bar sitting in a recess on the lid.
 	part({
 		Name = "Recess",
-		Size = Vector3.new(1.4, 0.08, 0.8),
-		CFrame = cf * CFrame.new(0, 0.56, 0),
+		Size = Vector3.new(1.8, 0.1, 1.0),
+		CFrame = cf * CFrame.new(0, 0.71, 0),
 		Color = DARK:Lerp(GOLD, 0.15),
 		Material = Enum.Material.SmoothPlastic,
 		CanQuery = false,
@@ -245,11 +249,11 @@ local function buildGoldBag(model: Model, pos: Vector3, yaw: number)
 	})
 	part({
 		Name = "GoldBar",
-		Size = Vector3.new(1.1, 0.22, 0.5),
-		CFrame = cf * CFrame.new(0, 0.66, 0),
+		Size = Vector3.new(1.4, 0.28, 0.65),
+		CFrame = cf * CFrame.new(0, 0.84, 0),
 		Color = Color3.fromRGB(255, 215, 80),
 		Material = Enum.Material.Metal,
-		Reflectance = 0.25,
+		Reflectance = 0.5,
 		CanQuery = false,
 		Parent = model,
 	})
@@ -269,11 +273,11 @@ local function build(b: Bag): Model
 	local body = if isGold then buildGoldBag(model, b.position, yaw) else buildCashBag(model, b.position, yaw)
 	part({
 		Name = "Beacon",
-		Size = Vector3.new(1.2, 26, 1.2),
-		CFrame = CFrame.new(b.position + Vector3.new(0, 13, 0)),
+		Size = Vector3.new(0.7, 50, 0.7),
+		CFrame = CFrame.new(b.position + Vector3.new(0, 25, 0)),
 		Color = color,
 		Material = Enum.Material.Neon,
-		Transparency = 0.78,
+		Transparency = 0.88,
 		CanQuery = false,
 		Parent = model,
 	})

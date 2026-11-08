@@ -537,9 +537,11 @@ local function breakProp(prop: Prop, instant: boolean?)
 				d.CanCollide = true
 				d.CollisionGroup = "Corpse"
 				d.AssemblyLinearVelocity =
-					Vector3.new((math.random() - 0.5) * 6, 4 + math.random() * 4, (math.random() - 0.5) * 6)
+					Vector3.new((math.random() - 0.5) * 14, 6 + math.random() * 8, (math.random() - 0.5) * 14)
+				d.AssemblyAngularVelocity =
+					Vector3.new((math.random() - 0.5) * 20, (math.random() - 0.5) * 20, (math.random() - 0.5) * 20)
 				TweenService
-					:Create(d, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.8), {
+					:Create(d, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.5), {
 						Transparency = 1,
 					})
 					:Play()
@@ -567,8 +569,8 @@ local function breakProp(prop: Prop, instant: boolean?)
 					local rot = CFrame.new(hinge) * CFrame.Angles(0, a, 0) * CFrame.new(-hinge)
 					return ((rot * d.Position) - d.Position):Dot(toward)
 				end
-				local a = if test(math.rad(100)) >= test(math.rad(-100)) then math.rad(100) else math.rad(-100)
-				swingParts({ { part = d, closed = d.CFrame } }, hinge, a, if instant then 0 else 0.7)
+				local a = if test(math.rad(120)) >= test(math.rad(-120)) then math.rad(120) else math.rad(-120)
+				swingParts({ { part = d, closed = d.CFrame } }, hinge, a, if instant then 0 else 0.45)
 			end
 		end
 	end
@@ -1314,6 +1316,7 @@ function Doors.init()
 					progress = g.progress,
 					byId = if holder then holder.UserId else nil,
 					holdSec = door.interactTime,
+					style = door.parts[1] and door.parts[1].style,
 				})
 			end
 			-- Released: the next hold's ring covers only what is left.

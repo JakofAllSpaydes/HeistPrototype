@@ -9,6 +9,8 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
+local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 
 local StatusFx = {}
 
@@ -260,6 +262,7 @@ function StatusFx.init()
 			shockRing(data.position)
 		elseif name == "EagleEye" then
 			eaglePing(data.position, tonumber(data.radius) or 60)
+			UI.sound(Theme.Sounds.whiz, 0.8, 0.5)
 		end
 	end)
 	-- Marks run out on their own (no attribute change at the end).

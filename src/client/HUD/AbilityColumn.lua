@@ -343,12 +343,10 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			-- A running effect got longer (ADRENALINE JUNKIE).
 			floatOnTile(tostring(data.id), string.format("+%ss", UI.fmtNum(tonumber(data.sec) or 0)), Theme.Colors.gold)
 		elseif name == "StimStart" then
-			-- Any self buff (stim, stim shot, dead eye): the tile that fired it pops.
 			local t = tiles[data.id or "stim"]
 			if t then
 				UI.punch(t.button, 1.3, 0.4)
 			end
-			UI.sound(Theme.Sounds.legendary, 1.5, 0.5)
 		end
 	end
 

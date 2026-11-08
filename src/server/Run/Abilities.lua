@@ -549,6 +549,10 @@ local function startBuff(player: Player, state: PlayerState.State, id: string, d
 	local healed = healPlayer(player, heal)
 	PlayerState.applyCharacterStats(state)
 	state.dirty = true
+	local char = player.Character
+	if char then
+		char:SetAttribute("ActiveBuff", id)
+	end
 	Remotes.Juice:FireClient(player, "StimStart", { id = id, duration = duration, until_ = state.buffUntil })
 	local b = PlayerState.buffFor(state, id)
 	Log.event(
@@ -887,6 +891,7 @@ local function throw(char: Model, color: Color3, burning: boolean, onLand: (Vect
 	end
 	local from = if hand then hand.Position else target + Vector3.new(0, 3, 0)
 	local to = Vector3.new(target.X, Ground.y(target) + 0.4, target.Z)
+	World.fireRun("ThrowLaunch", { position = from })
 	local p = part({
 		Name = "Thrown",
 		Size = Vector3.new(0.7, 0.7, 0.7),
@@ -1621,6 +1626,10 @@ function Abilities.init()
 				state.buffUntil = 0
 				PlayerState.applyCharacterStats(state)
 				state.dirty = true
+				local char = player.Character
+				if char then
+					char:SetAttribute("ActiveBuff", nil)
+				end
 				Remotes.Juice:FireClient(player, "StimEnd", { id = id })
 			end
 		end

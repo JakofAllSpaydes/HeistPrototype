@@ -550,6 +550,7 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				end
 				UI.sound(Theme.Sounds.kill, 1.2, 0.12)
 				UI.sound(Theme.Sounds.body, 1, Config.KillBodyVolume) -- Round 19d: weight under the tick
+				ClientState.Juice:Fire("Shake", { amp = 0.06, dur = 0.08 })
 				onKill()
 				if data.cash and data.cash > 0 then
 					floatText(
@@ -586,9 +587,10 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				soundAt(head, Theme.Sounds.shot, pitch, Config.RemoteShotVolume, Config.RemoteShotRange)
 			end
 		elseif name == "PlayerHit" then
-			vignette.BackgroundTransparency = 0.55
-			UI.tween(vignette, { BackgroundTransparency = 1 }, 0.45)
+			vignette.BackgroundTransparency = 0.45
+			UI.tween(vignette, { BackgroundTransparency = 1 }, 0.5)
 			UI.sound(Theme.Sounds.hurt, 1, 0.25)
+			ClientState.Juice:Fire("Shake", { amp = 0.18, dur = 0.12 })
 		elseif name == "EnemyShot" then
 			-- A Marksman (or the boss) fired: tracer from its muzzle, flash and crack at the gun; a miss aimed at you
 			-- whips past your ear.
@@ -870,6 +872,9 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		elseif name == "StructurePlaced" then
 			blastRing(data.position, data.radius or 5, data.color or Theme.Colors.gold)
 			UI.sound(Theme.Sounds.crate, 1.2, 0.5)
+		elseif name == "Overclock" then
+			UI.sound(Theme.Sounds.lootRise, 1.4, 0.35)
+			ClientState.Juice:Fire("Shake", { amp = 0.1, dur = 0.12 })
 		elseif name == "StructureHit" then
 			UI.sound(Theme.Sounds.kill, 0.8, 0.08)
 		elseif name == "StructureGone" then
@@ -881,10 +886,17 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			if data.sound == "flame" then
 				UI.sound(Theme.Sounds.swap, 0.6, 0.12)
 			end
+		elseif name == "DoorOpened" and typeof(data.position) == "Vector3" and (tonumber(data.shake) or 0) > 0 then
+			blastRing(data.position, 14, Theme.Colors.amber)
+		elseif name == "ThrowLaunch" then
+			UI.sound(Theme.Sounds.swap, 1.8, 0.45)
 		elseif name == "Blast" then
-			-- Claymore (red), flashbang (white) and a thrown fire landing (orange).
 			blastRing(data.position, data.radius or 8, data.color or Theme.Colors.red)
-			UI.sound(Theme.Sounds.crate, data.pitch or 1.5, 0.5) -- Round 19e: the explosion clip is gone game-wide
+			if (data.pitch or 1) >= 1.5 then
+				UI.sound(Theme.Sounds.deny, 1.4, 0.6)
+			else
+				UI.sound(Theme.Sounds.shot, 0.35, 0.7)
+			end
 			ClientState.Juice:Fire("Shake", { amp = data.shake or 0.15, dur = 0.15 })
 		elseif name == "Heal" then
 			-- Small, quiet green number over the healed player.
@@ -896,6 +908,14 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			task.delay(0.65, function()
 				vignette.BackgroundColor3 = Theme.Colors.red
 			end)
+			if data.id == "deadeye" then
+				UI.sound(Theme.Sounds.swap, 0.7, 0.45)
+			else
+				UI.sound(Theme.Sounds.upgrade, 1.3, 0.35)
+			end
+			ClientState.Juice:Fire("Shake", { amp = 0.12, dur = 0.15 })
+		elseif name == "StimEnd" then
+			UI.sound(Theme.Sounds.deny, 1.2, 0.2)
 		elseif name == "GunLanded" then
 			UI.sound(Theme.Sounds.crate, 1.3, 0.5)
 			local gui = billboard(data.position + Vector3.new(0, 1, 0), 60, 60, 0.5)
@@ -912,6 +932,80 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.tween(stroke, { Transparency = 1 }, 0.4)
 		end
 	end
+
+	local BUFF_COLORS: { [string]: Color3 } = {
+		stim = Color3.fromHex("E8B64C"),
+		deadeye = Color3.fromHex("E8554D"),
+		stimshot = Color3.fromHex("6BE86B"),
+	}
+	local function refreshBuffGlow(char: Model)
+		local id = char:GetAttribute("ActiveBuff")
+		local existingH = char:FindFirstChild("BuffGlow")
+		local existingE = char:FindFirstChild("BuffAura")
+		if typeof(id) == "string" and BUFF_COLORS[id] then
+			local color = BUFF_COLORS[id]
+			if existingH and existingH:IsA("Highlight") then
+				existingH.OutlineColor = color
+			else
+				local h = Instance.new("Highlight")
+				h.Name = "BuffGlow"
+				h.FillTransparency = 1
+				h.OutlineColor = color
+				h.OutlineTransparency = 0.45
+				h.DepthMode = Enum.HighlightDepthMode.Occluded
+				h.Parent = char
+			end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if root and not existingE then
+				local e = Instance.new("ParticleEmitter")
+				e.Name = "BuffAura"
+				e.Color = ColorSequence.new(color)
+				e.LightEmission = 1
+				e.Size = NumberSequence.new({
+					NumberSequenceKeypoint.new(0, 0.25),
+					NumberSequenceKeypoint.new(1, 0),
+				})
+				e.Transparency = NumberSequence.new({
+					NumberSequenceKeypoint.new(0, 0.3),
+					NumberSequenceKeypoint.new(1, 1),
+				})
+				e.Lifetime = NumberRange.new(0.5, 0.9)
+				e.Rate = 10
+				e.Speed = NumberRange.new(0.8, 2)
+				e.SpreadAngle = Vector2.new(30, 30)
+				e.Acceleration = Vector3.new(0, 4, 0)
+				e.Parent = root
+			elseif existingE and existingE:IsA("ParticleEmitter") then
+				existingE.Color = ColorSequence.new(color)
+			end
+		else
+			if existingH then
+				existingH:Destroy()
+			end
+			if existingE then
+				existingE:Destroy()
+			end
+		end
+	end
+	local function watchChar(char: Instance)
+		if not char:IsA("Model") then
+			return
+		end
+		refreshBuffGlow(char)
+		local conn = char:GetAttributeChangedSignal("ActiveBuff"):Connect(function()
+			refreshBuffGlow(char)
+		end)
+		track(conn)
+	end
+	for _, p in Players:GetPlayers() do
+		if p.Character then
+			watchChar(p.Character)
+		end
+		track(p.CharacterAdded:Connect(watchChar))
+	end
+	track(Players.PlayerAdded:Connect(function(p)
+		track(p.CharacterAdded:Connect(watchChar))
+	end))
 
 	return component
 end

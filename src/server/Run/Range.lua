@@ -47,7 +47,7 @@ type Dummy = {
 local dummies: { Dummy } = {}
 local byModel: { [Model]: Dummy } = {}
 local GREY = Color3.fromRGB(120, 124, 132)
-local RED = Color3.fromRGB(232, 64, 56)
+local RED = Color3.fromRGB(140, 30, 30)
 
 local function hubMap(): any
 	return require(script.Parent.Parent:FindFirstChild("HubMap") :: ModuleScript)

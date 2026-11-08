@@ -18,6 +18,7 @@ local player = Players.LocalPlayer
 local gui: ScreenGui? = nil
 local bar: { root: Frame, fill: Frame, label: TextLabel }? = nil
 local hideToken = 0
+local lastTickProgress = 0
 
 local function ensureBar()
 	if bar and bar.root.Parent then
@@ -81,6 +82,18 @@ local function onProgress(data: any)
 	b.fill.Size = UDim2.fromScale(progress, 1)
 	b.fill.BackgroundTransparency = if mine then 0 else 0.5
 	b.label.Text = string.format(Lines.door.holdText, (1 - progress) * holdSec)
+	if mine and progress > lastTickProgress + 0.18 then
+		lastTickProgress = progress
+		local pitch = 0.8 + progress * 0.6
+		if data.style == "chain" then
+			UI.sound(Theme.Sounds.snip, pitch, 0.15 + progress * 0.15)
+		else
+			UI.sound(Theme.Sounds.click, pitch, 0.12 + progress * 0.1)
+		end
+	end
+	if progress <= 0 then
+		lastTickProgress = 0
+	end
 	hideToken += 1
 	local token = hideToken
 	task.delay(2.5, function()
@@ -95,19 +108,25 @@ function DoorUI.init()
 		if name == "DoorProgress" then
 			onProgress(data)
 		elseif name == "DoorOpened" then
+			lastTickProgress = 0
 			local b = bar
 			if b then
 				b.root.Visible = false
 			end
 			local shake = tonumber(data.shake) or 0
 			if shake > 0 then
-				ClientState.Juice:Fire("Shake", { amp = shake, dur = 0.4 })
-				ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.amber, alpha = 0.18 })
-				-- Round 19d: shutters roll up. Round 19e: no explosion or chain crash on any door (too loud and jarring).
+				ClientState.Juice:Fire("Shake", { amp = shake * 1.6, dur = 0.5 })
+				ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.amber, alpha = 0.28 })
 				if data.style == "shutter" then
-					UI.sound(Theme.Sounds.shutter, 1.15, 0.5)
+					UI.sound(Theme.Sounds.shutter, 1.15, 0.6)
+				elseif data.style == "chain" then
+					UI.sound(Theme.Sounds.snip, 0.9, 0.55)
+					UI.sound(Theme.Sounds.crunch, 0.7, 0.4)
 				end
-				UI.sound(Theme.Sounds.crate, 0.8, 0.35)
+				UI.sound(Theme.Sounds.crate, 0.6, 0.6)
+				task.delay(0.15, function()
+					UI.sound(Theme.Sounds.crate, 0.5, 0.4)
+				end)
 			end
 		elseif name == "DoorThud" then
 			UI.sound(Theme.Sounds.crate, 0.45, 0.8)

@@ -586,6 +586,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			for _, s in Config.WeaponSwitchSounds do
 				UI.sound(s.id, s.pitch or 1, s.volume or 0.5)
 			end
+			ClientState.Juice:Fire("Shake", { amp = 0.08, dur = 0.1 })
 			lastDps = -1 -- a different gun, not a stat change: no DPS float
 		elseif juiceName == "Swap" then
 			local tier = (data and data.rarity) or 1

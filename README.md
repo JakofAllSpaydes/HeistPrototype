@@ -24,7 +24,7 @@ Brief 8 replaces the generated yard with a builder-made warehouse hub: four queu
 own loadout, MARLOW's board on the wall, the van leaving through a roll-up garage on run start, and a walled training
 range where the helicopter bay was.
 
-State as of **8 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
+State as of **8 Nov 2026 (Round 23)**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
 phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes), the Round 13 multiplayer pass
 (revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
@@ -53,7 +53,15 @@ Round 22 (8 Nov; Jack's mobile-play feedback: premium shop 5% bigger, enemy catc
 vault job forced after stairwell unlock, the left joystick no longer rotating the camera, a SWAP weapon button on
 mobile; 22b: cash duffel and gold briefcase bag models built from bricks, flying currency icons on pickup with more
 sparks and camera shake, smooth banked-gold countup with a +N toast, camera raycast excludes the Enemies folder so
-bodies don't zoom the lens in).
+bodies don't zoom the lens in),
+Round 23 (8 Nov; juice / SFX / polish pass: buff aura as rising particles instead of a point light, outline-only
+Highlight while a self-buff runs, per-buff activation sounds (Dead Eye whoosh, Overclock rising whoosh, Stim/StimShot
+upgrade chime), Eagle Eye bullet-whiz ping, throw launch whoosh, pitched-down gunshot boom for frag/claymore/molotov
+explosions, flashbang pop, buff-end sound, structure placement thump, door-hold buildup ticks (chain snip / generic
+click rising in pitch), chain door break as snip + crunch, bigger door-open shake and amber blast ring, explosive
+chain-link scatter with spin, faster panel-door swing, softer enemy Neon-red heads, bigger/shinier bag models,
+taller/more-transparent beacon beams, weapon-swap micro-shake, kill micro-shake, hit camera shake, removed duplicate
+legendary sound from AbilityColumn on buff start).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list" and the "Brief 8 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is

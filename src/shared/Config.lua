@@ -991,7 +991,7 @@ local Config = {
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
 	PremiumSetAmbient = "4A4552", -- the ambient while a premium scene (pass, store, crate room) is up (was near-black)
-	PremiumWindowScale = 0.84, -- Round 22: 0.8 -> 0.84 (the premium SHOP window and the JOBS board take this share of the screen each way)
+	PremiumWindowScale = 0.9, -- Round 23: 0.84 -> 0.9 (the premium SHOP window and the JOBS board take this share of the screen each way)
 	-- Round 21 day / night (client/DayNight.lua): wave 1 at RunClockStart, each wave RunClockPerWave hours later
 	-- (20:00, 20:30, ... 06:00 dawn at wave 21), eased over RunClockTweenSec as the wave starts. The hub keeps the
 	-- place's own Lighting.ClockTime. Jumps bigger than RunClockMaxTweenHours (debug wave skips) snap.
@@ -1034,7 +1034,7 @@ local Config = {
 	DoorInteractTime = 3, -- hold length at a door (a node's InteractTime overrides)
 	DoorOpenCashReward = 400, -- per player when a door opens (a node's CashReward overrides)
 	DoorHoldSec = 2, -- a released hold keeps its fill this long, then resets
-	DoorOpenShake = 0.6, -- camera shake when a door opens
+	DoorOpenShake = 0.9, -- camera shake when a door opens
 	DoorSignText = "UNLOCKS · WAVE %d", -- the sign board on a closed door
 	DoorBeaconRange = 150, -- Round 19: a closed door's beacon shows within this many studs (only the next unlock has one)
 	ZoneOpenCashBags = 3, -- a door's done drops this many cash bags on the opened zone's spots (bypasses the cap)...
