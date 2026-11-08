@@ -116,13 +116,48 @@ function Currency.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.frame = root
 	component.cashLabel = cashLabel
 
+	-- Round 22: smooth countup for banked gold too.
 	local shownBanked = -1
+	local targetBanked = 0
+	local displayBanked = 0
+	track(RunService.Heartbeat:Connect(function(dt)
+		if displayBanked == targetBanked then
+			return
+		end
+		local diff = targetBanked - displayBanked
+		local step = math.max(1, math.abs(diff) * math.min(1, dt * 8))
+		if math.abs(diff) <= step then
+			displayBanked = targetBanked
+		else
+			displayBanked += step * math.sign(diff)
+		end
+		bankedLabel.Text = string.format("%s BANKED", UI.fmtNum(math.floor(displayBanked)))
+	end))
+
 	function component.update(sync: any)
 		local banked = tonumber(sync.banked) or 0
 		if banked ~= shownBanked then
-			bankedLabel.Text = string.format("%s BANKED", UI.fmtNum(banked))
-			if shownBanked >= 0 and banked > shownBanked then
+			targetBanked = banked
+			if shownBanked < 0 then
+				displayBanked = banked
+				bankedLabel.Text = string.format("%s BANKED", UI.fmtNum(banked))
+			elseif banked > shownBanked then
 				UI.punch(bankedLabel, 1.2, 0.3)
+				-- Float a +N above the banked row.
+				local gain = UI.text({
+					Text = "+" .. UI.fmtNum(banked - shownBanked),
+					FontFace = Theme.Fonts.display,
+					TextSize = S(18),
+					TextColor3 = Theme.Colors.gold,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					Position = UDim2.fromOffset(S(40), S(42) - S(6)),
+					Size = UDim2.fromOffset(S(120), S(22)),
+					Parent = root,
+				})
+				UI.tween(gain, { Position = UDim2.fromOffset(S(40), S(42) - S(36)), TextTransparency = 1 }, 0.8)
+				task.delay(0.85, function()
+					gain:Destroy()
+				end)
 			end
 			shownBanked = banked
 		end

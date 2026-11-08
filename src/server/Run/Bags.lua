@@ -102,8 +102,161 @@ local function busy(player: Player, on: boolean)
 	World.fireRun("PlayerBusy", { userId = player.UserId, name = player.Name, label = "GRABBING", on = on })
 end
 
--- The bag itself: a green duffel with a $ or a gold case with a bar, a beacon column. No prompt: standing
--- near it fills it (the channel loop below).
+-- Round 22: cash duffel — tapered body, two handle straps, a neon zipper line and the $ stamp.
+local function buildCashBag(model: Model, pos: Vector3, yaw: number)
+	local cf = CFrame.new(pos + Vector3.new(0, 0.75, 0)) * CFrame.Angles(0, yaw, 0)
+	-- Main body: a wide rounded duffel shape.
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(2.4, 1.4, 1.4),
+		CFrame = cf,
+		Color = CASH_BODY,
+		Material = Enum.Material.Fabric,
+		CanQuery = true,
+		Parent = model,
+	})
+	-- Tapered ends (angled wedge parts simulated with smaller blocks at each end).
+	for _, sx in { -1, 1 } do
+		part({
+			Name = "End",
+			Size = Vector3.new(0.35, 1.2, 1.2),
+			CFrame = cf * CFrame.new(sx * 1.15, 0, 0),
+			Color = CASH_BODY:Lerp(DARK, 0.15),
+			Material = Enum.Material.Fabric,
+			CanQuery = false,
+			Parent = model,
+		})
+	end
+	-- Zipper line across the top.
+	part({
+		Name = "Zipper",
+		Size = Vector3.new(2.5, 0.08, 0.12),
+		CFrame = cf * CFrame.new(0, 0.7, 0),
+		Color = CASH,
+		Material = Enum.Material.Neon,
+		CanQuery = false,
+		Parent = model,
+	})
+	-- Two handle straps on top.
+	for _, sx in { -0.35, 0.35 } do
+		part({
+			Name = "Handle",
+			Size = Vector3.new(0.12, 0.5, 0.12),
+			CFrame = cf * CFrame.new(sx, 0.95, 0),
+			Color = DARK,
+			Material = Enum.Material.SmoothPlastic,
+			CanQuery = false,
+			Parent = model,
+		})
+	end
+	-- Handle crossbar.
+	part({
+		Name = "HandleBar",
+		Size = Vector3.new(0.8, 0.12, 0.12),
+		CFrame = cf * CFrame.new(0, 1.2, 0),
+		Color = DARK,
+		Material = Enum.Material.SmoothPlastic,
+		CanQuery = false,
+		Parent = model,
+	})
+	-- $ stamp on the front face.
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 50
+	gui.LightInfluence = 0
+	gui.Parent = body
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.FontFace = Fonts.display
+	label.Text = "$"
+	label.TextScaled = true
+	label.TextColor3 = CASH
+	label.Parent = gui
+	return body
+end
+
+-- Round 22: gold briefcase — hard shell with latches, handle, and a visible gold bar in a recess on the lid.
+local function buildGoldBag(model: Model, pos: Vector3, yaw: number)
+	local cf = CFrame.new(pos + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, yaw, 0)
+	-- Main case body.
+	local body = part({
+		Name = "Body",
+		Size = Vector3.new(2.2, 1.1, 1.5),
+		CFrame = cf,
+		Color = GOLD,
+		Material = Enum.Material.Metal,
+		CanQuery = true,
+		Parent = model,
+	})
+	-- Lid seam: a dark line separating the top and bottom halves.
+	part({
+		Name = "Seam",
+		Size = Vector3.new(2.25, 0.06, 1.55),
+		CFrame = cf * CFrame.new(0, 0.15, 0),
+		Color = DARK,
+		Material = Enum.Material.SmoothPlastic,
+		CanQuery = false,
+		Parent = model,
+	})
+	-- Two latches on the front.
+	for _, sx in { -0.55, 0.55 } do
+		part({
+			Name = "Latch",
+			Size = Vector3.new(0.2, 0.18, 0.08),
+			CFrame = cf * CFrame.new(sx, 0.15, -0.78),
+			Color = Color3.fromRGB(180, 160, 100),
+			Material = Enum.Material.Metal,
+			CanQuery = false,
+			Parent = model,
+		})
+	end
+	-- Handle on top.
+	for _, sx in { -0.3, 0.3 } do
+		part({
+			Name = "HandlePost",
+			Size = Vector3.new(0.1, 0.35, 0.1),
+			CFrame = cf * CFrame.new(sx, 0.72, 0),
+			Color = DARK,
+			Material = Enum.Material.SmoothPlastic,
+			CanQuery = false,
+			Parent = model,
+		})
+	end
+	part({
+		Name = "HandleGrip",
+		Size = Vector3.new(0.7, 0.12, 0.14),
+		CFrame = cf * CFrame.new(0, 0.9, 0),
+		Color = DARK,
+		Material = Enum.Material.SmoothPlastic,
+		CanQuery = false,
+		Parent = model,
+	})
+	-- Gold bar sitting in a recess on the lid.
+	part({
+		Name = "Recess",
+		Size = Vector3.new(1.4, 0.08, 0.8),
+		CFrame = cf * CFrame.new(0, 0.56, 0),
+		Color = DARK:Lerp(GOLD, 0.15),
+		Material = Enum.Material.SmoothPlastic,
+		CanQuery = false,
+		Parent = model,
+	})
+	part({
+		Name = "GoldBar",
+		Size = Vector3.new(1.1, 0.22, 0.5),
+		CFrame = cf * CFrame.new(0, 0.66, 0),
+		Color = Color3.fromRGB(255, 215, 80),
+		Material = Enum.Material.Metal,
+		Reflectance = 0.25,
+		CanQuery = false,
+		Parent = model,
+	})
+	return body
+end
+
+-- The bag model: a cash duffel or a gold briefcase, plus the beacon column.
 local function build(b: Bag): Model
 	local model = Instance.new("Model")
 	model.Name = "Bag_" .. b.id
@@ -113,53 +266,8 @@ local function build(b: Bag): Model
 	local isGold = b.kind == "gold"
 	local color = if isGold then GOLD else CASH
 	local yaw = math.random() * math.pi * 2
-	local body = part({
-		Name = "Body",
-		Size = if isGold then Vector3.new(2, 1.2, 1.5) else Vector3.new(2.2, 1.5, 1.3),
-		CFrame = CFrame.new(b.position + Vector3.new(0, if isGold then 0.6 else 0.75, 0)) * CFrame.Angles(0, yaw, 0),
-		Color = if isGold then GOLD else CASH_BODY,
-		Material = if isGold then Enum.Material.Metal else Enum.Material.Fabric,
-		CanQuery = true,
-		Parent = model,
-	})
-	if isGold then
-		-- A dark bar on the lid.
-		part({
-			Name = "Bar",
-			Size = Vector3.new(1.2, 0.25, 0.5),
-			CFrame = body.CFrame * CFrame.new(0, 0.72, 0),
-			Color = DARK,
-			Material = Enum.Material.SmoothPlastic,
-			CanQuery = false,
-			Parent = model,
-		})
-	else
-		-- A neon strap and a $ on the top.
-		part({
-			Name = "Strap",
-			Size = Vector3.new(2.25, 0.3, 1.35),
-			CFrame = body.CFrame * CFrame.new(0, 0.3, 0),
-			Color = CASH,
-			Material = Enum.Material.Neon,
-			CanQuery = false,
-			Parent = model,
-		})
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Top
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 40
-		gui.LightInfluence = 0
-		gui.Parent = body
-		local label = Instance.new("TextLabel")
-		label.BackgroundTransparency = 1
-		label.Size = UDim2.fromScale(1, 1)
-		label.FontFace = Fonts.display
-		label.Text = "$"
-		label.TextScaled = true
-		label.TextColor3 = CASH
-		label.Parent = gui
-	end
-	local column = part({
+	local body = if isGold then buildGoldBag(model, b.position, yaw) else buildCashBag(model, b.position, yaw)
+	part({
 		Name = "Beacon",
 		Size = Vector3.new(1.2, 26, 1.2),
 		CFrame = CFrame.new(b.position + Vector3.new(0, 13, 0)),
@@ -169,7 +277,6 @@ local function build(b: Bag): Model
 		CanQuery = false,
 		Parent = model,
 	})
-	local _ = column
 	model.PrimaryPart = body
 	model.Parent = effects
 	return model

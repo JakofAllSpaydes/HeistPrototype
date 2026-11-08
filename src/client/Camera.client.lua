@@ -248,7 +248,7 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 		local offset = Vector3.new(Config.CameraShoulder.X * side, Config.CameraShoulder.Y * side, dist)
 		local desired = pivot + rot:VectorToWorldSpace(offset)
 		local filter: { Instance } = { char }
-		for _, name in { "GroundLoot", "Effects" } do
+		for _, name in { "GroundLoot", "Effects", "Enemies" } do
 			local f = Workspace:FindFirstChild(name)
 			if f then
 				table.insert(filter, f)

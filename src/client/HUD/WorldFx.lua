@@ -631,18 +631,65 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			-- The bag pops in a money burst; the number floats where it stood.
 			local gold = data.kind == "gold"
 			local color = if gold then Theme.Colors.gold else Theme.Colors.cash
-			sparks(data.position + Vector3.new(0, 1, 0), color, 24, 26)
-			blastRing(data.position, 5, color)
+			sparks(data.position + Vector3.new(0, 1, 0), color, 32, 28)
+			blastRing(data.position, 6, color)
 			floatText(
 				data.position + Vector3.new(0, 2, 0),
 				if gold then "◆ +" .. tostring(data.value) else "+" .. UI.fmtCash(tonumber(data.value) or 0),
 				color,
-				26,
-				4,
-				1.1
+				30,
+				4.5,
+				1.2
 			)
+			-- Round 22: currency icons fly from the bag toward the wallet HUD.
+			local cam = Workspace.CurrentCamera :: Camera
+			local screen, onScreen = cam:WorldToViewportPoint(data.position + Vector3.new(0, 1.5, 0))
+			if onScreen then
+				local S = UI.S
+				local from = Vector2.new(screen.X, screen.Y)
+				local target = Vector2.new(S(140), cam.ViewportSize.Y - S(40))
+				local symbol = if gold then "◆" else "$"
+				local count = if gold then 5 else 6
+				for i = 1, count do
+					local dot = UI.text({
+						Text = symbol,
+						FontFace = Theme.Fonts.display,
+						TextSize = S(if gold then 20 else 24),
+						TextColor3 = color,
+						BackgroundTransparency = 1,
+						AnchorPoint = Vector2.new(0.5, 0.5),
+						Position = UDim2.fromOffset(from.X, from.Y),
+						Size = UDim2.fromOffset(S(32), S(32)),
+						ZIndex = 20,
+						Parent = gui,
+					})
+					UI.stroke(dot, Color3.new(0, 0, 0), S(2), 0.3)
+					local delay = (i - 1) * 0.06
+					local mid = from:Lerp(target, 0.5)
+						+ Vector2.new((math.random() - 0.5) * S(140), -S(60 + math.random() * 60))
+					task.delay(delay, function()
+						local dur = 0.4 + math.random() * 0.15
+						UI.tween(dot, {
+							Position = UDim2.fromOffset(mid.X, mid.Y),
+						}, dur * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+						task.delay(dur * 0.5, function()
+							UI.tween(dot, {
+								Position = UDim2.fromOffset(target.X, target.Y),
+								TextTransparency = 0.5,
+							}, dur * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+						end)
+						task.delay(dur + 0.05, function()
+							dot:Destroy()
+						end)
+					end)
+				end
+			end
 			UI.sound(if gold then Theme.Sounds.coins else Theme.Sounds.cash, 1, 0.45)
 			UI.sound(Theme.Sounds.take, if gold then 0.9 else 1.3, 0.25)
+			-- Round 22: a small kick for your own pickups.
+			if tonumber(data.userId) == Players.LocalPlayer.UserId then
+				ClientState.Juice:Fire("Shake", { amp = 0.12, dur = 0.15 })
+			end
 		elseif name == "VaultGasTint" then
 			paintGas("vault", data.on == true)
 		elseif name == "ZoneGasTint" then
