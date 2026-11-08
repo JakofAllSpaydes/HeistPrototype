@@ -501,6 +501,21 @@ local function build()
 	btn(rVault, "Seal vault", 1 / 3, function()
 		send("SealVault")
 	end, Theme.Colors.grey)
+	-- Pin the crew zone (or AUTO), and the path overlay.
+	local pinRow: Frame? = nil
+	for i, z in { "auto", "street", "lobby", "upper", "back", "stairs", "vault", "tunnel" } do
+		if (i - 1) % 4 == 0 then
+			pinRow = row(panel, 30.19 + math.floor((i - 1) / 4) * 0.001, rh)
+		end
+		local b = btn(pinRow :: Frame, if z == "auto" then "Zone AUTO" else "Pin " .. string.upper(z), 0.25, function()
+			send("SetCrewZone", z)
+		end, Theme.Colors.blue)
+		b.TextSize = S(9)
+	end
+	local rPath = row(panel, 30.195, rh)
+	btn(rPath, "Path debug", 1, function()
+		send("PathDebug")
+	end, Theme.Colors.blue)
 	local rBox = row(panel, 30.18, rh)
 	local boxBtn: TextButton
 	boxBtn = btn(rBox, "Spawn at: nearest", 1, function()
@@ -593,6 +608,11 @@ end
 
 function DebugPanel.init()
 	build()
+	ClientState.Juice:Connect(function(name: string, data: any)
+		if name == "PathDebug" and typeof(data) == "table" then
+			NodeOverlay.drawPaths(data.paths or {})
+		end
+	end)
 	buildMobileToggle()
 	HUD.Rebuilt:Connect(function()
 		build()

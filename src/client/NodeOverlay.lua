@@ -131,6 +131,60 @@ function NodeOverlay.refresh()
 	end
 end
 
+------------------------------------------------------------------ Path debug
+-- Each pathing enemy's route as a thin line with dots at the waypoints, red while the enemy is stuck.
+local pathFolder: Folder? = nil
+function NodeOverlay.drawPaths(paths: { any })
+	if pathFolder then
+		pathFolder:Destroy()
+		pathFolder = nil
+	end
+	if #paths == 0 then
+		return
+	end
+	local f = Instance.new("Folder")
+	f.Name = "PathDebug"
+	f.Parent = Workspace
+	pathFolder = f
+	local function seg(a: Vector3, b: Vector3, color: Color3)
+		local len = (b - a).Magnitude
+		if len < 0.05 then
+			return
+		end
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.Neon
+		p.Color = color
+		p.Size = Vector3.new(0.15, 0.15, len)
+		p.CFrame = CFrame.lookAt((a + b) / 2, b)
+		p.Parent = f
+	end
+	for _, path in paths do
+		local color = if path.stuck then Color3.fromHex("E8554D") else Color3.fromHex("6FB8FF")
+		local prev: Vector3 = path.from
+		for _, pt in path.pts do
+			local p = pt + Vector3.new(0, 0.4, 0)
+			seg(prev, p, color)
+			local dot = Instance.new("Part")
+			dot.Shape = Enum.PartType.Ball
+			dot.Anchored = true
+			dot.CanCollide = false
+			dot.CanQuery = false
+			dot.CanTouch = false
+			dot.Material = Enum.Material.Neon
+			dot.Color = color
+			dot.Size = Vector3.new(0.5, 0.5, 0.5)
+			dot.Position = p
+			dot.Parent = f
+			prev = p
+		end
+	end
+end
+
 function NodeOverlay.setOn(on: boolean)
 	NodeOverlay.on = on
 	NodeOverlay.refresh()

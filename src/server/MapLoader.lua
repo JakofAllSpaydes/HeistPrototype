@@ -632,6 +632,48 @@ function MapLoader.hops(from: string): { [string]: number }
 	return out
 end
 
+-- Debug Stats, MAP block: time in each zone this run, the doors opened and when, contact time per box (run
+-- averages) and the path budget use (wave average). Pieces from other modules come in as arguments.
+function MapLoader.printStats(
+	doorsOpened: { any },
+	contactRun: { [string]: { sum: number, n: number } },
+	pathHistory: { any }
+)
+	print("[GHS Stats] MAP " .. World.map .. " (crew zone " .. World.crewZone .. ")")
+	local zones = {}
+	for z, t in MapLoader.zoneTime do
+		table.insert(zones, string.format("%s %ds", z, math.round(t)))
+	end
+	table.sort(zones)
+	print("[GHS Stats]   time in zone: " .. (if #zones > 0 then table.concat(zones, ", ") else "-"))
+	local doors = {}
+	for _, d in doorsOpened do
+		table.insert(doors, string.format("%s wave %d (%s)", d.group, d.wave, d.by))
+	end
+	print("[GHS Stats]   doors opened: " .. (if #doors > 0 then table.concat(doors, ", ") else "-"))
+	local boxes = {}
+	for name, r in contactRun do
+		table.insert(boxes, string.format("%s %.1fs (%d)", name, r.sum / math.max(r.n, 1), r.n))
+	end
+	table.sort(boxes)
+	print("[GHS Stats]   contact per box: " .. (if #boxes > 0 then table.concat(boxes, ", ") else "-"))
+	local use, cps, n = 0, 0, 0
+	for _, h in pathHistory do
+		use += h.budgetUse
+		cps += h.computesPerSec
+		n += 1
+	end
+	print(
+		string.format(
+			"[GHS Stats]   path budget: %d%% avg (%.1f computes/s over %d wave%s)",
+			if n > 0 then math.round(use / n * 100) else 0,
+			if n > 0 then cps / n else 0,
+			n,
+			if n == 1 then "" else "s"
+		)
+	)
+end
+
 -- Can a run start on THE BANK? (MapLoaderStrict refuses one on a map with node errors.)
 function MapLoader.playable(): boolean
 	return MapLoader.loaded and (not Config.MapLoaderStrict or MapLoader.errors == 0)

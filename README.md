@@ -16,6 +16,9 @@ front end against a fake Robux balance: a premium store scene (FEATURED bundles,
 BOOSTS, VIP, GOLD), revive tokens, a battle pass with its own scene, daily Jobs and a weekly bounty on MARLOW's board,
 and the in-run upsells. Nothing touches real Robux; one module per side (`Purchases.lua`, `PurchaseSheet.lua`) is
 where `MarketplaceService` goes later.
+Brief 7 adds THE BANK as map 2 beside the arena: a builder-made bank with seven zones that open on door objectives,
+the vault job on its real wheel door with a tunnel ring, spawn boxes that follow the crew and `PathfindingService`
+navigation on every map.
 
 State as of **7 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
@@ -24,9 +27,10 @@ phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback 
 ragdolls and hit sparks), the brief 4 build (Round 14: roster, boss, heat as pace, bags, vault, level, scoreboard) and
 the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause) with its feedback
 rounds 15b–15m, the Round 16 / 16b feedback passes, and the brief 6 build (Round 17: fake purchase flow, store,
-crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c and 18–18d.
+crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c and 18–18d,
+and the brief 7 build (Round 19: THE BANK, doors, the vault ring, spawn boxes, pathfinding; one commit per step).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
-list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list" and the "Brief 6 verify list"
+list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
 where those changes came from); the full verify lists have not been walked end to end.
 
@@ -39,6 +43,10 @@ where those changes came from); the full verify lists have not been walked end t
 Everything the designer tunes lives in `src/shared/Config.lua`. Change a number, Rojo syncs it, play again.
 The map is a Rojo-synced model (`src/map/Room.model.json`, regenerate with `lune run tools/genmap.luau`; `lune` is in
 `aftman.toml`, and the generator loads Config through `luau.load` with Vector2 / Vector3 stubs).
+THE BANK (brief 7) is `src/map/Bank.rbxm` (geometry, `lune run tools/importbank.luau <place>` made it) plus
+`src/map/Bank.nodes.model.json` (the nodes). `lune run tools/genbanknodes.luau` wrote the first node set and is not
+run again; after moving nodes in Studio, save `Workspace.Bank.Nodes` as `.rbxmx` and run
+`lune run tools/exportnodes.luau Nodes.rbxmx`.
 
 You spawn in the **hub** (the yard south of the arena) with the hub HUD, 10,000 Gold on a fresh profile, the M1911 as
 starter, INITIATE equipped and the plain mask, plus (brief 6) a fake `R$ 100,000` balance and 3 revive tokens.
@@ -78,7 +86,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
 | Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
-| Backtick | Debug panel (Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
+| Backtick | Debug panel (brief 7 adds MAP: Show nodes with per-type toggles, Recompute nodes, Teleport to zone, Open D1–D4, Close all doors, Open / Gas / Seal vault, Spawn at a chosen box (with the archetype row and ELITE), Pin the crew zone / AUTO, Path debug; Stats adds the MAP block; Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
 Hub HUD on mobile landscape: dock tiles 76×68, PLAY 44px, SHOP and INVITE as icon tiles, queue card at 80%; the
@@ -683,6 +691,67 @@ gold, all of it into the profile), `★ NEW PERSONAL BEST WAVE` / `★ NEW BEST 
 collected, downs, revives, MVP tag, NEW BEST), PLAY AGAIN and TO LOBBY with a `SummaryAutoLobbySec` countdown. TO
 LOBBY returns the party to the hub spawn; PLAY AGAIN re-forms the party on the queue pad and starts the countdown.
 
+**THE BANK (brief 7).** A second map beside the arena (the arena stays exactly as it was, as the test map). The
+builder's place is `src/map/Bank.rbxm` (Rojo: `Workspace.Bank.Geometry`), baked at `BankOrigin` (0, 0, -1000) so it
+never overlaps the arena or the yard, even in edit mode; changing `BankOrigin` moves the whole model at load. Its
+nodes are invisible parts in `src/map/Bank.nodes.model.json` (`Workspace.Bank.Nodes`, one subfolder per type, each part
+tagged `GHS_<Type>`): zones, doors, spawn boxes, bag spots, job spots, boss walls, dealer spots, the van, the lineup, the
+hatch and the vault room, with their numbers as Attributes. `MapLoader` reads the parts at load (one `[GHS Map]` line
+per node, one `[GHS Map] ERROR` per bad reference; a map with errors still loads unless `MapLoaderStrict`) and hands
+THE BANK to `Room.forMap("TheBank")`, the per-map view every module now reads (the arena's markers are point-sized
+spawn boxes in zone `arena`, its spots, pillars, closet vault and dealer position wrap the same way). `Ground.lua` gives
+the floor under a point: bags, crates, discs, fire, bodies, guns, the dealer stall and placeables land on the floor
+they are over (the street is y 0.5, the lobby 5.5, the mezzanine 36.5, the vault level -37.5, the tunnel -24.5).
+
+- **Zones.** Street (grass, road, steps, side pavements), Lobby, Upper floor, Back of bank (passages, teller area,
+  side halls, cross corridor), Vault stairs (both stairwells and the landing room), Vault, Tunnel (server room, ramp,
+  ladder, the hatch top). The crew zone (most standing players, ties deeper) is recomputed every `CrewZoneSyncSec`,
+  logged `[GHS Zone] wave N crew <zone> for <sec>` on each change and shown on the scoreboard header (`WAVE 7 · LOBBY`).
+  The zone graph is each Zone node's `Links` attribute (`lobby@D1`: neighbour and gate).
+- **Doors.** `Doors.lua` dresses every Door node from its Size and `DoorStyle` under `Workspace.Bank.DoorProps`:
+  D1 front doors (panel), D2 stair chains (both stairs), D3 shutters (both passages under the stairs plus a grille over
+  the teller counter), D4 the asset's wheel door onto the vault and its server door; each has an invisible blocker (a
+  `Door` PathfindingModifier), a sign `UNLOCKS · WAVE N` (`DoorSignText`; D4 `UNLOCKS · VAULT JOB`), an amber ▲ beacon
+  through walls and a LOCKED prompt. Trigger waves `DoorTriggerWave` (D1 3, D3 6, D2 8; D4 is the vault draw). In the
+  intermission before its wave a door rides the crew call as kind `door`: MARLOW's line, blue beacons, floor chevrons
+  for `DoorPingDuration`, the pill `OPEN THE BANK` with an ∞ clock. It supersedes that wave's side-job draw and keeps
+  the slot until done; a ticking job finishes first; doors due together queue by Priority. Hold F at either part of a
+  group for `InteractTime` (`OPENING · 2.1s` bar for the holder, `OPENING` tag for the crew; the fill keeps
+  `DoorHoldSec` after a release). Done: the prop breaks (chain falls, shutter rolls up, doors swing, the wheel spins and
+  swings), flash and `DoorOpenShake`, `DoorOpenCashReward` to everyone, the opener's NICE WORK card and
+  `<NAME> OPENED THE <LABEL>`, HeatJob at the wave end, a Jobs count, `ZoneOpenCashBags` / `ZoneOpenGoldBags` on the
+  opened zone's spots, and its boxes and spots come on. `[GHS Door] <group> trigger wave N` / `opened wave N by <name> t=`.
+- **The vault on THE BANK.** CRACK THE VAULT keeps its shell. It is drawn only once D3 has opened the stairwell; F at
+  the wheel door opens the Safe dial; the wheel spins `VaultWheelSpinSec`, the vault and server doors swing in over
+  `VaultDoorSwingSec`, the room's lights come on, the burst drops on the vault room's spots, the hatch opens (and stays
+  open: `HatchOneWayAfterSeal`) with a blue TUNNEL beacon, the pill reads `TUNNEL OPEN` (`VaultPillTunnelText`) and the
+  tunnel's boxes and spots come on: the map is a ring for `VaultOpenSec`. Gas and the seal use the VaultRoom volume
+  (the gassed room carries the `VaultGas` path cost); the seal closes both doors only when nobody is inside.
+  `[GHS Vault] window used <sec> exit <stairs|tunnel|none> <name>` per member.
+- **Spawning.** Boxes are on when their `RequiresDoor` is open (the vault's vent only while it is open, the hatch box
+  once the hatch has opened), allow the rolled archetype and do not stand inside the crew's zone
+  (`SpawnNeverInCrewZone`; a box behind a fence or a window stands outside every zone, so it feeds its zone while the
+  crew holds it). Weight = `Weight` × proximity × `ZoneDistanceMult` ^ hops from the crew zone along the open graph. A
+  point in plain sight of a player inside `SpawnLosBuffer` re-rolls once; elites take the least-used box
+  (`EliteLeastUsedBox`). `[GHS Spawn] wave N box <name> contact <sec>` per box per wave, `WARN no eligible box`.
+- **Pathfinding** (`EnemyPath.lua`, every map). Direct within `DirectRange` with a clear walk (the arena is nearly
+  always this), else `PathfindingService` with `RepathDistance` / `RepathSec` re-plans, a `PathComputesPerSec` budget,
+  routes shared per zone pair for `PathCacheSec`, `PathAgent` sizes per archetype, placeables as a `Structure` cost
+  (`PathStructureCost`), the ladder as a `PathfindingLink` that lifts enemies over `LadderClimbSec` (players climb the
+  truss), stuck → sidestep at `StuckSec` → own spawn box at `StuckTeleportSec`, three failed computes → direct for
+  `PathFailDirectSec`. TITAN's wide agent keeps it out of doorways it does not fit: it holds at the opening and Volleys.
+  `[GHS Path] wave N computes/s fail stuck teleports`. `PathfindingEnabled` false is the Round 18d walk.
+- **Per zone.** Bags trickle onto open zones' spots (`BagOtherZoneMult` outside the crew zone, Gold spots for gold);
+  side jobs draw a spot in an open zone and roll their kind from its `Pool` (`JobOtherZoneMult`); TITAN blows the crew
+  zone's BossWall (the farthest when it has several; none → the nearest zone's); the dealer stall stands on the crew
+  zone's DealerSpot, opening along its facing; crates without a spot land on a free spot in the crew zone.
+- **Card, runs, profile.** The Create Match map row lists ARENA and THE BANK (`Maps.lua`; `DefaultMap` THE BANK, colour
+  tiles until thumbnails land, 88 × 64 swiping tiles on a phone) and the party's pick shows on the queue board, the
+  compact card and the summary. A run on THE BANK drives the van in to the Van node on the grass, lines the crew up
+  facing the bank and ends on the Lineup node (the camera shots turn with the line); members return to the hub spawn.
+  Records are `<mapId>:<difficulty>`; profile v4 moved the old `TheBank:*` (the arena's placeholder id) to `Arena:*`.
+  The hub tag shows the best top wave across maps with the map's short name (`LV 7 · TOP WAVE 14 ★ BANK`).
+
 ## Verifying a change
 
 ```
@@ -922,10 +991,51 @@ mannequin in its idle; the output shows the load error).
 13. Mobile (device emulator, landscape): the store tab strip scrolls, every card and button taps, the crate scene is full
     screen with 56px SKIP / NEXT, the pass track and the job board fit.
 
+### Brief 7 verify list
+
+Written and built (`stylua`, `luau-lsp`, `rojo build`) one commit per step, not yet run in Studio: the nodes were
+authored from the geometry offline, so the first pass is a node review. Done-line: one solo run and one 2-player Local
+Server run on THE BANK from the hub to a summary, through every door, one vault window, one TITAN.
+
+1. Nodes: Play, debug MAP > `Show nodes` (zones are off by default: toggle `Zones`). Every node draws in its type
+   colour with `TAG · name · key attributes`; the output has one `[GHS Map]` line per node and no `ERROR`. Review the
+   D2 chains (placed at the stair tops, between the newel posts), the D3 shutters and counter grille, the spawn boxes
+   and the boss walls against the building. To move one: stop, select it under `Workspace.Bank.Nodes` in edit mode,
+   drag, then select `Workspace.Bank.Nodes` > Save to File as `Nodes.rbxmx` and run
+   `lune run tools/exportnodes.luau Nodes.rbxmx`. In a play session, `Recompute nodes` re-reads after a drag.
+2. Arena unchanged: Create Match > ARENA > a run plays as before (markers, closet vault, bag spots); hub tag `★ ARENA`
+   once a top wave lands there. A pre-brief-7 profile logs `[GHS Profile] v3 -> v4: … TheBank:* -> Arena:*`.
+3. Card: ARENA and THE BANK tiles plus COMING SOON; THE BANK is picked by default; the board and the compact card read
+   `THE BANK · NORMAL`; the summary header names the map; PLAY AGAIN keeps it.
+4. Run start: the van drives onto the grass, the crew steps out facing the bank, WAVE 1 on the street. Spawns come
+   from behind the fence ends; the scoreboard header reads `· STREET`; amber ▲ beacons and signs on every door.
+5. Doors: the intermission before wave 3 → MARLOW `Front doors. Make some noise.`, blue beacons, chevrons, the pill
+   `OPEN THE BANK` with ∞, no side job that wave; hold F at the doors (release: the bar keeps its fill 2 s) → the doors
+   swing, flash and shake, +$400 each, your card, `<NAME> OPENED THE FRONT DOORS`, 3 cash + 1 gold bag in the lobby,
+   `[GHS Door] D1 opened …`. Same for D3 (wave 6, either shutter; the counter grille rolls up with them) and D2
+   (wave 8, either chain). Debug `Open D1..D3` / `Close all` to jump.
+6. Pathfinding: debug `Pin LOBBY` + `Spawn at:` a box + an archetype; enemies take the stairs, both passages, the
+   stairwells; `Path debug` draws their routes (red when stuck). With the vault open, spawn at `tunnel_far`: they climb
+   the ladder (lifted) to the pavement. A barricade across a passage: they route round it, or hit it when it is the
+   only way. `[GHS Path]` per wave.
+7. Vault (D3 open, wave 10 or debug `Open vault`): `Vault's at the bottom of the stairwell…`, F at the wheel → Safe
+   dial → `WE'RE IN`, the wheel spins, both doors swing, the burst, the pill `TUNNEL OPEN`, the hatch lid swings up with a
+   blue TUNNEL beacon. Walk the ring vault → server room → tunnel → ladder → street. Gas at 10 s left; the doors close
+   only once nobody is in the room; `[GHS Vault] window used … exit tunnel <you>`; the hatch stays open.
+8. TITAN (wave 10): the wall blows on the crew zone's boss wall (the street: the west fence end) and it walks in; lead it
+   into the building: it follows through openings it fits, otherwise holds and Volleys.
+9. Dealer after the boss: the stall stands on the crew zone's dealer spot (the grass, the lobby under the stairs, the
+   corridor, the landing), facing the right way; TELEPORT lands in front of it.
+10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
+    per box, path budget).
+11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
+    prompt holds with a touch, the truss climbs with touch, the debug MAP group sits in the DBG panel.
+
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
-`src/client` → StarterPlayerScripts.Client, `src/assets` → ReplicatedStorage.Assets, `src/map` → Workspace.Room.
+`src/client` → StarterPlayerScripts.Client, `src/assets` → ReplicatedStorage.Assets, `src/map` → Workspace.Room
+(`Room.model.json`) and Workspace.Bank (`Bank.rbxm` as Geometry, `Bank.nodes.model.json` as Nodes).
 
 Server modules: World (run state, the party, `fireRun`, payout accumulators, heat effects, the run clock, the boss
 view and the roster), Room (map refs including `Room.vault`), Stats, Profiles (DataStore), PlayerState (per-player run
@@ -936,7 +1046,8 @@ UpgradeShop (`generate(state, wave, count)`, `applyCard`), WeaponRoll, BigCrate 
 Elements (element procs and statuses), Mastery (XP, tiers, kill passives), Dealer (the break, stall, stock), Pause
 (the freeze and its hooks), CrewCall (the vault kind), Abilities, SkipVote, and brief 6: Purchases (the fake purchase
 entry point and kind registry), Grants (applies rewards, dupes), Shop (Remotes.Shop actions, bundles, boosts), CrateOpen,
-Boosts, Vip, Pass, Jobs, RunEvents (the run event bus),
+Boosts, Vip, Pass, Jobs, RunEvents (the run event bus), and brief 7: MapLoader (THE BANK's nodes, zones, the crew zone, the hatch
+and ladder link), Doors (door props, objectives, zone gates, the vault site), EnemyPath (pathfinding),
 Hub (yard dressing, stations, tier pad, resets, the LV · TOP WAVE tag), Queue (zones, Create Match, party, countdown,
 PLAY AGAIN re-form), Meta (unlock / upgrade / equip actions), Minigames (sessions, log, stats, a tier override), Downed
 (down / revive / bleed-out / game over / sidearm), AllyCallout (teammate radio lines), RunStart, RunEnd (payout, XP award, summary), Squad (dummy crew for
@@ -946,7 +1057,7 @@ data: Config, Prices, Weapons (with `saleType` and the level math), Enemies (ros
 LevelRewards, Classes, AbilityGrowth, Masks, Wraps, Rarity, Upgrades, Types, Remotes, Signal, CrewCall/Lines, CrateReel
 (reel timing), Callouts (ally lines), MasteryCopy (mastery copy and tier math), and brief 6: Products, Rewards,
 Crates, Bundles, GoldPacks, BoostDefs, CashPacks, ReviveTokenPacks, PassSeason, JobPool, Clock (the fake clock),
-MaskShapes, Poses.
+MaskShapes, Poses, and brief 7: Maps (the map rows), Ground (the floor under a point).
 
 Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), HUD components under `src/client/HUD`
 (with `HUD.setMode` for hub / meta / downed / spectate / cinematic / boss and `HubHUD` for the hub layout; `BossBar`
@@ -959,7 +1070,9 @@ per game), DownedUI (bleed bar hooks, revive hold, downed markers), PlayerTags (
 RunStartUI, RunEndUI (sequence cameras, poses, MVP stamp, summary with the XP row), BossCutscene, Scoreboard,
 DebugPanel, Juice (rarity tiers), Camera, Gun, Main. Brief 6: PurchaseSheet, `src/client/Store/` (StoreScene, Fx,
 Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, GoldTab, CrateScene),
-`src/client/Pass/` (PassScene, PassSummary), `src/client/Jobs/` (JobBoard, JobSummary), HUD/BoostChips.
+`src/client/Pass/` (PassScene, PassSummary), `src/client/Jobs/` (JobBoard, JobSummary), HUD/BoostChips. Brief 7:
+NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the open beat). Tools: `genmap.luau`,
+`importbank.luau`, `genbanknodes.luau`, `exportnodes.luau`.
 
 ## Changelog (playtest rounds)
 
@@ -1361,7 +1474,37 @@ Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, 
   destroyed (their `*Lifetime` keys are 0 = no expiry); the med bag keeps `MedBagLifetime` (15s). They still clear at
   run end and when the vault seals on them.
 
+- **Round 19 (7 Nov) — brief 7 build: THE BANK.** Map 2 beside the arena, one commit per step: `Maps.lua` and
+  `Room.forMap` (the arena's markers become spawn boxes; profile v4 moves `TheBank:*` to `Arena:*`; the hub tag's map
+  suffix); the Bank import (`importbank.luau`, `genbanknodes.luau`, `exportnodes.luau`), `MapLoader` and debug Show
+  nodes; `EnemyPath` pathfinding on every map; THE BANK on the card with the van on the grass, the crew zone, boss walls
+  and dealer spots per zone and floor-aware placement (`Ground.lua`); door objectives (`Doors.lua`, kind `door` on the
+  crew call); the vault on the wheel door with the server door, the hatch and the tunnel ring; spawn pressure (the
+  crew-zone rule, zone hops, the line-of-sight re-roll, least-used boxes for elites, contact logs); debug MAP, the
+  mobile pass and this README.
+
 ## Open design notes (not built)
+
+- **Brief 7 assumptions and deviations to confirm.** The nodes were authored from the geometry offline (plans rendered
+  from the place file), never seen in Studio: expect to drag some. The D2 chains sit at the stair tops on the mezzanine
+  (between the newel posts, the one spot the geometry gave exactly) rather than the stair feet; move them in Studio.
+  The 4-stud teller counter is a hop between the lobby and the back, so D3 has a third part, a grille over the counter
+  (it opens with the shutters). The server door is the asset's second wheel door, animated (style `wheel`), not a
+  generated panel; the server room's own wheel door onto the tunnel is dressing, swung open at load (`TriggerWave` -1).
+  The brief's box zones follow where boxes stand: `SpawnNeverInCrewZone` tests the zone volume a box stands in, so the
+  street boxes behind the fences feed the street while the crew holds it; `lobby_front` stands on the steps (street).
+  The bank's windows are glass, so the `*_win` boxes stand in the bay alcoves inside (outside every zone volume) and
+  `back_service` in the back corner of the side hall. The zone graph is a new Zone attribute `Links`
+  (`neighbour@gate`); hatch-gated edges open with the hatch. `hatch_yard` stands beside the hatch inside the tunnel's
+  hatch-top volume. Zone volumes put the stairs entirely in the lobby (a player on them counts as LOBBY). TITAN's wall
+  blow hides nothing in the asset (the debris and the boss stepping in are the beat). TITAN's phase-3 Henchmen come in
+  round it on THE BANK. The run end lines up on the Lineup node; the van backs out the way it came. The pill's second
+  line is its right-hand label (`TUNNEL OPEN`). Lune 0.8.9 cannot read Studio's zstd binary saves or newer XML
+  property types, hence the Nodes-only `.rbxmx` export; `importbank.luau` needs an uncompressed place (this import was
+  made from a decompressed copy). The rojo node file is `Bank.nodes.model.json` (a plain `.json` would sync as a
+  ModuleScript). Config can hold a CFrame now (`BankOrigin`; the lune tools stub it). The builder place's Lighting and
+  MaterialService variants are not imported. Map thumbnails are `[IMG: TBA]`; `EnemyClimbAnimationId` is `[TBA]` (empty
+  plays none).
 
 - **Brief 6 assumptions to confirm.** The design canvas reference boards were not available to the build, so the look
   follows the style bar list. Pass levels start at 1 with level 1's cells claimable at once. Boost timers use the real

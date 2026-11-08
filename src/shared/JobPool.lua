@@ -12,7 +12,10 @@ export type Job = {
 	title: string,
 	flavor: string, -- MARLOW's line on the card
 	needsClass: string?,
+	map: string?, -- brief 7: only counts on this map (the run event's map)
 }
+
+local Config = require(script.Parent.Config)
 
 local JobPool = {}
 
@@ -134,6 +137,31 @@ JobPool.Bounty = {
 		flavor = "A thousand. Count them if you want.",
 	},
 } :: { Job }
+
+-- Brief 7: map-conditioned dailies for later, off until JobPoolBankEnabled (the current pool is untouched).
+JobPool.BankDaily = {
+	{
+		id = "d_bank_doors",
+		kind = "door",
+		target = 3,
+		map = "TheBank",
+		title = "OPEN 3 DOORS ON THE BANK",
+		flavor = "Every door in that building opens for us.",
+	},
+	{
+		id = "d_bank_tunnel",
+		kind = "tunnel",
+		target = 1,
+		map = "TheBank",
+		title = "ESCAPE THROUGH THE TUNNEL",
+		flavor = "Out the back. Nobody watches the back.",
+	},
+} :: { Job }
+if Config.JobPoolBankEnabled then
+	for _, j in JobPool.BankDaily do
+		table.insert(JobPool.Daily, j)
+	end
+end
 
 JobPool.ById = {} :: { [string]: Job }
 for _, list in { JobPool.Daily, JobPool.Bounty } do

@@ -346,7 +346,8 @@ local function drawDoors()
 			if called then Lines.door.markerHint else tostring(d.sign),
 			0,
 			"▲",
-			{ scale = if called then 1 else 0.8, diamond = loud, noCompact = loud }
+			-- Phones read the closed doors' UNLOCKS line at full size (brief 7 mobile pass).
+			{ scale = if called or ClientState.isMobile then 1 else 0.8, diamond = loud, noCompact = loud }
 		);
 		(markers[id] :: any).doorState = want
 	end

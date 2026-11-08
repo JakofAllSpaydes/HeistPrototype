@@ -37,8 +37,12 @@ local Pass = require(script.Parent.Pass)
 local Jobs = require(script.Parent.Jobs)
 local MapLoader = require(script.Parent.MapLoader)
 local Doors = require(script.Parent.Doors)
+local Spawner = require(script.Parent.Spawner)
+local EnemyPath = require(script.Parent.EnemyPath)
 
 local Debug = {}
+
+local pathDebug: { [Player]: boolean } = {}
 
 local function toast(player: Player, text: string)
 	Remotes.Juice:FireClient(player, "Toast", { text = text })
@@ -326,6 +330,26 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		Minigames.printStats()
 		Heat.printStats()
 		Economy.printStats()
+		MapLoader.printStats(Doors.openedLog, Spawner.contactRun, EnemyPath.history)
+	end,
+	-- Brief 7 MAP: pin the crew zone (spawns, bursts, the boss wall and the dealer follow it); "auto" unpins.
+	SetCrewZone = function(player, _state, args)
+		local z = tostring(args)
+		if z == "auto" then
+			MapLoader.pinnedZone = nil
+			toast(player, "CREW ZONE · AUTO")
+		elseif MapLoader.zones[z] then
+			MapLoader.pinnedZone = z
+			toast(player, "CREW ZONE · " .. string.upper(z))
+		end
+	end,
+	-- Path debug: this player gets every pathing enemy's route twice a second.
+	PathDebug = function(player, _state, _args)
+		pathDebug[player] = if pathDebug[player] then nil else true
+		toast(player, if pathDebug[player] then "PATH DEBUG ON" else "PATH DEBUG OFF")
+		if not pathDebug[player] then
+			Remotes.Juice:FireClient(player, "PathDebug", { paths = {} })
+		end
 	end,
 	-- The boss without the cutscene, at the marker nearest the player.
 	SpawnBoss = function(player, _state, _args)
@@ -423,6 +447,37 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 }
 
 function Debug.init()
+	-- Path debug: twice a second, the routes of the 30 pathing enemies nearest each watching player.
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			if not next(pathDebug) then
+				continue
+			end
+			local views = EnemyPath.debugView(Enemy.all())
+			for player in table.clone(pathDebug) do
+				if not player.Parent then
+					pathDebug[player] = nil
+					continue
+				end
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				local origin = if root then root.Position else Vector3.zero
+				table.sort(views, function(a, b)
+					return (a.from - origin).Magnitude < (b.from - origin).Magnitude
+				end)
+				local out = {}
+				for i = 1, math.min(30, #views) do
+					local v = views[i]
+					local pts = {}
+					for k = 1, math.min(15, #v.pts) do
+						pts[k] = v.pts[k]
+					end
+					table.insert(out, { from = v.from, pts = pts, stuck = v.stuck })
+				end
+				Remotes.Juice:FireClient(player, "PathDebug", { paths = out })
+			end
+		end
+	end)
 	Remotes.Debug.OnServerEvent:Connect(function(player: Player, command: any, args: any)
 		if not (Config.DebugEnabled or RunService:IsStudio()) then
 			return

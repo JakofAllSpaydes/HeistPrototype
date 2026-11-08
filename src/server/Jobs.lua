@@ -115,7 +115,7 @@ local function entries(profile: Profiles.Profile): { { key: string, entry: Entry
 end
 
 -- A run event: every matching Job moves (wave Jobs keep the best wave; the rest add up).
-local function onEvent(player: Player, kind: string, amount: number, arg: string?)
+local function onEvent(player: Player, kind: string, amount: number, arg: string?, map: string?)
 	local profile = Profiles.get(player)
 	if not profile then
 		return
@@ -128,6 +128,9 @@ local function onEvent(player: Player, kind: string, amount: number, arg: string
 			continue
 		end
 		if def.arg and def.arg ~= arg then
+			continue
+		end
+		if def.map and def.map ~= map then
 			continue
 		end
 		local before = e.progress

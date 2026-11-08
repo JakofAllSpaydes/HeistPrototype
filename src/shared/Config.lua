@@ -753,6 +753,7 @@ local Config = {
 	DefaultMap = "TheBank", -- the map a fresh Create Match card picks (and the fallback for an unknown id)
 	BankOrigin = CFrame.new(0, 0, -1000), -- where THE BANK model is pivoted on load (the import baked it here)
 	CrewZoneSyncSec = 0.5, -- the crew zone (the zone holding the most standing players) is recomputed this often
+	JobPoolBankEnabled = false, -- true adds JobPool.BankDaily (OPEN 3 DOORS ON THE BANK, ESCAPE THROUGH THE TUNNEL) to the dailies
 
 	------------------------------------------------------------------ Doors (brief 7; per-door numbers live on the Door nodes)
 	DoorTriggerWave = { D1 = 3, D3 = 6, D2 = 8 }, -- overrides a Door node's TriggerWave when set (D4 is the vault draw)

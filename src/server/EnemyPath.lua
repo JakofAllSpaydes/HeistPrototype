@@ -103,10 +103,17 @@ local function clearWalk(from: Vector3, to: Vector3): boolean
 	if math.abs(from.Y - to.Y) > 6 then
 		return false
 	end
-	local params = Ground.params()
+	-- Map geometry plus closed door props (a shutter is a wall until it rolls up).
+	local list = table.clone((Ground.params() :: any).FilterDescendantsInstances)
+	local bank = Workspace:FindFirstChild("Bank")
+	local props = bank and bank:FindFirstChild("DoorProps")
+	if props then
+		table.insert(list, props)
+	end
+	rayParams.FilterDescendantsInstances = list
 	local a = from + Vector3.new(0, 1, 0)
 	local b = Vector3.new(to.X, a.Y, to.Z)
-	return Workspace:Raycast(a, b - a, params) == nil
+	return Workspace:Raycast(a, b - a, rayParams) == nil
 end
 
 -- Placeables get a Structure modifier the first time a path is computed near them.

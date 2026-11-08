@@ -291,6 +291,7 @@ task.spawn(function()
 		World.runId += 1
 		-- Brief 7: the run's map (positions, spawn boxes, spots) comes from the party's pick.
 		World.map = Maps.pickable(World.partySettings.mapId)
+		RunEvents.map = World.map
 		if World.map == MapLoader.MAP_ID and not MapLoader.playable() then
 			Log.event(
 				"Run",
@@ -300,6 +301,7 @@ task.spawn(function()
 				tostring(Config.MapLoaderStrict)
 			)
 			World.map = "Arena"
+			RunEvents.map = World.map
 		end
 		World.runGold = 0
 		World.objectivesDone = 0

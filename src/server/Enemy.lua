@@ -116,6 +116,17 @@ function Enemy.data(model: Model): Data?
 	return active[model]
 end
 
+-- Every live enemy's data (brief 7: Path debug).
+function Enemy.all(): { Data }
+	local out = {}
+	for _, d in active do
+		if not d.dead then
+			table.insert(out, d)
+		end
+	end
+	return out
+end
+
 ------------------------------------------------------------------ Targeting helpers (the brain api)
 local function standingRoot(player: Player): BasePart?
 	local char = player.Character

@@ -25,6 +25,7 @@ local Minigames = require(script.Parent.Minigames)
 local Bags = require(script.Parent.Bags)
 local Pause = require(script.Parent.Pause)
 local Abilities = require(script.Parent.Abilities)
+local RunEvents = require(script.Parent.RunEvents)
 
 local VaultJob = {}
 
@@ -520,6 +521,9 @@ end
 
 function VaultJob.logExits()
 	for player, e in exits do
+		if e.entered and e.way == "tunnel" then
+			RunEvents.emit(player, "tunnel", 1) -- brief 7 Jobs: ESCAPE THROUGH THE TUNNEL
+		end
 		if e.entered then
 			Log.event(
 				"Vault",

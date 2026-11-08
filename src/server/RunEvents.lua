@@ -4,9 +4,12 @@
 -- archetype); Jobs.lua listens. No requires, so anything can emit without a cycle.
 local RunEvents = {}
 
-export type Handler = (player: Player, kind: string, amount: number, arg: string?) -> ()
+export type Handler = (player: Player, kind: string, amount: number, arg: string?, map: string?) -> ()
 
 local handlers: { Handler } = {}
+
+-- Brief 7: the map every event happened on (GameLoop sets it at run start).
+RunEvents.map = nil :: string?
 
 function RunEvents.listen(fn: Handler)
 	table.insert(handlers, fn)
@@ -17,7 +20,7 @@ function RunEvents.emit(player: Player?, kind: string, amount: number?, arg: str
 		return
 	end
 	for _, fn in handlers do
-		local ok, err = pcall(fn, player, kind, amount or 1, arg)
+		local ok, err = pcall(fn, player, kind, amount or 1, arg, RunEvents.map)
 		if not ok then
 			warn("[GHS RunEvents] " .. kind .. ": " .. tostring(err))
 		end
