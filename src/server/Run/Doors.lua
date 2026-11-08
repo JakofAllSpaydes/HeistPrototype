@@ -865,6 +865,19 @@ function Doors.pump()
 	if not door or g.state ~= "queued" then
 		return Doors.pump()
 	end
+	-- Round 21: someone already got into a zone this door opens (shot out a window and climbed in): the job counts
+	-- as done the moment it comes up. The door breaks open for the enemies to pour through, credited to them.
+	if Config.DoorOpensIfCrewInside then
+		for _, p in World.runAudience() do
+			local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local zone = root and MapLoader.zoneAt(root.Position)
+			if zone and table.find(door.opens, zone) and PlayerState.isStanding(PlayerState.get(p)) then
+				Log.event("Door", "%s: %s is already inside %s, opening it", group, p.Name, zone)
+				Doors.open(group, p, "inside") -- pumps the next queued door itself
+				return
+			end
+		end
+	end
 	g.state = "called"
 	g.calledAt = os.clock()
 	g.calledFor = math.max(g.dueWave, World.wave)

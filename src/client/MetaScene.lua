@@ -74,6 +74,7 @@ local currentTab: string? = nil
 local open = false
 local customize = false
 local idleTrack: AnimationTrack? = nil
+local emoteTrack: AnimationTrack? = nil -- the Avatar tab's emote preview playing now
 local previewMask: BasePart? = nil
 local savedHeadColor: Color3? = nil
 local savedWrap: GunModels.Snapshot? = nil -- the target gun's worn wrap, while a wrap preview is painted on it
@@ -261,8 +262,13 @@ local preview: Preview = {
 		savedHeadColor = nil
 	end,
 	emote = function(animationId: string, holdSec: number?)
-		-- The idle keeps looping underneath; the emote plays on top at action priority and stops after hold.
-		RunStartUI.playAnim(char(), animationId, holdSec or 2)
+		-- The idle keeps looping underneath (Action); the emote plays on top one priority higher, so it shows at
+		-- full strength, and stops after hold. A new tap cuts the previous preview, or the two blend into mush.
+		local prev = emoteTrack
+		if prev and prev.IsPlaying then
+			prev:Stop(0.1)
+		end
+		emoteTrack = RunStartUI.playAnim(char(), animationId, holdSec or 2, RunStartUI.EMOTE_PRIORITY)
 		UI.sound(Theme.Sounds.toast, 1.2, 0.3)
 	end,
 	commit = function()

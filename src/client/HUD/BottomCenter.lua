@@ -236,6 +236,93 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = slot,
 	})
 
+	-- Round 21: the second loadout slot, a square chip right of the held slot: the other gun's model in its
+	-- rarity (dim and empty until you pick a second gun up). Key 1 or a tap switches.
+	local offW = slotH
+	local offhand = UI.button({
+		Name = "OffhandSlot",
+		BackgroundColor3 = Theme.Colors.panel,
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0.5, S(110) + S(8), 0, slotY),
+		Size = UDim2.fromOffset(offW, slotH),
+		Parent = root,
+	})
+	UI.corner(offhand, S(10))
+	local offStroke = UI.stroke(offhand, Theme.Colors.grey, S(2), 0.5)
+	local offWell = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel2,
+		Position = UDim2.fromOffset(S(5), S(5)),
+		Size = UDim2.new(1, -S(10), 1, -S(10)),
+		Parent = offhand,
+	})
+	UI.corner(offWell, S(7))
+	local offIcon = ModelIcon.weapon(offWell, Weapons.Starter, UDim2.new(1, -S(2), 1, -S(2)), { pad = 0.04 })
+	offIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	offIcon.Position = UDim2.fromScale(0.5, 0.5)
+	offIcon.Visible = false
+	local offEmpty = UI.text({
+		Text = "EMPTY",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.textDim,
+		Size = UDim2.fromScale(1, 1),
+		Parent = offWell,
+	})
+	local offKey = UI.frame({
+		Name = "Hotkey",
+		BackgroundColor3 = Theme.Colors.panel2,
+		Position = UDim2.fromOffset(-S(6), -S(8)),
+		Size = UDim2.fromOffset(S(24), S(20)),
+		ZIndex = 3,
+		Visible = not ClientState.isMobile,
+		Parent = offhand,
+	})
+	UI.corner(offKey, S(5))
+	UI.stroke(offKey, Theme.Colors.grey, S(1), 0.4)
+	UI.text({
+		Text = "1",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(14),
+		TextColor3 = Theme.Colors.text,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 3,
+		Parent = offKey,
+	})
+	track(offhand.Activated:Connect(function()
+		local sync = ClientState.sync :: any
+		if sync and sync.offhand and not ClientState.downed then
+			Remotes.SwitchWeapon:FireServer()
+		end
+	end))
+	local offStamp = ""
+	local function paintOffhand(o: any)
+		local stamp = if o then string.format("%s|%d|%s", o.weaponId, o.rarity, tostring(o.wrapColor)) else ""
+		if stamp == offStamp then
+			return
+		end
+		offStamp = stamp
+		if o then
+			local color = Rarity.color(o.rarity)
+			offStroke.Color = color
+			offStroke.Transparency = 0
+			offWell.BackgroundColor3 = Theme.Colors.panel2:Lerp(color, Config.ModelIconWellTint)
+			ModelIcon.setWeapon(offIcon, o.weaponId, {
+				rarity = o.rarity,
+				wrapColor = if o.wrapColor then tostring(o.wrapColor) else nil,
+			})
+			offIcon.Visible = true
+			offEmpty.Visible = false
+			offhand.BackgroundTransparency = 0
+		else
+			offStroke.Color = Theme.Colors.grey
+			offStroke.Transparency = 0.5
+			offWell.BackgroundColor3 = Theme.Colors.panel2
+			offIcon.Visible = false
+			offEmpty.Visible = true
+			offhand.BackgroundTransparency = 0.35
+		end
+	end
+
 	-- Health binding
 	local maxHP = 100
 	local bleeding = false
@@ -462,6 +549,8 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		levelLabel.Text = string.format("LV %d", level)
 		sidearmPill.Visible = held.sidearm == true
 		levelPill.Visible = not sidearmPill.Visible and level > 0
+		offhand.Visible = Config.WeaponSlots >= 2
+		paintOffhand(sync.offhand)
 		local profile = sync.profile
 		local t = if profile and typeof(profile.reviveTokens) == "number" then profile.reviveTokens else 0
 		local cost = if sync.revive and typeof(sync.revive.selfCost) == "number" then sync.revive.selfCost else 1
@@ -489,7 +578,16 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end
 
 	function component.onJuice(juiceName: string, data: any)
-		if juiceName == "Swap" then
+		if juiceName == "WeaponSwitch" then
+			-- Round 21: a quick draw, quieter than a pickup.
+			UI.punch(slot, 1.06, 0.2)
+			UI.punch(offhand, 0.9, 0.2)
+			-- Chunky gear foley (Config.WeaponSwitchSounds, layered) instead of the UI whoosh.
+			for _, s in Config.WeaponSwitchSounds do
+				UI.sound(s.id, s.pitch or 1, s.volume or 0.5)
+			end
+			lastDps = -1 -- a different gun, not a stat change: no DPS float
+		elseif juiceName == "Swap" then
 			local tier = (data and data.rarity) or 1
 			UI.punch(slot, 1.1 + tier * 0.04, 0.35)
 			UI.sound(Theme.Sounds.swap, 0.8 + tier * 0.1, 0.5)

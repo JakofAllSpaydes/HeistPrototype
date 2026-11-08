@@ -6,7 +6,7 @@
 -- SKIP (unanimous) and VOTE TO PAUSE.
 --
 -- The shop is diegetic and per player: eight upgrade stands on the table (drawn by the pick-3 generator, same
--- categories and tradeoff rules, priced ShopPriceByTier x the normal upgrade escalation) that every client draws
+-- categories and tradeoff rules; Round 21: priced ShopPriceByTier x the wave, not the upgrade escalation) that every client draws
 -- from its own stock (DealerStock), plus three props for the party: ARMS DROP (a crate at the stall), HEAL ALL and
 -- REROLL (new stands, price doubles per use). DealerUI opens the nearest stand's panel within ShopReadRadius; F
 -- (DealerAction "buy") buys: the upgrade applies at once, a bought stand stays empty.
@@ -34,7 +34,7 @@ local Ground = require(Shared.Ground)
 
 local Dealer = {}
 
-type Stock = { cards: { Types.Card }, sold: { boolean }, rerolls: number }
+type Stock = { cards: { Types.Card }, sold: { boolean }, rerolls: number, buys: number } -- buys: cards bought this break
 
 local stall: Model? = nil
 local stock: { [Player]: Stock } = {}
@@ -328,20 +328,27 @@ local function buildStall(): Model
 end
 
 ------------------------------------------------------------------ Stock and prices
-local function cardPrice(state: PlayerState.State, card: Types.Card): number
+-- Round 21: income grows with the wave (kill cash and bags are linear in it), so the stall does too. Cards no longer
+-- ride the UPGRADE escalation (UpgradePriceMult ^ upgrades bought made them unreasonable late); each card bought this
+-- break raises your next by DealerBuyStepMult. Crates, heals and rerolls scale with the wave as well.
+local function waveScale(perWave: number): number
+	return 1 + perWave * math.max(0, World.wave - 1)
+end
+
+local function cardPrice(card: Types.Card, s: Stock): number
 	local base = Config.ShopPriceByTier[math.clamp(card.tier, 1, 5)] or 100
-	return math.round(base * Config.UpgradePriceMult ^ state.upgradesBought)
+	return math.round(base * waveScale(Config.DealerCardWaveMult) * Config.DealerBuyStepMult ^ s.buys)
 end
 
 local function rerollPrice(s: Stock): number
-	return math.round(Config.ShopRerollPrice * 2 ^ s.rerolls)
+	return math.round(Config.ShopRerollPrice * waveScale(Config.DealerPropWaveMult) * 2 ^ s.rerolls)
 end
 
 local function propPrice(id: string, s: Stock): number
 	if id == "crate" then
-		return Config.ShopCratePrice
+		return math.round(Config.ShopCratePrice * waveScale(Config.DealerPropWaveMult))
 	elseif id == "heal" then
-		return Config.ShopHealPrice
+		return math.round(Config.ShopHealPrice * waveScale(Config.DealerPropWaveMult))
 	end
 	return rerollPrice(s)
 end
@@ -398,7 +405,7 @@ local function sendStock(player: Player)
 			position = standPosition(i),
 			card = card,
 			sold = s.sold[i] == true,
-			price = cardPrice(state, card),
+			price = cardPrice(card, s),
 			title = string.upper(card.name),
 			tierName = string.upper(Rarity.name(card.tier)),
 			lines = effectLines(state, card),
@@ -423,10 +430,12 @@ end
 
 local function restock(player: Player, rerolls: number?)
 	local state = PlayerState.get(player)
+	local old = stock[player]
 	stock[player] = {
 		cards = UpgradeShop.generate(state, World.wave, Config.DealerStock),
 		sold = {},
 		rerolls = rerolls or 0,
+		buys = if rerolls and old then old.buys else 0, -- a reroll keeps this break's count
 	}
 end
 
@@ -457,11 +466,12 @@ local function buy(player: Player, slot: any)
 		if not card or s.sold[i] or not near(player, standPosition(i)) then
 			return result(player, false, slot, "gone")
 		end
-		local price = cardPrice(state, card)
+		local price = cardPrice(card, s)
 		if not Economy.tryCharge(state, price) then
 			return result(player, false, slot, "cash")
 		end
 		s.sold[i] = true
+		s.buys += 1
 		state.upgradesBought += 1
 		state.waveUpgrades += 1
 		UpgradeShop.applyCard(player, card, "dealer")
@@ -615,7 +625,18 @@ function Dealer.run(wave: number)
 		hold = Config.CallHoldSec,
 	})
 	Log.event("Dealer", "break after wave %d: %ds, stall at (%d, %d)", wave, Config.DealerSec, origin().X, origin().Z)
+	-- Round 21: DealerWarnSec warnings before the stall packs up (the clock is pause-aware: endsAt moves).
+	local warned: { [number]: boolean } = {}
 	while active and not skipped and not World.runOver and Workspace:GetServerTimeNow() < endsAt do
+		local left = endsAt - Workspace:GetServerTimeNow()
+		for _, sec in Config.DealerWarnSec do
+			if left <= sec and not warned[sec] then
+				warned[sec] = true
+				if left > sec - 1 then -- a skip vote or a short DealerSec never warns late
+					World.fireRun("DealerWarn", { sec = sec })
+				end
+			end
+		end
 		task.wait(0.1)
 	end
 	Dealer.close(if skipped then "skipped" else "timer")

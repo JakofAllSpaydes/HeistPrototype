@@ -46,6 +46,17 @@ export type HeldView = {
 	levelRateMult: number, -- fire-rate multiplier from the level (so tags compare like with like)
 }
 
+-- Round 21: the gun in the other loadout slot, as the HUD's second chip shows it.
+export type OffhandView = {
+	weaponId: string,
+	displayName: string,
+	archetype: string,
+	rarity: number,
+	rarityName: string,
+	level: number,
+	wrapColor: string?,
+}
+
 export type Computed = {
 	damage: number,
 	fireRate: number,
@@ -72,7 +83,7 @@ export type Computed = {
 	-- Synergy (conditional) upgrades: percent points (wildfire, shatter, aftershock) or multipliers (1 = none).
 	wildfire: number, -- % of a Fire Ammo burn that jumps on the burner's death
 	shatter: number, -- % more bullet damage to chilled enemies
-	aftershock: number, -- % of gun damage an Impact stagger sends around the target
+	aftershock: number, -- % of gun damage a Stun Ammo stagger sends around the target
 	fireAbilityMult: number, -- TORCH: Molotov / Flame Turret / Oil Drum damage
 	turretDmgMult: number, -- ENGINEER: Turret damage
 	healMult: number, -- DOC: Stim Shot / Med Bag / Healing Turret healing
@@ -107,6 +118,8 @@ export type Sync = {
 	maxHP: number,
 	dmgPct: number, -- in-run damage upgrade share (Round 16: floor-gun tags compute your own numbers from it)
 	held: HeldView,
+	offhand: OffhandView?, -- Round 21: the other loadout slot (nil = empty)
+	activeSlot: number, -- 1 or 2: the slot in your hands
 	stats: Computed,
 	prices: { upgrade: number },
 	tracker: Tracker,

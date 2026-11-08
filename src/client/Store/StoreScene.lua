@@ -201,13 +201,17 @@ local function build(focus: string, arg: any?)
 	end)
 
 	-- The window, clear of the top bar.
-	local winW = math.min(vp.X - S(32), S(1240))
-	local winH = vp.Y - top - S(16)
+	-- Round 21: the window covers Config.PremiumWindowScale of the old footprint each way (text keeps its size,
+	-- the page scrolls more), centred in the space under the top bar.
+	local k = Config.PremiumWindowScale
+	local fullH = vp.Y - top - S(16)
+	local winW = math.floor(math.min(vp.X - S(32), S(1240)) * k)
+	local winH = math.floor(fullH * k)
 	local w = UI.frame({
 		Name = "Window",
 		BackgroundColor3 = Color3.fromHex("0E0E12"),
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, top),
+		Position = UDim2.new(0.5, 0, 0, top + math.floor((fullH - winH) / 2)),
 		Size = UDim2.fromOffset(winW, winH),
 		Active = true,
 		ZIndex = 3,

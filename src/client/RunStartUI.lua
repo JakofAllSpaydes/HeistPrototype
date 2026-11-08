@@ -4,12 +4,14 @@
 -- played on every character in the line. Runs off the server clock in RunStartBegin; input locked, HUD
 -- down to the wave bar, not skippable. Brief 8: before it, HubDepart is a short chase behind the hub van as it
 -- pulls out of the garage (the cut to the map's drive-in comes with RunStartBegin).
+local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Emotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Emotes"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
@@ -50,8 +52,20 @@ function RunStartUI.charFor(entry: any): Model?
 	return if p then p.Character else nil
 end
 
--- Play an animation on any character (local playback on every client reads the same for everyone).
-function RunStartUI.playAnim(char: Model?, id: string, holdSec: number?): AnimationTrack?
+-- Emotes (SQUAD poses, MVP flexes, the dummies' line-up poses) play one priority above everything else on a
+-- character: the class idles (MetaScene) and the mask-on play at Action, and two tracks at the SAME priority blend
+-- by weight, so an emote at Action came out half-strength over a looping idle. GunAnim still hands the arms back for
+-- Action2 (it checks Action..Action4).
+RunStartUI.EMOTE_PRIORITY = Enum.AnimationPriority.Action2
+
+-- Play an animation on any character (local playback on every client reads the same for everyone). `priority`
+-- defaults to Action; emotes pass RunStartUI.EMOTE_PRIORITY.
+function RunStartUI.playAnim(
+	char: Model?,
+	id: string,
+	holdSec: number?,
+	priority: Enum.AnimationPriority?
+): AnimationTrack?
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not hum then
 		return nil
@@ -69,7 +83,7 @@ function RunStartUI.playAnim(char: Model?, id: string, holdSec: number?): Animat
 	if not ok or not track then
 		return nil
 	end
-	track.Priority = Enum.AnimationPriority.Action
+	track.Priority = priority or Enum.AnimationPriority.Action
 	track:Play(0.1)
 	table.insert(tracks, track)
 	if holdSec then
@@ -312,7 +326,7 @@ local function step(_dt: number)
 					local hold = tonumber(entry.poseHold) or pose.holdSec
 					task.delay(Config.PoseStagger * (i - 1), function()
 						if data == d then
-							RunStartUI.playAnim(RunStartUI.charFor(entry), animId, hold)
+							RunStartUI.playAnim(RunStartUI.charFor(entry), animId, hold, RunStartUI.EMOTE_PRIORITY)
 						end
 					end)
 				end
@@ -364,7 +378,34 @@ local function begin(d: any)
 	UI.sound(Theme.Sounds.wave, 0.7, 0.5)
 end
 
+-- Fetch every emote / line-up animation once up front, so a pose's first play (a 1.2 s hold) is not spent
+-- downloading the clip and the first preview tap in the Avatar tab lands at once.
+local function preloadEmotes()
+	local seen: { [string]: boolean } = {}
+	local anims: { Instance } = {}
+	local function add(id: any)
+		if typeof(id) == "string" and id ~= "" and not seen[id] then
+			seen[id] = true
+			local a = Instance.new("Animation")
+			a.AnimationId = id
+			table.insert(anims, a)
+		end
+	end
+	for _, e in Emotes.List do
+		add(e.animationId)
+	end
+	for _, p in Config.Poses do
+		add(p.animationId)
+	end
+	add(Config.MvpAnimationId)
+	add(Config.MaskOnAnimationId)
+	pcall(function()
+		ContentProvider:PreloadAsync(anims)
+	end)
+end
+
 function RunStartUI.init()
+	task.spawn(preloadEmotes)
 	ClientState.Juice:Connect(function(name: string, d: any)
 		if name == "RunStartBegin" then
 			begin(d)

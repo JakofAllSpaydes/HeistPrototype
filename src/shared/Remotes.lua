@@ -11,6 +11,7 @@ local DEFS: { [string]: string } = {
 	BuyUpgrade = "RemoteFunction", -- client -> server: none; returns { ok, cards | reason }
 	TakeUpgrade = "RemoteEvent", -- client -> server: cardIndex
 	SwapWeapon = "RemoteEvent", -- client -> server: ground gun Part
+	SwitchWeapon = "RemoteEvent", -- client -> server: none; swap the two loadout slots (key 1, Round 21)
 	StateSync = "RemoteEvent", -- server -> client: Types.Sync
 	Juice = "RemoteEvent", -- server -> client: event name, data
 	Debug = "RemoteEvent", -- client -> server: command, args

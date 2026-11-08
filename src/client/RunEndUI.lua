@@ -206,7 +206,7 @@ local function showMvp(d: any)
 	hideOthers(d)
 	local beats = d.beats
 	local flex = if typeof(d.mvp.mvpAnim) == "string" then d.mvp.mvpAnim else Config.MvpAnimationId
-	RunStartUI.playAnim(RunStartUI.charFor(d.mvp), flex, (beats.summary - beats.mvp) + 0.5)
+	RunStartUI.playAnim(RunStartUI.charFor(d.mvp), flex, (beats.summary - beats.mvp) + 0.5, RunStartUI.EMOTE_PRIORITY)
 end
 
 local function showSummary(d: any)
@@ -635,7 +635,7 @@ local function step(_dt: number)
 					local hold = tonumber(row.poseHold) or pose.holdSec
 					task.delay(Config.PoseStagger * (i - 1), function()
 						if data == d then
-							RunStartUI.playAnim(RunStartUI.charFor(row), animId, hold)
+							RunStartUI.playAnim(RunStartUI.charFor(row), animId, hold, RunStartUI.EMOTE_PRIORITY)
 						end
 					end)
 				end

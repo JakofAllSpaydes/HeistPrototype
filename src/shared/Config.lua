@@ -149,6 +149,11 @@ local Config = {
 	CatchUpMinPlayerDistance = 55, -- Round 19c: the landing waypoint is at least this far (straight line) from every standing player
 	CatchUpMinGain = 20, -- ...and at least this far from where the enemy stood (no tiny hops)
 	CatchUpCameraLift = 9, -- ...and hidden from a point this far above each player too (the third-person camera)
+	-- Round 21 stragglers: more than this many studs above / below its target counts as far too (another floor)...
+	CatchUpFloorDelta = 10,
+	-- ...and an enemy still far / off-floor this long without a catch-up (no route: stuck outside the building, or
+	-- nothing hidden on its route) warps to a hidden spawn point near the crew (0 = off). The boss never warps.
+	StragglerWarpSec = 14,
 	EnemyClimbAnimationId = "", -- [TBA] played while lifted (empty: none)
 	SpawnRingRadius = 90, -- studs from room center
 	SpawnPointCount = 8,
@@ -348,10 +353,24 @@ local Config = {
 	WildfireRadius = 10, -- WILDFIRE: a Fire Ammo burn jumps to enemies this close when the burning enemy dies...
 	WildfireMaxPct = 100, -- ...at the card's % of its strength, never more than this (100 = the burn carries whole)
 	ShatterFrozenMult = 2, -- SHATTER: a frozen enemy takes this x the bonus a chilled one does
-	AftershockRadius = 7, -- AFTERSHOCK: an Impact stagger hits other enemies this close for the card's % of gun damage
+	AftershockRadius = 7, -- AFTERSHOCK: a Stun Ammo stagger hits other enemies this close for the card's % of gun damage
 
 	------------------------------------------------------------------ Ground loot
 	SwapCooldownSec = 0.5, -- after a swap, further swaps are ignored for this long (anti-spam mid-combat)
+	-- Round 21: two loadout slots. You start with one gun; a pickup with the second slot empty goes there and you
+	-- switch to it; with both full a pickup replaces the gun in your hands (it drops). Key 1 / tapping the slot chip
+	-- switches. 1 = the old single-gun loadout.
+	WeaponSlots = 2,
+	WeaponSwitchSec = 0.3, -- after a switch, further switches are ignored for this long
+	-- The switch sound: every entry plays at once (layer a bolt clack over a holster draw for more weight).
+	-- { id, volume, pitch }. Candidates, all ProSoundEffects (Roblox-licensed, approved), to audition by swapping ids:
+	--   9116357355 Machine Gun Bolt 2 (1s)   9116357348 Machine Gun Bolt 1 (1s)   9116357621 Machine Gun Bolt 4 (1s)
+	--   9114701864 Gun From Holster 1 (1s)   9113104176 Ammo Magazine 1 (1s)      9114724914 Gun Pick Up 4 (2s)
+	--   9114724920 Gun Pick Up 5 (2s)        9114704367 Gun Handling 2 (4s, a long rattle)
+	WeaponSwitchSounds = {
+		{ id = "rbxassetid://9116357355", volume = 0.6, pitch = 1 }, -- Machine Gun Bolt 2: the clack
+		{ id = "rbxassetid://9114701864", volume = 0.45, pitch = 1 }, -- Gun From Holster 1: the gear under it
+	},
 	GroundWeaponLifetime = 30, -- floor guns despawn after this; a fresh drop (or swap) restarts it
 	GroundWeaponFadeSec = 10, -- beam fades over the last N seconds of lifetime
 	InteractRadius = 8,
@@ -862,10 +881,18 @@ local Config = {
 	DealerCardWidth = 190, -- the stand panel (a pick-3 card with a price bar), design px
 	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
 	-- Round 19c: about a quarter cheaper across the stall (was 100 / 160 / 260 / 420 / 700, crate 800, heal 300, reroll 150).
-	ShopPriceByTier = { 75, 120, 195, 315, 525 }, -- x UpgradePriceMult ^ upgrades bought (placeholders)
+	-- Round 21: stall prices scale with the wave (income does: CashWaveMult, CashBagPerWave), not with upgrades bought.
+	-- card = ShopPriceByTier x (1 + DealerCardWaveMult x (wave - 1)) x DealerBuyStepMult ^ cards bought this break
+	-- (wave 10: tier 1 $416, tier 5 $2.9k; was x UpgradePriceMult ^ upgrades bought: tier 1 ~$3.7k at 13 upgrades).
+	ShopPriceByTier = { 75, 120, 195, 315, 525 },
+	DealerCardWaveMult = 0.5,
+	DealerBuyStepMult = 1.1,
+	-- props = price x (1 + DealerPropWaveMult x (wave - 1)) (wave 10: crate $2.8k, heal $1k, reroll $506 doubling per use)
+	DealerPropWaveMult = 0.4,
 	ShopCratePrice = 600, -- ARMS DROP: a crate at the stall for the party
 	ShopHealPrice = 225, -- HEAL ALL: full HP for every member
 	ShopRerollPrice = 110, -- REROLL: your eight stands again; doubles per use
+	DealerWarnSec = { 15, 5 }, -- Round 21: "DEALER LEAVES IN Ns" warnings this many seconds before the stall packs up
 
 	------------------------------------------------------------------ Pause (brief 5; Pause.lua)
 	PauseMaxSec = 300, -- a pause lasts this long, then resumes by itself...
@@ -963,6 +990,14 @@ local Config = {
 	HubWalkSpeedMult = 2, -- walk speed in the hub (outside the range) x this; runs and the range walk at PlayerWalkSpeed
 	PassStageLight = 1, -- the battle pass stage's front key and top light brightness x this (0 = off)
 	PremiumSetAmbient = "4A4552", -- the ambient while a premium scene (pass, store, crate room) is up (was near-black)
+	PremiumWindowScale = 0.8, -- Round 21: the premium SHOP window and the JOBS board take this share of the screen each way (was 1)
+	-- Round 21 day / night (client/DayNight.lua): wave 1 at RunClockStart, each wave RunClockPerWave hours later
+	-- (20:00, 20:30, ... 06:00 dawn at wave 21), eased over RunClockTweenSec as the wave starts. The hub keeps the
+	-- place's own Lighting.ClockTime. Jumps bigger than RunClockMaxTweenHours (debug wave skips) snap.
+	RunClockStart = 20,
+	RunClockPerWave = 0.5,
+	RunClockTweenSec = 6,
+	RunClockMaxTweenHours = 3,
 	PassDragTurn = 0.012, -- radians per pixel when you drag the battle pass mannequin
 	BoothWalkIn = true, -- walking onto a booth's orange half-circle opens the customization scene on its tab
 	BoothPromptDistance = 12, -- only with BoothWalkIn off: OPEN (F) at a booth reaches this far
@@ -987,6 +1022,9 @@ local Config = {
 	-- Round 19g: front doors 2, upper floor 5, back of the ground floor 8, the vault stairwells 12 (the first forced
 	-- vault is then wave 15, VaultJobEveryWaves). Was D1 3, D3 7, D2 11, D5 14.
 	DoorTriggerWave = { D1 = 2, D2 = 5, D3 = 8, D5 = 12 },
+	-- Round 21: a door job that comes up while a standing crew member is already inside a zone it opens (in through a
+	-- shot-out window) counts as done at once: the door breaks open (credit, cash bags) so enemies can pour through.
+	DoorOpensIfCrewInside = true,
 	-- Round 19g: a door called for the first time guides the crew there: floor chevrons from every standing player,
 	-- re-planned every DoorGuideRefreshSec for DoorGuideSec (or until it opens), its loud beacon, and a screen-edge
 	-- arrow whenever the door is off screen.

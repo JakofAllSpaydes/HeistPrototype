@@ -22,7 +22,7 @@ export type Stat = {
 	category: string,
 	noMalus: boolean?,
 	negative: boolean?,
-	effect: string?, -- elements: the effect the percent raises (Burn / Slow / Impact); synergy stats: what it raises
+	effect: string?, -- elements: the effect the percent raises (Burn / Slow / Stun); synergy stats: what it raises
 	requires: Requires?,
 }
 
@@ -70,10 +70,10 @@ Upgrades.Stats = {
 		noMalus = true,
 	},
 	{
-		id = "Concussive",
-		name = "Impact Ammo",
-		short = "IMP",
-		effect = "Impact",
+		id = "Concussive", -- (Round 21: shown as Stun, was Impact; the id stays for saves and logic)
+		name = "Stun Ammo",
+		short = "STN",
+		effect = "Stun",
 		additive = true,
 		unit = "%",
 		category = "element",
@@ -223,7 +223,7 @@ Upgrades.TierNames = {
 	Lifesteal = { "Vampire Rounds", "Bloodletter", "Leech", "Siphon", "Hemophage" },
 	Incendiary = { "Fire Ammo", "Fire Ammo", "Fire Ammo", "Fire Ammo", "Fire Ammo" },
 	Cryo = { "Ice Ammo", "Ice Ammo", "Ice Ammo", "Ice Ammo", "Ice Ammo" },
-	Concussive = { "Impact Ammo", "Impact Ammo", "Impact Ammo", "Impact Ammo", "Impact Ammo" },
+	Concussive = { "Stun Ammo", "Stun Ammo", "Stun Ammo", "Stun Ammo", "Stun Ammo" },
 	AbilityCooldown = { "Quick Reset", "Fast Recharge", "Overcharged", "Hair Trigger", "Perpetual" },
 	AbilityPower = { "Amped", "Boosted", "Supercharged", "Overload", "Maximum" },
 	CashGain = { "Pocket Change", "Loose Cash", "Big Spender", "High Roller", "Kingpin" },
@@ -404,13 +404,13 @@ function Upgrades.isNewElement(statId: string, value: number): boolean
 end
 
 -- What a card shows: the big line and the small line under it. Gun / utility: "+22%" over "DAMAGE". Elements:
--- "NEW" over "BURN ON EVERY SHOT" for the first take, then "+30%" over "BURN". Synergy: "+40%" over its effect
--- ("BURN SPREAD").
+-- "BURN" over "ON EVERY SHOT" for the first take (Round 21: was "NEW" over "BURN ON EVERY SHOT"), then "+30%" over
+-- "BURN". Synergy: "+40%" over its effect ("BURN SPREAD").
 function Upgrades.cardTexts(statId: string, value: number): (string, string)
 	local effect = Upgrades.effectName(statId)
 	if effect then
 		if Upgrades.isNewElement(statId, value) then
-			return "NEW", effect .. " ON EVERY SHOT"
+			return effect, "ON EVERY SHOT"
 		end
 		return Upgrades.pctText(value, statId), effect
 	end

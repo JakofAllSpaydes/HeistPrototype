@@ -1,7 +1,9 @@
 --!strict
 -- Emotes for the Avatar tab's SQUAD and MVP categories. A SQUAD emote is the pose the player strikes in the
 -- run start and run end line-ups; the MVP emote is the flex played alone under the MVP stamp. Default R15
--- animations stand in for real emotes. Tapping one in the tab previews it on the avatar.
+-- animations and public Roblox emote animations (Poses.lua) stand in for real emotes. Tapping one in the tab
+-- previews it on the avatar. Every animationId must be an Animation asset id, not a catalog emote item id (see
+-- Poses.lua), and each emote should have its own clip. Played at RunStartUI.EMOTE_PRIORITY (above the class idles).
 export type Emote = {
 	id: string,
 	name: string,
@@ -55,7 +57,7 @@ Emotes.List = {
 		id = "shuffle",
 		name = "Shuffle",
 		slot = "squad",
-		animationId = "rbxassetid://507776043",
+		animationId = Poses.Shuffle, -- its own clip (it shared dance2 with Groove)
 		holdSec = 1.4,
 		saleType = "Crate",
 	},
@@ -88,7 +90,7 @@ Emotes.List = {
 		id = "victory",
 		name = "Victory",
 		slot = "mvp",
-		animationId = "rbxassetid://507770677",
+		animationId = Poses.PowerBlast, -- its own clip (it shared cheer with the Cheer pose)
 		holdSec = 3,
 		saleType = "Event",
 	},

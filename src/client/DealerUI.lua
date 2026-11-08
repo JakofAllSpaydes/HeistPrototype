@@ -694,6 +694,21 @@ function DealerUI.init()
 			UI.sound(Theme.Sounds.legendary, 1.4, 0.5)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.health, alpha = 0.2 })
 			ClientState.Juice:Fire("Toast", { text = string.upper(tostring(data.name or "")) .. " HEALED THE CREW" })
+		elseif name == "DealerWarn" and typeof(data) == "table" then
+			-- Round 21: the stall packs up soon (Config.DealerWarnSec).
+			local sec = tonumber(data.sec) or 0
+			ClientState.Juice:Fire("Toast", {
+				text = string.format("DEALER LEAVES IN %dS", sec),
+				color = Theme.Colors.red,
+				duration = 2,
+			})
+			UI.sound(Theme.Sounds.call, if sec <= 5 then 1.25 else 1, 0.45)
+			local c = card
+			if c then
+				UI.punch(c.inner, 1.08, 0.3)
+				c.title.TextColor3 = Theme.Colors.red
+				UI.tween(c.title, { TextColor3 = Theme.Colors.amber }, 1.2)
+			end
 		elseif name == "DealerTeleported" then
 			UI.sound(Theme.Sounds.swap, 0.7, 0.6)
 			ClientState.Juice:Fire("Shake", { amp = 0.2, dur = 0.2 })

@@ -52,12 +52,17 @@ export type State = {
 	mode: string, -- direct | path
 	noRouteUntil: number, -- the boss: no route through openings it fits, it holds until then
 	farFor: number, -- Round 19: seconds spent farther than CatchUpDistance from its target
+	strandedFor: number, -- Round 21: seconds far (or off the crew's floor) without a catch-up landing
 	farAt: number,
 	modeAt: number, -- the direct check (a raycast) runs at most every 0.2 s
 }
 
-local stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, catchUps = 0, startedAt = os.clock(), pinned = 0 }
+local stats =
+	{ computes = 0, fails = 0, stuck = 0, teleports = 0, catchUps = 0, warps = 0, startedAt = os.clock(), pinned = 0 }
 local catchUp: (any, any) -> boolean
+
+-- Round 21: installed by Spawner: a spawn point near the crew nobody can see (nil = none right now).
+EnemyPath.relocate = nil :: (() -> Vector3?)?
 local tokens = Config.PathComputesPerSec
 local queue: { { d: any, from: Vector3, to: Vector3, key: string } } = {}
 local cache: { [string]: { waypoints: { PathWaypoint }, at: number, to: Vector3 } } = {}
@@ -100,6 +105,7 @@ function EnemyPath.new(): State
 		mode = "direct",
 		noRouteUntil = 0,
 		farFor = 0,
+		strandedFor = 0,
 		farAt = now,
 		modeAt = -math.huge,
 	}
@@ -353,6 +359,29 @@ function catchUp(d: any, st: State): boolean
 	return false
 end
 
+-- Round 21: a straggler that catch-up can't help (no route: stuck outside the building, or nothing hidden on its
+-- route) warps to a hidden spawn point near the crew. True when it moved.
+local function warpNearCrew(d: any, st: State): boolean
+	local pick = EnemyPath.relocate
+	local p = pick and pick()
+	if not p then
+		st.strandedFor = Config.StragglerWarpSec * 0.5 -- try again in a bit
+		return false
+	end
+	local from = zoneOf(d.root.Position)
+	d.model:PivotTo(CFrame.new(p + Vector3.new(0, d.root.Size.Y / 2 + d.humanoid.HipHeight + 0.5, 0)))
+	st.waypoints = nil
+	st.farFor = 0
+	st.strandedFor = 0
+	st.stuckFor = 0
+	st.detourUntil = 0
+	st.noRouteUntil = 0
+	st.lastPos = p
+	stats.warps += 1
+	Log.event("Path", "straggler %s at %s → warped to %s", d.archetype, from, zoneOf(p))
+	return true
+end
+
 local function teleportHome(d: any, st: State)
 	-- Its own spawn box (or the current map's box nearest it: the boss and debug spawns have none).
 	local box = d.box or select(1, Room.nearestBox(d.root.Position))
@@ -376,6 +405,29 @@ function EnemyPath.steer(d: any, targetPos: Vector3, now: number, reach: number,
 	local hum: Humanoid = d.humanoid
 	local pos = root.Position
 	local dist = (targetPos - pos).Magnitude
+
+	-- Round 19 catch-up: far from the crew for CatchUpSec, it moves up its own route to a waypoint CatchUpLead
+	-- studs short of the target that no player can see. Round 21: on another floor (CatchUpFloorDelta) counts as
+	-- far, the clock runs in every mode (a straggler with no route used to stand still forever), and one still
+	-- stranded after StragglerWarpSec warps to a hidden spawn point near the crew. The boss never does either.
+	local farDt = now - st.farAt
+	st.farAt = now
+	local far = dist > Config.CatchUpDistance or math.abs(targetPos.Y - pos.Y) > Config.CatchUpFloorDelta
+	if Config.CatchUpSec > 0 and far and not d.row.boss then
+		st.farFor += farDt
+		st.strandedFor += farDt
+		if st.farFor >= Config.CatchUpSec and st.waypoints and catchUp(d, st) then
+			st.strandedFor = 0
+			return
+		end
+		if Config.StragglerWarpSec > 0 and st.strandedFor >= Config.StragglerWarpSec and warpNearCrew(d, st) then
+			return
+		end
+	else
+		st.farFor = 0
+		st.strandedFor = 0
+	end
+
 	if now < st.noRouteUntil and dist > Config.DirectRange then
 		hum:MoveTo(pos)
 		st.stuckFor = 0
@@ -434,18 +486,6 @@ function EnemyPath.steer(d: any, targetPos: Vector3, now: number, reach: number,
 				end
 			end
 		end
-		-- Round 19 catch-up: far from the crew for CatchUpSec, it moves up its own route to a waypoint CatchUpLead
-		-- studs short of the target that no player can see.
-		local dt = now - st.farAt
-		st.farAt = now
-		if Config.CatchUpSec > 0 and dist > Config.CatchUpDistance then
-			st.farFor += dt
-			if st.farFor >= Config.CatchUpSec and st.waypoints and catchUp(d, st) then
-				return
-			end
-		else
-			st.farFor = 0
-		end
 	end
 
 	-- Stuck: no progress toward the goal for StuckSec -> sidestep; StuckTeleportSec -> own spawn box.
@@ -493,13 +533,14 @@ function EnemyPath.logWave(wave: number)
 	local sec = math.max(1, os.clock() - stats.startedAt)
 	Log.event(
 		"Path",
-		"wave %d computes/s %.1f fail %d%% stuck %d teleports %d catch-ups %d%s",
+		"wave %d computes/s %.1f fail %d%% stuck %d teleports %d catch-ups %d warps %d%s",
 		wave,
 		stats.computes / sec,
 		if stats.computes > 0 then math.round(stats.fails / stats.computes * 100) else 0,
 		stats.stuck,
 		stats.teleports,
 		stats.catchUps,
+		stats.warps,
 		if stats.pinned > sec * 0.5 then " (budget pinned: raise DirectRange first)" else ""
 	)
 	EnemyPath.lastWave = {
@@ -510,7 +551,16 @@ function EnemyPath.logWave(wave: number)
 		budgetUse = math.min(1, (stats.computes / sec) / math.max(1, Config.PathComputesPerSec)),
 	}
 	table.insert(EnemyPath.history, EnemyPath.lastWave)
-	stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, catchUps = 0, startedAt = os.clock(), pinned = 0 }
+	stats = {
+		computes = 0,
+		fails = 0,
+		stuck = 0,
+		teleports = 0,
+		catchUps = 0,
+		warps = 0,
+		startedAt = os.clock(),
+		pinned = 0,
+	}
 end
 EnemyPath.lastWave = nil :: any
 EnemyPath.history = {} :: { any }
@@ -535,7 +585,16 @@ function EnemyPath.resetRun()
 	queue = {}
 	cache = {}
 	EnemyPath.history = {}
-	stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, catchUps = 0, startedAt = os.clock(), pinned = 0 }
+	stats = {
+		computes = 0,
+		fails = 0,
+		stuck = 0,
+		teleports = 0,
+		catchUps = 0,
+		warps = 0,
+		startedAt = os.clock(),
+		pinned = 0,
+	}
 end
 
 function EnemyPath.init()

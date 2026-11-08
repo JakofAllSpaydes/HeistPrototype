@@ -278,6 +278,36 @@ local function anchorAll(bank: Model)
 	end
 end
 
+-- Round 21: a geometry part nobody can see or bump into must not stop a bullet either. The builder's basement
+-- ceiling light (a fully transparent, non-colliding 198x1x122 slab carrying a SurfaceLight, at y -0.5 under the
+-- whole ground floor) cut both stairwells to the vault in half: shots from below hit it and stopped until an enemy
+-- walked down under it. Lights still render with CanQuery off. Invisible parts that collide (stair ramps, ceiling
+-- slabs) and textured signs keep blocking: they stand where something solid or visible is.
+local function ghostsPassShots(bank: Model)
+	local geo = bank:FindFirstChild("Geometry")
+	if not geo then
+		return
+	end
+	local n = 0
+	for _, d in geo:GetDescendants() do
+		if
+			d:IsA("BasePart")
+			and d.CanQuery
+			and not d.CanCollide
+			and d.Transparency >= 0.99
+			and not d:FindFirstChildWhichIsA("Decal")
+			and not d:FindFirstChildWhichIsA("SurfaceGui")
+		then
+			d.CanQuery = false
+			d.CanTouch = false
+			n += 1
+		end
+	end
+	if n > 0 then
+		Log.event("Map", "%d invisible non-colliding geometry parts let shots through", n)
+	end
+end
+
 ------------------------------------------------------------------ Reading
 local function readZones(nodes: Instance)
 	for _, p in partsIn(nodes, "Zones") do
@@ -1006,6 +1036,7 @@ function MapLoader.init()
 	placeBank(bank)
 	anchorAll(bank)
 	enemyPass(bank)
+	ghostsPassShots(bank)
 	MapLoader.read()
 	buildLadder()
 	MapLoader.setHatch(false, true)

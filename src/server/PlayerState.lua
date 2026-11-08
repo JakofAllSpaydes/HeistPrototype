@@ -35,6 +35,9 @@ export type State = {
 	upgradeOrder: { string },
 	openPick3: { Types.Card }?,
 	held: Types.Held,
+	offhand: Types.Held?, -- the other loadout slot (two guns, Round 21); nil = that slot is empty
+	activeSlot: number, -- 1 or 2: which slot `held` is (the HUD numbers them)
+	lastSwitchAt: number, -- os.clock() of the last slot switch (WeaponSwitchSec)
 	stowed: Types.Held?, -- the real gun while downed with the sidearm
 	pityStreak: number,
 	forcedRarity: number?,
@@ -102,6 +105,9 @@ local function freshState(player: Player, joinIndex: number): State
 		upgradeOrder = {},
 		openPick3 = nil,
 		held = { weaponId = Weapons.Starter, rarity = Rarity.Common, level = 0, uid = 1 },
+		offhand = nil,
+		activeSlot = 1,
+		lastSwitchAt = 0,
 		stowed = nil,
 		pityStreak = 0,
 		forcedRarity = nil,
@@ -453,6 +459,8 @@ PlayerState.spawnCFrame = nil :: ((Player) -> CFrame?)?
 function PlayerState.applyProfile(state: State)
 	state.profile = Profiles.get(state.player)
 	state.held = PlayerState.starterHeld(state)
+	state.offhand = nil
+	state.activeSlot = 1
 	state.stowed = nil
 	PlayerState.applyMask(state)
 	PlayerState.refreshHeldVisual(state)
@@ -569,6 +577,26 @@ local function abilityView(state: State): { [string]: Types.Ability }
 	return out
 end
 
+-- Round 21: the slot that isn't in your hands, as the HUD chip draws it (nil = empty slot).
+function PlayerState.offhandView(state: State): Types.OffhandView?
+	local o = state.offhand
+	local w = o and Weapons.ById[o.weaponId]
+	if not o or not w then
+		return nil
+	end
+	local wrapId = PlayerState.wrapOf(state, o.weaponId)
+	local wrap = wrapId and Wraps.ById[wrapId]
+	return {
+		weaponId = w.id,
+		displayName = w.displayName,
+		archetype = w.archetype,
+		rarity = o.rarity,
+		rarityName = Rarity.name(o.rarity),
+		level = o.level,
+		wrapColor = if wrap then wrap.color else nil,
+	}
+end
+
 -- Modules that sit above PlayerState add their own per-player views here (dealer, pause): key -> fn(player).
 PlayerState.syncHooks = {} :: { [string]: (Player) -> any }
 
@@ -626,6 +654,9 @@ function PlayerState.buildSync(state: State): Types.Sync
 			wrapColor = if wrap then wrap.color else nil,
 			levelRateMult = levelRate,
 		},
+		-- Round 21: the other loadout slot (key 1 switches; the HUD's second chip).
+		offhand = PlayerState.offhandView(state),
+		activeSlot = state.activeSlot,
 		stats = st,
 		prices = {
 			upgrade = Stats.upgradePrice(state.upgradesBought),

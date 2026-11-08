@@ -57,7 +57,9 @@ function Toast.build(gui: ScreenGui, _track: (RBXScriptConnection) -> ())
 
 	function component.onJuice(name: string, data: any)
 		if name == "Toast" then
-			component.show(tostring(data.text), Theme.Colors.gold, 1.2)
+			-- Round 21: an optional colour / duration (the dealer's leaving warnings are red).
+			local color = if typeof(data.color) == "Color3" then data.color else Theme.Colors.gold
+			component.show(tostring(data.text), color, tonumber(data.duration) or 1.2)
 		elseif name == "Swap" then
 			local rarity = Rarity.color(data.rarity or 1)
 			local w = Weapons.ById[data.weaponId]

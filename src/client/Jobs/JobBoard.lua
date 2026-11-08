@@ -648,21 +648,22 @@ local function rerollButton(parent: Instance, key: string, weekly: boolean): Tex
 	local p = profile()
 	local used = tonumber(p and p.jobs and p.jobs.rerollUsed) or 0
 	local free = used < Config.JobFreeRerollsPerDay
-	local size = S(30)
+	-- Round 21: a labelled REROLL button (was a round "R" chip nobody read as a button).
+	local h = S(30)
 	local b = UI.button({
 		Name = "Reroll",
-		Text = "R",
+		Text = "REROLL",
 		FontFace = Theme.Fonts.display,
 		TextSize = S(17),
 		TextColor3 = Theme.Colors.white,
 		BackgroundColor3 = if free then Color3.fromHex("4D9FE8") else Color3.fromHex("6E7C8C"),
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -S(8), 0, S(8)),
-		Size = UDim2.fromOffset(size, size),
+		Size = UDim2.fromOffset(S(92), h),
 		ZIndex = 20,
 		Parent = parent,
 	})
-	UI.corner(b, size / 2)
+	UI.corner(b, S(4))
 	UI.stroke(b, INK, S(1.5), 0.4)
 	local busy = false
 	b.Activated:Connect(function()
@@ -1122,10 +1123,14 @@ function JobBoard.open()
 		}),
 		Parent = dim,
 	})
+	-- Round 21: the board covers Config.PremiumWindowScale of the old footprint each way, centred under the top bar.
+	local k = Config.PremiumWindowScale
+	local top, sideW, spareH = Fx.topInset(), S(60), Fx.topInset() + S(16)
 	body = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(30), Fx.topInset()),
-		Size = UDim2.new(1, -S(60), 1, -Fx.topInset() - S(16)),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, (1 - k) / 2, top - math.floor(spareH * (1 - k) / 2)),
+		Size = UDim2.new(k, -math.floor(sideW * k), k, -math.floor(spareH * k)),
 		ZIndex = 5,
 		Parent = g,
 	})

@@ -84,7 +84,7 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Name = "ReloadButton",
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0.5, S(120), 1, -S(18)),
+		Position = UDim2.new(0.5, S(186), 1, -S(18)), -- Round 21: right of the second gun slot chip
 		Size = UDim2.fromOffset(S(56), S(56)),
 		Text = "R",
 		FontFace = Theme.Fonts.display,

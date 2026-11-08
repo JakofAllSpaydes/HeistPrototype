@@ -1,5 +1,6 @@
 --!strict
 -- Fire input, mag + reload, local tracer, send FireShot. Damage is server-side only.
+local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -299,6 +300,20 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 		end
 	end
 end)
+
+-- Round 21: 1 switches loadout slots. Bound through ContextActionService above the default priority so nothing
+-- else (a core hotbar binding, a gameProcessed flag) can swallow the key; the server decides whether there is a
+-- second gun to switch to (and logs why not).
+ContextActionService:BindActionAtPriority("GHSSwitchWeapon", function(_name, inputState: Enum.UserInputState)
+	if inputState ~= Enum.UserInputState.Begin then
+		return Enum.ContextActionResult.Pass
+	end
+	if UserInputService:GetFocusedTextBox() or ClientState.inHub() then
+		return Enum.ContextActionResult.Pass
+	end
+	Remotes.SwitchWeapon:FireServer()
+	return Enum.ContextActionResult.Sink
+end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.One)
 
 UserInputService.InputEnded:Connect(function(input: InputObject)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then

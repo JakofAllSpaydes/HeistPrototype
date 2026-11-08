@@ -229,21 +229,62 @@ function WeaponRoll.swap(player: Player, gun: BasePart)
 	local oldId, oldRarity = state.held.weaponId, state.held.rarity
 	expireTokens[gun] = nil
 	gun:Destroy()
-	-- The old gun lands where the new one was, with a fresh timer and the rounds it had left; the new one
-	-- comes up with whatever was in its mag (full for a fresh roll or crate gun).
-	WeaponRoll.dropHeld(state, cf)
+	-- Round 21: an empty second slot takes the new gun and you switch to it; the old one goes to your back.
+	-- Both slots full: the gun in your hands lands where the new one was, with a fresh timer and the rounds it
+	-- had left. The new one comes up with whatever was in its mag (full for a fresh roll or crate gun).
+	local filled = Config.WeaponSlots >= 2 and state.offhand == nil
+	if filled then
+		state.offhand = state.held
+		state.activeSlot = 3 - state.activeSlot
+	else
+		WeaponRoll.dropHeld(state, cf)
+	end
 	-- nil level = the picker's own Armory level for this weapon id (PlayerState.weaponLevel), never the dropper's.
 	PlayerState.setHeld(state, newId, newRarity, nil, if typeof(floorMag) == "number" then floorMag else nil)
 	Remotes.Juice:FireClient(player, "Swap", { weaponId = newId, rarity = newRarity, position = cf.Position })
 	Log.event(
 		"Swap",
-		"%s picked up %s %s, dropped %s %s",
+		"%s picked up %s %s, %s %s %s",
 		player.Name,
 		Rarity.name(newRarity),
 		newId,
+		if filled then "kept" else "dropped",
 		Rarity.name(oldRarity),
 		oldId
 	)
+end
+
+-- Round 21: key 1 swaps the two loadout slots. The gun keeps its uid and mag, so the client reloads nothing
+-- it doesn't have to (a reload in progress is cancelled by the uid change).
+function WeaponRoll.switch(player: Player)
+	local state = PlayerState.get(player)
+	local other = state.offhand
+	local now = os.clock()
+	local why = if not other
+		then "second slot empty"
+		elseif state.downed or state.stowed then "downed"
+		elseif now - state.lastSwitchAt < Config.WeaponSwitchSec then "too soon"
+		else nil
+	if why or not other then
+		Log.event("Swap", "%s pressed switch: ignored (%s)", player.Name, why or "?")
+		return
+	end
+	state.lastSwitchAt = now
+	Log.event(
+		"Swap",
+		"%s switched to slot %d: %s %s (other %s)",
+		player.Name,
+		3 - state.activeSlot,
+		Rarity.name(other.rarity),
+		other.weaponId,
+		state.held.weaponId
+	)
+	state.offhand = state.held
+	state.held = other
+	state.activeSlot = 3 - state.activeSlot
+	PlayerState.refreshHeldVisual(state)
+	state.dirty = true
+	Remotes.Juice:FireClient(player, "WeaponSwitch", { weaponId = other.weaponId, rarity = other.rarity })
 end
 
 -- Rarity with pity for the player who opened the crate. `minRarity` is the crate's bracket floor; the pity floor
@@ -302,6 +343,9 @@ function WeaponRoll.init()
 		if typeof(gun) == "Instance" and gun:IsA("BasePart") then
 			WeaponRoll.onPrompt(player, gun)
 		end
+	end)
+	Remotes.SwitchWeapon.OnServerEvent:Connect(function(player: Player)
+		WeaponRoll.switch(player)
 	end)
 end
 

@@ -62,7 +62,7 @@ function CardFace.synergyPill(parent: GuiObject, statId: string, height: number)
 	return pill
 end
 
--- The card body under the icon: NAME, the big number ("+30%" / "NEW"), the stat line, and the malus strip on a
+-- The card body under the icon: NAME, the big number ("+30%", or the element itself on a first take: "BURN"), the stat line, and the malus strip on a
 -- tradeoff. `S` scales design px; `top` is where the name starts. Returns the y under the last row.
 function CardFace.body(parent: GuiObject, card: any, S: (number) -> number, top: number, scale: number?): number
 	local k = scale or 1

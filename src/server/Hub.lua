@@ -84,8 +84,31 @@ end
 ------------------------------------------------------------------ Hub nameplate
 -- The nameplate over each character in the hub (client/Nameplates.lua draws it: level badge, name, VIP, class,
 -- best top wave). The server only publishes the numbers as Player attributes; Plate = false hides it (runs).
+-- Round 21: the Roblox player list (Tab in the hub) shows LEVEL and BEST WAVE from these leaderstats.
+local function refreshLeaderstats(player: Player, profile: any)
+	local folder = player:FindFirstChild("leaderstats")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "leaderstats"
+		folder.Parent = player
+	end
+	local function stat(name: string, value: number)
+		local v = folder:FindFirstChild(name) :: IntValue?
+		if not v then
+			local nv = Instance.new("IntValue")
+			nv.Name = name
+			nv.Parent = folder
+			v = nv
+		end
+		(v :: IntValue).Value = value
+	end
+	stat("Level", if profile then profile.level else 1)
+	stat("Best Wave", if profile then (Profiles.bestTopWave(profile)) else 0)
+end
+
 function Hub.refreshTag(player: Player)
 	local state = PlayerState.get(player)
+	refreshLeaderstats(player, state.profile)
 	-- In a run, or (brief 8) in the training range: no plate.
 	if Runs.inRunCycle(player) or state.inRange then
 		player:SetAttribute("Plate", false)

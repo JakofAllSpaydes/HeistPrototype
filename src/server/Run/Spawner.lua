@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Enemies = require(Shared.Enemies)
 local Enemy = require(script.Parent.Enemy)
+local EnemyPath = require(script.Parent.EnemyPath)
 local Room = require(script.Parent.Room)
 local World = require(script.Parent.World)
 local PlayerState = require(script.Parent.Parent.PlayerState)
@@ -173,6 +174,22 @@ local function inPlainSight(point: Vector3): boolean
 		end
 	end
 	return false
+end
+
+-- Round 21: where a stranded straggler warps (EnemyPath): an eligible box picked like a spawn (weighted toward the
+-- crew, never in its zone), at a point nobody sees and no closer than CatchUpMinPlayerDistance to anyone.
+EnemyPath.relocate = function(): Vector3?
+	for _ = 1, 6 do
+		local box = Spawner.pickBox(nil)
+		if not box then
+			return nil
+		end
+		local p = Room.pointInBox(box)
+		if not inPlainSight(p) and nearestPlayerDistance(p) >= Config.CatchUpMinPlayerDistance then
+			return p
+		end
+	end
+	return nil
 end
 
 -- One enemy of the wave: archetype from the bracket, box by proximity (and zone hops), elite by heat.

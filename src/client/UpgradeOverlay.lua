@@ -265,7 +265,7 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		Size = UDim2.new(1, -S(16), 0, S(28)),
 		Parent = inner,
 	}))
-	-- Rarity reads from the card color alone; no pill, no TAKE hint. Elements read "NEW / BURN ON EVERY SHOT" or
+	-- Rarity reads from the card color alone; no pill, no TAKE hint. Elements read "BURN / ON EVERY SHOT" or
 	-- "+30% / BURN" (Upgrades.cardTexts).
 	local bigText, smallText = Upgrades.cardTexts(card.stat, card.pct)
 	detail(UI.text({

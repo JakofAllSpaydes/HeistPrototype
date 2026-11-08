@@ -454,7 +454,8 @@ local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
 			price = DailyShop.price(e),
 			owned = own,
 			ribbons = if rarity >= 5 then { "LIMITED" } else {},
-			layoutOrder = if own then 100 + i else i, -- owned ones go to the back
+			-- Round 21: highest rarity first (draw order breaks ties); owned ones still go to the back.
+			layoutOrder = (if own then 1000 else 0) + (10 - rarity) * 20 + i,
 			z = 8,
 			onClick = function()
 				if own then

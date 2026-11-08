@@ -238,7 +238,7 @@ function Elements.shatterMult(model: Model, st: Types.Computed): number
 	return 1
 end
 
--- AFTERSHOCK (synergy): an Impact stagger sends `dmg` to every other enemy within AftershockRadius. The ring is
+-- AFTERSHOCK (synergy): a Stun Ammo stagger sends `dmg` to every other enemy within AftershockRadius. The ring is
 -- drawn at most every AFTERSHOCK_FX_SEC so a crowd of staggers stays quiet.
 local AFTERSHOCK_FX_SEC = 0.2
 local lastShockFx = -math.huge

@@ -7,13 +7,12 @@ local UserInputService = game:GetService("UserInputService")
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 
--- Our own health bar, no backpack, and our own scoreboard on Tab (the core player list would take the key).
+-- Our own health bar and no backpack. (The core player list follows hub / run below.)
 task.spawn(function()
 	for _ = 1, 10 do
 		local ok = pcall(function()
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
-			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 		end)
 		if ok then
 			break
@@ -21,6 +20,27 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+
+-- Round 21: in the hub, Tab is Roblox's own player list (LEVEL / BEST WAVE leaderstats, the player menu); in a
+-- run it goes back off so Tab opens our scoreboard.
+local playerListOn: boolean? = nil
+local function syncPlayerList()
+	local want = ClientState.inHub()
+	if want == playerListOn then
+		return
+	end
+	playerListOn = want
+	task.spawn(function()
+		for _ = 1, 10 do
+			if pcall(StarterGui.SetCoreGuiEnabled, StarterGui, Enum.CoreGuiType.PlayerList, want) then
+				return
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+ClientState.Changed:Connect(syncPlayerList)
+syncPlayerList()
 
 HUD.init()
 require(script.Parent:WaitForChild("PurchaseSheet")).init()
@@ -37,6 +57,7 @@ require(script.Parent:WaitForChild("Markers")).init()
 require(script.Parent:WaitForChild("DoorUI")).init()
 require(script.Parent:WaitForChild("LockdownUI")).init() -- Round 19d
 require(script.Parent:WaitForChild("Music")).init() -- Round 19d
+require(script.Parent:WaitForChild("DayNight")).init() -- Round 21
 require(script.Parent:WaitForChild("Minigames")).init()
 require(script.Parent:WaitForChild("DownedUI")).init()
 require(script.Parent:WaitForChild("PlayerTags")).init()
