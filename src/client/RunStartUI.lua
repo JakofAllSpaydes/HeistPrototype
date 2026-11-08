@@ -103,6 +103,57 @@ local function vanPoint(d: any): Vector3?
 	return if body and body:IsA("BasePart") then body.Position else nil
 end
 
+------------------------------------------------------------------ Van drives (brief 8)
+-- The server sends both ends of a drive; every client moves the van itself each frame (smooth), with the same
+-- easing as the server's clock, and the chase cameras read the same curve.
+local function vanEase(s: number, ease: string?): number
+	s = math.clamp(s, 0, 1)
+	return if ease == "in" then s * s else 1 - (1 - s) * (1 - s)
+end
+
+local function vanAt(d: any, now: number): CFrame?
+	if typeof(d.from) ~= "CFrame" or typeof(d.to) ~= "CFrame" then
+		return nil
+	end
+	local sec = math.max(tonumber(d.sec) or 1, 0.01)
+	local s = (now - (tonumber(d.startedAt) or now)) / sec
+	return (d.from :: CFrame):Lerp(d.to :: CFrame, vanEase(s, d.ease))
+end
+
+local drives: { [Model]: any } = {}
+local function startDrive(d: any)
+	local van = d.van
+	if typeof(van) ~= "Instance" or not van:IsA("Model") then
+		return
+	end
+	drives[van] = d
+end
+RunService.RenderStepped:Connect(function()
+	if next(drives) == nil then
+		return
+	end
+	local now = ClientState.serverNow()
+	for van, d in drives do
+		local cf = vanAt(d, now)
+		if not cf or not van.Parent then
+			drives[van] = nil
+			continue
+		end
+		van:PivotTo(cf)
+		if now - (tonumber(d.startedAt) or now) >= (tonumber(d.sec) or 0) then
+			drives[van] = nil
+		end
+	end
+end)
+
+-- Behind and above a van, looking past its nose.
+local function chaseShot(van: CFrame): CFrame
+	local look = Vector3.new(van.LookVector.X, 0, van.LookVector.Z)
+	look = if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, -1)
+	local at = van.Position - look * 18 + Vector3.new(0, 7, 0)
+	return CFrame.lookAt(at, van.Position + look * 12 + Vector3.new(0, 2.5, 0))
+end
+
 ------------------------------------------------------------------ The hub departure (brief 8)
 local departing = false
 local departChase: Vector3? = nil
@@ -144,11 +195,7 @@ local function departStart(d: any)
 			departStop(true)
 			return
 		end
-		local pivot = van:GetPivot()
-		local want = pivot.Position - pivot.LookVector * 16 + Vector3.new(0, 7, 0)
-		local prev = departChase
-		departChase = if prev then prev:Lerp(want, 0.2) else want
-		local cf = CFrame.lookAt(departChase :: Vector3, pivot.Position + pivot.LookVector * 10 + Vector3.new(0, 2, 0))
+		local cf = chaseShot(van:GetPivot()) -- the van moves smoothly on this client (VanDrive)
 		camera.CameraType = Enum.CameraType.Scriptable
 		camera.CFrame = cf
 		camera.Focus = cf
@@ -233,13 +280,18 @@ local function step(_dt: number)
 
 	local cf: CFrame
 	if t < beats.doors then
-		-- Chase the van from behind-right and above, through the door and into the arena.
-		local door: Vector3 = d.door
-		local target = vanPoint(d) or door
-		local want = target + F:VectorToWorldSpace(Vector3.new(2, 6, 14))
-		local prev = chasePos
-		chasePos = if prev then prev:Lerp(want, 0.25) else want
-		cf = CFrame.lookAt(chasePos, target + F:VectorToWorldSpace(Vector3.new(0, 1.5, -4)))
+		-- Chase the van from behind as it drives in (the same curve the van follows on this client).
+		local vanCF = vanAt(
+			{ from = d.vanFrom, to = d.vanTo, sec = beats.doors, startedAt = d.startedAt, ease = "out" },
+			ClientState.serverNow()
+		)
+		if vanCF then
+			cf = chaseShot(vanCF)
+		else
+			local door: Vector3 = d.door
+			local target = vanPoint(d) or door
+			cf = CFrame.lookAt(target + F:VectorToWorldSpace(Vector3.new(2, 6, 14)), target)
+		end
 	elseif t < beats.orbit then
 		once("doors", function()
 			UI.sound(Theme.Sounds.take, 0.8, 0.6)
@@ -318,6 +370,8 @@ function RunStartUI.init()
 			begin(d)
 		elseif name == "HubDepart" then
 			departStart(d)
+		elseif name == "VanDrive" then
+			startDrive(d)
 		elseif name == "HubEnter" or name == "RunOver" then
 			departStop()
 			finish()

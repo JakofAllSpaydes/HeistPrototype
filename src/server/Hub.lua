@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Fonts = require(Shared.Fonts)
@@ -537,18 +538,19 @@ function Hub.depart(players: { Player })
 	task.wait(lead)
 	-- Out through the door: a dust ring where it pulls away, then it is gone.
 	Remotes.Juice:FireAllClients("HubVanDust", { position = home.Position })
-	local value = Instance.new("CFrameValue")
-	value.Value = home
-	local conn = value.Changed:Connect(function(v)
-		van:PivotTo(v :: any)
-	end)
+	-- Every client drives it smoothly (VanDrive); the server parks it at the end.
 	local drive = math.max(0.2, Config.HubDepartSec - lead)
-	TweenService:Create(value, TweenInfo.new(drive, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-		Value = home * CFrame.new(0, 0, -Config.HubVanDriveStuds),
-	}):Play()
+	local out = home * CFrame.new(0, 0, -Config.HubVanDriveStuds)
+	Remotes.Juice:FireAllClients("VanDrive", {
+		van = van,
+		from = home,
+		to = out,
+		sec = drive,
+		ease = "in",
+		startedAt = Workspace:GetServerTimeNow(),
+	})
 	task.wait(drive)
-	conn:Disconnect()
-	value:Destroy()
+	van:PivotTo(out)
 	setVanShown(false)
 	Log.event("Hub", "the van left the garage with %d", #players)
 	task.delay(Config.GarageCloseSec, function()

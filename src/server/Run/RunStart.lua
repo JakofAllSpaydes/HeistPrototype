@@ -27,8 +27,14 @@ local VAN_GAP = 7 -- the van brakes this far west of the line's west end
 
 -- Slot i of n in the crew line. The arena: centered on the arena spawn, facing north into the arena. Brief 7:
 -- a map with a lineup CFrame (`base`, or the map's run start line) centers the line on it, facing its look.
+-- Brief 8: the run start line steps clear of the (much bigger) asset van; RunStart.play works it out per run.
+local lineShift = Vector3.zero
+
 function RunStart.lineCFrame(i: number, n: number, base: CFrame?): CFrame
 	local b = base or Room.current().lineup
+	if b and not base then
+		b = b + lineShift
+	end
 	if b then
 		local look = Vector3.new(b.LookVector.X, 0, b.LookVector.Z)
 		local facing = if look.Magnitude > 0.1 then look.Unit else Vector3.new(0, 0, -1)
@@ -96,24 +102,52 @@ function RunStart.dummyCount(): number
 	return math.max(0, Config.SquadSize - #World.partyPlayers())
 end
 
-local function driveVan(from: CFrame, to: CFrame, sec: number)
+-- Brief 8: the party's clients drive the van (VanDrive: a smooth local move between the same two CFrames, eased
+-- the same way); the server only parks it at the start and the end. A server tween replicated in steps and juddered.
+local function driveVan(from: CFrame, to: CFrame, sec: number, ease: string?)
 	local van = arrivalVan()
 	if not van then
 		return
 	end
-	local value = Instance.new("CFrameValue")
-	value.Value = from
-	local conn = value.Changed:Connect(function(v)
-		van:PivotTo(v :: any)
-	end)
-	local tween = TweenService:Create(value, TweenInfo.new(sec, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Value = to,
+	van:PivotTo(from)
+	World.fireRun("VanDrive", {
+		van = van,
+		from = from,
+		to = to,
+		sec = sec,
+		ease = ease or "out",
+		startedAt = Workspace:GetServerTimeNow(),
 	})
-	tween:Play()
-	tween.Completed:Wait()
-	conn:Disconnect()
-	value:Destroy()
+	task.wait(sec)
 	van:PivotTo(to)
+end
+
+-- Move the line along `away` until no slot stands inside the van's footprint (plus a margin).
+local function clearLine(n: number, vanTo: CFrame)
+	lineShift = Vector3.zero
+	local van = arrivalVan()
+	if not van or not Room.current().lineup then
+		return
+	end
+	local size = van:GetExtentsSize()
+	local function clashes(): boolean
+		for i = 1, n do
+			local p = vanTo:PointToObjectSpace(RunStart.lineCFrame(i, n).Position)
+			if math.abs(p.X) < size.X / 2 + 2.5 and math.abs(p.Z) < size.Z / 2 + 2.5 then
+				return true
+			end
+		end
+		return false
+	end
+	local mid = (RunStart.lineCFrame(1, n).Position + RunStart.lineCFrame(n, n).Position) / 2
+	local away = Vector3.new(mid.X - vanTo.Position.X, 0, mid.Z - vanTo.Position.Z)
+	away = if away.Magnitude > 0.1 then away.Unit else -vanTo.LookVector
+	for _ = 1, 40 do
+		if not clashes() then
+			break
+		end
+		lineShift += away
+	end
 end
 
 -- The arrival van only exists during this animation: shown at the start of the drive-in, driven off and removed.
@@ -132,7 +166,7 @@ local function exitVan(from: CFrame)
 	end
 	-- Back out the way it came (it faces the building it parked at).
 	local away = CFrame.new(0, 0, driveIn())
-	driveVan(from, from * away, Config.VanExitSec)
+	driveVan(from, from * away, Config.VanExitSec, "in")
 	van.Parent = nil
 end
 
@@ -144,6 +178,7 @@ function RunStart.play()
 	local beats = Config.RunStartBeats
 	local vanTo = RunStart.vanBrake(n)
 	local vanFrom = vanStart(vanTo)
+	clearLine(n, vanTo)
 	local roster = {}
 	local line = {}
 	local models: { Model? } = {}
