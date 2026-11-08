@@ -48,7 +48,12 @@ doors taking the objective slot, smaller pad boards, MARLOW at his board, the up
 dressing as a Workspace file: `Workspace.Hub.Dressing`, and minigame anti-cheat floors a fast player clears), then
 Round 21 (8 Nov; Jack confirmed the gun switch in Studio, the rest is unplayed: two gun slots, the run clock from night, smaller SHOP / JOBS windows, the hub player list,
 wave-scaled dealer prices and leaving warnings, the vault stairwell shot fix, stragglers warped in, a front door that
-opens itself when you're already inside, every SQUAD / MVP emote playing).
+opens itself when you're already inside, every SQUAD / MVP emote playing), then
+Round 22 (8 Nov; Jack's mobile-play feedback: premium shop 5% bigger, enemy catch-up warp distances pushed out,
+vault job forced after stairwell unlock, the left joystick no longer rotating the camera, a SWAP weapon button on
+mobile; 22b: cash duffel and gold briefcase bag models built from bricks, flying currency icons on pickup with more
+sparks and camera shake, smooth banked-gold countup with a +N toast, camera raycast excludes the Enemies folder so
+bodies don't zoom the lens in).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list" and the "Brief 8 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
