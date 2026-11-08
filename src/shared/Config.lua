@@ -1111,10 +1111,10 @@ local Config = {
 	UpgradeFxTrailEvery = 0.035,
 	UpgradeFxArriveSparks = 12, -- the pop at the tracker tile
 	JuiceFxDisplayOrder = 20, -- the particle layer draws over the overlays (the upgrade overlay is 10)
-	-- Round 19m: the premium scene sets (store showroom, crate room, pass stage) sit in a row of sealed rooms under the
-	-- arena floor (the floor's underside is y -1.5; the rooms' ceilings stay below it), close enough to the hub that
-	-- their lights are lit the moment a scene opens. Middle room here, the others PremiumSetsSpacing to each side (x).
-	PremiumSetsOrigin = Vector3.new(0, -24, 60),
+	-- Round 19m: the premium scene sets (store showroom, crate room, pass stage) sit in a row of sealed rooms close to
+	-- the hub so their lights are lit the moment a scene opens. Brief 8: the hub is the warehouse at HubOrigin, so they
+	-- sit well under its floor (its lowest part is about y -14). Middle room here, the others PremiumSetsSpacing to each side (x).
+	PremiumSetsOrigin = Vector3.new(0, -60, 1000),
 	PremiumSetsSpacing = 56,
 	KillBodyVolume = 0.22, -- Round 19h: the soft body drop under the kill tick
 	MetaWeaponPreview = true, -- tapping a gun in the Weapons tab puts it in the avatar's hand (local only; the real one comes back on leaving the tab or closing)

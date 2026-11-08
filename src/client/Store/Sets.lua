@@ -120,7 +120,7 @@ local function light(
 end
 
 ------------------------------------------------------------------ The sets
--- Round 19m: the sets sit in a row of sealed rooms just under the arena floor (PremiumSetsOrigin), inside the lighting
+-- Round 19m: the sets sit in a row of sealed rooms under the hub (PremiumSetsOrigin; brief 8: under the warehouse), inside the lighting
 -- the engine already keeps around the hub camera, instead of 3000+ studs away where their lights took seconds to
 -- come up after the camera jumped there. -1 / 0 / 1 = SHOWROOM / CRATE ROOM / PASS STAGE.
 local function setOrigin(slot: number): CFrame
@@ -306,12 +306,14 @@ local function buildPassStage(): Set
 	local frontLight = light(front, "spot", Color3.fromHex("FFF1E0"), 6 * Config.PassStageLight, 26, 60)
 	local frontSpot: any = frontLight
 	frontSpot.Face = Enum.NormalId.Front
+	frontSpot.Shadows = false -- nothing in the room may block the key light on the hero
 	local lights = {
 		light(key, "spot", Color3.fromHex("FFC890"), 6, 40, 60),
 		light(fill, "point", Color3.fromHex("7FB8FF"), 1.2, 16),
 		frontLight,
 		light(top, "spot", Color3.fromHex("FFD8A8"), 4 * Config.PassStageLight, 18, 55),
 	}
+	lights[4].Shadows = false
 	key.Transparency = 1
 	fill.Transparency = 1
 	front.Transparency = 1
