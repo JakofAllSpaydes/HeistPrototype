@@ -219,6 +219,10 @@ local function rayPlayers(from: Vector3, dir: Vector3, range: number, radius: nu
 	losParams.FilterDescendantsInstances = losFilter()
 	local result = Workspace:Raycast(from, dir * range, losParams)
 	local wallDist = if result then (result.Position - from).Magnitude else range
+	local worldHit = Enemy.onWorldHit
+	if result and worldHit and result.Instance:IsA("BasePart") then
+		worldHit(result.Instance, result.Position) -- Round 19: an enemy shot breaks the glass it hits
+	end
 	if result then
 		-- Walls and pillars sit straight under the Room folder: no Model ancestor, no player.
 		local hitModel = result.Instance:FindFirstAncestorOfClass("Model")
@@ -272,6 +276,8 @@ local function face(d: Data, point: Vector3)
 	end
 	d.root.CFrame = CFrame.lookAt(pos, pos + flat.Unit)
 end
+
+Enemy.onWorldHit = nil :: ((BasePart, Vector3) -> ())?
 
 -- Brief 7: the enemy whose brain is ticking, so a hit it lands credits its spawn box's contact time.
 local ticking: Data? = nil

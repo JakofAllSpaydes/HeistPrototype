@@ -28,16 +28,19 @@ local PlayerState = require(script.Parent.PlayerState)
 local Bags = require(script.Parent.Bags)
 local CrewCall = require(script.Parent.CrewCall)
 local Pause = require(script.Parent.Pause)
+local Minigames = require(script.Parent.Minigames)
+local GuidePath = require(script.Parent.GuidePath)
 
 local Doors = {}
 
-type MeshEntry = { part: BasePart, closed: CFrame }
+type MeshEntry = { part: BasePart, closed: CFrame, collide: boolean? }
 type Prop = {
 	part: MapLoader.DoorPart,
 	model: Model,
 	blocker: BasePart,
 	prompt: ProximityPrompt?,
 	mesh: { MeshEntry },
+	hidden: { { part: BasePart, transparency: number, collide: boolean, query: boolean } }, -- Round 19
 }
 type GroupState = {
 	state: string, -- closed | queued | called | open
@@ -56,6 +59,8 @@ local SHUTTER = Color3.fromRGB(118, 122, 128)
 local WOOD = Color3.fromRGB(92, 58, 40)
 
 local props: { Prop } = {}
+local actionVerb: (MapLoader.Door, MapLoader.DoorPart) -> string
+local actionHint: (MapLoader.Door, MapLoader.DoorPart) -> string
 local buildVaultRoom: (Folder) -> ()
 local groups: { [string]: GroupState } = {}
 local queue: { string } = {}
@@ -311,11 +316,11 @@ local function buildProp(dp: MapLoader.DoorPart, door: MapLoader.Door): Prop
 	local mesh: { MeshEntry } = {}
 	if dp.mesh then
 		for _, p in MapLoader.meshParts(cf, size, dp.mesh, dp.meshMargin) do
-			table.insert(mesh, { part = p, closed = p.CFrame })
+			table.insert(mesh, { part = p, closed = p.CFrame, collide = p.CanCollide })
 		end
 	end
 	model.Parent = folder
-	return { part = dp, model = model, blocker = blocker, prompt = nil, mesh = mesh }
+	return { part = dp, model = model, blocker = blocker, prompt = nil, mesh = mesh, hidden = {} }
 end
 
 ------------------------------------------------------------------ Opening animations
@@ -399,8 +404,70 @@ local function openWheel(prop: Prop, instant: boolean?)
 	end)
 end
 
+-- Round 19: the asset parts a door hides while open (its own door meshes, the wall a door is painted on).
+local function hideAsset(prop: Prop)
+	local dp = prop.part
+	local found: { BasePart } = {}
+	for _, prefix in dp.hide do
+		for _, p in MapLoader.meshParts(dp.cframe, dp.size, prefix, 2) do
+			table.insert(found, p)
+		end
+	end
+	if dp.hideWall then
+		-- The biggest collidable geometry part whose centre is inside the node (+2 studs).
+		local best: BasePart? = nil
+		local bestVol = 0
+		for _, p in MapLoader.meshParts(dp.cframe, dp.size, "", 2) do
+			local v = p.Size.X * p.Size.Y * p.Size.Z
+			-- A wall: tall (floors and lintels are not), collidable, not the vault door's own parts.
+			local tall = p.Size.Y >= dp.size.Y * 0.8
+			if tall and p.CanCollide and v > bestVol and not string.find(string.lower(p.Name), "vault") then
+				best, bestVol = p, v
+			end
+		end
+		if best then
+			table.insert(found, best)
+		end
+	end
+	for _, p in found do
+		table.insert(
+			prop.hidden,
+			{ part = p, transparency = p.Transparency, collide = p.CanCollide, query = p.CanQuery }
+		)
+		p.Transparency = 1
+		p.CanCollide = false
+		p.CanQuery = false
+	end
+end
+
+local function unhideAsset(prop: Prop)
+	for _, h in prop.hidden do
+		if h.part.Parent then
+			h.part.Transparency = h.transparency
+			h.part.CanCollide = h.collide
+			h.part.CanQuery = h.query
+		end
+	end
+	prop.hidden = {}
+end
+
+-- Round 19: what is left of a generated prop fades out and goes once it has done its break.
+local function clearProp(prop: Prop, delay: number)
+	local model = prop.model
+	task.delay(delay, function()
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") and d.Name ~= "Blocker" and d.Name ~= "Housing" then
+				TweenService:Create(d, TweenInfo.new(0.5), { Transparency = 1 }):Play()
+				d.CanCollide = false
+				d.CanQuery = false
+			end
+		end
+	end)
+end
+
 local function breakProp(prop: Prop, instant: boolean?)
 	local dp = prop.part
+	hideAsset(prop)
 	prop.blocker.CanCollide = false
 	local mod = prop.blocker:FindFirstChildOfClass("PathfindingModifier")
 	if mod then
@@ -416,6 +483,10 @@ local function breakProp(prop: Prop, instant: boolean?)
 		end
 	end
 	if dp.style == "wheel" then
+		-- The swung door is scenery: nothing of it blocks the way while it stands open.
+		for _, m in prop.mesh do
+			m.part.CanCollide = false
+		end
 		openWheel(prop, instant)
 		return
 	end
@@ -461,6 +532,7 @@ local function breakProp(prop: Prop, instant: boolean?)
 			end
 		end
 	end
+	clearProp(prop, if instant then 0 else 1.2)
 end
 
 ------------------------------------------------------------------ State to clients
@@ -470,9 +542,23 @@ function Doors.sendState()
 		World.fireRun("DoorState", { doors = {} })
 		return
 	end
+	-- Round 19: only the next unlock (the lowest trigger wave still closed) and doors that are called show a
+	-- beacon; later doors and the vault door (until the vault is drawn) keep only their signs.
+	local nextWave = math.huge
+	for gid, door in MapLoader.doors do
+		local st = stateOf(gid).state
+		if door.triggerWave > 0 and (st == "closed" or st == "queued") then
+			nextWave = math.min(nextWave, door.triggerWave)
+		end
+	end
 	local list = {}
 	for gid, door in MapLoader.doors do
 		if door.triggerWave < 0 then
+			continue
+		end
+		local st = stateOf(gid).state
+		local show = st == "called" or (st ~= "open" and door.triggerWave > 0 and door.triggerWave == nextWave)
+		if not show then
 			continue
 		end
 		for _, dp in door.parts do
@@ -485,6 +571,7 @@ function Doors.sendState()
 				ping = door.pingText,
 				sign = signText(door),
 				state = stateOf(group).state,
+				hint = actionHint(door, dp),
 			})
 		end
 	end
@@ -590,8 +677,10 @@ function Doors.close(group: string)
 			for _, m in prop.mesh do
 				if m.part.Parent then
 					m.part.CFrame = m.closed
+					m.part.CanCollide = m.collide
 				end
 			end
+			unhideAsset(prop)
 			prop.model:Destroy()
 			local door = MapLoader.doors[group] :: MapLoader.Door
 			local fresh = buildProp(prop.part, door)
@@ -603,7 +692,24 @@ function Doors.close(group: string)
 end
 
 ------------------------------------------------------------------ Calls and the hold
--- The prompt on each prop: LOCKED · WAVE N until called, then a hold of the group's remaining time.
+-- Round 19: how a door opens. "hold" (the chains are cut, the shutters raised: hold F) or a minigame kind (the
+-- front doors take a breach charge: F opens the Charges game at the door, done opens it).
+function actionVerb(door: MapLoader.Door, dp: MapLoader.DoorPart): string
+	if door.interact ~= "hold" then
+		return (Lines.door.minigameActions :: any)[door.interact] or Lines.door.promptAction
+	end
+	return (Lines.door.holdActions :: any)[dp.style] or Lines.door.promptAction
+end
+
+function actionHint(door: MapLoader.Door, dp: MapLoader.DoorPart): string
+	if door.interact ~= "hold" then
+		return string.format(Lines.door.minigameHint, actionVerb(door, dp))
+	end
+	return string.format(Lines.door.holdHint, actionVerb(door, dp))
+end
+
+-- The prompt on each prop: LOCKED · WAVE N until called, then a hold of the group's remaining time (or F to
+-- open its minigame).
 function Doors.attachPrompt(prop: Prop, group: string, door: MapLoader.Door)
 	if door.triggerWave == 0 or door.triggerWave < 0 then
 		return -- D4 is the vault's Safe dial (VaultJob); dressing doors never prompt
@@ -640,9 +746,26 @@ function Doors.attachPrompt(prop: Prop, group: string, door: MapLoader.Door)
 	end)
 	p.Triggered:Connect(function(player: Player)
 		local g = stateOf(group)
-		if g.state == "called" and World.isInParty(player) and PlayerState.isStanding(PlayerState.get(player)) then
-			Doors.open(group, player)
+		if
+			g.state ~= "called"
+			or not World.isInParty(player)
+			or not PlayerState.isStanding(PlayerState.get(player))
+		then
+			return
 		end
+		local d = MapLoader.doors[group]
+		if d and d.interact ~= "hold" then
+			Minigames.open(player, d.interact, {
+				position = prop.blocker.Position,
+				onDone = function(pl: Player)
+					if stateOf(group).state == "called" then
+						Doors.open(group, pl)
+					end
+				end,
+			})
+			return
+		end
+		Doors.open(group, player)
 	end)
 end
 
@@ -655,9 +778,11 @@ local function setPrompts(group: string, called: boolean)
 	for _, prop in groupProps(group) do
 		local p = prop.prompt
 		if p then
-			p.ActionText = if called then Lines.door.promptAction else Lines.door.lockedAction
+			p.ActionText = if called then actionVerb(door, prop.part) else Lines.door.lockedAction
 			p.ObjectText = if called then door.label else signText(door)
-			p.HoldDuration = if called then math.max(0.1, (1 - g.progress) * door.interactTime) else 0
+			p.HoldDuration = if called and door.interact == "hold"
+				then math.max(0.1, (1 - g.progress) * door.interactTime)
+				else 0
 			p.Enabled = g.state ~= "open"
 		end
 	end
@@ -687,23 +812,27 @@ function Doors.pump()
 		end
 	end
 	crew = if n > 0 then crew / n else door.parts[1].cframe.Position
-	local target = door.parts[1].cframe.Position
+	-- Round 19: the guide ends on the near side of the part closest to the crew (the side away from the zone it opens).
+	local pick = door.parts[1]
 	for _, dp in door.parts do
-		if (dp.cframe.Position - crew).Magnitude < (target - crew).Magnitude then
-			target = dp.cframe.Position
+		if (dp.cframe.Position - crew).Magnitude < (pick.cframe.Position - crew).Magnitude then
+			pick = dp
 		end
 	end
+	local target = Ground.at(pick.cframe.Position - towardZone(pick) * 4)
 	CrewCall.triggerDoor({
 		group = group,
-		position = Ground.at(target),
+		position = target,
 		name = door.pingText,
 		label = door.label,
 		line = Lines.door.lines[group] or Lines.door.lines.default,
+		extra = (Lines.door.extra :: any)[door.interact] or Lines.door.extraText,
+		hint = actionHint(door, pick),
 		cashReward = door.cashReward,
 		opens = zoneLabels(door),
 	})
 	if n > 0 then
-		World.fireRun("VaultArrows", { from = crew, to = Ground.at(target), sec = Config.DoorPingDuration })
+		GuidePath.arrows(crew, target, Config.DoorPingDuration)
 	end
 	World.fireRun("DoorPing", { group = group, sec = Config.DoorPingDuration })
 	Doors.sendState()
@@ -795,8 +924,12 @@ function Doors.build()
 		for _, m in prop.mesh do
 			if m.part.Parent then
 				m.part.CFrame = m.closed
+				if m.collide ~= nil then
+					m.part.CanCollide = m.collide
+				end
 			end
 		end
+		unhideAsset(prop)
 		prop.model:Destroy()
 	end
 	props = {}

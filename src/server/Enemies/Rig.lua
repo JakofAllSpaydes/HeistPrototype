@@ -15,6 +15,11 @@ local BASE_ROOT = Vector3.new(2, 4.5, 2)
 local BASE_HEAD = 1.6
 local STEEL = Color3.fromRGB(70, 72, 80)
 
+-- Round 19: the collision box stops EnemyStepHeight above the floor (a bigger HipHeight), so the Humanoid steps up
+-- stairs and sills instead of jumping each one; a non-colliding Legs part fills the gap. Extras are placed
+-- relative to the visual body's centre, which sits bodyShift below the root's.
+local bodyShift = 0
+
 local function weld(a: BasePart, b: BasePart)
 	local w = Instance.new("WeldConstraint")
 	w.Part0 = a
@@ -35,7 +40,7 @@ local function extra(
 	local p = Instance.new("Part")
 	p.Name = name
 	p.Size = size
-	p.CFrame = root.CFrame * offset
+	p.CFrame = root.CFrame * CFrame.new(0, -bodyShift, 0) * offset
 	p.Color = color
 	p.Material = material or Enum.Material.SmoothPlastic
 	p.CanCollide = false
@@ -108,13 +113,25 @@ function Rig.build(row: Enemies.Row, elite: boolean): Built
 	elseif row.wide then
 		rootSize = Vector3.new(3, 4.5, 2.1)
 	end
-	root.Size = rootSize * scale
+	local step = math.clamp(Config.EnemyStepHeight, 0, rootSize.Y - 1)
+	root.Size = Vector3.new(rootSize.X, rootSize.Y - step, rootSize.Z) * scale
+	bodyShift = step * scale / 2
 	root.Color = color
 	root.Material = if row.wide then Enum.Material.Metal else Enum.Material.SmoothPlastic
 	head.Size = Vector3.new(BASE_HEAD, BASE_HEAD, BASE_HEAD) * scale
 	head.CFrame = root.CFrame * CFrame.new(0, root.Size.Y / 2 + head.Size.Y / 2, 0)
 	weld(root, head)
-	hum.HipHeight = 0.5 * scale
+	hum.HipHeight = (0.5 + step) * scale
+	if step > 0 then
+		local legs = extra(
+			root,
+			"Legs",
+			Vector3.new(rootSize.X, step, rootSize.Z) * scale,
+			CFrame.new(0, -(rootSize.Y - step) * scale / 2, 0),
+			color
+		)
+		legs.Material = root.Material
+	end
 
 	local plates: { BasePart } = {}
 	if row.round then

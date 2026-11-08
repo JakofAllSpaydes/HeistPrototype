@@ -21,6 +21,9 @@ local World = require(script.Parent.World)
 
 local Combat = {}
 
+-- Round 19: a bullet that stops on map geometry (Windows breaks the glass it hits).
+Combat.onWorldHit = nil :: ((BasePart, Vector3) -> ())?
+
 local function coneSpread(direction: Vector3, halfAngleDeg: number): Vector3
 	if halfAngleDeg <= 0 then
 		return direction
@@ -225,6 +228,10 @@ local function fireBullet(
 		end
 		local model = Enemy.fromPart(result.Instance)
 		if not model then
+			local hook = Combat.onWorldHit
+			if hook and result.Instance:IsA("BasePart") then
+				hook(result.Instance, result.Position)
+			end
 			return result.Position -- wall, pillar, floor: the bullet stops
 		end
 		bulletHit(shooter, model, result.Instance :: BasePart, result.Position, origin, if i > full then frac else 1)

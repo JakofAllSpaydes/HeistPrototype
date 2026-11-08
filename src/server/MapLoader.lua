@@ -34,6 +34,8 @@ export type DoorPart = {
 	meshMargin: number,
 	opens: string?, -- the zone this part leads into (its own Opens)
 	label: string,
+	hide: { string }, -- Round 19: asset part names (prefixes) inside the node that vanish while open
+	hideWall: boolean, -- Round 19: the largest geometry part inside the node (a door painted on a wall) vanishes too
 }
 export type Door = {
 	group: string,
@@ -45,6 +47,7 @@ export type Door = {
 	pingText: string,
 	label: string,
 	priority: number,
+	interact: string, -- Round 19: "hold", or a minigame kind (Charges, Lockpick, Keypad, Hotwire, Freq, Safe)
 }
 export type Box = Room.SpawnBox & { doorEver: boolean?, standsIn: string? }
 export type Hatch = {
@@ -223,6 +226,36 @@ local function placeBank(bank: Model)
 end
 
 -- Map geometry never moves on its own: everything the builder left unanchored is anchored.
+-- Round 19: the street's crowd barriers stop players but not enemies (they spawn behind them and come over), and
+-- paths treat them as open. Matched by Config.EnemyPassNames (geometry part names).
+local function enemyPass(bank: Model)
+	local PhysicsService = game:GetService("PhysicsService")
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup("Enemy")
+	end)
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup("EnemyPass")
+	end)
+	PhysicsService:CollisionGroupSetCollidable("Enemy", "EnemyPass", false)
+	local geo = bank:FindFirstChild("Geometry")
+	if not geo then
+		return
+	end
+	local n = 0
+	for _, d in geo:GetDescendants() do
+		if d:IsA("BasePart") and table.find(Config.EnemyPassNames, d.Name) then
+			d.CollisionGroup = "EnemyPass"
+			if not d:FindFirstChildOfClass("PathfindingModifier") then
+				local m = Instance.new("PathfindingModifier")
+				m.PassThrough = true
+				m.Parent = d
+			end
+			n += 1
+		end
+	end
+	Log.event("Map", "%d parts enemies walk through (%s)", n, table.concat(Config.EnemyPassNames, ", "))
+end
+
 local function anchorAll(bank: Model)
 	local geo = bank:FindFirstChild("Geometry")
 	if not geo then
@@ -309,7 +342,19 @@ local function readDoors(nodes: Instance)
 				pingText = str(p, "PingText", "OPEN THE DOOR"),
 				label = str(p, "Label", group),
 				priority = num(p, "Priority", 1),
+				interact = str(p, "Interact", "hold"),
 			}
+			if d.interact ~= "hold" and not table.find(Room.PropNames, d.interact) then
+				fail(
+					p.Name,
+					"Interact '"
+						.. d.interact
+						.. "' is not hold or a minigame ("
+						.. table.concat(Room.PropNames, ", ")
+						.. ")"
+				)
+				d.interact = "hold"
+			end
 			MapLoader.doors[group] = d
 		end
 		local opens = list(str(p, "Opens", ""))
@@ -329,6 +374,8 @@ local function readDoors(nodes: Instance)
 			meshMargin = num(p, "MeshMargin", 2),
 			opens = opens[1],
 			label = str(p, "Label", d.label),
+			hide = list(str(p, "Hide", "")),
+			hideWall = bool(p, "HideWall"),
 		}
 		if part.mesh then
 			local found = MapLoader.meshParts(part.cframe, part.size, part.mesh, part.meshMargin)
@@ -859,6 +906,7 @@ function MapLoader.init()
 	MapLoader.bank = bank
 	placeBank(bank)
 	anchorAll(bank)
+	enemyPass(bank)
 	MapLoader.read()
 	buildLadder()
 	MapLoader.setHatch(false, true)

@@ -23,6 +23,8 @@ local Config = require(Shared.Config)
 local Ground = require(Shared.Ground)
 local Log = require(script.Parent.Log)
 local Room = require(script.Parent.Room)
+local World = require(script.Parent.World)
+local PlayerState = require(script.Parent.PlayerState)
 
 local EnemyPath = {}
 
@@ -49,10 +51,13 @@ export type State = {
 	detourUntil: number,
 	mode: string, -- direct | path
 	noRouteUntil: number, -- the boss: no route through openings it fits, it holds until then
+	farFor: number, -- Round 19: seconds spent farther than CatchUpDistance from its target
+	farAt: number,
 	modeAt: number, -- the direct check (a raycast) runs at most every 0.2 s
 }
 
-local stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, startedAt = os.clock(), pinned = 0 }
+local stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, catchUps = 0, startedAt = os.clock(), pinned = 0 }
+local catchUp: (any, any) -> boolean
 local tokens = Config.PathComputesPerSec
 local queue: { { d: any, from: Vector3, to: Vector3, key: string } } = {}
 local cache: { [string]: { waypoints: { PathWaypoint }, at: number, to: Vector3 } } = {}
@@ -94,6 +99,8 @@ function EnemyPath.new(): State
 		detourUntil = 0,
 		mode = "direct",
 		noRouteUntil = 0,
+		farFor = 0,
+		farAt = now,
 		modeAt = -math.huge,
 	}
 end
@@ -280,6 +287,51 @@ local function climb(d: any, st: State, to: Vector3)
 	end)
 end
 
+-- Seen by any standing player (a clear line from their eyes to the point, map geometry only)?
+local seeParams = RaycastParams.new()
+seeParams.FilterType = Enum.RaycastFilterType.Include
+local function seen(point: Vector3): boolean
+	seeParams.FilterDescendantsInstances = (Ground.params() :: any).FilterDescendantsInstances
+	local to = point + Vector3.new(0, 3, 0)
+	for _, player in World.runAudience() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root and PlayerState.isStanding(PlayerState.get(player)) then
+			local eye = root.Position + Vector3.new(0, 1.5, 0)
+			if (to - eye).Magnitude < 250 and Workspace:Raycast(eye, to - eye, seeParams) == nil then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- Move a far-off enemy up its route: the first waypoint at least CatchUpLead studs (along the route) short of
+-- the target that nobody can see. True when it moved.
+function catchUp(d: any, st: State): boolean
+	local wps = st.waypoints
+	if not wps or #wps < 3 then
+		return false
+	end
+	local remain = 0
+	for i = #wps - 1, st.index + 1, -1 do
+		remain += (wps[i + 1].Position - wps[i].Position).Magnitude
+		if remain >= Config.CatchUpLead and wps[i].Action ~= Enum.PathWaypointAction.Custom then
+			local p = wps[i].Position
+			if not seen(p) then
+				d.model:PivotTo(CFrame.new(p + Vector3.new(0, d.root.Size.Y / 2 + d.humanoid.HipHeight + 0.5, 0)))
+				st.index = i + 1
+				st.farFor = 0
+				st.stuckFor = 0
+				st.lastPos = p
+				stats.catchUps += 1
+				return true
+			end
+		end
+	end
+	st.farFor = Config.CatchUpSec * 0.5 -- nothing hidden on the route yet: look again in a bit
+	return false
+end
+
 local function teleportHome(d: any, st: State)
 	-- Its own spawn box (or the current map's box nearest it: the boss and debug spawns have none).
 	local box = d.box or select(1, Room.nearestBox(d.root.Position))
@@ -352,7 +404,26 @@ function EnemyPath.steer(d: any, targetPos: Vector3, now: number, reach: number,
 				if nextW.Action == Enum.PathWaypointAction.Jump and flatDist(nextW.Position, pos) < 5 then
 					hum.Jump = true
 				end
+				-- Round 19: a waypoint well above the feet and close (a sill, a tall riser): hop it.
+				if
+					nextW.Position.Y - feet(d).Y > Config.EnemyStepHeight + 0.3
+					and flatDist(nextW.Position, pos) < 4
+				then
+					hum.Jump = true
+				end
 			end
+		end
+		-- Round 19 catch-up: far from the crew for CatchUpSec, it moves up its own route to a waypoint CatchUpLead
+		-- studs short of the target that no player can see.
+		local dt = now - st.farAt
+		st.farAt = now
+		if Config.CatchUpSec > 0 and dist > Config.CatchUpDistance then
+			st.farFor += dt
+			if st.farFor >= Config.CatchUpSec and st.waypoints and catchUp(d, st) then
+				return
+			end
+		else
+			st.farFor = 0
 		end
 	end
 
@@ -396,12 +467,13 @@ function EnemyPath.logWave(wave: number)
 	local sec = math.max(1, os.clock() - stats.startedAt)
 	Log.event(
 		"Path",
-		"wave %d computes/s %.1f fail %d%% stuck %d teleports %d%s",
+		"wave %d computes/s %.1f fail %d%% stuck %d teleports %d catch-ups %d%s",
 		wave,
 		stats.computes / sec,
 		if stats.computes > 0 then math.round(stats.fails / stats.computes * 100) else 0,
 		stats.stuck,
 		stats.teleports,
+		stats.catchUps,
 		if stats.pinned > sec * 0.5 then " (budget pinned: raise DirectRange first)" else ""
 	)
 	EnemyPath.lastWave = {
@@ -412,7 +484,7 @@ function EnemyPath.logWave(wave: number)
 		budgetUse = math.min(1, (stats.computes / sec) / math.max(1, Config.PathComputesPerSec)),
 	}
 	table.insert(EnemyPath.history, EnemyPath.lastWave)
-	stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, startedAt = os.clock(), pinned = 0 }
+	stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, catchUps = 0, startedAt = os.clock(), pinned = 0 }
 end
 EnemyPath.lastWave = nil :: any
 EnemyPath.history = {} :: { any }
@@ -437,7 +509,7 @@ function EnemyPath.resetRun()
 	queue = {}
 	cache = {}
 	EnemyPath.history = {}
-	stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, startedAt = os.clock(), pinned = 0 }
+	stats = { computes = 0, fails = 0, stuck = 0, teleports = 0, catchUps = 0, startedAt = os.clock(), pinned = 0 }
 end
 
 function EnemyPath.init()

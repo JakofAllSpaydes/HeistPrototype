@@ -579,7 +579,7 @@
                   ]
                 ],
                 "position": [
-                  60,
+                  -60,
                   -8.3,
                   -912
                 ]
@@ -700,7 +700,7 @@
                   ]
                 ],
                 "position": [
-                  -60,
+                  60,
                   -8.3,
                   -912
                 ]
@@ -721,127 +721,6 @@
               22,
               27.4,
               70
-            ],
-            "Tags": [
-              "GHS_Zone"
-            ],
-            "Transparency": 0.93
-          }
-        },
-        {
-          "attributes": {
-            "Depth": 4,
-            "Label": "VAULT STAIRS",
-            "Links": "back,vault@D4"
-          },
-          "children": [
-            {
-              "children": [
-                {
-                  "className": "TextLabel",
-                  "name": "Text",
-                  "properties": {
-                    "BackgroundColor3": [
-                      0.08,
-                      0.08,
-                      0.1
-                    ],
-                    "BackgroundTransparency": 0.4,
-                    "BorderSizePixel": 0,
-                    "Font": "GothamBold",
-                    "Size": {
-                      "UDim2": [
-                        [
-                          1,
-                          0
-                        ],
-                        [
-                          1,
-                          0
-                        ]
-                      ]
-                    },
-                    "Text": "ZONE · stairs",
-                    "TextColor3": [
-                      0.302,
-                      0.624,
-                      0.91
-                    ],
-                    "TextSize": 10
-                  }
-                }
-              ],
-              "className": "BillboardGui",
-              "name": "NodeTag",
-              "properties": {
-                "AlwaysOnTop": false,
-                "LightInfluence": 0,
-                "MaxDistance": 150,
-                "Size": {
-                  "UDim2": [
-                    [
-                      0,
-                      170
-                    ],
-                    [
-                      0,
-                      16
-                    ]
-                  ]
-                },
-                "StudsOffsetWorldSpace": [
-                  0,
-                  21,
-                  0
-                ]
-              }
-            }
-          ],
-          "className": "Part",
-          "name": "stairs",
-          "properties": {
-            "Anchored": true,
-            "CFrame": {
-              "CFrame": {
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ],
-                "position": [
-                  0,
-                  -20,
-                  -923
-                ]
-              }
-            },
-            "CanCollide": false,
-            "CanQuery": true,
-            "CanTouch": false,
-            "CastShadow": false,
-            "Color": [
-              0.302,
-              0.624,
-              0.91
-            ],
-            "Locked": true,
-            "Material": "SmoothPlastic",
-            "Size": [
-              100,
-              40,
-              49
             ],
             "Tags": [
               "GHS_Zone"
@@ -972,9 +851,9 @@
         },
         {
           "attributes": {
-            "Depth": 1,
-            "Label": "STREET",
-            "Links": "lobby@D1,tunnel@hatch"
+            "Depth": 4,
+            "Label": "VAULT STAIRS",
+            "Links": "back,vault@D4"
           },
           "children": [
             {
@@ -1003,7 +882,7 @@
                         ]
                       ]
                     },
-                    "Text": "ZONE · street",
+                    "Text": "ZONE · stairs",
                     "TextColor3": [
                       0.302,
                       0.624,
@@ -1033,14 +912,14 @@
                 },
                 "StudsOffsetWorldSpace": [
                   0,
-                  22,
+                  21,
                   0
                 ]
               }
             }
           ],
           "className": "Part",
-          "name": "street",
+          "name": "stairs",
           "properties": {
             "Anchored": true,
             "CFrame": {
@@ -1064,8 +943,8 @@
                 ],
                 "position": [
                   0,
-                  19,
-                  -885
+                  -20,
+                  -923
                 ]
               }
             },
@@ -1081,9 +960,9 @@
             "Locked": true,
             "Material": "SmoothPlastic",
             "Size": [
-              300,
-              42,
-              30
+              100,
+              40,
+              49
             ],
             "Tags": [
               "GHS_Zone"
@@ -1307,7 +1186,7 @@
                 "position": [
                   0,
                   19,
-                  -1212
+                  -885
                 ]
               }
             },
@@ -1325,7 +1204,7 @@
             "Size": [
               300,
               42,
-              224
+              30
             ],
             "Tags": [
               "GHS_Zone"
@@ -1447,6 +1326,127 @@
               41,
               42,
               200
+            ],
+            "Tags": [
+              "GHS_Zone"
+            ],
+            "Transparency": 0.93
+          }
+        },
+        {
+          "attributes": {
+            "Depth": 1,
+            "Label": "STREET",
+            "Links": "lobby@D1,tunnel@hatch"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "ZONE · street",
+                    "TextColor3": [
+                      0.302,
+                      0.624,
+                      0.91
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 150,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  22,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "street",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  19,
+                  -1212
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.302,
+              0.624,
+              0.91
+            ],
+            "Locked": true,
+            "Material": "SmoothPlastic",
+            "Size": [
+              300,
+              42,
+              224
             ],
             "Tags": [
               "GHS_Zone"
@@ -2070,6 +2070,8 @@
             "CashReward": 400,
             "DoorStyle": "panel",
             "Group": "D1",
+            "Hide": "maindoor,default",
+            "Interact": "Charges",
             "InteractTime": 3,
             "Label": "FRONT DOORS",
             "Opens": "lobby",
@@ -2832,6 +2834,8 @@
             "CashReward": 0,
             "DoorStyle": "wheel",
             "Group": "D4",
+            "Hide": "Curve",
+            "HideWall": true,
             "Label": "SERVER ROOM",
             "Mesh": "vault",
             "Opens": "tunnel",
@@ -4066,6 +4070,252 @@
               6,
               6,
               36
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "west stair landing",
+            "RequiresDoor": "D3",
+            "Weight": 1,
+            "Zone": "stairs"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "BOX · stairs_landing_l",
+                    "TextColor3": [
+                      0.91,
+                      0.333,
+                      0.302
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  4,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "stairs_landing_l",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -60,
+                  -17,
+                  -888
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.333,
+              0.302
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              14,
+              6,
+              14
+            ],
+            "Tags": [
+              "GHS_SpawnBox"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "AllowedTypes": "all",
+            "MouthName": "east stair landing",
+            "RequiresDoor": "D3",
+            "Weight": 1,
+            "Zone": "stairs"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "BOX · stairs_landing_r",
+                    "TextColor3": [
+                      0.91,
+                      0.333,
+                      0.302
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  4,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "stairs_landing_r",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  60,
+                  -17,
+                  -888
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.333,
+              0.302
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              14,
+              6,
+              14
             ],
             "Tags": [
               "GHS_SpawnBox"
@@ -6600,606 +6850,6 @@
                   0,
                   -37.5,
                   -888
-                ]
-              }
-            },
-            "CanCollide": false,
-            "CanQuery": true,
-            "CanTouch": false,
-            "CastShadow": false,
-            "Color": [
-              0.949,
-              0.757,
-              0.306
-            ],
-            "Locked": false,
-            "Material": "SmoothPlastic",
-            "Size": [
-              2,
-              2,
-              2
-            ],
-            "Tags": [
-              "GHS_BagSpot"
-            ],
-            "Transparency": 0.55
-          }
-        },
-        {
-          "attributes": {
-            "Gold": false,
-            "Zone": "street"
-          },
-          "children": [
-            {
-              "children": [
-                {
-                  "className": "TextLabel",
-                  "name": "Text",
-                  "properties": {
-                    "BackgroundColor3": [
-                      0.08,
-                      0.08,
-                      0.1
-                    ],
-                    "BackgroundTransparency": 0.4,
-                    "BorderSizePixel": 0,
-                    "Font": "GothamBold",
-                    "Size": {
-                      "UDim2": [
-                        [
-                          1,
-                          0
-                        ],
-                        [
-                          1,
-                          0
-                        ]
-                      ]
-                    },
-                    "Text": "BAG · street_grass_e",
-                    "TextColor3": [
-                      0.949,
-                      0.757,
-                      0.306
-                    ],
-                    "TextSize": 10
-                  }
-                }
-              ],
-              "className": "BillboardGui",
-              "name": "NodeTag",
-              "properties": {
-                "AlwaysOnTop": false,
-                "LightInfluence": 0,
-                "MaxDistance": 60,
-                "Size": {
-                  "UDim2": [
-                    [
-                      0,
-                      170
-                    ],
-                    [
-                      0,
-                      16
-                    ]
-                  ]
-                },
-                "StudsOffsetWorldSpace": [
-                  0,
-                  2,
-                  0
-                ]
-              }
-            }
-          ],
-          "className": "Part",
-          "name": "street_grass_e",
-          "properties": {
-            "Anchored": true,
-            "CFrame": {
-              "CFrame": {
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ],
-                "position": [
-                  70,
-                  1.5,
-                  -1265
-                ]
-              }
-            },
-            "CanCollide": false,
-            "CanQuery": true,
-            "CanTouch": false,
-            "CastShadow": false,
-            "Color": [
-              0.949,
-              0.757,
-              0.306
-            ],
-            "Locked": false,
-            "Material": "SmoothPlastic",
-            "Size": [
-              2,
-              2,
-              2
-            ],
-            "Tags": [
-              "GHS_BagSpot"
-            ],
-            "Transparency": 0.55
-          }
-        },
-        {
-          "attributes": {
-            "Gold": true,
-            "Zone": "street"
-          },
-          "children": [
-            {
-              "children": [
-                {
-                  "className": "TextLabel",
-                  "name": "Text",
-                  "properties": {
-                    "BackgroundColor3": [
-                      0.08,
-                      0.08,
-                      0.1
-                    ],
-                    "BackgroundTransparency": 0.4,
-                    "BorderSizePixel": 0,
-                    "Font": "GothamBold",
-                    "Size": {
-                      "UDim2": [
-                        [
-                          1,
-                          0
-                        ],
-                        [
-                          1,
-                          0
-                        ]
-                      ]
-                    },
-                    "Text": "BAG · street_grass_w",
-                    "TextColor3": [
-                      0.949,
-                      0.757,
-                      0.306
-                    ],
-                    "TextSize": 10
-                  }
-                }
-              ],
-              "className": "BillboardGui",
-              "name": "NodeTag",
-              "properties": {
-                "AlwaysOnTop": false,
-                "LightInfluence": 0,
-                "MaxDistance": 60,
-                "Size": {
-                  "UDim2": [
-                    [
-                      0,
-                      170
-                    ],
-                    [
-                      0,
-                      16
-                    ]
-                  ]
-                },
-                "StudsOffsetWorldSpace": [
-                  0,
-                  2,
-                  0
-                ]
-              }
-            }
-          ],
-          "className": "Part",
-          "name": "street_grass_w",
-          "properties": {
-            "Anchored": true,
-            "CFrame": {
-              "CFrame": {
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ],
-                "position": [
-                  -70,
-                  1.5,
-                  -1265
-                ]
-              }
-            },
-            "CanCollide": false,
-            "CanQuery": true,
-            "CanTouch": false,
-            "CastShadow": false,
-            "Color": [
-              0.949,
-              0.757,
-              0.306
-            ],
-            "Locked": false,
-            "Material": "SmoothPlastic",
-            "Size": [
-              2,
-              2,
-              2
-            ],
-            "Tags": [
-              "GHS_BagSpot"
-            ],
-            "Transparency": 0.55
-          }
-        },
-        {
-          "attributes": {
-            "Gold": false,
-            "Zone": "street"
-          },
-          "children": [
-            {
-              "children": [
-                {
-                  "className": "TextLabel",
-                  "name": "Text",
-                  "properties": {
-                    "BackgroundColor3": [
-                      0.08,
-                      0.08,
-                      0.1
-                    ],
-                    "BackgroundTransparency": 0.4,
-                    "BorderSizePixel": 0,
-                    "Font": "GothamBold",
-                    "Size": {
-                      "UDim2": [
-                        [
-                          1,
-                          0
-                        ],
-                        [
-                          1,
-                          0
-                        ]
-                      ]
-                    },
-                    "Text": "BAG · street_pavement_e",
-                    "TextColor3": [
-                      0.949,
-                      0.757,
-                      0.306
-                    ],
-                    "TextSize": 10
-                  }
-                }
-              ],
-              "className": "BillboardGui",
-              "name": "NodeTag",
-              "properties": {
-                "AlwaysOnTop": false,
-                "LightInfluence": 0,
-                "MaxDistance": 60,
-                "Size": {
-                  "UDim2": [
-                    [
-                      0,
-                      170
-                    ],
-                    [
-                      0,
-                      16
-                    ]
-                  ]
-                },
-                "StudsOffsetWorldSpace": [
-                  0,
-                  2,
-                  0
-                ]
-              }
-            }
-          ],
-          "className": "Part",
-          "name": "street_pavement_e",
-          "properties": {
-            "Anchored": true,
-            "CFrame": {
-              "CFrame": {
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ],
-                "position": [
-                  125,
-                  1.5,
-                  -960
-                ]
-              }
-            },
-            "CanCollide": false,
-            "CanQuery": true,
-            "CanTouch": false,
-            "CastShadow": false,
-            "Color": [
-              0.949,
-              0.757,
-              0.306
-            ],
-            "Locked": false,
-            "Material": "SmoothPlastic",
-            "Size": [
-              2,
-              2,
-              2
-            ],
-            "Tags": [
-              "GHS_BagSpot"
-            ],
-            "Transparency": 0.55
-          }
-        },
-        {
-          "attributes": {
-            "Gold": true,
-            "Zone": "street"
-          },
-          "children": [
-            {
-              "children": [
-                {
-                  "className": "TextLabel",
-                  "name": "Text",
-                  "properties": {
-                    "BackgroundColor3": [
-                      0.08,
-                      0.08,
-                      0.1
-                    ],
-                    "BackgroundTransparency": 0.4,
-                    "BorderSizePixel": 0,
-                    "Font": "GothamBold",
-                    "Size": {
-                      "UDim2": [
-                        [
-                          1,
-                          0
-                        ],
-                        [
-                          1,
-                          0
-                        ]
-                      ]
-                    },
-                    "Text": "BAG · street_steps_e",
-                    "TextColor3": [
-                      0.949,
-                      0.757,
-                      0.306
-                    ],
-                    "TextSize": 10
-                  }
-                }
-              ],
-              "className": "BillboardGui",
-              "name": "NodeTag",
-              "properties": {
-                "AlwaysOnTop": false,
-                "LightInfluence": 0,
-                "MaxDistance": 60,
-                "Size": {
-                  "UDim2": [
-                    [
-                      0,
-                      170
-                    ],
-                    [
-                      0,
-                      16
-                    ]
-                  ]
-                },
-                "StudsOffsetWorldSpace": [
-                  0,
-                  2,
-                  0
-                ]
-              }
-            }
-          ],
-          "className": "Part",
-          "name": "street_steps_e",
-          "properties": {
-            "Anchored": true,
-            "CFrame": {
-              "CFrame": {
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ],
-                "position": [
-                  90,
-                  1.5,
-                  -1130
-                ]
-              }
-            },
-            "CanCollide": false,
-            "CanQuery": true,
-            "CanTouch": false,
-            "CastShadow": false,
-            "Color": [
-              0.949,
-              0.757,
-              0.306
-            ],
-            "Locked": false,
-            "Material": "SmoothPlastic",
-            "Size": [
-              2,
-              2,
-              2
-            ],
-            "Tags": [
-              "GHS_BagSpot"
-            ],
-            "Transparency": 0.55
-          }
-        },
-        {
-          "attributes": {
-            "Gold": false,
-            "Zone": "street"
-          },
-          "children": [
-            {
-              "children": [
-                {
-                  "className": "TextLabel",
-                  "name": "Text",
-                  "properties": {
-                    "BackgroundColor3": [
-                      0.08,
-                      0.08,
-                      0.1
-                    ],
-                    "BackgroundTransparency": 0.4,
-                    "BorderSizePixel": 0,
-                    "Font": "GothamBold",
-                    "Size": {
-                      "UDim2": [
-                        [
-                          1,
-                          0
-                        ],
-                        [
-                          1,
-                          0
-                        ]
-                      ]
-                    },
-                    "Text": "BAG · street_steps_w",
-                    "TextColor3": [
-                      0.949,
-                      0.757,
-                      0.306
-                    ],
-                    "TextSize": 10
-                  }
-                }
-              ],
-              "className": "BillboardGui",
-              "name": "NodeTag",
-              "properties": {
-                "AlwaysOnTop": false,
-                "LightInfluence": 0,
-                "MaxDistance": 60,
-                "Size": {
-                  "UDim2": [
-                    [
-                      0,
-                      170
-                    ],
-                    [
-                      0,
-                      16
-                    ]
-                  ]
-                },
-                "StudsOffsetWorldSpace": [
-                  0,
-                  2,
-                  0
-                ]
-              }
-            }
-          ],
-          "className": "Part",
-          "name": "street_steps_w",
-          "properties": {
-            "Anchored": true,
-            "CFrame": {
-              "CFrame": {
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ],
-                "position": [
-                  -90,
-                  1.5,
-                  -1130
                 ]
               }
             },

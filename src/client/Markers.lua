@@ -37,7 +37,7 @@ type Marker = {
 
 -- Optional look for a marker: `scale` multiplies every size, `noCompact` keeps the full box at any distance,
 -- `diamond` puts a rotating diamond in the marker color over it.
-export type Opts = { scale: number?, noCompact: boolean?, diamond: boolean? }
+export type Opts = { scale: number?, noCompact: boolean?, diamond: boolean?, maxDistance: number? }
 
 local Markers = {}
 
@@ -98,7 +98,7 @@ function Markers.add(
 	gui.Adornee = att
 	gui.AlwaysOnTop = true
 	gui.Size = UDim2.fromOffset(S(176), S(76) + diamondH)
-	gui.MaxDistance = 500
+	gui.MaxDistance = (opts and opts.maxDistance) or 500
 	gui.LightInfluence = 0
 	gui.ClipsDescendants = false
 	gui.Parent = att
@@ -243,22 +243,46 @@ end
 
 -- CRACK THE VAULT: a chevron strip on the floor from the crew to the door for VaultArrowSec, lit in a running
 -- wave toward the door (the FTUE arrows will use the same look).
-local function floorArrows(from: Vector3, to: Vector3, seconds: number)
-	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
-	local length = flat.Magnitude
-	if length < 6 then
-		return
-	end
-	local dir = flat.Unit
+-- Round 19: `points` is the walking route the server planned (stairs and floors included); without it the strip
+-- is the straight line. Chevrons sit every 4 studs along the route, on the floor under each point.
+local function floorArrows(from: Vector3, to: Vector3, seconds: number, points: { Vector3 }?)
+	local route: { Vector3 } = if points and #points >= 2 then points else { from, to }
 	local folder = Instance.new("Folder")
 	folder.Name = "VaultArrows"
 	folder.Parent = Workspace:FindFirstChild("Effects") or Workspace
 	local chevrons: { BasePart } = {}
 	local step = 4
-	local yaw = math.atan2(-dir.X, -dir.Z)
-	for d = 4, length - 3, step do
-		local p = from + dir * d
-		local base = CFrame.new(p.X, Ground.y(p) + 0.06, p.Z) * CFrame.Angles(0, yaw, 0)
+	-- Walk the polyline: a chevron every `step` studs (measured in the flat), facing along its segment.
+	local samples: { { p: Vector3, dir: Vector3 } } = {}
+	local carry = 4
+	for i = 1, #route - 1 do
+		local a, b = route[i], route[i + 1]
+		local seg = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+		local len = seg.Magnitude
+		if len < 0.05 then
+			continue
+		end
+		local dir = seg.Unit
+		local d = carry
+		while d < len do
+			local t = d / len
+			table.insert(samples, { p = a:Lerp(b, t), dir = dir })
+			d += step
+		end
+		carry = d - len
+	end
+	-- Stop short of the target so the last chevron does not sit in the door.
+	while #samples > 0 and Vector3.new(samples[#samples].p.X - to.X, 0, samples[#samples].p.Z - to.Z).Magnitude < 3 do
+		table.remove(samples)
+	end
+	if #samples == 0 then
+		folder:Destroy()
+		return
+	end
+	for _, s in samples do
+		local p, dir = s.p, s.dir
+		local yaw = math.atan2(-dir.X, -dir.Z)
+		local base = CFrame.new(p.X, Ground.y(p + Vector3.new(0, 1, 0), p.Y) + 0.06, p.Z) * CFrame.Angles(0, yaw, 0)
 		-- A chevron: two thin bars meeting at the front.
 		for _, side in { -1, 1 } do
 			local bar = Instance.new("Part")
@@ -343,11 +367,17 @@ local function drawDoors()
 			d.position,
 			if called then Theme.Colors.blue else Theme.Colors.amber,
 			if called then tostring(d.ping) else tostring(d.label),
-			if called then Lines.door.markerHint else tostring(d.sign),
+			if called then tostring(d.hint or Lines.door.markerHint) else tostring(d.sign),
 			0,
 			"▲",
 			-- Phones read the closed doors' UNLOCKS line at full size (brief 7 mobile pass).
-			{ scale = if called or ClientState.isMobile then 1 else 0.8, diamond = loud, noCompact = loud }
+			{
+				scale = if called or ClientState.isMobile then 1 else 0.8,
+				diamond = loud,
+				noCompact = loud,
+				-- Round 19: a closed door's beacon reads only within DoorBeaconRange; a called one from anywhere.
+				maxDistance = if called then nil else Config.DoorBeaconRange,
+			}
 		);
 		(markers[id] :: any).doorState = want
 	end
@@ -395,7 +425,12 @@ function Markers.init()
 				end
 			end
 		elseif name == "VaultArrows" and typeof(data.from) == "Vector3" and typeof(data.to) == "Vector3" then
-			floorArrows(data.from, data.to, tonumber(data.sec) or Config.VaultArrowSec)
+			floorArrows(
+				data.from,
+				data.to,
+				tonumber(data.sec) or Config.VaultArrowSec,
+				if typeof(data.points) == "table" then data.points else nil
+			)
 			if capture then
 				Markers.setProgress("job", 0, true)
 			end

@@ -115,6 +115,7 @@ local Config = {
 	HpPerPlayerMult = 0.5,
 	RetargetInterval = 1.0, -- how often an enemy re-picks its target
 	EnemyCollidesWithPlayers = false, -- false: enemies walk through players and each other, never body-block
+	EnemyStepHeight = 1.5, -- Round 19: enemies step up stairs and sills this high without jumping (scaled by size)
 	EnemyStuckDetourSec = 1, -- PathfindingEnabled false only (Round 18d walk): no progress this long -> sidestep + jump
 	EnemyStuckTeleportSec = 8, -- PathfindingEnabled false only: still stuck after this long -> a random spawn box
 
@@ -136,6 +137,11 @@ local Config = {
 	StuckTeleportSec = 6, -- still stuck -> a random point in the enemy's own spawn box
 	PathFailDirectSec = 3, -- three failed computes in a row -> walk direct this long, then retry
 	LadderClimbSec = 1.6, -- an enemy on the ladder link is lifted over this long
+	-- Round 19 catch-up: an enemy farther than CatchUpDistance from its target for CatchUpSec moves up its own route
+	-- to the first waypoint CatchUpLead studs (along the route) short of the target that no player can see.
+	CatchUpDistance = 90,
+	CatchUpSec = 6, -- 0 = off
+	CatchUpLead = 40,
 	EnemyClimbAnimationId = "", -- [TBA] played while lifted (empty: none)
 	SpawnRingRadius = 90, -- studs from room center
 	SpawnPointCount = 8,
@@ -763,12 +769,16 @@ local Config = {
 	DoorPingDuration = 15, -- the called door's loud beacon and floor chevrons last this long
 	DoorOpenShake = 0.6, -- camera shake when a door opens
 	DoorSignText = "UNLOCKS · WAVE %d", -- the sign board on a closed door
+	DoorBeaconRange = 150, -- Round 19: a closed door's beacon shows within this many studs (only the next unlock has one)
 	ZoneOpenCashBags = 3, -- a door's done drops this many cash bags on the opened zone's spots (bypasses the cap)...
 	ZoneOpenGoldBags = 1, -- ...and this many gold bags
 	BagOtherZoneMult = 2, -- bag spots outside the crew zone weigh this much more (bags pull the crew through the map)
 	JobOtherZoneMult = 1.5, -- the same for side-job spots
 
 	------------------------------------------------------------------ Nodes (brief 7: THE BANK's Workspace.Bank.Nodes)
+	BreakableNames = { "bankwindow", "bankwindow2" }, -- Round 19: glass panes a shot or a blast breaks (then open)
+	WindowShards = 10, -- shards per broken pane
+	EnemyPassNames = { "barrier" }, -- Round 19: THE BANK's geometry parts with these names stop players, not enemies
 	MapLoaderStrict = false, -- true = refuse to start a run on a map with node errors ([GHS Map] ERROR lines)
 	-- Debug Show nodes: the translucent box colour per node type.
 	NodeShowColor = {

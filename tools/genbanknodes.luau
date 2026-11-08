@@ -190,6 +190,8 @@ door(
 		PingText = "OPEN THE BANK",
 		Label = "FRONT DOORS",
 		Priority = 1,
+		Interact = "Charges", -- Round 19: a breach charge (the Charges minigame), not a hold
+		Hide = "maindoor,default", -- the asset's own door leaves and handles go with the breach
 	})
 )
 -- D2 stair chains: across each stair's arrival on the mezzanine, between the newel posts.
@@ -250,6 +252,8 @@ door(
 		local t = table.clone(d4)
 		t.Opens = "tunnel"
 		t.Label = "SERVER ROOM"
+		t.HideWall = true -- Round 19: this wheel door is painted on the vault's solid back wall; the wall goes too
+		t.Hide = "Curve" -- and the frame corners that would pinch the new doorway
 		return t
 	end)()
 )
@@ -319,6 +323,19 @@ box(
 	{ 16, 6, 5 },
 	{ Zone = "stairs", RequiresDoor = "D3", MouthName = "east stairwell head" }
 )
+-- Round 19: the corner landings halfway down, so the crew in the vault gets pressure from close by.
+box(
+	"stairs_landing_l",
+	{ -60, -17, 112 },
+	{ 14, 6, 14 },
+	{ Zone = "stairs", RequiresDoor = "D3", MouthName = "west stair landing" }
+)
+box(
+	"stairs_landing_r",
+	{ 60, -17, 112 },
+	{ 14, 6, 14 },
+	{ Zone = "stairs", RequiresDoor = "D3", MouthName = "east stair landing" }
+)
 box("vault_vent", { 0, -34.5, 20 }, { 12, 6, 6 }, {
 	Zone = "vault",
 	RequiresDoor = "D4",
@@ -344,11 +361,7 @@ local bags = {}
 local function bag(name: string, zoneId: string, pos: { number }, gold: boolean)
 	table.insert(bags, node(name, pos, { 2, 2, 2 }, 0, { Zone = zoneId, Gold = gold }))
 end
-bag("street_grass_w", "street", { -70, 1.5, -265 }, true)
-bag("street_grass_e", "street", { 70, 1.5, -265 }, false)
-bag("street_steps_w", "street", { -90, 1.5, -130 }, false)
-bag("street_steps_e", "street", { 90, 1.5, -130 }, true)
-bag("street_pavement_e", "street", { 125, 1.5, 40 }, false)
+-- Round 19: no bag spots outside the bank.
 bag("lobby_bay_w", "lobby", { -80, 6.5, -85 }, false)
 bag("lobby_bay_e", "lobby", { 80, 6.5, -85 }, true)
 bag("lobby_stairs", "lobby", { 0, 6.5, -30 }, false)

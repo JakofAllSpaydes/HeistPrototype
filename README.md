@@ -1485,8 +1485,27 @@ NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the
   crew-zone rule, zone hops, the line-of-sight re-roll, least-used boxes for elites, contact logs); debug MAP, the
   mobile pass and this README.
 
+- **Round 19b (7 Nov) — feedback on THE BANK.** Door beacons show only the next unlock (and a called door; closed
+  ones within `DoorBeaconRange`), signs stay on every door. Doors open their own way (Door node `Interact`): the
+  front doors take a breach charge (the Charges minigame), chains are cut and shutters raised with a hold (CUT /
+  RAISE), the vault is its dial. An opened door clears: the generated prop fades, the asset parts named in `Hide`
+  vanish, and `HideWall` removes the wall a door is painted on (the vault's back wheel door was art on a solid wall,
+  which sealed the server room and the tunnel); swung wheel doors stop colliding. The guide chevrons follow a walking
+  route (`GuidePath.lua`: stairs, floors, the ladder) to the near side of the door. No bag spots outside the bank.
+  New spawn boxes on the stairwells' corner landings. The street's crowd barriers stop players, not enemies
+  (`EnemyPassNames`). Enemies step up stairs and sills (`EnemyStepHeight`: a higher hip with a non-colliding legs
+  part) and hop a waypoint well above their feet. Catch-up: an enemy farther than `CatchUpDistance` from its target
+  for `CatchUpSec` moves up its own route to a waypoint `CatchUpLead` studs short that no player can see. The bank's
+  glass breaks (`Windows.lua`, `BreakableNames`): a player bullet, an enemy shot or a blast shatters a pane and the
+  gap stays open; panes are whole again each run. Node labels in Studio and Show nodes read TYPE · name, only within
+  60 studs and never through walls.
+
 ## Open design notes (not built)
 
+- **Round 19b notes.** The D2 chains stay at the stair tops (the guide now walks you up the stairs to them); drag
+  them to the feet in Studio if wanted. Breakable glass is the builder's `bankwindow` panes only; ground-floor sills sit
+  about 7 studs above the pavement outside, so a broken window is a way out and a firing line more than a way in.
+  Catch-up moves enemies along their own planned route only, never into a spot a player can see.
 - **Brief 7 assumptions and deviations to confirm.** The nodes were authored from the geometry offline (plans rendered
   from the place file), never seen in Studio: expect to drag some. The D2 chains sit at the stair tops on the mezzanine
   (between the newel posts, the one spot the geometry gave exactly) rather than the stair feet; move them in Studio.

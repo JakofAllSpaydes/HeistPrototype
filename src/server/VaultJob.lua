@@ -26,6 +26,7 @@ local Bags = require(script.Parent.Bags)
 local Pause = require(script.Parent.Pause)
 local Abilities = require(script.Parent.Abilities)
 local RunEvents = require(script.Parent.RunEvents)
+local GuidePath = require(script.Parent.GuidePath)
 
 local VaultJob = {}
 
@@ -318,7 +319,7 @@ function VaultJob.startJob(onCracked: (Player) -> ())
 		end
 	end
 	if n > 0 then
-		World.fireRun("VaultArrows", { from = sum / n, to = front, sec = Config.VaultArrowSec })
+		GuidePath.arrows(sum / n, front, Config.VaultArrowSec) -- Round 19: along a walking route
 	end
 	local p = Instance.new("ProximityPrompt")
 	p.ActionText = Lines.vault.promptAction

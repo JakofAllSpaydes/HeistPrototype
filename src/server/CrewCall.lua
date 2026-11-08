@@ -47,6 +47,8 @@ export type DoorInfo = {
 	name: string, -- the pill's name (OPEN THE BANK)
 	label: string, -- FRONT DOORS
 	line: string, -- MARLOW's line for this door
+	extra: string?, -- the card's second line (how it opens)
+	hint: string?, -- the beacon's line (HOLD F · CUT, F · BREACH)
 	cashReward: number,
 	opens: string, -- the zone labels it opens
 }
@@ -583,7 +585,7 @@ function CrewCall.triggerDoor(info: DoorInfo)
 		name = info.name,
 		crewLead = d.crewLead,
 		typeLabel = d.typeLabel,
-		text = { info.line, d.extraText },
+		text = { info.line, info.extra or d.extraText },
 		rewardLine = string.format(d.rewardLine, info.cashReward, info.opens),
 		rewardShort = string.format("+$%d", info.cashReward),
 		reward = info.cashReward,
@@ -592,7 +594,7 @@ function CrewCall.triggerDoor(info: DoorInfo)
 		noTimer = true,
 		duration = 0,
 		position = info.position,
-		markerHint = d.markerHint,
+		markerHint = info.hint or d.markerHint,
 	})
 	Log.event("Call", "Door #%d (%s) called: %s", thisJob.id, info.group, info.name)
 end

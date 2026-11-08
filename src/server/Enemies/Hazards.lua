@@ -71,6 +71,8 @@ function Hazards.playersWithin(position: Vector3, radius: number): { { player: P
 end
 
 -- Damage everyone and every placeable in the radius. Returns how many players were hit.
+Hazards.onBlast = nil :: ((Vector3, number) -> ())?
+
 function Hazards.blast(
 	position: Vector3,
 	radius: number,
@@ -79,6 +81,10 @@ function Hazards.blast(
 	source: string
 ): number
 	local hits = 0
+	local onBlast = Hazards.onBlast
+	if onBlast then
+		onBlast(position, radius) -- Round 19: blasts break the windows round them
+	end
 	for _, entry in Hazards.playersWithin(position, radius) do
 		PlayerState.damage(entry.player, playerDmg, source)
 		hits += 1
