@@ -153,7 +153,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		Font = Theme.Fonts.display,
 		TextSize = S(if w < S(150) then 17 else 21),
 		TextColor3 = Theme.Colors.white,
-		TextWrapped = true,
+		TextWrapped = false, -- one line, truncated (Round 18: a wrapped title was cut in half by its box)
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Position = UDim2.fromOffset(S(10), textTop),
 		Size = UDim2.new(1, -S(20), 0, S(26)),
@@ -329,8 +329,20 @@ function Card.new(parent: Instance, spec: Spec): Handle
 			end
 		end)
 	end
+	-- Owned (Round 18): the card goes quiet so the buyable ones lead: no glow, the well and art dimmed.
+	local ownedVeil = UI.frame({
+		Name = "OwnedVeil",
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.45,
+		Size = UDim2.fromScale(1, 1),
+		Visible = false,
+		ZIndex = z + 6,
+		Parent = well,
+	})
 	local function setOwned(on: boolean)
 		ownedBand.Visible = on
+		ownedVeil.Visible = on
+		setGlow(if on then 0.2 elseif spec.hero then 1.4 else 1)
 	end
 	setOwned(spec.owned == true)
 	handle.setEnabled(spec.enabled ~= false)

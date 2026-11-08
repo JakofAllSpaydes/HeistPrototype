@@ -47,6 +47,8 @@ local camera = Workspace.CurrentCamera :: Camera
 
 local ORANGE = Color3.fromHex("E8792A")
 local GREEN = Color3.fromHex("2FB75A")
+local LANE_COLOR =
+	{ free = Color3.fromHex("9BA0A8"), p1 = ORANGE, p2 = Color3.fromHex("B46CFF") } :: { [string]: Color3 }
 
 local open = false
 local gui: ScreenGui? = nil
@@ -99,10 +101,19 @@ local function cellClaimable(p: any, level: number, lane: string): boolean
 	return reached(p, level) and laneOwned(p, lane) and not claimed(p, level, lane)
 end
 
+-- Round 18c: the track runs on past the last level (bonus levels); it shows a page beyond wherever you are.
+local function trackEnd(p: any): number
+	return math.max(Config.PassLevels, passOf(p).level) + Config.PassPageLevels
+end
+
+local function lastPage(p: any): number
+	return math.max(1, trackEnd(p) - Config.PassPageLevels + 1)
+end
+
 -- Exported for the hub HUD's red dot.
 function PassScene.claimableCount(p: any): number
 	local n = 0
-	for level = 1, math.min(passOf(p).level, Config.PassLevels) do
+	for level = 1, passOf(p).level do
 		for _, lane in PassSeason.Lanes do
 			if cellClaimable(p, level, lane) then
 				n += 1
@@ -341,7 +352,7 @@ local function renderBanner(p: any)
 		Parent = card,
 	})
 	UI.stroke(lv, Color3.new(0, 0, 0), S(1.5), 0.2)
-	local maxed = pass.level >= Config.PassLevels
+	local bonus = pass.level >= Config.PassLevels
 	local bar = UI.frame({
 		BackgroundColor3 = Color3.fromHex("26262E"),
 		Position = UDim2.fromOffset(S(70), S(30)),
@@ -358,12 +369,12 @@ local function renderBanner(p: any)
 	})
 	UI.corner(fill, S(7))
 	UI.text({
-		Text = if maxed
+		Text = if bonus
 			then string.format(
-				"MAX LEVEL · %s / %s TO +%d GOLD",
+				"BONUS · %s / %s TO LV %d",
 				UI.fmtInt(pass.xp),
 				UI.fmtInt(Config.PassXpPerLevel),
-				Config.PassOverflowGold
+				pass.level + 1
 			)
 			else string.format(
 				"%s / %s TO LV %d",
@@ -441,8 +452,8 @@ local function renderBanner(p: any)
 			ZIndex = 9,
 			Parent = b,
 		})
-		-- A skip never runs past the last level (it would charge for levels it cannot give).
-		local fits = pass.level + n <= Config.PassLevels
+		-- The track never ends (bonus levels), so every skip fits.
+		local fits = true
 		h.setEnabled(fits)
 		b.Activated:Connect(function()
 			if not fits then
@@ -650,7 +661,9 @@ renderSelected = function(p: any)
 	UI.pad(card, S(16), S(14), S(16), S(14))
 	UI.list(card, Enum.FillDirection.Vertical, S(6))
 	Fx.slideIn(card, UDim2.fromOffset(S(30), 0), 0.22)
-	local isHero = selLane == "p2" and selLevel % math.max(1, math.floor(Config.PassLevels / 3)) == 0
+	local isHero = selLane == "p2"
+		and selLevel <= Config.PassLevels
+		and selLevel % math.max(1, math.floor(Config.PassLevels / 3)) == 0
 	UI.text({
 		Text = if isHero
 			then string.format("PREMIUM+ HERO · LEVEL %d", selLevel)
@@ -690,16 +703,24 @@ renderSelected = function(p: any)
 	rp.ZIndex = 7
 	rl.ZIndex = 8
 	rl.Font = Theme.Fonts.display
+	-- Round 18: the state pill carries the tile's state color (the same words as the tile's footer).
 	local tagText: string? = nil
-	if not laneOwned(p, selLane) then
-		tagText = "REQUIRES " .. PassSeason.LaneName[selLane]
+	local tagBg, tagFg = Color3.fromHex("2E3135"), Theme.Colors.text
+	local owned = laneOwned(p, selLane)
+	local pass = passOf(p)
+	if claimed(p, selLevel, selLane) then
+		tagText, tagBg, tagFg = "CLAIMED", Color3.fromHex("1D3326"), Color3.fromHex("6FD48A")
+	elseif not owned then
+		tagText = "LOCKED · " .. PassSeason.LaneName[selLane]
+		tagBg, tagFg = Fx.shade(LANE_COLOR[selLane], -0.5), Fx.shade(LANE_COLOR[selLane], 0.4)
 	elseif not reached(p, selLevel) then
-		tagText = "UNLOCKS AT LEVEL " .. selLevel
-	elseif claimed(p, selLevel, selLane) then
-		tagText = "CLAIMED"
+		local toGo = (selLevel - pass.level) * Config.PassXpPerLevel - (tonumber(pass.xp) or 0)
+		tagText = string.format("LV %d · %s XP TO GO", selLevel, UI.fmtInt(math.max(0, toGo)))
+	else
+		tagText, tagBg, tagFg = "READY TO CLAIM", Color3.fromHex("2FB75A"), Theme.Colors.white
 	end
 	if tagText then
-		local tp, tl = UI.pill(pills, tagText, Color3.fromHex("2E3135"), Theme.Colors.text, S(20), S(11))
+		local tp, tl = UI.pill(pills, tagText, tagBg, tagFg, S(20), S(11))
 		tp.LayoutOrder = 2
 		tp.ZIndex = 7
 		tl.ZIndex = 8
@@ -737,8 +758,27 @@ renderSelected = function(p: any)
 		b.LayoutOrder = 5
 		b.TextSize = S(22)
 		Fx.particles(b, Color3.fromHex("8FE3A1"), 3, 9)
+		Fx.shine(b, 1.8)
 		b.Activated:Connect(function()
 			claimResults(shop("passClaim", { level = selLevel, lane = selLane }), "LEVEL " .. selLevel)
+		end)
+	elseif not owned and not claimed(p, selLevel, selLane) then
+		-- A locked reward sells its own tier right where the player is looking.
+		local productId = if selLane == "p2" then "pass_premiumplus" else "pass_premium"
+		local product = Products.ById[productId]
+		local price = if product then Products.priceFor(product, p) else 0
+		local b, _h = Fx.button(
+			card,
+			string.format("UNLOCK %s · R$ %s", PassSeason.LaneName[selLane], UI.fmtInt(price)),
+			if selLane == "p2" then Color3.fromHex("A864E8") else ORANGE,
+			Theme.Colors.white,
+			UDim2.new(1, 0, 0, S(42)),
+			7
+		)
+		b.LayoutOrder = 5
+		b.TextSize = S(16)
+		b.Activated:Connect(function()
+			PurchaseSheet.open(productId, { context = "pass detail " .. productId })
 		end)
 	end
 end
@@ -746,9 +786,6 @@ end
 -- The bottom track (Round 17b): one row of level cards. Each level is one card: its FREE reward large on top, the
 -- PREMIUM and PREMIUM+ rewards side by side under it, so a free player sees what each upgrade adds at a glance.
 -- Diamonds above the cards are lit through the current level; BACK / NEXT page by Config.PassPageLevels.
-local LANE_COLOR =
-	{ free = Color3.fromHex("9BA0A8"), p1 = ORANGE, p2 = Color3.fromHex("B46CFF") } :: { [string]: Color3 }
-
 local function slotButton(
 	parent: Instance,
 	p: any,
@@ -792,21 +829,36 @@ local function slotButton(
 		Rotation = 90,
 		Parent = b,
 	})
-	-- The lane color along the bottom.
+	-- Round 18b: a tile shows its state without words (color, glow, scale, an icon): CLAIMABLE glows green, its
+	-- art breathes and sparks rise; CLAIMED goes dark under a big check; LOCKED is veiled with a padlock in the lane
+	-- color; not reached yet is simply dimmed. The lane color runs along the bottom edge.
+	local state = if can
+		then "claim"
+		elseif isClaimed then "claimed"
+		elseif not owned then "locked"
+		elseif not lit then "future"
+		else "idle"
+	local footH = S(3)
 	UI.frame({
 		BackgroundColor3 = LANE_COLOR[lane],
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(1, 0, 0, S(3)),
-		ZIndex = z + 1,
+		Size = UDim2.new(1, 0, 0, footH),
+		ZIndex = z + 8,
 		Parent = b,
 	})
+	if state == "claim" then
+		local grad = b:FindFirstChildOfClass("UIGradient")
+		if grad then
+			grad.Color = ColorSequence.new(Color3.fromHex("2E8F52"), Color3.fromHex("10261A"))
+		end
+	end
 	if rarity >= 5 then
 		Fx.rays(b, rc, 6, artPx * 2, z, 10)
 	end
 	local art = ItemArt.draw(b, cell, artPx, z + 2)
 	art.AnchorPoint = Vector2.new(0.5, 0.5)
-	art.Position = UDim2.new(0.5, 0, 0.46, 0)
+	art.Position = UDim2.new(0.5, 0, 0.44, 0)
 	local amount = if cell.kind == "gold"
 			or cell.kind == "tokens"
 			or cell.kind == "mastery"
@@ -821,15 +873,18 @@ local function slotButton(
 			TextSize = S(12),
 			TextColor3 = Theme.Colors.white,
 			TextXAlignment = Enum.TextXAlignment.Right,
+			TextTransparency = if state == "claimed" then 0.45 else 0,
 			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, -S(5), 1, -S(5)),
+			Position = UDim2.new(1, -S(5), 1, -(footH + S(2))),
 			Size = UDim2.fromOffset(S(60), S(14)),
-			ZIndex = z + 4,
+			ZIndex = z + 7,
 			Parent = b,
 		})
 		UI.stroke(a, Color3.new(0, 0, 0), S(1.5), 0.2)
 	end
-	local isHero = lane == "p2" and level % math.max(1, math.floor(Config.PassLevels / 3)) == 0
+	local isHero = lane == "p2"
+		and level <= Config.PassLevels
+		and level % math.max(1, math.floor(Config.PassLevels / 3)) == 0
 	if isHero then
 		stroke.Color = Color3.fromHex("F2C14E")
 		stroke.Thickness = S(2.5)
@@ -858,8 +913,8 @@ local function slotButton(
 		local tag = UI.text({
 			Text = PassSeason.LaneName[lane],
 			Font = Theme.Fonts.display,
-			TextSize = S(9),
-			TextColor3 = LANE_COLOR[lane],
+			TextSize = S(10),
+			TextColor3 = Fx.shade(LANE_COLOR[lane], 0.2),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Position = UDim2.fromOffset(S(4), S(2)),
 			Size = UDim2.new(1, -S(8), 0, S(11)),
@@ -868,38 +923,76 @@ local function slotButton(
 		})
 		UI.stroke(tag, Color3.new(0, 0, 0), S(1), 0.3)
 	end
-	if isClaimed then
-		check(b, S(16), z + 5)
+	local function fadeArt(t: number)
 		for _, d in art:GetDescendants() do
 			if d:IsA("Frame") then
-				d.BackgroundTransparency = math.max(d.BackgroundTransparency, 0.5)
-			end
-		end
-	elseif not owned then
-		local veil = UI.frame({
-			BackgroundColor3 = Color3.new(0, 0, 0),
-			BackgroundTransparency = 0.5,
-			Size = UDim2.fromScale(1, 1),
-			ZIndex = z + 5,
-			Parent = b,
-		})
-		padlock(veil, S(18), z + 6)
-	elseif not lit then
-		for _, d in art:GetDescendants() do
-			if d:IsA("Frame") then
-				d.BackgroundTransparency = math.max(d.BackgroundTransparency, 0.35)
+				d.BackgroundTransparency = math.max(d.BackgroundTransparency, t)
+			elseif d:IsA("TextLabel") then
+				d.TextTransparency = math.max(d.TextTransparency, t)
 			end
 		end
 	end
+	if state == "claimed" then
+		-- Settled: the tile goes quiet and a big check sits over the art.
+		b.BackgroundColor3 = Color3.fromHex("101013")
+		stroke.Color = if selected then Theme.Colors.white else Color3.fromHex("3FD47A")
+		stroke.Transparency = if selected then 0 else 0.65
+		fadeArt(0.6)
+		local mark = check(b, S(26), z + 6)
+		mark.AnchorPoint = Vector2.new(0.5, 0.5)
+		mark.Position = UDim2.new(0.5, 0, 0.44, 0)
+	elseif state == "locked" then
+		-- Not owned: darkened, a padlock in the middle, the lane's color on the edge.
+		fadeArt(0.55)
+		local veil = UI.frame({
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.45,
+			Size = UDim2.new(1, 0, 1, -footH),
+			ZIndex = z + 5,
+			Parent = b,
+		})
+		padlock(veil, S(22), z + 6)
+		if not selected and not isHero then
+			stroke.Color = LANE_COLOR[lane]
+			stroke.Transparency = 0.55
+		end
+	elseif state == "future" then
+		fadeArt(0.4)
+	end
 	if can then
-		-- Claimable: the edge breathes green and a spark or two rises.
-		Fx.particles(b, Color3.fromHex("8FE3A1"), 2, z + 4)
+		-- Claimable: the edge breathes green, the art bobs, sparks rise.
+		Fx.particles(b, Color3.fromHex("8FE3A1"), 3, z + 4)
+		Fx.bob(art, S(2), 1.6)
+		-- The art breathes (scale), so a waiting reward reads from across the track.
+		local breathe = UI.new("UIScale", { Name = "Breathe", Parent = art })
+		task.spawn(function()
+			local t0 = os.clock()
+			while art.Parent do
+				breathe.Scale = 1 + 0.08 * (math.sin((os.clock() - t0) * 4) + 1) / 2
+				task.wait()
+			end
+		end)
+		-- A green halo outside the tile (the tile clips, so the halo stands behind it as a sibling).
+		local halo = UI.frame({
+			BackgroundTransparency = 1,
+			Position = pos,
+			Size = size,
+			ZIndex = z - 1,
+			Parent = parent,
+		})
+		local _gl, setGlow = Fx.glow(halo, Color3.fromHex("3FD47A"), S(8), z - 1)
+		Fx.pulse(setGlow, function()
+			return b.Parent ~= nil
+		end, 0.9, 0.6, 1.6)
+		b.Destroying:Connect(function()
+			halo:Destroy()
+		end)
 		task.spawn(function()
 			local t0 = os.clock()
 			while b.Parent do
 				local k = (math.sin((os.clock() - t0) * 5) + 1) / 2
 				stroke.Color = Color3.fromHex("3FD47A"):Lerp(Theme.Colors.white, k * 0.5)
-				stroke.Thickness = S(1.5 + k * 1.5)
+				stroke.Thickness = S(2 + k * 1.5)
 				stroke.Transparency = 0
 				task.wait(0.04)
 			end
@@ -917,6 +1010,21 @@ local function slotButton(
 		selLevel, selLane = level, lane
 		UI.sound(Fx.Sounds.press, 1.3, 0.25)
 		if can then
+			-- The tile pops and throws sparks before the reveal cards in.
+			local g = gui
+			if g then
+				Fx.burst(
+					g :: any,
+					UDim2.fromOffset(
+						b.AbsolutePosition.X + b.AbsoluteSize.X / 2,
+						b.AbsolutePosition.Y + b.AbsoluteSize.Y / 2
+					),
+					Color3.fromHex("8FE3A1"),
+					18,
+					50
+				)
+			end
+			UI.sound(Fx.Sounds.chime, 1.5, 0.3)
 			claimResults(shop("passClaim", { level = level, lane = lane }), "LEVEL " .. level)
 		else
 			renderSelected(p)
@@ -931,7 +1039,8 @@ renderTrack = function(p: any)
 	local s = seasonNow(p)
 	local pass = passOf(p)
 	local per = Config.PassPageLevels
-	page = math.clamp(page, 1, math.max(1, Config.PassLevels - per + 1))
+	local last = trackEnd(p)
+	page = math.clamp(page, 1, lastPage(p))
 	local bg = UI.frame({
 		BackgroundColor3 = Color3.fromHex("0C0C10"),
 		BackgroundTransparency = 0.12,
@@ -964,11 +1073,11 @@ renderTrack = function(p: any)
 		b.AnchorPoint = Vector2.new(if side < 0 then 0 else 1, 0.5)
 		b.Position = if side < 0 then UDim2.new(0, S(8), 0.5, 0) else UDim2.new(1, -S(8), 0.5, 0)
 		b.TextSize = S(26)
-		local can = if side < 0 then page > 1 else page + per <= Config.PassLevels
+		local can = if side < 0 then page > 1 else page + per <= last
 		h.setEnabled(can)
 		b.Activated:Connect(function()
 			if can then
-				page = math.clamp(page + side * per, 1, Config.PassLevels - per + 1)
+				page = math.clamp(page + side * per, 1, lastPage(p))
 				UI.sound(Fx.Sounds.whoosh, 1.4, 0.25)
 				render()
 			end
@@ -978,9 +1087,10 @@ renderTrack = function(p: any)
 	arrow(1)
 	for i = 0, per - 1 do
 		local level = page + i
-		if level > Config.PassLevels then
+		if level > last then
 			break
 		end
+		local isBonus = PassSeason.isBonus(level)
 		local lit = level <= pass.level
 		local current = level == pass.level
 		local col = UI.frame({
@@ -991,7 +1101,7 @@ renderTrack = function(p: any)
 			Parent = bg,
 		})
 		-- The ribbon between diamonds, lit through the current level.
-		if i < per - 1 and level < Config.PassLevels then
+		if i < per - 1 and level < last then
 			UI.frame({
 				BackgroundColor3 = if level < pass.level then ORANGE else Color3.fromHex("2A2A33"),
 				AnchorPoint = Vector2.new(0, 0.5),
@@ -1045,8 +1155,19 @@ renderTrack = function(p: any)
 		)
 		local pad = S(5)
 		local bandH = S(22)
+		-- A level with something waiting turns its band green, so the track scans for claims at a glance.
+		local waitingHere = false
+		for _, lane in PassSeason.Lanes do
+			if cellClaimable(p, level, lane) then
+				waitingHere = true
+			end
+		end
 		local band = UI.frame({
-			BackgroundColor3 = if lit then ORANGE else Color3.fromHex("26262E"),
+			-- Bonus levels (past the season's last) wear gold.
+			BackgroundColor3 = if waitingHere
+				then GREEN
+				elseif lit then (if isBonus then Color3.fromHex("F2C14E") else ORANGE)
+				else (if isBonus then Color3.fromHex("3A3222") else Color3.fromHex("26262E")),
 			BackgroundTransparency = if lit then 0.15 else 0,
 			Position = UDim2.fromOffset(pad, pad),
 			Size = UDim2.new(1, -pad * 2, 0, bandH),
@@ -1055,7 +1176,7 @@ renderTrack = function(p: any)
 		})
 		UI.corner(band, S(6))
 		UI.text({
-			Text = "LEVEL " .. level,
+			Text = (if isBonus then "BONUS " else "LEVEL ") .. level,
 			Font = Theme.Fonts.display,
 			TextSize = S(14),
 			TextColor3 = if lit then Theme.Colors.bg else Theme.Colors.textDim,
@@ -1097,7 +1218,7 @@ renderTrack = function(p: any)
 	gotoBtn.Position = UDim2.new(0.5, 0, 1, 0)
 	gotoBtn.TextSize = S(14)
 	gotoBtn.Activated:Connect(function()
-		page = math.clamp(pass.level - math.floor(per / 2) + 1, 1, Config.PassLevels - per + 1)
+		page = math.clamp(pass.level - math.floor(per / 2) + 1, 1, lastPage(p))
 		selLevel, selLane = pass.level, "free"
 		render()
 	end)
@@ -1326,7 +1447,7 @@ function PassScene.open(opts: { level: number? }?)
 	local o = opts or {}
 	if open then
 		if o.level then
-			page = math.clamp(o.level - 2, 1, Config.PassLevels - Config.PassPageLevels + 1)
+			page = math.clamp(o.level - 2, 1, lastPage(p))
 			selLevel = o.level
 			render()
 		end
@@ -1339,7 +1460,7 @@ function PassScene.open(opts: { level: number? }?)
 	-- Unless a link asked for a level, the stage opens on the season's final PREMIUM+ hero: the chase.
 	selLevel = o.level or PassSeason.heroLevel(seasonNow(p), 3)
 	selLane = if o.level then "free" else "p2"
-	page = math.clamp((o.level or pass.level) - 1, 1, Config.PassLevels - Config.PassPageLevels + 1)
+	page = math.clamp((o.level or pass.level) - 1, 1, lastPage(p))
 	build()
 	savedMode = ClientState.cameraMode
 	savedHud = HUD.mode

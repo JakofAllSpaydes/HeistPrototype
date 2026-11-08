@@ -1,9 +1,10 @@
 --!strict
 -- Weapons tab, to the reference: filter pills (ALL · PISTOL · SMG · RIFLE · SHOTGUN · SNIPER · LMG) with a
--- search box, OWNED and UNOWNED sections of colored tiles 4 per row, and a detail card on the right (big
--- image, name, firing mode, stat rows with » next, UPGRADE green, CUSTOMIZE pink). CUSTOMIZE switches the
--- scene to the center-zoom view: a category strip bottom-center (SKIN · WRAP · CHARM, only WRAP live) and
--- the wraps row with Back, a price label over the selection and APPLY / BUY.
+-- search box, OWNED and UNOWNED sections of rarity tiles 4 per row, and a detail card on the right (art box with the
+-- rarity on it, name, `PISTOL · SEMI-AUTO`, mastery, the level over the stat rows with » next, UPGRADE green, EQUIP /
+-- CUSTOMIZE). Tapping a gun puts it in the avatar's hand (scene.preview.weapon); the equipped gun wears a big
+-- check. CUSTOMIZE switches the scene to the center-zoom view: a category strip bottom-center (SKIN · WRAP · CHARM,
+-- only WRAP live) and the wraps row with Back, a price label over the selection and APPLY / BUY.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -27,6 +28,20 @@ local search = ""
 local customize = false
 local wrapsOpen = false
 local wrapPreview: string? = nil
+-- One-shot juice: the tile just tapped pops on the next render; the gun just equipped pops its check in on the first
+-- render that shows it equipped (the profile sync can land a beat after the remote returns).
+local popSelect: string? = nil
+local popEquip: string? = nil
+local popEquipAt = 0
+
+local function equipPopFor(id: string): boolean
+	return popEquip == id and os.clock() - popEquipAt < 3
+end
+
+local function markEquipPop(id: string)
+	popEquip = id
+	popEquipAt = os.clock()
+end
 
 local FILTERS = {
 	{ id = "ALL", name = "ALL" },
@@ -36,6 +51,14 @@ local FILTERS = {
 	{ id = "Shotgun", name = "SHOTGUN" },
 	{ id = "Sniper", name = "SNIPER" },
 	{ id = "LMG", name = "LMG" },
+}
+
+-- Actions the stats can't tell apart (a bolt sniper and a semi-auto one share every flag).
+local FIRE_MODE_BY_ID = {
+	AWP = "BOLT-ACTION",
+	Mosin = "BOLT-ACTION",
+	Model1887 = "LEVER-ACTION",
+	SawedOff = "DOUBLE-BARREL",
 }
 
 local function levelOf(profile: any, id: string): number
@@ -84,90 +107,62 @@ local function passes(name: string, archetype: string): boolean
 	return true
 end
 
-local function modeOf(w: Weapons.Weapon): string
-	if w.burst > 1 then
-		return string.format("%d-round burst", w.burst)
+-- The fire mode for the detail line ("SEMI-AUTO", "FULL-AUTO", "3-ROUND BURST", "PUMP", ...).
+local function fireMode(w: Weapons.Weapon): string
+	local named = FIRE_MODE_BY_ID[w.id]
+	if named then
+		return named
+	elseif w.burst > 1 then
+		return string.format("%d-ROUND BURST", w.burst)
 	elseif w.auto then
-		return "Automatic"
-	elseif w.pellets > 1 then
-		return "Pump"
+		return "FULL-AUTO"
+	elseif w.shellReload then
+		return "PUMP"
 	end
-	return "Semi-auto"
+	return "SEMI-AUTO"
 end
 
--- The gun's mastery in the detail column (the shared MetaUI.masteryPanel): MASTERY II with its diamonds, the next
--- reward (a skin), the kills inside the bar.
-local function masteryRow(card: Frame, order: number, _w: Weapons.Weapon, xp: number)
-	MetaUI.masteryPanel(card, order, Config.WeaponMasteryTiers, xp, "KILLS", "UNLOCK SKIN")
+local function isEquipped(profile: any, id: string): boolean
+	return profile ~= nil and profile.starterWeaponId == id
 end
 
 ------------------------------------------------------------------ Detail card
 local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons.Showcase?)
 	local S = UI.S
 	local profile = scene.profile()
-	UI.list(card, Enum.FillDirection.Vertical, S(8))
-	-- Color is the Armory rarity, not the archetype.
+	local id = if w then w.id else (show and show.id or "")
+	local isOwned = w ~= nil and owned(profile, w.id)
+	local equipped = w ~= nil and isOwned and isEquipped(profile, w.id)
+	local level = if w then levelOf(profile, w.id) else 0
+	-- Art box in the rarity color, the rarity on it top-left, the equipped check top-right.
 	local rarity = if w then w.rarity else (show and show.rarity or 1)
-	local color = Rarity.color(rarity)
-	local well = UI.frame({
-		BackgroundColor3 = color,
-		Size = UDim2.new(1, 0, 0, S(130)),
-		LayoutOrder = 1,
-		Parent = card,
-	})
-	UI.corner(well, S(8))
-	UI.stroke(well, Theme.Colors.white, S(1.5), 0.6)
-	local ic = UI.gunIcon(well, Theme.Colors.white, S(115))
-	ic.AnchorPoint = Vector2.new(0.5, 0.5)
-	ic.Position = UDim2.fromScale(0.5, 0.5)
+	local ic = MetaUI.well(card, 1, Rarity.color(rarity), "gun")
+	local well = ic.Parent :: Frame
+	well.Size = UDim2.new(1, 0, 0, S(if scene.mobile then 100 else 116))
+	ic.Size = UDim2.fromOffset(S(if scene.mobile then 96 else 110), S(if scene.mobile then 96 else 110))
 	if w then
 		local wc = wrapColorOf(profile, w.id)
 		if wc then
-			UI.recolorIcon(ic, wc)
+			UI.recolorIcon(ic :: Frame, wc)
 		end
 	end
-	local isOwned = w ~= nil and owned(profile, w.id)
-	local level = if w then levelOf(profile, w.id) else 0
-	-- The name with the info string beside it (mode · rarity · level), then the mastery bar under them.
-	local nameRow = UI.frame({
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(28)),
-		LayoutOrder = 2,
-		ClipsDescendants = true,
-		Parent = card,
-	})
-	-- Both labels fill the row and center vertically, so the small info line sits on the name's middle line.
-	UI.list(nameRow, Enum.FillDirection.Horizontal, S(10), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
-	UI.text({
-		Text = if w then w.displayName else (show and show.displayName or "?"),
-		Font = Theme.Fonts.body,
-		TextSize = S(24),
-		TextColor3 = Theme.Colors.white,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 1, 0),
-		LayoutOrder = 1,
-		Parent = nameRow,
-	})
-	UI.text({
-		Text = string.format(
-			"%s · %s · %s",
-			if w then modeOf(w) else (show and show.hint or ""),
-			string.upper(Rarity.name(rarity)),
-			if isOwned then string.format("LV %d", level) else "LOCKED"
-		),
-		Font = Theme.Fonts.body,
-		TextSize = S(10),
-		TextColor3 = if isOwned then Theme.Colors.gold else Theme.Colors.grey,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
-		AutomaticSize = Enum.AutomaticSize.X,
-		Size = UDim2.new(0, 0, 1, 0),
-		LayoutOrder = 2,
-		Parent = nameRow,
-	})
+	MetaUI.rarityChip(well, rarity)
+	if equipped then
+		MetaUI.wellCheck(well, equipPopFor(id))
+	end
+	-- Name, then what kind of gun it is: archetype · fire mode.
+	MetaUI.heading(
+		card,
+		2,
+		if w then w.displayName else (show and show.displayName or "?"),
+		if w
+			then string.upper(w.archetype) .. " · " .. fireMode(w)
+			else string.upper(show and show.archetype or "") .. " · " .. string.upper(show and show.hint or "")
+	)
 	if w and isOwned then
-		masteryRow(card, 3, w, masteryXp(profile, w.id))
+		MetaUI.masteryPanel(card, 4, Config.WeaponMasteryTiers, masteryXp(profile, w.id), "KILLS", "UNLOCK SKIN")
+		-- The level heads the stat rows it drives (their » next is the next level).
+		MetaUI.levelRow(card, 9, level, true)
 	end
 	if w then
 		local cur = Weapons.atLevel(w, level)
@@ -219,6 +214,7 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 			MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(Weapons.unlockCost(w)), "green", function()
 				local r = scene.request("unlockWeapon", { weaponId = w.id })
 				if r.ok then
+					markEquipPop(w.id) -- unlocking equips it
 					scene.refresh()
 				end
 			end)
@@ -239,7 +235,7 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 			scene.refresh()
 		end
 	end)
-	-- EQUIP and CUSTOMIZE share one row so the column never runs past the panel.
+	-- EQUIP (or the equipped check) and CUSTOMIZE share one row so the column never runs past the panel.
 	local pair = UI.frame({
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, S(44)),
@@ -247,12 +243,12 @@ local function detail(scene: any, card: Frame, w: Weapons.Weapon?, show: Weapons
 		Parent = card,
 	})
 	UI.list(pair, Enum.FillDirection.Horizontal, S(8))
-	local isStarter = profile and profile.starterWeaponId == w.id
-	local equip = if isStarter
-		then MetaUI.button(pair, 1, "EQUIPPED", "disabled", nil)
+	local equip = if equipped
+		then MetaUI.equippedButton(pair, 1)
 		else MetaUI.button(pair, 1, "EQUIP", "blue", function()
 			local r = scene.request("equipStarter", { weaponId = w.id })
 			if r.ok then
+				markEquipPop(w.id)
 				scene.refresh()
 			end
 		end)
@@ -271,7 +267,7 @@ local function stripTile(
 	parent: Instance,
 	order: number,
 	label: string,
-	glyph: string,
+	glyph: string, -- 3-letter caps, or "back" / "lock" for the drawn glyphs
 	locked: boolean,
 	active: boolean,
 	size: number
@@ -286,19 +282,30 @@ local function stripTile(
 	local b = UI.button({
 		Text = "",
 		BackgroundColor3 = if active then Theme.Colors.blue else Theme.Colors.panel,
+		BackgroundTransparency = if locked then 0.3 else 0,
 		Size = UDim2.fromOffset(size, size),
 		Parent = holder,
 	})
 	UI.corner(b, S(10))
 	UI.stroke(b, if active then Theme.Colors.white else Theme.Colors.black, S(1.5), 0.3)
-	UI.text({
-		Text = if locked then "🔒" else glyph,
-		Font = Theme.Fonts.display,
-		TextSize = math.floor(size * 0.4),
-		TextColor3 = if locked then Theme.Colors.grey else Theme.Colors.white,
-		Size = UDim2.fromScale(1, 1),
-		Parent = b,
-	})
+	if glyph == "back" then
+		local a = MetaUI.backArrow(b, math.floor(size * 0.7), Theme.Colors.white)
+		a.AnchorPoint = Vector2.new(0.5, 0.5)
+		a.Position = UDim2.fromScale(0.5, 0.5)
+	elseif locked then
+		local l = MetaUI.lock(b, math.floor(size * 0.5), Theme.Colors.grey)
+		l.AnchorPoint = Vector2.new(0.5, 0.5)
+		l.Position = UDim2.fromScale(0.5, 0.5)
+	else
+		UI.text({
+			Text = glyph,
+			Font = Theme.Fonts.display,
+			TextSize = math.floor(size * 0.36),
+			TextColor3 = Theme.Colors.white,
+			Size = UDim2.fromScale(1, 1),
+			Parent = b,
+		})
+	end
 	local l = UI.text({
 		Text = label,
 		Font = Theme.Fonts.display,
@@ -309,6 +316,10 @@ local function stripTile(
 		Parent = holder,
 	})
 	UI.stroke(l, Theme.Colors.black, S(1.5), 0.3)
+	b.Activated:Connect(function()
+		UI.punch(b, 0.92, 0.15)
+	end)
+	MetaUI.hover(b)
 	return b
 end
 
@@ -323,6 +334,7 @@ local function renderCustomize(scene: any)
 		return
 	end
 	scene.setCustomize(true)
+	scene.preview.weapon(w.id) -- the gun being customized is the one in the hand (the wraps paint it)
 	local size = if scene.mobile then S(52) else S(62)
 
 	-- Name over the gun.
@@ -350,7 +362,7 @@ local function renderCustomize(scene: any)
 		UI.corner(strip, S(12))
 		UI.pad(strip, S(12), S(7), S(12), S(7))
 		UI.list(strip, Enum.FillDirection.Horizontal, S(12), Enum.HorizontalAlignment.Center)
-		local back = stripTile(strip, 0, "Back", "◀", false, false, size)
+		local back = stripTile(strip, 0, "Back", "back", false, false, size)
 		back.BackgroundColor3 = Theme.Colors.red
 		back.Activated:Connect(function()
 			customize = false
@@ -391,7 +403,7 @@ local function renderCustomize(scene: any)
 	})
 	UI.list(list, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Center)
 	-- Back is the first tile in the row, so it is always on screen with the swatches.
-	local back = stripTile(list, -1, "Back", "◀", false, false, size)
+	local back = stripTile(list, -1, "Back", "back", false, false, size)
 	back.BackgroundColor3 = Theme.Colors.red
 	back.Activated:Connect(function()
 		wrapsOpen = false
@@ -407,7 +419,7 @@ local function renderCustomize(scene: any)
 		lockedText: string?,
 		isSelected: boolean,
 		isApplied: boolean,
-		sourceTag: string? -- where the wrap comes from (MASTERY; EVENT later), a tag across the top of the swatch
+		source: string? -- where a locked wrap comes from (Mastery, a saleType): a small chip on the swatch
 	): TextButton
 		local holder = UI.frame({
 			BackgroundTransparency = 1,
@@ -424,35 +436,42 @@ local function renderCustomize(scene: any)
 		UI.corner(b, S(8))
 		UI.stroke(
 			b,
-			if isSelected then MetaUI.Green else Theme.Colors.black,
-			S(if isSelected then 3 else 1.5),
-			if isSelected then 0 else 0.4
+			if isApplied then MetaUI.Green elseif isSelected then Theme.Colors.white else Theme.Colors.black,
+			S(if isApplied or isSelected then 3 else 1.5),
+			if isApplied or isSelected then 0 else 0.4
 		)
 		if lockedText then
-			UI.text({
-				Text = "🔒",
-				TextSize = math.floor(size * 0.4),
+			-- Dimmed under a padlock.
+			local veil = UI.frame({
+				BackgroundColor3 = Theme.Colors.black,
+				BackgroundTransparency = 0.55,
 				Size = UDim2.fromScale(1, 1),
+				ZIndex = 2,
 				Parent = b,
 			})
+			UI.corner(veil, S(8))
+			local l = MetaUI.lock(b, math.floor(size * 0.42), Theme.Colors.white, 3)
+			l.AnchorPoint = Vector2.new(0.5, 0.5)
+			l.Position = UDim2.fromScale(0.5, 0.5)
 		elseif isApplied then
-			UI.text({
-				Text = "✔",
-				Font = Theme.Fonts.display,
-				TextSize = math.floor(size * 0.45),
-				TextColor3 = MetaUI.Green,
-				Size = UDim2.fromScale(1, 1),
-				Parent = b,
-			})
+			local c = MetaUI.check(b, math.floor(size * 0.42), 4)
+			c.AnchorPoint = Vector2.new(1, 0)
+			c.Position = UDim2.new(1, -S(3), 0, S(3))
 		end
-		if sourceTag then
-			local tag, tagLabel = UI.pill(b, sourceTag, Theme.Colors.bg, Theme.Colors.gold, S(14), S(8))
-			tag.AnchorPoint = Vector2.new(0.5, 0)
-			tag.Position = UDim2.new(0.5, 0, 0, S(4))
-			tag.BackgroundTransparency = 0.15
-			tag.ZIndex = 3
-			tagLabel.ZIndex = 3
-			tagLabel.Font = Theme.Fonts.display
+		if source and lockedText then
+			local chip, chipLabel = UI.pill(
+				b,
+				MetaUI.sourceGlyph(source),
+				MetaUI.SourceColors[source] or Theme.Colors.gold,
+				Theme.Colors.bg,
+				S(14),
+				S(9)
+			)
+			chip.AnchorPoint = Vector2.new(0.5, 1)
+			chip.Position = UDim2.new(0.5, 0, 1, -S(3))
+			chip.ZIndex = 6
+			chipLabel.ZIndex = 6
+			chipLabel.Font = Theme.Fonts.display
 		end
 		local l = UI.text({
 			Text = name,
@@ -473,11 +492,16 @@ local function renderCustomize(scene: any)
 			tagLabel.ZIndex = 4
 			tagLabel.Font = Theme.Fonts.display
 		end
+		if isSelected and popSelect == name then
+			UI.punch(b, Config.MetaSelectPopScale, 0.25)
+		end
+		MetaUI.hover(b)
 		return b
 	end
 	local none = swatch(0, "None", Theme.Colors.panel2, nil, wrapPreview == "none", applied == nil)
 	none.Activated:Connect(function()
 		wrapPreview = "none"
+		popSelect = "None"
 		scene.preview.wrap(nil)
 		scene.refresh()
 	end)
@@ -495,15 +519,17 @@ local function renderCustomize(scene: any)
 				else MetaUI.fmtGold(Prices.wrap),
 			wrapPreview == wrap.id,
 			applied == wrap.id,
-			if mt then "MASTERY" elseif wrap.saleType ~= "Direct" then string.upper(wrap.saleType) else nil
+			if mt then "Mastery" elseif wrap.saleType ~= "Direct" then wrap.saleType else nil
 		)
 		b.Activated:Connect(function()
 			wrapPreview = wrap.id
+			popSelect = wrap.name
 			scene.preview.wrap(wrap.color)
 			UI.sound(Theme.Sounds.toast, 1.3, 0.3)
 			scene.refresh()
 		end)
 	end
+	popSelect = nil
 	-- Action for the selection, right of the row.
 	local action = UI.frame({
 		BackgroundTransparency = 1,
@@ -581,6 +607,8 @@ function WeaponsTab.render(scene: any)
 	if not selected then
 		selected = if profile then profile.starterWeaponId else Weapons.Starter
 	end
+	-- The selected gun in the avatar's hand (the real one when it is the equipped gun).
+	scene.preview.weapon(selected)
 
 	-- Filters and search.
 	local pills = MetaUI.pills(panel, FILTERS, filter, function(id)
@@ -617,8 +645,7 @@ function WeaponsTab.render(scene: any)
 	local grid, card = MetaUI.columns(panel, rightW, S(44), "weapons")
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 	local perRow = 4
-	local tileW = math.floor((grid.AbsoluteSize.X - S(8) * (perRow - 1) - S(12)) / perRow)
-	tileW = math.clamp(tileW, S(64), S(110))
+	local tileW = MetaUI.tileWidth(grid, perRow)
 
 	local ownedList: { any }, unownedList: { any } = {}, {}
 	for _, w in Weapons.List do
@@ -633,7 +660,7 @@ function WeaponsTab.render(scene: any)
 	end
 
 	local function tilesFor(list: { any }, header: string, order: number)
-		MetaUI.header(grid, order, header)
+		MetaUI.header(grid, order, header, #list)
 		if #list == 0 then
 			return
 		end
@@ -645,42 +672,31 @@ function WeaponsTab.render(scene: any)
 			local name = if w then w.displayName else (s :: Weapons.Showcase).displayName
 			local rarity = if w then w.rarity else (s :: Weapons.Showcase).rarity
 			local isOwned = w ~= nil and owned(profile, w.id)
-			local pill: string, pillColor: Color3
-			if isOwned and w then
-				pill = string.format("LV %d", levelOf(profile, w.id))
-				pillColor = Theme.Colors.gold
-			elseif w then
-				pill, pillColor = MetaUI.acquisition(w.saleType, Weapons.unlockCost(w))
-			else
-				pill, pillColor = MetaUI.acquisition((s :: Weapons.Showcase).saleType, 0)
-			end
-			local tag: string? = nil
-			if isOwned and profile and profile.starterWeaponId == id then
-				tag = "STARTER"
-			elseif isOwned and w and w.saleType ~= "Direct" then
-				tag = string.upper(w.saleType) -- brief 6: where it came from, on owned tiles too
-			end
+			local saleType = if w then w.saleType else (s :: Weapons.Showcase).saleType
+			local equipped = isOwned and isEquipped(profile, id)
 			local b = MetaUI.tile(row, {
 				name = name,
-				pill = pill,
-				pillColor = pillColor,
 				color = Rarity.color(rarity),
 				owned = isOwned,
 				selected = selected == id,
-				tag = tag,
-				tagColor = Theme.Colors.gold,
+				equipped = equipped,
 				icon = "gun",
 				iconColor = (w and wrapColorOf(profile, w.id)) or Theme.Colors.white,
 				size = tileW,
 				order = i,
 				-- Owned: the level rides in the top bar next to the name; the bottom is the mastery bar.
 				nameTag = if isOwned and w then string.format("LV %d", levelOf(profile, w.id)) else nil,
-				noPill = isOwned,
+				price = if w and not isOwned and saleType == "Direct" then Weapons.unlockCost(w) else nil,
+				source = if not isOwned then saleType else nil,
+				pop = if equipped and equipPopFor(id) then "equip" elseif popSelect == id then "select" else nil,
 			})
 			if w and isOwned then
 				MetaUI.masteryBar(b, "weapon", w.id, masteryXp(profile, w.id))
 			end
 			b.Activated:Connect(function()
+				if selected ~= id then
+					popSelect = id
+				end
 				selected = id
 				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
 				scene.refresh()
@@ -700,6 +716,10 @@ function WeaponsTab.render(scene: any)
 		end
 	end
 	detail(scene, card, w, show)
+	popSelect = nil
+	if popEquip and isEquipped(profile, popEquip) then
+		popEquip = nil -- played
+	end
 end
 
 function WeaponsTab.onProfile(scene: any)
@@ -710,7 +730,10 @@ function WeaponsTab.leave(scene: any)
 	customize = false
 	wrapsOpen = false
 	wrapPreview = nil
+	popSelect = nil
+	popEquip = nil
 	scene.preview.wrap(nil)
+	scene.preview.weapon(nil)
 	scene.setCustomize(false)
 end
 

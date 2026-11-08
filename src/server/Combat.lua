@@ -144,6 +144,7 @@ local function bulletHit(
 		* falloff(shooter, travel.Magnitude)
 		* (if headshot then st.headshotMult else 1)
 		* (if crit then Config.CritDmgMult else 1)
+		* Elements.shatterMult(model, st) -- SHATTER (synergy): read before this bullet's own chill lands
 	local dir = if travel.Magnitude > 0.1 then travel.Unit else nil
 	-- Elements go on every bullet that lands (each shotgun pellet counts), before the damage so a burn or freeze
 	-- lands even when the hit is not the kill.

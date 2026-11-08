@@ -265,7 +265,9 @@ function CrewCall.trigger(forceKind: string?)
 	local radius = if kind == "capture" then Config.SideJobCaptureRadius else Config.SideJobBeaconRadius
 	local toCenter = if pillar.Magnitude > 0.1 then -pillar.Unit else Vector3.new(1, 0, 0)
 	local position = pillar + toCenter * (Config.PillarSize / 2 + radius + 1)
-	local endsAt = Workspace:GetServerTimeNow() + Config.SideJobDurationSec
+	-- Round 18c: CRACK THE VAULT gets its own, longer window.
+	local duration = if kind == "vault" then Config.VaultJobDurationSec else Config.SideJobDurationSec
+	local endsAt = Workspace:GetServerTimeNow() + duration
 	local thisJob: Job
 	local beacon: Model? = nil
 	local fill: BasePart? = nil
@@ -339,7 +341,7 @@ function CrewCall.trigger(forceKind: string?)
 		reward = Config.SideJobReward,
 		gold = Config.SideJobGold,
 		endsAt = endsAt,
-		duration = Config.SideJobDurationSec,
+		duration = duration,
 		position = position,
 		captureSec = Config.SideJobCaptureSec,
 		markerHint = copy.markerHint,
@@ -349,7 +351,7 @@ function CrewCall.trigger(forceKind: string?)
 		"Side Job #%d (%s) started, %ds, beacon at (%d, %d)",
 		thisJob.id,
 		kind,
-		Config.SideJobDurationSec,
+		duration,
 		math.round(position.X),
 		math.round(position.Z)
 	)
@@ -463,7 +465,8 @@ function CrewCall.init()
 			return
 		end
 		-- Half-time reminder: the card comes back with a nudge while the job is still open.
-		if not j.reminded and now >= j.endsAt - Config.SideJobDurationSec * (1 - Config.SideJobReminderPct) then
+		local window = if j.kind == "vault" then Config.VaultJobDurationSec else Config.SideJobDurationSec
+		if not j.reminded and now >= j.endsAt - window * (1 - Config.SideJobReminderPct) then
 			j.reminded = true
 			World.fireRun("CallReminder", { id = j.id, title = Lines.reminder.title, text = Lines.reminder.text })
 			Log.event("Call", "Side Job #%d reminder at %d%%", j.id, math.round(Config.SideJobReminderPct * 100))

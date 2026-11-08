@@ -7,6 +7,12 @@ local Config = require(script.Parent.Config)
 -- unit: "%" for percent stats, "" for flat counts (Pierce). additive = added in points, not multiplying a base.
 -- noMalus: never picked as the malus side of a tradeoff card (flat counts would go negative; elements; cash gain).
 -- negative: the stored value is shown negated (ABILITY COOLDOWN +12 in the tracker reads "-12%").
+-- requires: a conditional (synergy) stat. It never enters the normal category draw; a card slot offers it at
+-- Config.SynergyChance only while every condition holds (Upgrades.meets). Keys, all of which must hold:
+--   element = "<element stat id>"  the player holds that element (Incendiary / Cryo / Concussive)
+--   anyElement = true              the player holds at least one element
+--   class = "<class id>"           the player's equipped class (Classes.lua ids: TORCH, ENGINEER, DOC, ...)
+export type Requires = { element: string?, anyElement: boolean?, class: string? }
 export type Stat = {
 	id: string,
 	name: string,
@@ -16,11 +22,14 @@ export type Stat = {
 	category: string,
 	noMalus: boolean?,
 	negative: boolean?,
-	effect: string?, -- elements: the effect the percent raises (Burn / Slow / Impact)
+	effect: string?, -- elements: the effect the percent raises (Burn / Slow / Impact); synergy stats: what it raises
+	requires: Requires?,
 }
 
 local Upgrades = {}
 
+-- The categories the normal draw weighs (Config.CategoryWeights). Conditional stats are category "synergy" and
+-- are drawn on their own (Config.SynergyChance), never through these.
 Upgrades.Categories = { "gun", "element", "utility" }
 
 Upgrades.Stats = {
@@ -90,6 +99,109 @@ Upgrades.Stats = {
 		category = "utility",
 		noMalus = true,
 	},
+	-- Synergy (conditional): offered only while `requires` holds; never a tradeoff, never a malus. Every one is
+	-- additive percent points of its own effect (numbers per effect in Config, "Synergy upgrades").
+	-- Element boosters.
+	{
+		id = "Wildfire",
+		name = "Wildfire",
+		short = "WLD",
+		effect = "Burn Spread",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { element = "Incendiary" },
+	},
+	{
+		id = "Shatter",
+		name = "Shatter",
+		short = "SHR",
+		effect = "Dmg vs Chilled",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { element = "Cryo" },
+	},
+	{
+		id = "Aftershock",
+		name = "Aftershock",
+		short = "AFT",
+		effect = "Shockwave",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { element = "Concussive" },
+	},
+	{
+		id = "ElementalPower",
+		name = "Elemental Power",
+		short = "ELM",
+		effect = "All Elements",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { anyElement = true },
+	},
+	-- Class synergies: one per class, on the abilities it owns.
+	{
+		id = "Accelerant",
+		name = "Accelerant",
+		short = "ACL",
+		effect = "Fire Ability Dmg",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { class = "TORCH" },
+	},
+	{
+		id = "TurretDamage",
+		name = "Turret Damage",
+		short = "TRD",
+		effect = "Turret Damage",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { class = "ENGINEER" },
+	},
+	{
+		id = "HealPower",
+		name = "Healing",
+		short = "HEL",
+		effect = "Healing",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { class = "DOC" },
+	},
+	{
+		id = "DeadEyeTime",
+		name = "Dead Eye Time",
+		short = "DET",
+		effect = "Dead Eye Time",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { class = "SHARPSHOOTER" },
+	},
+	{
+		id = "BlastRadius",
+		name = "Blast Radius",
+		short = "BLR",
+		effect = "Blast Radius",
+		additive = true,
+		unit = "%",
+		category = "synergy",
+		noMalus = true,
+		requires = { class = "INITIATE" },
+	},
 } :: { Stat }
 
 -- Card name per stat x tier (1..5).
@@ -115,6 +227,15 @@ Upgrades.TierNames = {
 	AbilityCooldown = { "Quick Reset", "Fast Recharge", "Overcharged", "Hair Trigger", "Perpetual" },
 	AbilityPower = { "Amped", "Boosted", "Supercharged", "Overload", "Maximum" },
 	CashGain = { "Pocket Change", "Loose Cash", "Big Spender", "High Roller", "Kingpin" },
+	Wildfire = { "Kindling", "Spreading Flames", "Brushfire", "Wildfire", "Firestorm" },
+	Shatter = { "Brittle", "Cracked Ice", "Shatter", "Glass Cannon", "Absolute Zero" },
+	Aftershock = { "Tremor", "Shockwave", "Aftershock", "Quake", "Earthshaker" },
+	ElementalPower = { "Attuned", "Charged", "Elemental", "Primal", "Avatar" },
+	Accelerant = { "Lighter Fluid", "Accelerant", "Napalm", "Inferno", "Hellfire" },
+	TurretDamage = { "Tuned Barrels", "Calibrated", "Hot Loads", "Killbox", "Sentry Gun" },
+	HealPower = { "Bedside Manner", "Triage", "Field Medic", "Surgeon", "Miracle Worker" },
+	DeadEyeTime = { "Steady Breath", "Held Breath", "Patient", "In The Zone", "Time Stops" },
+	BlastRadius = { "Bigger Bang", "Shrapnel", "Wide Blast", "Demo Expert", "Ground Zero" },
 } :: { [string]: { string } }
 
 -- Magnitude per stat x tier (1..5). Percent for "%" stats, flat count for "" stats. Elements: the power a later
@@ -141,6 +262,16 @@ Upgrades.Magnitude = {
 	AbilityCooldown = { 5, 8, 12, 16, 22 }, -- % shorter cooldowns (capped at Config.AbilityCooldownCap)
 	AbilityPower = { 8, 12, 18, 25, 35 }, -- % more ability damage, heal and placeable HP
 	CashGain = { 15, 25, 35, 50, 70 }, -- % more cash from kills, bags and job payouts
+	-- Synergy (conditional) stats.
+	Wildfire = { 40, 50, 60, 75, 90 }, -- % of a burn's strength that jumps to nearby enemies when the burner dies
+	Shatter = { 15, 22, 30, 40, 55 }, -- % more bullet damage to chilled enemies (frozen: x Config.ShatterFrozenMult)
+	Aftershock = { 30, 45, 60, 80, 100 }, -- % of gun damage a stagger sends to enemies around the target
+	ElementalPower = { 10, 15, 20, 28, 36 }, -- % more power on every held element
+	Accelerant = { 15, 22, 30, 40, 55 }, -- % more Molotov, Flame Turret and Oil Drum damage
+	TurretDamage = { 15, 22, 30, 40, 55 }, -- % more Turret damage per shot
+	HealPower = { 15, 22, 30, 40, 55 }, -- % more Stim Shot, Med Bag and Healing Turret healing
+	DeadEyeTime = { 15, 22, 30, 40, 55 }, -- % longer Dead Eye
+	BlastRadius = { 10, 15, 20, 28, 36 }, -- % wider Frag and Claymore blasts
 } :: { [string]: { number } }
 
 Upgrades.TradeoffChance = Config.TradeoffChance
@@ -162,6 +293,60 @@ end
 
 function Upgrades.isElement(statId: string): boolean
 	return Upgrades.category(statId) == "element"
+end
+
+-- A conditional (synergy) stat: it carries a `requires` table.
+function Upgrades.isConditional(statId: string): boolean
+	local s = Upgrades.byId(statId)
+	return s ~= nil and s.requires ~= nil
+end
+
+-- The condition filter: true when every key of the stat's `requires` holds for a player who holds `owned` (the
+-- run's tracker items by stat id) and has `classId` equipped. Stats without `requires` always pass.
+function Upgrades.meets(stat: Stat, owned: { [string]: any }, classId: string): boolean
+	local r = stat.requires
+	if not r then
+		return true
+	end
+	if r.element and not owned[r.element] then
+		return false
+	end
+	if r.anyElement then
+		local any = false
+		for _, s in Upgrades.Stats do
+			if s.category == "element" and owned[s.id] then
+				any = true
+				break
+			end
+		end
+		if not any then
+			return false
+		end
+	end
+	if r.class and r.class ~= classId then
+		return false
+	end
+	return true
+end
+
+-- The pill on a conditional card says why it showed up: "FIRE SYNERGY" (an element), "ELEMENT SYNERGY" (any
+-- element), "TORCH SYNERGY" (a class). nil for ordinary stats.
+function Upgrades.synergyTag(statId: string): string?
+	local s = Upgrades.byId(statId)
+	local r = s and s.requires
+	if not r then
+		return nil
+	end
+	local why = "SYNERGY"
+	if r.class then
+		why = r.class
+	elseif r.element then
+		-- "Fire Ammo" -> "FIRE"
+		why = string.upper((string.match(Upgrades.statName(r.element), "^(%S+)") or r.element))
+	elseif r.anyElement then
+		why = "ELEMENT"
+	end
+	return if why == "SYNERGY" then why else why .. " SYNERGY"
 end
 
 -- The power (percent) an element's first take grants: the effect at its Config numbers, on every shot.
@@ -219,7 +404,8 @@ function Upgrades.isNewElement(statId: string, value: number): boolean
 end
 
 -- What a card shows: the big line and the small line under it. Gun / utility: "+22%" over "DAMAGE". Elements:
--- "NEW" over "BURN ON EVERY SHOT" for the first take, then "+30%" over "BURN".
+-- "NEW" over "BURN ON EVERY SHOT" for the first take, then "+30%" over "BURN". Synergy: "+40%" over its effect
+-- ("BURN SPREAD").
 function Upgrades.cardTexts(statId: string, value: number): (string, string)
 	local effect = Upgrades.effectName(statId)
 	if effect then
@@ -243,12 +429,13 @@ function Upgrades.effectLine(statId: string, value: number): string
 	return string.format("%s %s", Upgrades.pctText(value, statId), string.upper(Upgrades.statName(statId)))
 end
 
--- The tracker badge: elements show their power ("130%"), utility the running total ("-12%"), gun stats the count.
+-- The tracker badge: elements show their power ("130%"), utility and synergy the running total ("-12%"), gun
+-- stats the count.
 function Upgrades.badgeText(statId: string, item: { count: number, pct: number }): string
 	local cat = Upgrades.category(statId)
 	if cat == "element" then
 		return string.format("%s%%", fmtValue(item.pct))
-	elseif cat == "utility" then
+	elseif cat == "utility" or cat == "synergy" then
 		return Upgrades.pctText(item.pct, statId)
 	end
 	return string.format("x%d", item.count)

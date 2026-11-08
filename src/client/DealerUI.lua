@@ -117,6 +117,30 @@ local function standCard(it: Item, statId: string, tier: number)
 	})
 	UI.new("UICorner", { CornerRadius = UDim.new(0.12, 0), Parent = face })
 	UI.stroke(face, color, 3)
+	-- A conditional (synergy) card: a small SYNERGY strip on the top edge (the opened card says why).
+	if Upgrades.isConditional(statId) then
+		local strip = UI.frame({
+			Name = "Synergy",
+			BackgroundColor3 = Color3.fromHex(Config.SynergyColor),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0),
+			Size = UDim2.fromScale(0.7, 0.11),
+			ZIndex = 3,
+			Parent = face,
+		})
+		UI.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = strip })
+		UI.text({
+			Text = "SYNERGY",
+			Font = Theme.Fonts.display,
+			TextScaled = true,
+			TextColor3 = Theme.Colors.bg,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(0.86, 0.8),
+			ZIndex = 3,
+			Parent = strip,
+		})
+	end
 	local icon = UI.frame({
 		BackgroundColor3 = color,
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -286,6 +310,7 @@ local function openCardPanel(it: Item, card: any)
 	})
 	UI.corner(frame, S(14))
 	UI.stroke(frame, color, S(3))
+	CardFace.synergyPill(frame, card.stat, S(18)) -- a conditional card: "TORCH SYNERGY" on the top edge
 	-- Icon well at the top, like the pick-3 reel's landing cell.
 	local wellSize = S(84)
 	local well = UI.frame({

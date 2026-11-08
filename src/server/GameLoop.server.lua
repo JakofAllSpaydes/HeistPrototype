@@ -66,6 +66,7 @@ end
 Enemy.onDeath = function(d, attacker)
 	Heat.onEnemyDead(d.wave)
 	Mastery.onKill(d.model, attacker)
+	Elements.onKill(d.model, d.root.Position) -- WILDFIRE (synergy): a Fire Ammo burn jumps to the enemies around
 	-- Brief 6 Jobs: kills by archetype and elites for the killer, boss kills for the whole party.
 	if attacker then
 		RunEvents.emit(attacker, "kill", 1, d.row.id)

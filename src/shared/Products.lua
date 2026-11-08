@@ -173,6 +173,15 @@ for _, e in DailyShop.Pool do
 	})
 end
 
+add({
+	id = "daily_reroll",
+	kind = "daily_reroll",
+	name = "REROLL DAILY ITEMS",
+	price = Config.DailyShopRerollPrice,
+	icon = { kind = "restock", amount = 1 },
+	sub = "A fresh set of daily items, just for you",
+})
+
 for _, board in { "daily", "bounty" } do
 	add({
 		id = "job_refresh_" .. board,

@@ -3,7 +3,8 @@
 -- One track of Config.PassLevels levels on the season grid (PassSeason.lua); a level's cells are claimable once it
 -- is reached and its lane's tier is owned (FREE 0, PREMIUM 1, PREMIUM+ 2), so buying a tier unlocks that lane for
 -- every level already reached. Pass XP: PassXpPerWave per wave cleared + PassXpPerBoss per boss kill at the
--- summary, plus Job rewards; overflow carries, and past the last level every PassXpPerLevel pays PassOverflowGold.
+-- summary, plus Job rewards; overflow carries. Round 18c: the levels never stop; past Config.PassLevels they are
+-- BONUS levels from PassSeason.Bonus (cycling), so the old overflow Gold is gone.
 -- Level skips (PassSkipPrice each) work at any tier. Season end (the fake clock): unclaimed cells of owned lanes
 -- auto-claim, a SEASON OVER sheet waits for the next pass open, and the next season's grid loads.
 local Players = game:GetService("Players")
@@ -33,7 +34,7 @@ end
 
 local function claimable(profile: Profiles.Profile, level: number, lane: string): boolean
 	local p = profile.pass
-	if level < 1 or level > math.min(p.level, Config.PassLevels) then
+	if level < 1 or level > p.level then
 		return false
 	end
 	if (PassSeason.LaneTier[lane] or 9) > p.tier then
@@ -75,7 +76,7 @@ end
 -- Every claimable cell, level order then lane order.
 local function claimAll(player: Player, profile: Profiles.Profile, source: string): { Grants.Result }
 	local out = {}
-	for level = 1, math.min(profile.pass.level, Config.PassLevels) do
+	for level = 1, profile.pass.level do
 		for _, lane in PassSeason.Lanes do
 			local r = claimOne(player, profile, level, lane, source)
 			if r then
@@ -125,7 +126,7 @@ function Pass.normalize(player: Player)
 	)
 end
 
--- Pass XP (runs, Jobs, debug). Levels as it goes; past the last level every PassXpPerLevel pays PassOverflowGold.
+-- Pass XP (runs, Jobs, debug). Levels as it goes, into the bonus loop past the last level.
 function Pass.addXp(player: Player, amount: number, source: string): any
 	local profile = Profiles.get(player)
 	if not profile or amount <= 0 then
@@ -136,32 +137,23 @@ function Pass.addXp(player: Player, amount: number, source: string): any
 	local from = { level = p.level, xp = p.xp }
 	p.xp += math.floor(amount)
 	local levelUps = {}
-	local overflowGold = 0
 	while p.xp >= Config.PassXpPerLevel do
 		p.xp -= Config.PassXpPerLevel
-		if p.level < Config.PassLevels then
-			p.level += 1
-			table.insert(levelUps, p.level)
-		else
-			overflowGold += Config.PassOverflowGold
-		end
-	end
-	if overflowGold > 0 then
-		Grants.apply(player, { kind = "gold", amount = overflowGold }, { source = "pass overflow" })
+		p.level += 1
+		table.insert(levelUps, p.level)
 	end
 	Profiles.markDirty(player)
 	PlayerState.get(player).dirty = true
 	Log.event(
 		"Pass",
-		"%s +%d pass XP (%s): LV %d (%d/%d)%s%s",
+		"%s +%d pass XP (%s): LV %d (%d/%d)%s",
 		player.Name,
 		amount,
 		source,
 		p.level,
 		p.xp,
 		Config.PassXpPerLevel,
-		if #levelUps > 0 then " · level up to " .. table.concat(levelUps, ", ") else "",
-		if overflowGold > 0 then string.format(" · +%d overflow gold", overflowGold) else ""
+		if #levelUps > 0 then " · level up to " .. table.concat(levelUps, ", ") else ""
 	)
 	local award = {
 		gained = math.floor(amount),
@@ -170,7 +162,6 @@ function Pass.addXp(player: Player, amount: number, source: string): any
 		toLevel = p.level,
 		toXp = p.xp,
 		levelUps = levelUps,
-		overflowGold = overflowGold,
 		perLevel = Config.PassXpPerLevel,
 		maxLevel = Config.PassLevels,
 	}
@@ -185,7 +176,7 @@ end
 
 function Pass.claimableCount(profile: Profiles.Profile): number
 	local n = 0
-	for level = 1, math.min(profile.pass.level, Config.PassLevels) do
+	for level = 1, profile.pass.level do
 		for _, lane in PassSeason.Lanes do
 			if claimable(profile, level, lane) then
 				n += 1
@@ -219,19 +210,13 @@ Purchases.register("pass", {
 })
 
 Purchases.register("pass_skip", {
-	check = function(player, profile, product)
-		Pass.normalize(player)
-		if profile.pass.level >= Config.PassLevels then
-			return "Already at the last level"
-		end
-		if profile.pass.level + (product.count or 1) > Config.PassLevels then
-			return string.format("Only %d levels left", Config.PassLevels - profile.pass.level)
-		end
+	check = function(player, _profile, _product)
+		Pass.normalize(player) -- the track never ends (bonus levels), so a skip always fits
 		return nil
 	end,
 	grant = function(player, profile, product)
 		local before = profile.pass.level
-		profile.pass.level = math.min(Config.PassLevels, before + (product.count or 1))
+		profile.pass.level = before + (product.count or 1)
 		Profiles.markDirty(player)
 		Log.event("Pass", "%s skipped LV %d -> %d", player.Name, before, profile.pass.level)
 		Remotes.Juice:FireClient(player, "PassXp", {

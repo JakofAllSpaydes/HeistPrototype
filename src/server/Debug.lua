@@ -195,6 +195,10 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		state.forceElement = true
 		toast(player, "NEXT PICK-3 HAS AN ELEMENT")
 	end,
+	ForceSynergy = function(player, state, _args)
+		state.forceSynergy = true
+		toast(player, "NEXT PICK-3 HAS A SYNERGY (IF ONE QUALIFIES)")
+	end,
 	DropCrate = function(_player, _state, _args)
 		BigCrate.drop()
 	end,
@@ -204,6 +208,16 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	GodMode = function(player, state, _args)
 		state.god = not state.god
 		toast(player, if state.god then "GOD MODE ON" else "GOD MODE OFF")
+	end,
+	-- Round 18: abilities fire back to back (no charge spent, no recharge); clears any cooldown already running.
+	NoCooldowns = function(player, state, _args)
+		state.noCooldowns = not state.noCooldowns
+		if state.noCooldowns then
+			state.charges = {}
+			state.cooldowns = {}
+		end
+		state.dirty = true
+		toast(player, if state.noCooldowns then "NO COOLDOWNS ON" else "NO COOLDOWNS OFF")
 	end,
 	ResetRun = function(_player, _state, _args)
 		for _, s in PlayerState.all() do

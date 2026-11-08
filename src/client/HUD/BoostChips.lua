@@ -1,6 +1,6 @@
 --!strict
--- Brief 6: the boost chips. Every active boost as a chip (3-letter glyph, short label, a live mm:ss) plus VIP's
--- permanent CASH chip; a chip pulses in its last Config.BoostChipWarnSec and pops out on expiry with a toast. Used
+-- Brief 6: the boost chips. Every active boost as a chip (Round 18: just the 3-letter glyph, with the live mm:ss
+-- under it; no name or amount) plus VIP's permanent chip; a chip pulses in its last Config.BoostChipWarnSec and pops out on expiry with a toast. Used
 -- twice: the hub HUD's BOOSTS corner (bottom-right, with the VIP daily gift chip and a + into the store) and the
 -- match HUD (small, under the heat stars; below the boss bar while one is up).
 local RunService = game:GetService("RunService")
@@ -53,14 +53,7 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 	type Chip = { holder: Frame, chip: Frame, timer: TextLabel?, id: string, warned: boolean }
 	local chips: { [string]: Chip } = {}
 
-	local function makeChip(
-		id: string,
-		order: number,
-		glyph: string,
-		label: string,
-		color: Color3,
-		clickable: (() -> ())?
-	): Chip
+	local function makeChip(id: string, order: number, glyph: string, color: Color3, clickable: (() -> ())?): Chip
 		local holder = UI.frame({
 			Name = id,
 			BackgroundTransparency = 1,
@@ -78,19 +71,9 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 		UI.text({
 			Text = glyph,
 			Font = Theme.Fonts.display,
-			TextSize = math.floor(size * 0.34),
+			TextSize = math.floor(size * (if #glyph <= 1 then 0.6 else 0.4)),
 			TextColor3 = color,
-			Position = UDim2.fromOffset(0, math.floor(size * 0.06)),
-			Size = UDim2.new(1, 0, 0.55, 0),
-			Parent = chip,
-		})
-		UI.text({
-			Text = label,
-			Font = Theme.Fonts.display,
-			TextSize = math.max(8, math.floor(size * 0.2)),
-			TextColor3 = Theme.Colors.text,
-			Position = UDim2.fromScale(0, 0.58),
-			Size = UDim2.new(1, 0, 0.36, 0),
+			Size = UDim2.fromScale(1, 1),
 			Parent = chip,
 		})
 		local timer = UI.text({
@@ -138,10 +121,16 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 
 	local plusChip: Chip? = nil
 	if opts.hub then
-		plusChip = makeChip("plus", 99, "+", "BOOST", Theme.Colors.grey, opts.onPlus)
-		local stroke = plusChip.chip:FindFirstChildOfClass("UIStroke")
+		local pc = makeChip("plus", 99, "+", Theme.Colors.grey, opts.onPlus)
+		plusChip = pc
+		local stroke = pc.chip:FindFirstChildOfClass("UIStroke")
 		if stroke then
 			stroke.Transparency = 0.5
+		end
+		local pt = pc.timer
+		if pt then
+			pt.Text = "BOOST"
+			pt.TextColor3 = Theme.Colors.textDim
 		end
 	end
 
@@ -154,26 +143,14 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 			local b = p and p.boosts and p.boosts[def.id]
 			local left = if b then (tonumber(b.expiresAt) or 0) - now else 0
 			if left > 0 and not chips[def.id] then
-				chips[def.id] = makeChip(def.id, i, def.glyph, def.short, Color3.fromHex(def.color), opts.onPlus)
+				chips[def.id] = makeChip(def.id, i, def.glyph, Color3.fromHex(def.color), opts.onPlus)
 			elseif left <= 0 and chips[def.id] then
 				remove(def.id, def.name .. " BOOST ENDED")
 			end
 		end
 		-- VIP's permanent CASH chip.
 		if vipActive(p) and not chips.vip then
-			local c = makeChip(
-				"vip",
-				10,
-				"VIP",
-				string.format("+%d%% $", math.round(Config.VipCashPct * 100)),
-				VIP_GOLD,
-				opts.onPlus
-			)
-			chips.vip = c
-			if c.timer then
-				c.timer.Text = "VIP"
-				c.timer.TextColor3 = VIP_GOLD
-			end
+			chips.vip = makeChip("vip", 10, "VIP", VIP_GOLD, opts.onPlus) -- permanent: no timer
 		elseif not vipActive(p) and chips.vip then
 			remove("vip", nil)
 		end
@@ -192,7 +169,7 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 			local n = if p and typeof(p.reviveTokens) == "number" then p.reviveTokens else 0
 			local c = chips.tokens
 			if not c then
-				c = makeChip("tokens", 50, "+", "TOKENS", Color3.fromHex("3FD47A"), opts.onTokens)
+				c = makeChip("tokens", 50, "+", Color3.fromHex("3FD47A"), opts.onTokens)
 				chips.tokens = c
 			end
 			local tl = c.timer
@@ -211,7 +188,7 @@ function BoostChips.new(parent: Instance, opts: Opts, track: ((RBXScriptConnecti
 		if opts.hub then
 			local ready = giftReady(p)
 			if ready and not chips.gift then
-				local c = makeChip("gift", 0, "GFT", "◆ " .. Config.VipDailyGold, VIP_GOLD, opts.onGift)
+				local c = makeChip("gift", 0, "GFT", VIP_GOLD, opts.onGift)
 				chips.gift = c
 				if c.timer then
 					c.timer.Text = "CLAIM"

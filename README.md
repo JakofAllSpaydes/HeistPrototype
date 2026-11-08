@@ -17,14 +17,14 @@ BOOSTS, VIP, GOLD), revive tokens, a battle pass with its own scene, daily Jobs 
 and the in-run upsells. Nothing touches real Robux; one module per side (`Purchases.lua`, `PurchaseSheet.lua`) is
 where `MarketplaceService` goes later.
 
-State as of **5 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
+State as of **7 Nov 2026**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
 phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes), the Round 13 multiplayer pass
 (revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
 ragdolls and hit sparks), the brief 4 build (Round 14: roster, boss, heat as pace, bags, vault, level, scoreboard) and
 the brief 5 build (Round 15: crate reel, elements, revive bars, ENGINEER, mastery, dealer, pause) with its feedback
 rounds 15b–15m, the Round 16 / 16b feedback passes, and the brief 6 build (Round 17: fake purchase flow, store,
-crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c.
+crates, boosts, VIP, battle pass, Jobs; one commit per build step) with its feedback rounds 17b / 17c and 18–18d.
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list" and the "Brief 6 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -62,12 +62,12 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | P | Vote to pause (in a wave, the intermission or the dealer break; solo pauses at once). Also on the dealer card and the scoreboard. RESUME on the overlay (anyone). |
 | T / V / F at the dealer | During the dealer break: T teleports you to the stall (as often as you like), V votes to skip the break, F buys the stand or prop whose panel is open. Mobile: the card's buttons and the panel's BUY. |
 | F | Swap with a floor gun (ProximityPrompt). 0.5s cooldown between swaps. In the hub: `OPEN` on a station (WEAPONS / CLASSES / AVATAR) or a minigame prop, `TIER n` on the pad. |
-| F (hold `BagCollectSec`) | `COLLECT` a cash bag (match cash to everyone) or `BANK` a gold bag (ticks the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
+| (walk up to a bag) | No button: stand within `BagStartRadius` of a cash or gold bag and it fills over `BagChannelSec`, then it is yours (cash to everyone / the team's `◆ BANKED` row). Teammates see `GRABBING` over your head. |
 | F at the vault door | `CRACK` the vault while CRACK THE VAULT is the open side job: opens the Safe dial at the wave bracket's tier. |
 | Tab (hold) | The scoreboard: WAVE · TIME · stars · BANKED · CASH and one row per member in MVP order; the game keeps running behind it. Mobile: tap the wave bar (the `≡` chip beside N LEFT), tap again or anywhere outside to close. |
 | Walk onto the queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. |
 | PLAY (hub HUD) | Walks you to the nearest queue zone. Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
-| SHOP tile / Gold + (hub HUD) | Brief 6: the store window over a dark dim, scrolled to FEATURED (the Gold + scrolls to GOLD). The rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD) scrolls the one page to that section; the R$ + is GET ROBUX (adds 10,000 fake); LEAVE or Esc closes it (Esc closes an open detail sheet first). VIEW CRATE / VIEW BUNDLE / VIEW VIP on customization tiles open it on that item. |
+| SHOP tile / Gold + (hub HUD) | Brief 6: the store window over a dark dim, scrolled to FEATURED (the Gold + scrolls to GOLD). The rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD) scrolls the one page to that section; LEAVE, Esc or a tap outside the window closes it (Esc closes an open detail sheet first). A red dot on the SHOP tile means banked crate opens or the VIP gift wait; the tile then opens on that section. VIEW CRATE / VIEW BUNDLE / VIEW VIP on customization tiles open it on that item. |
 | PASS / JOBS (hub HUD, right-center) | The battle pass scene and the JOBS board. F at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item and CLAIM IN PASS on the summary open the pass. Esc / LEAVE / BACK closes either. |
 | $ + (match HUD cash row) | Brief 6: the cash-pack sheet (+$5,000 / +$20,000 / +$100,000 for fake Robux); the game keeps running behind it. Short of cash at the dealer, the same sheet opens (REROLL offers the R$ RESTOCK). |
 | F (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
@@ -78,7 +78,7 @@ Studio's Local Server with 2–4 players; everything else works solo.
 | V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
 | Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / E / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
-| Backtick | Debug panel (brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
+| Backtick | Debug panel (Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
 Hub HUD on mobile landscape: dock tiles 76×68, PLAY 44px, SHOP and INVITE as icon tiles, queue card at 80%; the
@@ -157,9 +157,14 @@ shows the final stars next to the wave. A debug skip or the run ending leaves th
 
 **Bags (brief 4, `Bags.lua`, spots in `BagSpots.lua`).** Two kinds, same interaction: a green duffel with a `$` pays
 `CashBagBase × (1 + CashBagPerWave × wave)` match cash to every member; a gold case adds `GoldBagValue × (1 +
-GoldBagPerWave × wave)` to the team's Banked total (`◆ N BANKED` row under the cash row, ticks on collect). Hold F
-`BagCollectSec` to collect (`GRABBING` over your head), the bag pops in a money burst and a `<NAME> GRABBED $300` /
-`<NAME> BANKED ◆ 40` toast. `CashBagsPerWave` (1) and `GoldBagsPerWave` (0.5: fractions carry, so every other wave)
+GoldBagPerWave × wave)` to the team's Banked total (`◆ N BANKED` row under the cash row, ticks on collect). No
+button (round 18): standing within `BagStartRadius` of a bag claims it and a ring of ticks over it fills over
+`BagChannelSec` while the bag glows and slides toward you (`GRABBING` over your head for teammates); it stays yours
+until you step past `BagKeepRadius`. Full, the bag shoots into you and pops in a money burst with a `<NAME> GRABBED
+$300` / `<NAME> BANKED ◆ 40` toast, and the next bag in reach starts at once (the one with fill first, else the
+nearest); bags started within `BagStreakWindowSec` of the last fill `BagStreakMult` faster each, down to
+`BagStreakMinMult`. A bag you leave keeps its fill `BagHoldSec`, then drains `BagDrainPerSec`; a bag someone is
+filling is skipped by everyone else. `CashBagsPerWave` (1) and `GoldBagsPerWave` (0.5: fractions carry, so every other wave)
 spawn at every wave start on free arena spots weighted away from the crew (`BagFarMult` beyond `BagFarDistance`,
 `BagNearMult` within `BagNearDistance`; gold bags keep `GoldBagMinDistance` when any spot allows it), up to
 `MaxActiveBags`; bursts (the boss body, the vault, the debug Loot Rush) bypass the cap; `BAGS DROPPED · 1 CASH · 1
@@ -276,7 +281,7 @@ Income: kill cash = archetype cash × (1 + `CashWaveMult` × (wave − 1)) × el
 (target 1–1.5 through wave 20).
 
 **Abilities.** All five class kits are live (`Abilities.lua`, numbers in Config's Abilities group, growth per
-ability level through `AbilityGrowth`). Placeables stand `StructurePlaceDistance` ahead; attackable ones (turret,
+ability level through `AbilityGrowth`). Placeables stand `StructurePlaceDistance` ahead (0: where you stand, Round 18b); attackable ones (turret,
 barricade, healing turret, flame turret, oil drum) have HP bars and enemies walk to and hit them; a med bag and a
 claymore are not targeted. Ground fields (med bag, molotov, the fire a broken drum leaves) act every `FieldTickSec`
 on whoever stands in the circle. Thrown abilities (frag, flashbang, molotov) land at the cursor up to `ThrowMaxRange` (100), arcing higher with
@@ -366,7 +371,7 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
   prints `[GHS Purchase] purchase <id> R$<price> balance <after> (<name>, hub | in-run wave N · context)` and lands in
   `profile.purchases`; the debug `Buy log` prints the readout with totals per product.
 - **Store window (`Store/StoreScene.lua`, Round 17b).** An overlay window over a dark dim (not a scene), clear of the
-  Roblox top bar like every brief 6 screen (`Fx.topInset`). Header: SHOP, the R$ balance with +, Gold with +, LEAVE. The
+  Roblox top bar like every brief 6 screen (`Fx.topInset`). Header: SHOP, Gold with +, LEAVE (Round 18: no R$ balance; a tap outside the window closes it). The
   tabs are a rail on the left (red dot = claimable / new) and the store is one scrolling page of sections in rail order:
   a tab scrolls to the start of its section and the rail's highlight follows the scroll, so nothing is ever hidden. The
   window scales and slides in with an overshoot, cards cascade in 40ms apart. The style bar lives in `Store/Fx.lua` (glow, rays, UI particles, hover lift /
@@ -423,7 +428,7 @@ pass wraps glow), and bundle / VIP / pass poses whose ids live in `Poses.lua` (p
   PREMIUM it costs the difference) with the hero cosmetics at 10 / 20 / 30. A cell is claimable once its level is reached
   and its lane owned, so a tier bought later unlocks every level already reached (CLAIM ALL). Pass XP: `PassXpPerWave`
   per wave cleared + `PassXpPerBoss` per boss kill at the summary, plus Job rewards; overflow carries; past the last level
-  every `PassXpPerLevel` pays `PassOverflowGold`. Skips ×1 / ×5 / ×10 at `PassSkipPrice` each, any tier. Season end
+  the track keeps going as BONUS levels cycling `PassSeason.Bonus` (Round 18c). Skips ×1 / ×5 / ×10 at `PassSkipPrice` each, any tier. Season end
   auto-claims owned lanes and shows SEASON OVER on the next open. The scene runs on its own PASS STAGE: the season banner
   (level badge, XP bar, ENDS IN, skips) top-left, the premium sell card left, the selected reward in 3D (on the
   mannequin for cosmetics, turning on the pedestal otherwise) with its card (rarity, REQUIRES PREMIUM / UNLOCKS AT LEVEL
@@ -875,9 +880,9 @@ mannequin in its idle; the output shows the load error).
 1. Fresh profile: the hub's BOOSTS corner shows the token chip (`×3`) and the `+`, PASS (LV 1) and JOBS sit
    right-center with red dots; a few seconds in MARLOW's card slides in top-right (`New jobs on the board…`) and his
    corkboard's beacon pulses. Output: `[GHS Jobs] … new dailies`, `[GHS Profile] … v2 -> v3` on an old profile.
-2. SHOP: the window over a dim, below the Roblox top bar, header with `R$ 100,000` and Gold; the rail scrolls to each
+2. SHOP: the window over a dim, below the Roblox top bar, header with Gold (no R$); the rail scrolls to each
    section and follows your own scrolling; cards cascade, hover lifts / brightens, buttons grow on hover and squash on
-   press (none ever move away), sounds on every tap. LEAVE / Esc return to the hub. R$ + adds 10,000 through the sheet.
+   press (none ever move away), sounds on every tap. LEAVE / Esc / a tap outside return to the hub (fake R$: the debug panel’s set R$, or GET ROBUX on the sheet when you are short).
 3. GOLD: six packs, BEST VALUE on RESERVE; buy one → the sheet (spinner 0.6s) → `… purchased!`, Gold flies into the
    header and counts up; the output prints the purchase line.
 4. FEATURED: one wide bundle bar with every item inline, -X%, WORTH and BUY, and `LEAVING IN hh:mm:ss` ticking; buy
@@ -909,7 +914,7 @@ mannequin in its idle; the output shows the load error).
     PASS XP bar fills (40 a wave, 200 a boss) and CLAIM IN PASS opens the scene. Debug `+1 day` until the season ends →
     SEASON OVER on the next open and season 2 (COLD CASE).
 11. Jobs: JOBS / F at the board → the camera pushes onto the corkboard; the dailies show progress; play a run → JOB
-    toasts at each quarter, the scoreboard footer, the summary ticks; a finished one gets the DONE stamp at the board,
+    toasts at each quarter, the scoreboard Job cards, the summary ticks; a finished one gets the DONE stamp at the board,
     CLAIM pays XP + Gold + pass XP (big reward tiles); a claimed card offers NEW JOB · R$ 49 (the bounty NEW BOUNTY ·
     R$ 99) for a fresh one; the header timers tick (`16:42:05`, `2D 16H 42M`). Debug `Reset jobs` draws a new board.
 12. Rejoin: balance, tokens, boosts with their time left, VIP, pass level and claims, Job progress, banked crate opens
@@ -1309,6 +1314,52 @@ Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, 
   Jobs, framed ticking timers. Hub: the `+` boost chip hides while a boost runs; in a run the chips sit above the cash.
   The crate's lid is a soft lootbox pop (a rising chime arpeggio and a sparkle) instead of a bang; the rattle, landing
   thump, flash and shake are all quieter. The debug panel caps at the screen height and scrolls.
+
+- **Round 18 (7 Nov, feedback on brief 6)** — Pass tiles name their state in a footer strip: CLAIM (green, pulsing rim,
+  halo, bobbing art, sparks on claim), CLAIMED (dimmed, a big check), LOCKED (padlock, lane color) and LV n (owned, not
+  reached); a level with something waiting turns its band green; the detail card's pill matches (READY TO CLAIM /
+  CLAIMED / LOCKED · PREMIUM / LV n · N XP TO GO) and a locked reward offers UNLOCK PREMIUM right there. The JOBS board
+  is reprinted: cream paper with dark ink, eyebrows on ink tape, a real inset progress bar, DONE / PAID stamps, a big
+  CLAIM above the rewards pinned to the card bottom, a drawn MARLOW bust on the poster and the announce card
+  (`JobBoardStaggerSec`, `JobBarFillSec`, `JobStampSec`, `JobClaimPulseSec`). Reward reveals close on a tap anywhere
+  (a first tap lands any cards still flying; no DONE button). The shop drops the R$ balance, closes on a tap outside the
+  window, moves the bundle's LEAVING IN onto the FEATURED title row (it covered the price), adds REROLL on DAILY ITEMS
+  (`DailyShopRerollPrice` R$ 25, a fresh per-profile draw for the day, `profile.dailyReroll`), sorts owned dailies last,
+  quiets owned cards and keeps card titles on one line. The hub SHOP tile gets a red-dot breadcrumb for banked crate
+  opens or the VIP gift and opens on that section. The Create Party boosts row is live (POWER / CASH / LUCKY open their
+  duration sheet and show a running timer; REVIVE TOKENS shows `×N` and opens the packs). Boost chips (hub and match)
+  are the glyph and the timer only. Locker tile tags (CRATE / VIP / ...) sit under the name instead of over it. Nine
+  conditional "synergy" upgrades enter the pick-3 and the dealer only when they apply, at `SynergyChance` per slot with
+  a small "FIRE SYNERGY"-style pill: WILDFIRE (Fire Ammo: a burning kill spreads the burn), SHATTER (Ice: bonus damage
+  to chilled / frozen), AFTERSHOCK (Impact: a stagger shockwave), ELEMENTAL POWER (any element), and per class
+  ACCELERANT (TORCH fire), TURRET DAMAGE (ENGINEER), HEAL POWER (DOC), DEAD EYE TIME (SHARPSHOOTER), BLAST RADIUS
+  (INITIATE); conditions are a `requires` table on the stat (`Upgrades.meets`). Debug: NO COOLDOWNS and force SYNERGY.
+
+- **Round 18b (7 Nov)** — Pass tiles drop the text footer: claimable glows green with breathing art and sparks,
+  claimed goes dark under a big check, locked is veiled with a padlock, not-reached is dimmed (the lane color runs along
+  the bottom edge). JOBS: NEW JOBS IN sits centered over the three dailies. Placeables go down where you stand
+  (`StructurePlaceDistance` 0; players walk through them). Bags have no button: standing within `BagStartRadius` fills
+  one over `BagChannelSec` and it is collected, the next one in reach starts at once and fills faster in a streak
+  (`BagStreak*`); stepping off holds then drains the fill (`BagHoldSec`, `BagDrainPerSec`) and the bag stays yours until
+  `BagKeepRadius`, so a pile empties without re-aiming; a world ring of ticks fills over the bag and it flies into you
+  (`Client/BagChannel.lua`; `BagCollectSec` dropped). Weapons / Classes / Avatar: equipped is a big drawn check over the
+  art plus a green outline (no EQUIPPED text); owned tiles lose source tags, unowned ones show a 3-letter source chip or
+  the Gold price; rarity sits on the art box; weapons read "PISTOL · SEMI-AUTO" with the level heading the stats; tapping
+  a weapon previews it in your hand (`Meta/GunPreview.lua`, `MetaWeaponPreview`), reverting on leaving the tab;
+  scale-only hover and a select pop everywhere (`MetaTileHoverScale`, `MetaSelectPopScale`, `MetaEquipBadgeShare`).
+
+- **Round 18c (7 Nov)** — Customization: the equipped check sits centered on the grid tile's art and nowhere else (the
+  side panel loses it, the button is the plain EQUIPPED again); the sub line sits beside the name ("Skorpion  SMG ·
+  FULL-AUTO") in all three tabs. The scoreboard shows the dailies and the bounty as small paper cards under the player
+  rows (tilted in progress, straight with a green rim and glow when done, faded when claimed; `ScoreJobCardH`,
+  `ScoreJobStaggerSec`, `ScoreJobFillSec`). The pass never ends: past `PassLevels` every level is a gold BONUS level
+  whose three cells cycle `PassSeason.Bonus` (12 rows of Gold, tokens, crate opens, boosts, mastery), the track always
+  shows a page past where you are and skips always fit (`PassOverflowGold` dropped). CRACK THE VAULT's window is
+  `VaultJobDurationSec` (150, twice a side job).
+
+- **Round 18d (7 Nov)** — Placeables (turret, barricade, healing turret, claymore, flame turret, oil drum) stand until
+  destroyed (their `*Lifetime` keys are 0 = no expiry); the med bag keeps `MedBagLifetime` (15s). They still clear at
+  run end and when the vault seals on them.
 
 ## Open design notes (not built)
 

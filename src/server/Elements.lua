@@ -9,6 +9,8 @@
 --   CONCUSSIVE: a ConcussiveStuds x power slide along the shot (Heavy and the boss ConcussiveHeavyMult of it) and a
 --     ConcussiveStunSec interrupt at most every ConcussiveInterruptSec (never on the boss); a white ring at the hit.
 -- The look is the client's (StatusFx.lua) off the Burning / Chilled / Frozen attributes on the enemy model.
+-- Synergy upgrades (conditional cards) hook in here too: WILDFIRE (Elements.onKill), SHATTER (Elements.shatterMult,
+-- read by Combat) and AFTERSHOCK (on the CONCUSSIVE interrupt). ELEMENTAL POWER is in the powers (Stats.lua).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -138,6 +140,127 @@ function Elements.burn(model: Model, owner: Player?, dps: number, seconds: numbe
 	model:SetAttribute("Burning", true)
 end
 
+-- Damage on a player's behalf from an element (a burn tick, an AFTERSHOCK): kill cash with their CASH GAIN, the
+-- Hit juice to them. `dmg` is final (boosts already in).
+local function ownedHit(owner: Player?, model: Model, dmg: number, pos: Vector3)
+	local live = owner ~= nil and owner.Parent ~= nil
+	local killed, killCash =
+		Enemy.damage(model, dmg, if live then owner else nil, { force = Config.RagdollTickForce, tick = true })
+	if live and owner then
+		local state = PlayerState.get(owner)
+		local cash = 0
+		if killed then
+			cash = math.round(killCash * PlayerState.computed(state).cashGain)
+			Economy.addCash(state, cash)
+		end
+		Remotes.Juice:FireClient(owner, "Hit", {
+			position = pos,
+			amount = dmg,
+			headshot = false,
+			crit = false,
+			killed = killed,
+			model = model,
+			cash = cash,
+			secondary = true,
+		})
+	end
+end
+
+-- A burn handed over whole (WILDFIRE): `totalDps` is the burn's full strength, not a per-stack share. Keeps the
+-- stronger burn if one is already running; later Fire Ammo hits stack on it as usual.
+local function ignite(model: Model, owner: Player, totalDps: number, seconds: number, tickRate: number)
+	if not Enemy.data(model) then
+		return
+	end
+	local s = statusOf(model)
+	local now = os.clock()
+	local fresh = s.burnUntil <= now
+	if fresh then
+		s.burnStacks = 0
+		s.burnDps = 0
+	end
+	if totalDps >= s.burnDps then
+		s.burnDps = totalDps
+		s.burnOwner = owner
+	end
+	s.burnRate = if fresh then tickRate else math.max(s.burnRate, tickRate)
+	if fresh then
+		s.nextBurn = now + burnInterval(s)
+	end
+	s.burnUntil = math.max(s.burnUntil, now + seconds)
+	model:SetAttribute("Burning", true)
+end
+
+-- WILDFIRE (synergy): an enemy dying with its burner's Fire Ammo burn on it hands the burn to every enemy within
+-- WildfireRadius at the burner's WILDFIRE share. Fire fields alone (no ammo burn) do not spread. Enemy.onDeath.
+function Elements.onKill(model: Model, at: Vector3)
+	local s = statuses[model]
+	if not s or s.burnUntil <= os.clock() or s.burnDps <= 0 then
+		return
+	end
+	local owner = s.burnOwner
+	if not owner or not owner.Parent then
+		return
+	end
+	local share = PlayerState.computed(PlayerState.get(owner)).wildfire / 100
+	if share <= 0 then
+		return
+	end
+	local victims = Enemy.within(at, Config.WildfireRadius, model)
+	if #victims == 0 then
+		return
+	end
+	for _, victim in victims do
+		ignite(victim, owner, s.burnDps * share, Config.IncendiaryBurnSec, s.burnRate)
+	end
+	World.fireRun(
+		"Blast",
+		{ position = at, radius = Config.WildfireRadius, color = Color3.fromRGB(255, 140, 40), shake = 0, pitch = 1.3 }
+	)
+end
+
+-- SHATTER (synergy): the bullet damage multiplier against this enemy: chilled +shatter%, frozen
+-- ShatterFrozenMult x that. Read before this shot's own chill lands.
+function Elements.shatterMult(model: Model, st: Types.Computed): number
+	if st.shatter <= 0 then
+		return 1
+	end
+	local s = statuses[model]
+	if not s then
+		return 1
+	end
+	local now = os.clock()
+	if s.frozenUntil > now then
+		return 1 + st.shatter / 100 * Config.ShatterFrozenMult
+	elseif s.chillUntil > now then
+		return 1 + st.shatter / 100
+	end
+	return 1
+end
+
+-- AFTERSHOCK (synergy): an Impact stagger sends `dmg` to every other enemy within AftershockRadius. The ring is
+-- drawn at most every AFTERSHOCK_FX_SEC so a crowd of staggers stays quiet.
+local AFTERSHOCK_FX_SEC = 0.2
+local lastShockFx = -math.huge
+local function aftershock(owner: Player, source: Model, dmg: number, at: Vector3)
+	local victims = Enemy.within(at, Config.AftershockRadius, source)
+	if #victims == 0 then
+		return
+	end
+	local now = os.clock()
+	if now - lastShockFx >= AFTERSHOCK_FX_SEC then
+		lastShockFx = now
+		World.fireRun(
+			"Blast",
+			{ position = at, radius = Config.AftershockRadius, color = Color3.new(1, 1, 1), shake = 0, pitch = 1.6 }
+		)
+	end
+	local amount = math.max(1, math.round(dmg))
+	for _, victim in victims do
+		ownedHit(owner, victim, amount, Enemy.rootPosition(victim) or at)
+	end
+end
+
 local function chill(model: Model, power: number)
 	local d = Enemy.data(model)
 	if not d then
@@ -175,7 +298,7 @@ local function chill(model: Model, power: number)
 	end
 end
 
-local function knockback(model: Model, power: number, dir: Vector3?, at: Vector3)
+local function knockback(model: Model, power: number, dir: Vector3?, at: Vector3, owner: Player, st: Types.Computed)
 	local d = Enemy.data(model)
 	if not d then
 		return
@@ -204,6 +327,9 @@ local function knockback(model: Model, power: number, dir: Vector3?, at: Vector3
 	if not d.row.boss and now - s.lastInterrupt >= Config.ConcussiveInterruptSec then
 		s.lastInterrupt = now
 		Enemy.stun(model, Config.ConcussiveStunSec)
+		if st.aftershock > 0 then
+			aftershock(owner, model, st.damage * st.aftershock / 100, at)
+		end
 	end
 	if dist <= 0.2 then
 		return
@@ -245,37 +371,15 @@ function Elements.apply(owner: Player, st: Types.Computed, model: Model, procs: 
 		chill(model, st.cryoPower)
 	end
 	if procs.concussive then
-		knockback(model, st.concussivePower, dir, at)
+		knockback(model, st.concussivePower, dir, at, owner, st)
 	end
 end
 
 -- A burn tick on the owner's behalf: kill cash with their CASH GAIN, the Hit juice to them.
 local function burnTick(s: Status)
-	local model = s.model
 	local owner = s.burnOwner
 	local dmg = math.max(1, math.round(s.burnDps * Config.FieldTickSec * Boosts.damageMult(owner))) -- POWER (brief 6)
-	local live = owner ~= nil and owner.Parent ~= nil
-	local pos = Enemy.rootPosition(model) or Vector3.zero
-	local killed, killCash =
-		Enemy.damage(model, dmg, if live then owner else nil, { force = Config.RagdollTickForce, tick = true })
-	if live and owner then
-		local state = PlayerState.get(owner)
-		local cash = 0
-		if killed then
-			cash = math.round(killCash * PlayerState.computed(state).cashGain)
-			Economy.addCash(state, cash)
-		end
-		Remotes.Juice:FireClient(owner, "Hit", {
-			position = pos,
-			amount = dmg,
-			headshot = false,
-			crit = false,
-			killed = killed,
-			model = model,
-			cash = cash,
-			secondary = true,
-		})
-	end
+	ownedHit(owner, s.model, dmg, Enemy.rootPosition(s.model) or Vector3.zero)
 end
 
 function Elements.clearAll()

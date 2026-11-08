@@ -1,14 +1,15 @@
 --!strict
 -- Brief 6: the JOBS board. Opens from the hub HUD JOBS button, F at MARLOW's corkboard in the yard, or a finished
 -- Job on the summary; the camera pushes onto the corkboard and the HUD hides.
---   header   JOBS · NEW JOBS IN 6h 12m · BOUNTY RESETS IN 3d
---   dailies  three pinned paper cards filling the board, slightly rotated: title, MARLOW's line, progress, the
---            reward row, CLAIM when done
---   bounty   a WANTED poster: title, MARLOW's portrait, progress, the reward row, CLAIM
+--   header   JOBS · NEW JOBS IN (over the dailies) · BOUNTY RESETS IN (over the poster)
+--   dailies  three pinned paper cards filling the board, slightly rotated: DAILY JOB tag, title, MARLOW's line, the
+--            state area (progress / DONE + CLAIM / PAID + NEW JOB), the reward row along the bottom
+--   bounty   a WANTED poster: WEEKLY BOUNTY tag, MARLOW's portrait, title, line, progress or CLAIM, the reward row
 --   footer   CLAIM ALL when more than one is done, BACK
--- States: in progress (paper, pin), complete (a red DONE stamp slams on, the card lifts and glows), claimed (a stub
--- with a check until the reset). Also here: MARLOW's hub announcement card, the board's beacon pulse, the in-run JOB
--- toasts.
+-- States: in progress (a dark inset bar with the count), complete (a red DONE stamp slams on, the sheet glows, CLAIM
+-- pops), claimed (the sheet settles flat and greys, a blue PAID stamp, NEW JOB until the reset). Round 17d polish:
+-- dark ink on light paper, the shadow and glow sit behind the paper, cards cascade in on open. Also here: MARLOW's
+-- hub announcement card, the board's beacon pulse, the in-run JOB toasts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -37,13 +38,26 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local camera = Workspace.CurrentCamera :: Camera
 
-local PAPER = Color3.fromHex("F2E6C8")
-local INK = Color3.fromHex("2A2420")
+-- Paper and ink. Text on paper is always dark ink; color lives in the stamps, the bar fill and the reward rims.
+local PAPER = Color3.fromHex("F4EBD3")
+local POSTER = Color3.fromHex("EAD7AC")
+local SETTLED = Color3.fromHex("C9C4B8") -- a claimed sheet greys toward this
+local INK = Color3.fromHex("241C16")
+local INK_SOFT = Color3.fromHex("4E3D2C")
+local SIGN = Color3.fromHex("8A2A1A")
 local STAMP = Color3.fromHex("C8323C")
+local PAID = Color3.fromHex("2B4C8C")
+local GREEN = Color3.fromHex("2FB75A")
+local FILL = Color3.fromHex("F0A02E")
+local FILL_DONE = Color3.fromHex("3FC060")
+local TRACK = Color3.fromHex("3A2E24")
+local SPARK = Color3.fromHex("FFE08A")
 
 local open = false
 local gui: ScreenGui? = nil
 local body: Frame? = nil
+local fxLayer: Frame? = nil -- claim sparks live here so a re-render does not cut them off
+local entrance = false -- the next render cascades the sheets in (only the first one after opening)
 local camFrom: CFrame? = nil
 local camTo: CFrame? = nil
 local camT0, camSec = 0, 0.6
@@ -51,6 +65,7 @@ local savedMode = "gameplay"
 local savedHud = "hub"
 local lockedMovement = false
 local seenDone: { [string]: boolean } = {} -- entry ids already shown as DONE (the stamp slams once)
+local justClaimed: { [string]: boolean } = {} -- board keys claimed from this screen (their PAID stamp slams once)
 
 local function profile(): any
 	local sync = ClientState.sync
@@ -69,8 +84,84 @@ local function boardModel(): Model?
 	return if m and m:IsA("Model") then m else nil
 end
 
--- The rewards as big icon tiles: XP, Gold, pass XP (and the bounty's tokens), each with its amount under it.
-local function rewardTiles(parent: Instance, weekly: boolean, order: number, height: number)
+------------------------------------------------------------------ Small pieces
+-- Text scales down to fit its box, never above `max`.
+local function fit(label: TextLabel | TextButton, max: number, min: number?)
+	(label :: any).TextScaled = true
+	UI.new("UITextSizeConstraint", { MaxTextSize = max, MinTextSize = min or 8, Parent = label })
+end
+
+local function italic(): Font
+	return Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium, Enum.FontStyle.Italic)
+end
+
+-- A label-tape tag (DAILY JOB / WEEKLY BOUNTY): paper-colored caps on an ink strip.
+local function tag(parent: Instance, text: string, order: number): Frame
+	local S = UI.S
+	local p, l = UI.pill(nil, text, INK, PAPER, S(22), S(13))
+	l.Font = Theme.Fonts.display
+	l.ZIndex = 9
+	local corner = p:FindFirstChildOfClass("UICorner")
+	if corner then
+		corner.CornerRadius = UDim.new(0, S(4))
+	end
+	p.LayoutOrder = order
+	p.ZIndex = 8
+	p.Parent = parent
+	return p
+end
+
+-- MARLOW's line in italic dark ink, signed underneath.
+local function quote(
+	parent: Instance,
+	flavor: string,
+	height: number,
+	size: number,
+	inkT: number,
+	centered: boolean
+): Frame
+	local S = UI.S
+	local align = if centered then Enum.TextXAlignment.Center else Enum.TextXAlignment.Left
+	local f = UI.frame({
+		Name = "Quote",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, height),
+		LayoutOrder = 3,
+		ZIndex = 8,
+		Parent = parent,
+	})
+	local q = UI.text({
+		Text = '"' .. flavor .. '"',
+		TextColor3 = INK_SOFT,
+		TextTransparency = inkT,
+		TextWrapped = true,
+		TextXAlignment = align,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Size = UDim2.new(1, 0, 1, -S(17)),
+		ZIndex = 8,
+		Parent = f,
+	})
+	q.FontFace = italic()
+	fit(q, size, S(11))
+	UI.text({
+		Text = "— MARLOW",
+		Font = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = SIGN,
+		TextTransparency = inkT,
+		TextXAlignment = align,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, S(15)),
+		ZIndex = 8,
+		Parent = f,
+	})
+	return f
+end
+
+-- The rewards as icon tiles filling the width: XP, Gold, pass XP (and the bounty's tokens), each with its amount.
+-- Anchored to the bottom of `parent`. A claimed sheet's tiles fade under a paper veil.
+local function rewardTiles(parent: Instance, weekly: boolean, height: number, settled: boolean): Frame
 	local S = UI.S
 	local list = {
 		{
@@ -99,60 +190,430 @@ local function rewardTiles(parent: Instance, weekly: boolean, order: number, hei
 		)
 	end
 	local row = UI.frame({
+		Name = "Rewards",
 		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
 		Size = UDim2.new(1, 0, 0, height),
-		LayoutOrder = order,
 		ZIndex = 8,
 		Parent = parent,
 	})
-	UI.list(row, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Center)
+	local gap = S(6)
+	UI.list(row, Enum.FillDirection.Horizontal, gap, Enum.HorizontalAlignment.Center)
 	for i, r in list do
 		local tile = UI.frame({
-			BackgroundColor3 = Color3.fromHex("2A241C"),
-			Size = UDim2.new(1 / #list, -S(7), 1, 0),
+			BackgroundColor3 = Color3.fromHex("2B241D"),
+			Size = UDim2.new(1 / #list, -math.ceil(gap * (#list - 1) / #list), 1, 0),
 			LayoutOrder = i,
 			ZIndex = 9,
 			Parent = row,
 		})
 		UI.corner(tile, S(10))
-		UI.stroke(tile, r.color, S(2), 0.1)
+		UI.stroke(tile, r.color, S(2), 0)
 		UI.new("UIGradient", {
-			Color = ColorSequence.new(Fx.shade(r.color, -0.45), Color3.fromHex("1A1612")),
+			Color = ColorSequence.new(Fx.shade(r.color, -0.4), Color3.fromHex("1A1511")),
 			Rotation = 90,
 			Parent = tile,
 		})
-		local art = ItemArt.draw(tile, { kind = r.kind, amount = r.amount }, math.floor(height * 0.5), 10)
+		local art = ItemArt.draw(tile, { kind = r.kind, amount = r.amount }, math.floor(height * 0.4), 10)
 		art.AnchorPoint = Vector2.new(0.5, 0)
-		art.Position = UDim2.new(0.5, 0, 0, S(6))
+		art.Position = UDim2.new(0.5, 0, 0, S(5))
 		local amount = UI.text({
 			Text = "+" .. UI.fmtInt(r.amount),
 			Font = Theme.Fonts.display,
-			TextSize = S(20),
 			TextColor3 = Theme.Colors.white,
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -S(18)),
-			Size = UDim2.new(1, 0, 0, S(22)),
+			Position = UDim2.new(0.5, 0, 1, -S(16)),
+			Size = UDim2.new(1, -S(6), 0, S(22)),
 			ZIndex = 10,
 			Parent = tile,
 		})
+		fit(amount, S(20), S(10))
 		UI.stroke(amount, Color3.new(0, 0, 0), S(1.5), 0.2)
 		UI.text({
 			Text = r.label,
 			Font = Theme.Fonts.display,
 			TextSize = S(11),
-			TextColor3 = Fx.shade(r.color, 0.3),
+			TextColor3 = Fx.shade(r.color, 0.35),
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -S(4)),
+			Position = UDim2.new(0.5, 0, 1, -S(3)),
 			Size = UDim2.new(1, 0, 0, S(13)),
 			ZIndex = 10,
 			Parent = tile,
 		})
+		if settled then
+			local veil = UI.frame({
+				BackgroundColor3 = SETTLED,
+				BackgroundTransparency = 0.3,
+				Size = UDim2.fromScale(1, 1),
+				ZIndex = 30,
+				Parent = tile,
+			})
+			UI.corner(veil, S(10))
+		end
 	end
 	return row
 end
 
--- A claimed Job: REFRESH swaps it for a fresh one for a little fake Robux.
-local function refreshButton(parent: Instance, key: string, weekly: boolean): TextButton
+-- A dark inset track with a saturated fill. `hero` puts a big ink count above the bar (the daily cards); otherwise the
+-- count sits inside it (the poster). With `delay` the fill grows in from empty (the board's entrance).
+local function progressBar(
+	parent: Instance,
+	progress: number,
+	target: number,
+	barH: number,
+	hero: boolean,
+	delay: number?
+): Frame
+	local S = UI.S
+	local countH = if hero then S(56) else 0
+	local gap = if hero then S(4) else 0
+	local root = UI.frame({
+		Name = "Progress",
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, countH + gap + barH),
+		ZIndex = 8,
+		Parent = parent,
+	})
+	local count = UI.fmtInt(progress)
+	local total = UI.fmtInt(target)
+	if hero then
+		UI.text({
+			RichText = true,
+			Text = string.format('%s<font size="%d" color="#%s"> / %s</font>', count, S(26), INK_SOFT:ToHex(), total),
+			Font = Theme.Fonts.display,
+			TextSize = S(52),
+			TextColor3 = INK,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Bottom,
+			Size = UDim2.new(1, 0, 0, countH),
+			ZIndex = 9,
+			Parent = root,
+		})
+	end
+	local track = UI.frame({
+		Name = "Track",
+		BackgroundColor3 = TRACK,
+		Position = UDim2.fromOffset(0, countH + gap),
+		Size = UDim2.new(1, 0, 0, barH),
+		ZIndex = 9,
+		Parent = root,
+	})
+	UI.corner(track, barH // 2)
+	UI.stroke(track, Color3.fromHex("140F0B"), S(2), 0)
+	-- The inset: a shadow along the top edge of the track.
+	local inset = UI.frame({
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.5,
+		Size = UDim2.fromScale(1, 0.5),
+		ZIndex = 10,
+		Parent = track,
+	})
+	UI.corner(inset, barH // 2)
+	UI.new("UIGradient", { Transparency = NumberSequence.new(0, 1), Rotation = 90, Parent = inset })
+	local k = math.clamp(progress / math.max(target, 1), 0, 1)
+	-- Any progress at all shows at least a round nub.
+	local size = if k > 0 then UDim2.new(k, math.floor(barH * (1 - k)), 1, 0) else UDim2.fromScale(0, 1)
+	local fill = UI.frame({
+		Name = "Fill",
+		BackgroundColor3 = if k >= 1 then FILL_DONE else FILL,
+		Size = if delay then UDim2.fromScale(0, 1) else size,
+		ZIndex = 11,
+		Parent = track,
+	})
+	UI.corner(fill, barH // 2)
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 200)),
+		Rotation = 90,
+		Parent = fill,
+	})
+	if delay then
+		UI.tween(fill, { Size = size }, Config.JobBarFillSec, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, delay)
+	end
+	if not hero then
+		local l = UI.text({
+			Text = count .. " / " .. total,
+			Font = Theme.Fonts.display,
+			TextSize = math.floor(barH * 0.62),
+			TextColor3 = Theme.Colors.white,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 12,
+			Parent = track,
+		})
+		UI.stroke(l, Color3.new(0, 0, 0), S(1.5), 0.1)
+	end
+	return root
+end
+
+local function pin(parent: Instance, z: number)
+	local S = UI.S
+	local shadow = UI.frame({
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.6,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, S(2), 0, S(11)),
+		Size = UDim2.fromOffset(S(14), S(14)),
+		ZIndex = z,
+		Parent = parent,
+	})
+	UI.corner(shadow, S(7))
+	local p = UI.frame({
+		BackgroundColor3 = Color3.fromHex("E8554D"),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, S(8)),
+		Size = UDim2.fromOffset(S(18), S(18)),
+		ZIndex = z + 1,
+		Parent = parent,
+	})
+	UI.corner(p, S(9))
+	UI.stroke(p, Color3.fromHex("7A1E1A"), S(1.5), 0)
+	local hi = UI.frame({
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.35,
+		Position = UDim2.fromScale(0.22, 0.18),
+		Size = UDim2.fromScale(0.32, 0.32),
+		ZIndex = z + 2,
+		Parent = p,
+	})
+	UI.corner(hi, S(3))
+end
+
+-- A rubber stamp: double-ruled box, display caps, a faint ink wash. With `slamDelay` it slams on after that many
+-- seconds (scale in, thump, `shaker` jolts).
+local function stamp(parent: Instance, shaker: GuiObject, text: string, color: Color3, z: number, slamDelay: number?)
+	local S = UI.S
+	local s = UI.frame({
+		Name = "Stamp",
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0.9,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(S(170), S(64)),
+		Rotation = -12,
+		ZIndex = z,
+		Parent = parent,
+	})
+	UI.corner(s, S(8))
+	UI.stroke(s, color, S(4), 0.05)
+	local ring = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -S(12), 1, -S(12)),
+		ZIndex = z + 1,
+		Parent = s,
+	})
+	UI.corner(ring, S(5))
+	UI.stroke(ring, color, S(1.5), 0.15)
+	UI.text({
+		Text = text,
+		Font = Theme.Fonts.display,
+		TextSize = S(42),
+		TextColor3 = color,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = z + 2,
+		Parent = s,
+	})
+	if slamDelay then
+		s.Visible = false
+		local sc = UI.new("UIScale", { Scale = 2.4, Parent = s })
+		task.delay(slamDelay, function()
+			if not s.Parent then
+				return
+			end
+			s.Visible = true
+			UI.tween(sc, { Scale = 1 }, Config.JobStampSec, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			task.delay(Config.JobStampSec, function()
+				if not s.Parent then
+					return
+				end
+				UI.sound(Fx.Sounds.stamp, 0.7, 0.7)
+				Fx.haptic(0.5)
+				UI.shake(shaker, S(4), 0.15)
+			end)
+		end)
+	end
+	return s
+end
+
+-- A pinned sheet. holder (the layout owns it) > Lift (rotated; the entrance moves it) > Shadow, Glow slot, Paper.
+-- The shadow sits BEHIND the paper (a child would draw over it). Hover lifts the sheet off the board by growing the
+-- shadow only, so nothing slides out from under the cursor. A settled (claimed) sheet lies flat.
+local function sheet(holder: Frame, color: Color3, tint: Color3, rotation: number, settled: boolean): (Frame, Frame)
+	local S = UI.S
+	local lift = UI.frame({
+		Name = "Lift",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Rotation = rotation,
+		ZIndex = 5,
+		Parent = holder,
+	})
+	local shadow = UI.frame({
+		Name = "Shadow",
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = if settled then 0.7 else 0.5,
+		Position = if settled then UDim2.fromOffset(S(3), S(4)) else UDim2.fromOffset(S(6), S(9)),
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 1,
+		Parent = lift,
+	})
+	UI.corner(shadow, S(6))
+	local paper = UI.frame({
+		Name = "Paper",
+		BackgroundColor3 = color,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 3,
+		Parent = lift,
+	})
+	UI.corner(paper, S(6))
+	UI.stroke(paper, Fx.shade(color, -0.35), S(1.5), 0.3)
+	UI.new("UIGradient", { Color = ColorSequence.new(Color3.new(1, 1, 1), tint), Rotation = 90, Parent = paper })
+	pin(paper, 40)
+	if not settled and not UserInputService.TouchEnabled then
+		local rest, restT = shadow.Position, shadow.BackgroundTransparency
+		holder.MouseEnter:Connect(function()
+			UI.tween(
+				shadow,
+				{ Position = rest + UDim2.fromOffset(S(4), S(6)), BackgroundTransparency = restT - 0.12 },
+				0.15
+			)
+		end)
+		holder.MouseLeave:Connect(function()
+			UI.tween(shadow, { Position = rest, BackgroundTransparency = restT }, 0.15)
+		end)
+	end
+	return lift, paper
+end
+
+-- A claimable sheet breathes a warm glow behind its paper.
+local function claimGlow(lift: Frame)
+	local _g, setGlow = Fx.glow(lift, SPARK, UI.S(6), 2)
+	Fx.pulse(setGlow, function()
+		return lift.Parent ~= nil
+	end, Config.JobClaimPulseSec, 0.9, 1.7)
+end
+
+-- MARLOW: a dummy bust in a sepia frame (hat, domino mask, coat and tie). Square, fits inside `parent`, at most
+-- `maxW` of its width.
+local function portrait(parent: Instance, z: number, maxW: number): Frame
+	local S = UI.S
+	local box = UI.frame({
+		Name = "Portrait",
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(maxW, 1),
+		ZIndex = z,
+		Parent = parent,
+	})
+	UI.new("UIAspectRatioConstraint", { AspectRatio = 1, Parent = box })
+	UI.corner(box, S(4))
+	UI.stroke(box, INK, S(3), 0)
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Color3.fromHex("9A7046"), Color3.fromHex("3E2A16")),
+		Rotation = 90,
+		Parent = box,
+	})
+	local function part(
+		color: string,
+		ax: number,
+		ay: number,
+		x: number,
+		y: number,
+		w: number,
+		h: number,
+		dz: number,
+		round: number?
+	): Frame
+		local f = UI.frame({
+			BackgroundColor3 = Color3.fromHex(color),
+			AnchorPoint = Vector2.new(ax, ay),
+			Position = UDim2.fromScale(x, y),
+			Size = UDim2.fromScale(w, h),
+			ZIndex = z + dz,
+			Parent = box,
+		})
+		if round then
+			UI.new("UICorner", { CornerRadius = UDim.new(round, 0), Parent = f })
+		end
+		return f
+	end
+	local skin = "C9A46A"
+	-- Everything stays inside the box: clipping is ignored under a rotated sheet.
+	part("2B2B33", 0.5, 1, 0.5, 1, 0.86, 0.3, 1, 0.3) -- coat
+	part(skin, 0.5, 0.5, 0.5, 0.7, 0.14, 0.12, 1) -- neck
+	part("E8E0CC", 0.5, 1, 0.5, 1, 0.18, 0.26, 2) -- shirt
+	part("C8323C", 0.5, 1, 0.5, 1, 0.06, 0.24, 3) -- tie
+	part(skin, 0.5, 0.5, 0.5, 0.52, 0.36, 0.4, 3, 0.5) -- head
+	part("6A4A2A", 0.5, 0.5, 0.53, 0.63, 0.12, 0.022, 4) -- the smirk
+	part("1A1A1E", 0.5, 0.5, 0.5, 0.49, 0.44, 0.1, 4, 0.5) -- mask
+	part("F2E6C8", 0.5, 0.5, 0.42, 0.49, 0.06, 0.05, 5, 0.5) -- eyes
+	part("F2E6C8", 0.5, 0.5, 0.58, 0.49, 0.06, 0.05, 5, 0.5)
+	part("1E1E24", 0.5, 1, 0.5, 0.35, 0.36, 0.18, 5, 0.15) -- hat crown
+	part("C8323C", 0.5, 1, 0.5, 0.34, 0.36, 0.045, 6) -- hat band
+	part("1E1E24", 0.5, 0.5, 0.5, 0.35, 0.62, 0.06, 6, 0.5) -- hat brim
+	return box
+end
+
+------------------------------------------------------------------ Actions
+local render: () -> ()
+
+local function claimWith(res: any, title: string)
+	if res.ok and res.data and typeof(res.data.results) == "table" then
+		local g = gui
+		if g then
+			Reveal.stack(g, res.data.results, title, { mini = true })
+		end
+		UI.sound(Fx.Sounds.chime, 1.3, 0.35)
+	else
+		PurchaseSheet.toast(tostring(res.reason or "Not ready"), Theme.Colors.malus, false)
+	end
+end
+
+-- CLAIM: shines, sparks burst from it on press, and the claimed keys' PAID stamps slam on the re-render.
+local function claimButton(
+	parent: Instance,
+	text: string,
+	size: UDim2,
+	keys: { string },
+	action: string,
+	args: any,
+	title: string
+): TextButton
+	local S = UI.S
+	local b, _ = Fx.button(parent, text, GREEN, Theme.Colors.white, size, 12)
+	b.TextSize = S(26)
+	Fx.shine(b, 2.2)
+	local busy = false
+	b.Activated:Connect(function()
+		if busy then
+			return
+		end
+		busy = true
+		-- Marked before the call: the sync that re-renders the board can land before the reply.
+		for _, k in keys do
+			justClaimed[k] = true
+		end
+		local layer = fxLayer
+		if layer then
+			local c = b.AbsolutePosition + b.AbsoluteSize / 2
+			Fx.burst(layer, UDim2.fromOffset(c.X, c.Y), SPARK, 18, 60)
+		end
+		local res = shop(action, args)
+		if not res.ok then
+			for _, k in keys do
+				justClaimed[k] = nil
+			end
+			busy = false
+		end
+		claimWith(res, title)
+	end)
+	return b
+end
+
+-- A claimed Job: NEW JOB swaps it for a fresh one for a little fake Robux.
+local function refreshButton(parent: Instance, key: string, weekly: boolean, size: UDim2): TextButton
 	local S = UI.S
 	local pid = if weekly then "job_refresh_bounty" else "job_refresh_daily"
 	local price = JobPool.RefreshPrice[if weekly then "bounty" else "daily"]
@@ -161,10 +622,11 @@ local function refreshButton(parent: Instance, key: string, weekly: boolean): Te
 		string.format("%s · R$ %d", if weekly then "NEW BOUNTY" else "NEW JOB", price),
 		Color3.fromHex("4D9FE8"),
 		Theme.Colors.white,
-		UDim2.new(1, -S(44), 0, S(56)),
+		size,
 		12
 	)
-	b.TextSize = S(22)
+	UI.pad(b, S(8), 0, S(8), 0)
+	fit(b, S(20), S(10))
 	Fx.shine(b, 2.6)
 	b.Activated:Connect(function()
 		PurchaseSheet.open(pid, {
@@ -179,389 +641,254 @@ local function refreshButton(parent: Instance, key: string, weekly: boolean): Te
 	return b
 end
 
-local function rewardText(weekly: boolean): string
-	if weekly then
-		return string.format(
-			"+%s XP · +◆ %s · +%s PASS XP · +%d TOKENS",
-			UI.fmtInt(Config.WeeklyXp),
-			UI.fmtInt(Config.WeeklyGold),
-			UI.fmtInt(Config.WeeklyPassXp),
-			Config.WeeklyTokens
-		)
-	end
-	return string.format("+%d XP · +◆ %d · +%d PASS XP", Config.DailyXp, Config.DailyGold, Config.DailyPassXp)
-end
-
 ------------------------------------------------------------------ Cards
-local render: () -> ()
-
-local function pin(parent: Instance, z: number)
-	local S = UI.S
-	local p = UI.frame({
-		BackgroundColor3 = Color3.fromHex("E8554D"),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0, S(6)),
-		Size = UDim2.fromOffset(S(16), S(16)),
-		ZIndex = z,
-		Parent = parent,
-	})
-	UI.corner(p, S(8))
-	UI.stroke(p, Color3.fromHex("7A1E1A"), S(1.5), 0)
-	UI.frame({
-		BackgroundColor3 = Color3.new(1, 1, 1),
-		BackgroundTransparency = 0.4,
-		Position = UDim2.fromScale(0.2, 0.2),
-		Size = UDim2.fromScale(0.3, 0.3),
-		ZIndex = z + 1,
-		Parent = p,
-	})
-end
-
-local function stamp(parent: Instance, text: string, z: number, animate: boolean)
-	local S = UI.S
-	local s = UI.frame({
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.55, 0.5),
-		Size = UDim2.fromOffset(S(150), S(56)),
-		Rotation = -14,
-		ZIndex = z,
-		Parent = parent,
-	})
-	UI.corner(s, S(6))
-	UI.stroke(s, STAMP, S(4), 0.1)
-	local l = UI.text({
-		Text = text,
-		Font = Theme.Fonts.display,
-		TextSize = S(36),
-		TextColor3 = STAMP,
-		TextTransparency = 0.1,
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = z + 1,
-		Parent = s,
-	})
-	local _ = l
-	if animate then
-		local sc = UI.new("UIScale", { Scale = 2.4, Parent = s })
-		UI.tween(sc, { Scale = 1 }, 0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-		task.delay(0.18, function()
-			UI.sound(Fx.Sounds.stamp, 0.7, 0.7)
-			Fx.haptic(0.5)
-			if s.Parent then
-				UI.shake(parent :: any, S(4), 0.15)
-			end
-		end)
-	end
-end
-
-local function progressBar(parent: Instance, progress: number, target: number, z: number, order: number)
-	local S = UI.S
-	local row = UI.frame({
-		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(26)),
-		LayoutOrder = order,
-		ZIndex = z,
-		Parent = parent,
-	})
-	local bar = UI.frame({
-		BackgroundColor3 = Color3.fromHex("CDBF9E"),
-		Size = UDim2.new(1, -S(100), 0, S(16)),
-		Position = UDim2.fromOffset(0, S(5)),
-		ZIndex = z,
-		Parent = row,
-	})
-	UI.corner(bar, S(6))
-	local k = math.clamp(progress / math.max(target, 1), 0, 1)
-	local fill = UI.frame({
-		BackgroundColor3 = if k >= 1 then Color3.fromHex("3FA85C") else Color3.fromHex("C9772A"),
-		Size = UDim2.fromScale(k, 1),
-		ZIndex = z + 1,
-		Parent = bar,
-	})
-	UI.corner(fill, S(6))
-	UI.text({
-		Text = string.format("%s / %s", UI.fmtInt(progress), UI.fmtInt(target)),
-		Font = Theme.Fonts.display,
-		TextSize = S(18),
-		TextColor3 = INK,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromScale(1, 0),
-		Size = UDim2.fromOffset(S(96), S(26)),
-		ZIndex = z,
-		Parent = row,
-	})
-end
-
-local function claimWith(res: any, title: string)
-	if res.ok and res.data and typeof(res.data.results) == "table" then
-		local g = gui
-		if g then
-			Reveal.stack(g, res.data.results, title, { mini = true })
-		end
-		UI.sound(Fx.Sounds.chime, 1.3, 0.35)
-	else
-		PurchaseSheet.toast(tostring(res.reason or "Not ready"), Theme.Colors.malus, false)
-	end
-end
-
--- One daily card, a third of the board's width and its full height.
-local function dailyCard(parent: Frame, slot: number, e: any, order: number)
+-- One daily card, a third of the dailies' width and their full height:
+--   tag, title, MARLOW's line (top) · the state area (flexes) · the reward row (bottom)
+local function dailyCard(parent: Frame, slot: number, e: any, order: number): Frame?
 	local S = UI.S
 	local def = JobPool.ById[e.id]
 	if not def then
-		return
+		return nil
 	end
+	local key = "d" .. slot
 	local progress = tonumber(e.progress) or 0
 	local done = progress >= def.target
 	local claimed = e.claimed == true
+	local at = if entrance then (order - 1) * Config.JobBoardStaggerSec else nil -- this card's cascade start
 	local holder = UI.frame({
+		Name = "Daily" .. slot,
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1 / 3, -S(16), 1, 0),
+		Size = UDim2.new(1 / 3, -S(15), 1, 0),
 		LayoutOrder = order,
 		ZIndex = 5,
 		Parent = parent,
 	})
-	local card = UI.frame({
-		Name = "Paper",
-		BackgroundColor3 = PAPER,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.fromScale(1, 1),
-		Rotation = ({ -2, 1.5, -1 })[slot] or 0,
-		ZIndex = 6,
-		Parent = holder,
-	})
-	UI.corner(card, S(6))
-	UI.stroke(card, Color3.fromHex("B8A57E"), S(1.5), 0.2)
-	UI.new("UIGradient", {
-		Color = ColorSequence.new(Color3.fromHex("FBF3DE"), Color3.fromHex("E6D7B2")),
-		Rotation = 90,
-		Parent = card,
-	})
-	local shadow = UI.frame({
-		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 0.65,
-		Position = UDim2.fromOffset(S(7), S(9)),
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 5,
-		Parent = card,
-	})
-	UI.corner(shadow, S(6))
-	pin(card, 9)
-	local inner = UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 7, Parent = card })
-	UI.pad(inner, S(22), S(30), S(22), S(20))
-	UI.list(inner, Enum.FillDirection.Vertical, S(12))
-	UI.text({
-		Text = "DAILY JOB",
-		Font = Theme.Fonts.display,
-		TextSize = S(13),
-		TextColor3 = Color3.fromHex("9A6A1A"),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(14)),
-		LayoutOrder = 0,
-		ZIndex = 8,
+	local lift, paper = sheet(
+		holder,
+		if claimed then PAPER:Lerp(SETTLED, 0.6) else PAPER,
+		Color3.fromHex("E2E2E2"),
+		-- A finished sheet is pulled straight (and its CLAIM shine needs an unrotated ancestor to clip).
+		if claimed or done then 0 else (({ -1.6, 1.2, -0.8 })[slot] or 0),
+		claimed
+	)
+	local inner = UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 7, Parent = paper })
+	UI.pad(inner, S(20), S(28), S(20), S(18))
+	local inkT = if claimed then 0.35 else 0
+	-- Top: tag, title, line.
+	local gap = S(6)
+	local titleH, quoteH = S(72), S(60)
+	local topH = S(22) + titleH + quoteH + gap * 2
+	local top = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, topH),
+		ZIndex = 7,
 		Parent = inner,
 	})
-	UI.text({
+	UI.list(top, Enum.FillDirection.Vertical, gap)
+	tag(top, "DAILY JOB", 1)
+	local title = UI.text({
 		Text = def.title,
 		Font = Theme.Fonts.display,
-		TextSize = S(30),
 		TextColor3 = INK,
+		TextTransparency = inkT,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(70)),
-		LayoutOrder = 1,
-		ZIndex = 8,
-		Parent = inner,
-	})
-	if claimed then
-		-- Claimed: the paper fades under a PAID stamp; REFRESH buys a fresh Job in this slot.
-		card.BackgroundTransparency = 0.35
-		stamp(card, "PAID", 12, false)
-		local r = refreshButton(card, "d" .. slot, false)
-		r.AnchorPoint = Vector2.new(0.5, 1)
-		r.Position = UDim2.new(0.5, 0, 1, -S(20))
-		return
-	end
-	UI.text({
-		Text = '"' .. def.flavor .. '" — MARLOW',
-		Font = Enum.Font.GothamMedium,
-		TextSize = S(15),
-		TextColor3 = Color3.fromHex("6A5A40"),
-		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(44)),
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Size = UDim2.new(1, 0, 0, titleH),
 		LayoutOrder = 2,
 		ZIndex = 8,
+		Parent = top,
+	})
+	fit(title, S(32), S(18))
+	quote(top, def.flavor, quoteH, S(16), inkT, false)
+	-- Bottom: the rewards.
+	local rewardsH = S(80)
+	rewardTiles(inner, false, rewardsH, claimed)
+	-- Between them: the state.
+	local space = S(12)
+	local mid = UI.frame({
+		Name = "State",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, topH + space),
+		Size = UDim2.new(1, 0, 1, -(topH + rewardsH + space * 2)),
+		ZIndex = 9,
 		Parent = inner,
 	})
-	progressBar(inner, progress, def.target, 8, 3)
-	UI.text({
-		Text = "REWARDS",
-		Font = Theme.Fonts.display,
-		TextSize = S(13),
-		TextColor3 = Color3.fromHex("9A6A1A"),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(14)),
-		LayoutOrder = 4,
-		ZIndex = 8,
-		Parent = inner,
-	})
-	rewardTiles(inner, false, 5, S(118))
-	if done then
-		-- CLAIM along the bottom of the paper.
-		local b, _ =
-			Fx.button(card, "CLAIM", Color3.fromHex("2FB75A"), Theme.Colors.white, UDim2.new(1, -S(44), 0, S(58)), 9)
+	if claimed or done then
+		local btnH = if claimed then S(48) else S(56)
+		-- The stamp lands in the space above the button (it may overlap the line above, like a real stamp).
+		local upper = UI.frame({
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 1, -(btnH + S(8))),
+			ZIndex = 9,
+			Parent = mid,
+		})
+		local b: TextButton
+		if claimed then
+			stamp(upper, lift, "PAID", PAID, 20, if justClaimed[key] then (at or 0) + 0.1 else nil)
+			justClaimed[key] = nil
+			b = refreshButton(mid, key, false, UDim2.new(1, 0, 0, btnH))
+		else
+			local first = not seenDone[e.id]
+			seenDone[e.id] = true
+			stamp(upper, lift, "DONE", STAMP, 20, if first then (at or 0) + 0.35 else nil)
+			b = claimButton(mid, "CLAIM", UDim2.new(1, 0, 0, btnH), { key }, "jobClaim", { key = key }, def.title)
+			Fx.particles(mid, SPARK, 4, 15)
+			claimGlow(lift)
+		end
 		b.AnchorPoint = Vector2.new(0.5, 1)
-		b.Position = UDim2.new(0.5, 0, 1, -S(20))
-		b.TextSize = S(26)
-		Fx.particles(b, Color3.fromHex("FFE08A"), 4, 11)
-		b.Activated:Connect(function()
-			claimWith(shop("jobClaim", { key = "d" .. slot }), def.title)
-		end)
-		-- Complete: the DONE stamp slams on (once), the card lifts and glows.
-		local first = not seenDone[e.id]
-		seenDone[e.id] = true
-		stamp(card, "DONE", 12, first)
-		local sc = UI.new("UIScale", { Scale = 1, Parent = holder })
-		UI.tween(sc, { Scale = 1.03 }, 0.3, Enum.EasingStyle.Back)
-		local _g, setGlow = Fx.glow(card, Color3.fromHex("FFE08A"), S(6), 4)
-		setGlow(1.2)
+		b.Position = UDim2.fromScale(0.5, 1)
+	else
+		local bar = progressBar(mid, progress, def.target, S(24), true, if at then at + 0.25 else nil)
+		bar.AnchorPoint = Vector2.new(0, 0.5)
+		bar.Position = UDim2.fromScale(0, 0.5)
 	end
+	return holder
 end
 
--- The WANTED poster.
-local function bountyCard(parent: Frame, e: any)
+-- The WANTED poster: WANTED, tag (top) · MARLOW's portrait (flexes) · title, line, progress or the action, the reward
+-- row (bottom).
+local function bountyCard(parent: Frame, e: any, order: number): Frame?
 	local S = UI.S
 	local def = JobPool.ById[e.id]
 	if not def then
-		return
+		return nil
 	end
+	local key = "b1"
 	local progress = tonumber(e.progress) or 0
 	local done = progress >= def.target
 	local claimed = e.claimed == true
-	local poster = UI.frame({
-		BackgroundColor3 = Color3.fromHex("E2CDA0"),
+	local at = if entrance then (order - 1) * Config.JobBoardStaggerSec else nil
+	local holder = UI.frame({
+		Name = "Bounty",
+		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
-		Rotation = 1.5,
-		ZIndex = 6,
+		ZIndex = 5,
 		Parent = parent,
 	})
-	UI.corner(poster, S(4))
-	UI.stroke(poster, Color3.fromHex("8A6A3A"), S(2), 0.2)
-	pin(poster, 9)
-	local inner = UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 7, Parent = poster })
-	UI.pad(inner, S(18), S(22), S(18), S(14))
-	UI.list(inner, Enum.FillDirection.Vertical, S(6), Enum.HorizontalAlignment.Center)
+	local lift, paper = sheet(
+		holder,
+		if claimed then POSTER:Lerp(SETTLED, 0.5) else POSTER,
+		Color3.fromHex("D6D6D6"),
+		if claimed or done then 0 else 1.2,
+		claimed
+	)
+	local inner = UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 7, Parent = paper })
+	UI.pad(inner, S(18), S(26), S(18), S(16))
+	local inkT = if claimed then 0.35 else 0
+	-- Top: WANTED and the tag.
+	local wantedH = S(46)
+	local topH = wantedH + S(4) + S(22)
+	local top = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, topH), ZIndex = 7, Parent = inner })
+	UI.list(top, Enum.FillDirection.Vertical, S(4), Enum.HorizontalAlignment.Center)
 	UI.text({
 		Text = "WANTED",
 		Font = Theme.Fonts.display,
-		TextSize = S(40),
-		TextColor3 = Color3.fromHex("5A2A14"),
-		Size = UDim2.new(1, 0, 0, S(42)),
+		TextSize = S(46),
+		TextColor3 = Color3.fromHex("5A1E10"),
+		TextTransparency = inkT,
+		Size = UDim2.new(1, 0, 0, wantedH),
 		LayoutOrder = 1,
 		ZIndex = 8,
-		Parent = inner,
+		Parent = top,
 	})
-	UI.text({
-		Text = "WEEKLY BOUNTY",
-		Font = Theme.Fonts.display,
-		TextSize = S(12),
-		TextColor3 = Color3.fromHex("8A5A2A"),
-		Size = UDim2.new(1, 0, 0, S(14)),
-		LayoutOrder = 2,
-		ZIndex = 8,
-		Parent = inner,
-	})
-	-- MARLOW's portrait: a dummy bust in the house style.
-	local frame = UI.frame({
-		BackgroundColor3 = Color3.fromHex("3A2A1A"),
-		Size = UDim2.fromOffset(S(96), S(96)),
-		LayoutOrder = 3,
-		ZIndex = 8,
-		Parent = inner,
-	})
-	UI.corner(frame, S(6))
-	UI.stroke(frame, Color3.fromHex("5A2A14"), S(2), 0)
-	local head = UI.frame({
-		BackgroundColor3 = Color3.fromHex("C9A46A"),
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.16),
-		Size = UDim2.fromScale(0.42, 0.42),
+	tag(top, "WEEKLY BOUNTY", 2)
+	-- Bottom, stacked up from the edge: rewards, the slot (progress / CLAIM / NEW BOUNTY), the line, the title.
+	local gap = S(10)
+	local rewardsH, slotH, quoteH, titleH = S(80), S(48), S(52), S(54)
+	rewardTiles(inner, true, rewardsH, claimed)
+	local slot = UI.frame({
+		Name = "Slot",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, -(rewardsH + gap)),
+		Size = UDim2.new(1, 0, 0, slotH),
 		ZIndex = 9,
-		Parent = frame,
-	})
-	UI.corner(head, S(40))
-	local shoulders = UI.frame({
-		BackgroundColor3 = Color3.fromHex("23232B"),
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.fromScale(0.5, 1),
-		Size = UDim2.fromScale(0.8, 0.34),
-		ZIndex = 9,
-		Parent = frame,
-	})
-	UI.corner(shoulders, S(20))
-	UI.frame({
-		BackgroundColor3 = Color3.fromHex("1A1A1E"),
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.12),
-		Size = UDim2.fromScale(0.5, 0.12),
-		ZIndex = 10,
-		Parent = frame,
-	})
-	UI.text({
-		Text = "MARLOW",
-		Font = Theme.Fonts.display,
-		TextSize = S(11),
-		TextColor3 = Color3.fromHex("8A5A2A"),
-		Size = UDim2.new(1, 0, 0, S(12)),
-		LayoutOrder = 4,
-		ZIndex = 8,
 		Parent = inner,
 	})
-	UI.text({
+	local q = quote(inner, def.flavor, quoteH, S(15), inkT, true)
+	q.AnchorPoint = Vector2.new(0, 1)
+	q.Position = UDim2.new(0, 0, 1, -(rewardsH + slotH + gap * 2))
+	local title = UI.text({
 		Text = def.title,
 		Font = Theme.Fonts.display,
-		TextSize = S(22),
 		TextColor3 = INK,
+		TextTransparency = inkT,
 		TextWrapped = true,
-		Size = UDim2.new(1, 0, 0, S(52)),
-		LayoutOrder = 5,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, -(rewardsH + slotH + quoteH + gap * 2 + S(4))),
+		Size = UDim2.new(1, 0, 0, titleH),
 		ZIndex = 8,
 		Parent = inner,
 	})
-	UI.text({
-		Text = '"' .. def.flavor .. '"',
-		Font = Enum.Font.GothamMedium,
-		TextSize = S(11),
-		TextColor3 = Color3.fromHex("6A5A40"),
-		TextWrapped = true,
-		Size = UDim2.new(1, 0, 0, S(28)),
-		LayoutOrder = 6,
-		ZIndex = 8,
+	fit(title, S(28), S(16))
+	local lowerH = rewardsH + slotH + quoteH + titleH + gap * 2 + S(4)
+	-- Between: MARLOW's portrait, as big as the poster allows.
+	local mid = UI.frame({
+		Name = "Mid",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, topH + S(8)),
+		Size = UDim2.new(1, 0, 1, -(topH + lowerH + S(16))),
+		ZIndex = 9,
 		Parent = inner,
 	})
-	progressBar(inner, progress, def.target, 8, 7)
-	rewardTiles(inner, true, 8, S(96))
+	local face = portrait(mid, 9, 0.8)
 	if claimed then
-		stamp(poster, "PAID", 12, false)
-		local r = refreshButton(inner, "b1", true)
-		r.LayoutOrder = 9
-		r.Size = UDim2.new(1, 0, 0, S(50))
+		face.BackgroundTransparency = 0.4
+		stamp(mid, lift, "PAID", PAID, 30, if justClaimed[key] then (at or 0) + 0.1 else nil)
+		justClaimed[key] = nil
+		refreshButton(slot, key, true, UDim2.fromScale(1, 1))
 	elseif done then
-		local b, _ =
-			Fx.button(inner, "CLAIM", Color3.fromHex("2FB75A"), Theme.Colors.white, UDim2.new(1, 0, 0, S(42)), 9)
-		b.LayoutOrder = 9
-		b.Activated:Connect(function()
-			claimWith(shop("jobClaim", { key = "b1" }), def.title)
-		end)
 		local first = not seenDone[e.id]
 		seenDone[e.id] = true
-		stamp(poster, "DONE", 12, first)
-		local _g, setGlow = Fx.glow(poster, Color3.fromHex("FFE08A"), S(6), 4)
-		setGlow(1.3)
+		stamp(mid, lift, "DONE", STAMP, 30, if first then (at or 0) + 0.35 else nil)
+		claimButton(slot, "CLAIM", UDim2.fromScale(1, 1), { key }, "jobClaim", { key = key }, def.title)
+		Fx.particles(slot, SPARK, 3, 15)
+		claimGlow(lift)
+	else
+		local bar = progressBar(slot, progress, def.target, S(32), false, if at then at + 0.25 else nil)
+		bar.AnchorPoint = Vector2.new(0, 0.5)
+		bar.Position = UDim2.fromScale(0, 0.5)
 	end
+	return holder
+end
+
+-- A framed countdown: small caps label over a big ticking value.
+local function timerChip(parent: Instance, label: string, color: Color3, anchor: Vector2, pos: UDim2): TextLabel
+	local S = UI.S
+	local fr = UI.frame({
+		BackgroundColor3 = Color3.fromHex("15121A"),
+		BackgroundTransparency = 0.08,
+		AnchorPoint = anchor,
+		Position = pos,
+		Size = UDim2.fromOffset(S(230), S(50)),
+		ZIndex = 6,
+		Parent = parent,
+	})
+	UI.corner(fr, S(10))
+	UI.stroke(fr, color, S(2), 0.15)
+	UI.text({
+		Text = label,
+		Font = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Fx.shade(color, 0.35),
+		Position = UDim2.fromOffset(0, S(5)),
+		Size = UDim2.new(1, 0, 0, S(13)),
+		ZIndex = 7,
+		Parent = fr,
+	})
+	local v = UI.text({
+		Text = "",
+		Font = Theme.Fonts.display,
+		TextSize = S(26),
+		TextColor3 = Theme.Colors.white,
+		Position = UDim2.fromOffset(0, S(17)),
+		Size = UDim2.new(1, 0, 0, S(30)),
+		ZIndex = 7,
+		Parent = fr,
+	})
+	UI.stroke(v, Color3.new(0, 0, 0), S(1.5), 0.2)
+	return v
 end
 
 render = function()
@@ -584,70 +911,32 @@ render = function()
 		return
 	end
 	local mobile = ClientState.isMobile
-	local now = ClientState.fakeNow()
-	-- Header.
-	local header = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, S(60)), ZIndex = 5, Parent = b })
+	-- Columns: the dailies left, the poster right; the countdowns sit over the column they count for.
+	local posterW = if mobile then 0.31 else 0.27
+	local colGap = S(28)
+	local headerH, footerH = S(56), S(54)
+	local boardTop, boardBottom = headerH + S(10), footerH + S(14)
+	local header = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, headerH), ZIndex = 5, Parent = b })
 	local title = UI.text({
 		Text = "JOBS",
 		Font = Theme.Fonts.display,
 		TextSize = S(44),
 		TextColor3 = Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.fromOffset(S(160), S(56)),
+		Size = UDim2.new(0, S(160), 1, 0),
 		ZIndex = 6,
 		Parent = header,
 	})
 	UI.stroke(title, Color3.new(0, 0, 0), S(2), 0.2)
-	-- Framed countdowns: the dailies tick in hh:mm:ss, the bounty in days / hours / minutes.
-	local function timerFrame(order: number, label: string, color: Color3): TextLabel
-		local fr = UI.frame({
-			BackgroundColor3 = Color3.fromHex("141218"),
-			BackgroundTransparency = 0.1,
-			Size = UDim2.fromOffset(S(250), S(52)),
-			LayoutOrder = order,
-			ZIndex = 6,
-			Parent = header,
-		})
-		UI.corner(fr, S(10))
-		UI.stroke(fr, color, S(2), 0.1)
-		UI.text({
-			Text = label,
-			Font = Theme.Fonts.display,
-			TextSize = S(12),
-			TextColor3 = Fx.shade(color, 0.3),
-			Position = UDim2.fromOffset(0, S(4)),
-			Size = UDim2.new(1, 0, 0, S(14)),
-			ZIndex = 7,
-			Parent = fr,
-		})
-		local v = UI.text({
-			Text = "",
-			Font = Theme.Fonts.display,
-			TextSize = S(26),
-			TextColor3 = Theme.Colors.white,
-			Position = UDim2.fromOffset(0, S(18)),
-			Size = UDim2.new(1, 0, 0, S(30)),
-			ZIndex = 7,
-			Parent = fr,
-		})
-		UI.stroke(v, Color3.new(0, 0, 0), S(1.5), 0.2)
-		return v
-	end
-	local clockRow = UI.frame({
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(170), S(2)),
-		Size = UDim2.new(1, -S(170), 0, S(54)),
-		ZIndex = 6,
-		Parent = header,
-	})
-	UI.list(clockRow, Enum.FillDirection.Horizontal, S(14))
-	local function moveTo(l: TextLabel)
-		(l.Parent :: Frame).Parent = clockRow
-	end
-	local daily = timerFrame(1, "NEW JOBS IN", Theme.Colors.gold)
-	local weekly = timerFrame(2, "BOUNTY RESETS IN", Color3.fromHex("C8323C"))
-	moveTo(daily)
-	moveTo(weekly)
+	local daily = timerChip(
+		header,
+		"NEW JOBS IN",
+		Theme.Colors.gold,
+		Vector2.new(0.5, 0.5),
+		UDim2.new((1 - posterW) / 2, -colGap / 2, 0.5, 0) -- centered over the three dailies
+	)
+	local weekly =
+		timerChip(header, "BOUNTY RESETS IN", STAMP, Vector2.new(0.5, 0.5), UDim2.new(1 - posterW / 2, -S(3), 0.5, 0))
 	task.spawn(function()
 		while daily.Parent do
 			local t = ClientState.fakeNow()
@@ -656,38 +945,43 @@ render = function()
 			task.wait(0.25)
 		end
 	end)
-	local _ = now
-	-- Dailies left, the bounty right.
 	local dailies = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(0, S(72)),
-		Size = UDim2.new(if mobile then 0.66 else 0.69, 0, 1, -S(150)),
+		Position = UDim2.fromOffset(0, boardTop),
+		Size = UDim2.new(1 - posterW, -colGap, 1, -(boardTop + boardBottom)),
 		ZIndex = 5,
 		Parent = b,
 	})
 	UI.list(dailies, Enum.FillDirection.Horizontal, S(22), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top)
-	local doneCount = 0
+	local sheets: { GuiObject } = {}
+	local claimable: { string } = {}
 	for i, e in jobs.daily do
-		dailyCard(dailies, i, e, i)
+		local card = dailyCard(dailies, i, e, i)
+		if card then
+			table.insert(sheets, card)
+		end
 		local def = JobPool.ById[e.id]
 		if def and (tonumber(e.progress) or 0) >= def.target and not e.claimed then
-			doneCount += 1
+			table.insert(claimable, "d" .. i)
 		end
 	end
 	local bounty = UI.frame({
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(10), 0, S(64)),
-		Size = UDim2.new(if mobile then 0.32 else 0.28, 0, 1, -S(130)),
+		Position = UDim2.new(1, -S(6), 0, boardTop),
+		Size = UDim2.new(posterW, 0, 1, -(boardTop + boardBottom)),
 		ZIndex = 5,
 		Parent = b,
 	})
 	local be = jobs.bounty[1]
 	if be then
-		bountyCard(bounty, be)
+		local card = bountyCard(bounty, be, #sheets + 1)
+		if card then
+			table.insert(sheets, card)
+		end
 		local def = JobPool.ById[be.id]
 		if def and (tonumber(be.progress) or 0) >= def.target and not be.claimed then
-			doneCount += 1
+			table.insert(claimable, "b1")
 		end
 	end
 	-- Footer.
@@ -695,7 +989,7 @@ render = function()
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, S(54)),
+		Size = UDim2.new(1, 0, 0, footerH),
 		ZIndex = 5,
 		Parent = b,
 	})
@@ -706,26 +1000,28 @@ render = function()
 		Enum.HorizontalAlignment.Center,
 		Enum.VerticalAlignment.Center
 	)
-	if doneCount > 1 then
-		local all, _ = Fx.button(
+	if #claimable > 1 then
+		local all = claimButton(
 			footer,
-			string.format("CLAIM ALL (%d)", doneCount),
-			Color3.fromHex("2FB75A"),
-			Theme.Colors.white,
-			UDim2.fromOffset(S(220), S(50)),
-			6
+			string.format("CLAIM ALL (%d)", #claimable),
+			UDim2.fromOffset(S(230), S(50)),
+			claimable,
+			"jobClaimAll",
+			{},
+			"JOBS PAID"
 		)
 		all.TextSize = S(20)
-		Fx.particles(all, Color3.fromHex("FFE08A"), 5, 8)
-		all.Activated:Connect(function()
-			claimWith(shop("jobClaimAll", {}), "JOBS PAID")
-		end)
 	end
 	local back, _ = Fx.button(footer, "BACK", Theme.Colors.red, Theme.Colors.white, UDim2.fromOffset(S(160), S(50)), 6)
+	back.TextSize = S(20)
 	back.LayoutOrder = 2
 	back.Activated:Connect(function()
 		JobBoard.close()
 	end)
+	if entrance then
+		entrance = false
+		Fx.cascade(sheets, Config.JobBoardStaggerSec, 30)
+	end
 end
 
 ------------------------------------------------------------------ Open / close
@@ -779,6 +1075,13 @@ function JobBoard.open()
 		ZIndex = 5,
 		Parent = g,
 	})
+	fxLayer = UI.frame({
+		Name = "Fx",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 50,
+		Parent = g,
+	})
 	savedMode = ClientState.cameraMode
 	savedHud = HUD.mode
 	ClientState.cameraMode = "jobs"
@@ -810,8 +1113,9 @@ function JobBoard.open()
 		end)
 	end
 	UI.sound(Fx.Sounds.whoosh, 1.1, 0.4)
+	entrance = true
 	render()
-	Fx.slideIn(body :: Frame, UDim2.fromOffset(0, S(40)), 0.3)
+	Fx.slideIn(body :: Frame, UDim2.fromOffset(0, S(24)), 0.3)
 end
 
 function JobBoard.close()
@@ -828,6 +1132,8 @@ function JobBoard.close()
 		gui = nil
 	end
 	body = nil
+	fxLayer = nil
+	entrance = false
 	ClientState.setBlock("jobs", false)
 	if lockedMovement then
 		ClientState.lockMovement("jobs", false)
@@ -859,32 +1165,14 @@ local function announce(line: string)
 	})
 	UI.corner(card, S(10))
 	UI.stroke(card, Theme.Colors.gold, S(2), 0)
-	local portrait = UI.frame({
-		BackgroundColor3 = Color3.fromHex("3A2A1A"),
+	local slot = UI.frame({
+		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(S(8), S(8)),
 		Size = UDim2.fromOffset(S(62), S(62)),
 		ZIndex = 3,
 		Parent = card,
 	})
-	UI.corner(portrait, S(8))
-	local head = UI.frame({
-		BackgroundColor3 = Color3.fromHex("C9A46A"),
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.14),
-		Size = UDim2.fromScale(0.44, 0.44),
-		ZIndex = 4,
-		Parent = portrait,
-	})
-	UI.corner(head, S(20))
-	local sh = UI.frame({
-		BackgroundColor3 = Color3.fromHex("23232B"),
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.fromScale(0.5, 1),
-		Size = UDim2.fromScale(0.8, 0.34),
-		ZIndex = 4,
-		Parent = portrait,
-	})
-	UI.corner(sh, S(14))
+	portrait(slot, 3, 1)
 	UI.text({
 		Text = "MARLOW · JOBS",
 		Font = Theme.Fonts.display,

@@ -69,6 +69,15 @@ export type Computed = {
 	splash: number,
 	multishot: number,
 	lifesteal: number,
+	-- Synergy (conditional) upgrades: percent points (wildfire, shatter, aftershock) or multipliers (1 = none).
+	wildfire: number, -- % of a Fire Ammo burn that jumps on the burner's death
+	shatter: number, -- % more bullet damage to chilled enemies
+	aftershock: number, -- % of gun damage an Impact stagger sends around the target
+	fireAbilityMult: number, -- TORCH: Molotov / Flame Turret / Oil Drum damage
+	turretDmgMult: number, -- ENGINEER: Turret damage
+	healMult: number, -- DOC: Stim Shot / Med Bag / Healing Turret healing
+	deadEyeTimeMult: number, -- SHARPSHOOTER: Dead Eye duration
+	blastRadiusMult: number, -- INITIATE: Frag / Claymore blast radius
 }
 
 -- charges / maxCharges: DOUBLE DOWN gives Frag and Claymore a second charge; the sweep shows only at 0 charges.

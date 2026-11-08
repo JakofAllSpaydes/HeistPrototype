@@ -1,8 +1,9 @@
 --!strict
--- Classes tab: the category pills ARE the classes (icon + name, lock on unowned); below them the selected
--- class's three ability rows, sized to fill the panel (big icon well with the in-match $ price, name and
--- hotkey, description, stats as current » next, UPGRADE), and the detail column on the right (tall class
--- well, name, EQUIPPED / UNLOCKED / LOCKED, the kit, EQUIP or UNLOCK). The preview plays the class idle.
+-- Classes tab: the category pills ARE the classes (icon + name; a green check on the equipped one, a padlock on
+-- unowned); below them the selected class's three ability rows, sized to fill the panel (big icon well with the
+-- in-match $ price, name and hotkey, description, stats as current » next, UPGRADE), and the detail column on the
+-- right (class well with the equipped check or a padlock, name, the kit, mastery, EQUIP or UNLOCK). The preview
+-- plays the class idle.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -21,6 +22,19 @@ local ClassesTab = {}
 
 local selected: string? = nil
 local lastIdle: string? = nil
+-- One-shot juice: the pill just tapped pops; the class just equipped pops its check in once the profile shows it.
+local popSelect: string? = nil
+local popEquip: string? = nil
+local popEquipAt = 0
+
+local function equipPopFor(id: string): boolean
+	return popEquip == id and os.clock() - popEquipAt < 3
+end
+
+local function markEquipPop(id: string)
+	popEquip = id
+	popEquipAt = os.clock()
+end
 
 local function fmtVar(v: Classes.Var, value: number): string
 	local s = if value == math.floor(value) then string.format("%d", value) else string.format("%.1f", value)
@@ -37,16 +51,17 @@ local function futurePill(parent: Instance, order: number, onPick: () -> ()): Te
 		Text = "",
 		BackgroundColor3 = Theme.Colors.panel,
 		BackgroundTransparency = 0.4,
-		Size = UDim2.new(1 / PILL_COUNT, -S(5), 0, S(44)),
+		Size = UDim2.new(1 / PILL_COUNT, -S(5), 0, S(48)),
 		LayoutOrder = order,
 		Parent = parent,
 	})
-	UI.corner(b, S(4))
+	UI.corner(b, S(6))
+	MetaUI.hover(b)
 	local circle = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel2,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, S(8), 0.5, 0),
-		Size = UDim2.fromOffset(S(30), S(30)),
+		Size = UDim2.fromOffset(S(32), S(32)),
 		Parent = b,
 	})
 	UI.corner(circle, 999)
@@ -65,8 +80,8 @@ local function futurePill(parent: Instance, order: number, onPick: () -> ()): Te
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.fromOffset(S(46), 0),
-		Size = UDim2.new(1, -S(50), 1, 0),
+		Position = UDim2.fromOffset(S(48), 0),
+		Size = UDim2.new(1, -S(52), 1, 0),
 		Parent = b,
 	})
 	b.Activated:Connect(function()
@@ -144,7 +159,8 @@ local function masteryBlock(parent: Instance, order: number, classId: string, xp
 	end
 end
 
--- Class pill: colored circle with the initial, name, lock when unowned, blue when selected.
+-- Class pill: colored circle with the initial and the name; blue when selected. State without words (Round 18c):
+-- equipped = a green check on the circle and a green outline, unowned = a grey circle and a small padlock.
 local function classPill(
 	parent: Instance,
 	order: number,
@@ -152,48 +168,73 @@ local function classPill(
 	own: boolean,
 	on: boolean,
 	equipped: boolean,
+	pop: string?, -- "select" | "equip"
 	onPick: () -> ()
 ): TextButton
 	local S = UI.S
 	local b = UI.button({
 		Text = "",
 		BackgroundColor3 = if on then Theme.Colors.blue else Theme.Colors.panel,
-		Size = UDim2.new(1 / PILL_COUNT, -S(5), 0, S(44)),
+		BackgroundTransparency = if own or on then 0 else 0.25,
+		Size = UDim2.new(1 / PILL_COUNT, -S(5), 0, S(48)),
 		LayoutOrder = order,
 		Parent = parent,
 	})
-	UI.corner(b, S(4))
+	UI.corner(b, S(6))
+	UI.stroke(
+		b,
+		if equipped then MetaUI.Green elseif on then Theme.Colors.white else Theme.Colors.black,
+		S(if equipped then 3 elseif on then 2 else 1),
+		if equipped or on then 0 else 0.5
+	)
 	local circle = UI.frame({
 		BackgroundColor3 = if own then Color3.fromHex(c.color) else Theme.Colors.panel2,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, S(8), 0.5, 0),
-		Size = UDim2.fromOffset(S(30), S(30)),
+		Size = UDim2.fromOffset(S(32), S(32)),
 		Parent = b,
 	})
 	UI.corner(circle, 999)
+	UI.stroke(circle, Theme.Colors.bg, S(1.5), 0.3)
 	UI.text({
-		Text = if own then c.glyph else "🔒",
+		Text = c.glyph,
 		Font = Theme.Fonts.display,
-		TextSize = S(if own then 16 else 13),
-		TextColor3 = Theme.Colors.bg,
+		TextSize = S(17),
+		TextColor3 = if own then Theme.Colors.bg else Theme.Colors.grey,
 		Size = UDim2.fromScale(1, 1),
 		Parent = circle,
 	})
+	if equipped then
+		local check = MetaUI.check(circle, S(18), 4)
+		check.AnchorPoint = Vector2.new(0.5, 0.5)
+		check.Position = UDim2.new(1, -S(2), 0, S(2))
+		if pop == "equip" then
+			MetaUI.popIn(check, nil)
+		end
+	elseif not own then
+		local lock = MetaUI.lock(circle, S(16), Theme.Colors.white, 4)
+		lock.AnchorPoint = Vector2.new(0.5, 0.5)
+		lock.Position = UDim2.new(1, -S(2), 1, -S(3))
+	end
 	UI.text({
-		Text = string.upper(c.name) .. (if equipped then " ✔" else ""),
+		Text = string.upper(c.name),
 		Font = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = if own then Theme.Colors.white else Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.fromOffset(S(46), 0),
-		Size = UDim2.new(1, -S(50), 1, 0),
+		Position = UDim2.fromOffset(S(48), 0),
+		Size = UDim2.new(1, -S(52), 1, 0),
 		Parent = b,
 	})
 	b.Activated:Connect(function()
 		UI.punch(b, 0.95, 0.15)
 		onPick()
 	end)
+	if pop == "select" then
+		UI.punch(b, Config.MetaSelectPopScale, 0.25)
+	end
+	MetaUI.hover(b)
 	return b
 end
 
@@ -218,11 +259,12 @@ local function abilityRow(
 		Parent = parent,
 	})
 	UI.corner(row, S(8))
+	UI.stroke(row, Theme.Colors.black, S(1), 0.5)
 	local pad = S(12)
 	local wellSize = math.min(rowH - pad * 2, S(110))
 	local well = UI.frame({
 		BackgroundColor3 = Color3.fromHex(class.color),
-		BackgroundTransparency = 0,
+		BackgroundTransparency = if isOwned then 0 else 0.45, -- an ability of a class you don't own reads dimmed
 		Position = UDim2.fromOffset(pad, pad),
 		Size = UDim2.fromOffset(wellSize, wellSize),
 		Parent = row,
@@ -307,7 +349,7 @@ local function abilityRow(
 			end
 		end)
 	else
-		MetaUI.button(btnHolder, 1, "NOT UNLOCKED", "disabled", nil)
+		MetaUI.lockedButton(btnHolder, 1)
 	end
 end
 
@@ -333,13 +375,20 @@ function ClassesTab.render(scene: any)
 	-- Class pills across the full width.
 	local pills = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(44)),
+		Size = UDim2.new(1, 0, 0, S(48)),
 		Parent = panel,
 	})
 	UI.list(pills, Enum.FillDirection.Horizontal, S(6))
 	for i, c in Classes.List do
 		local own = profile ~= nil and profile.classes.owned[c.id] == true
-		classPill(pills, i, c, own, selected == c.id, equipped == c.id, function()
+		local pop = if equipped == c.id and equipPopFor(c.id)
+			then "equip"
+			elseif popSelect == c.id then "select"
+			else nil
+		classPill(pills, i, c, own, selected == c.id, equipped == c.id, pop, function()
+			if selected ~= c.id then
+				popSelect = c.id
+			end
 			selected = c.id
 			UI.sound(Theme.Sounds.toast, 1.25, 0.3)
 			scene.refresh()
@@ -350,7 +399,7 @@ function ClassesTab.render(scene: any)
 	end)
 
 	local rightW = if scene.mobile then S(200) else S(260)
-	local grid, card = MetaUI.columns(panel, rightW, S(54), "classes")
+	local grid, card = MetaUI.columns(panel, rightW, S(58), "classes")
 	UI.list(grid, Enum.FillDirection.Vertical, S(8))
 
 	-- Three rows share the column's height (no dead space), with a floor so stats never clip.
@@ -362,30 +411,34 @@ function ClassesTab.render(scene: any)
 		abilityRow(scene, grid, 1 + i, rowH, class, a, isOwned)
 	end
 
-	-- Detail: a shorter well, name, status, the class mastery (bar + three tier cards), action.
+	-- Detail: a shorter well (the equipped check on it, a dim well + padlock when locked), name, the kit, the class
+	-- mastery (bar + three tier cards), action. State is the check / lock / dimming, never a word.
 	local ic = MetaUI.well(card, 1, Color3.fromHex(class.color), "class", class.glyph, Theme.Colors.white)
-	local well = ic.Parent
-	if well and well:IsA("Frame") then
-		well.Size = UDim2.new(1, 0, 0, S(scene.mobile and 96 or 130))
+	local well = ic.Parent :: Frame
+	well.Size = UDim2.new(1, 0, 0, S(scene.mobile and 96 or 130))
+	ic.Size = UDim2.fromOffset(S(scene.mobile and 92 or 120), S(scene.mobile and 92 or 120))
+	if equipped == class.id then
+		MetaUI.wellCheck(well, equipPopFor(class.id))
+	elseif not isOwned then
+		well.BackgroundTransparency = 0.45
+		local lock = MetaUI.lock(well, S(30), Theme.Colors.white, 6)
+		lock.AnchorPoint = Vector2.new(1, 0)
+		lock.Position = UDim2.new(1, -S(10), 0, S(10))
 	end
-	MetaUI.heading(
-		card,
-		2,
-		class.name,
-		if equipped == class.id
-			then "EQUIPPED"
-			elseif isOwned then "UNLOCKED"
-			else "LOCKED · " .. (if class.free then "FREE" else MetaUI.fmtGold(Prices.class)),
-		if equipped == class.id then MetaUI.Green elseif isOwned then Theme.Colors.gold else Theme.Colors.grey
-	)
+	local kit = {}
+	for _, a in class.abilities do
+		table.insert(kit, string.upper(a.name))
+	end
+	MetaUI.heading(card, 2, class.name, table.concat(kit, " · "))
 	local m = profile and profile.mastery and profile.mastery.classes and profile.mastery.classes[class.id]
 	masteryBlock(card, 5, class.id, if m then (tonumber(m.xp) or 0) else 0)
 	if equipped == class.id then
-		MetaUI.button(card, 20, "EQUIPPED", "disabled", nil)
+		MetaUI.equippedButton(card, 20)
 	elseif isOwned then
 		MetaUI.button(card, 20, "EQUIP", "green", function()
 			local r = scene.request("equipClass", { classId = class.id })
 			if r.ok then
+				markEquipPop(class.id)
 				scene.refresh()
 			end
 		end)
@@ -393,6 +446,7 @@ function ClassesTab.render(scene: any)
 		MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(Prices.class), "green", function()
 			local r = scene.request("unlockClass", { classId = class.id })
 			if r.ok then
+				markEquipPop(class.id) -- unlocking equips it
 				scene.refresh()
 			end
 		end)
@@ -403,6 +457,10 @@ function ClassesTab.render(scene: any)
 			MetaUI.sourceButton(scene, card, 21, "class", class.id, "Bundle")
 		end
 	end
+	popSelect = nil
+	if popEquip and popEquip == equipped then
+		popEquip = nil -- played
+	end
 end
 
 function ClassesTab.onProfile(scene: any)
@@ -412,6 +470,8 @@ end
 function ClassesTab.leave(scene: any)
 	-- Back to the equipped class's idle for the other tabs.
 	lastIdle = nil
+	popSelect = nil
+	popEquip = nil
 	local sync = scene.sync()
 	scene.preview.classIdle(if sync then sync.classId else Classes.Default)
 end

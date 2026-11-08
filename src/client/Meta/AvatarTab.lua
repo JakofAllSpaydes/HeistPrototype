@@ -1,7 +1,9 @@
 --!strict
 -- Avatar tab in the shared format with three categories: MASKS (OWNED / UNOWNED mask tiles, live preview on
 -- the head), SQUAD (the pose struck in the run start / run end line-ups) and MVP (the flex played alone
--- under the MVP stamp). Tapping an emote plays it on the avatar; the detail column equips or buys.
+-- under the MVP stamp). Tapping an emote plays it on the avatar; the detail column equips or buys. State reads
+-- without words (Round 18c): the equipped item wears a big check, unowned tiles dim and carry a 3-letter source
+-- chip (or their Gold price); the full source ("MASK CRATE") is in the detail column.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -20,6 +22,19 @@ local AvatarTab = {}
 local category = "MASKS" -- MASKS | SQUAD | MVP
 local selectedMask: string? = nil
 local selectedEmote: { [string]: string? } = {} -- per category
+-- One-shot juice: the tile just tapped pops; the item just equipped pops its check in once the profile shows it.
+local popSelect: string? = nil
+local popEquip: string? = nil
+local popEquipAt = 0
+
+local function equipPopFor(id: string): boolean
+	return popEquip == id and os.clock() - popEquipAt < 3
+end
+
+local function markEquipPop(id: string)
+	popEquip = id
+	popEquipAt = os.clock()
+end
 
 local CATEGORIES = {
 	{ id = "MASKS", name = "MASKS" },
@@ -38,6 +53,11 @@ local function pills(scene: any, panel: Frame)
 			scene.refresh()
 		end
 	end)
+end
+
+-- Emote tiles: the emote's initial in the circle (house style), not a play symbol.
+local function initial(name: string): string
+	return string.upper(string.sub(name, 1, 1))
 end
 
 ------------------------------------------------------------------ Masks
@@ -64,35 +84,32 @@ local function renderMasks(scene: any, panel: Frame)
 		table.insert(if own then ownedList else unownedList, m)
 	end
 	local function tilesFor(list: { Masks.Mask }, header: string, order: number)
-		MetaUI.header(grid, order, header)
+		MetaUI.header(grid, order, header, #list)
 		if #list == 0 then
 			return
 		end
 		local row = MetaUI.row(grid, order + 1, tileW, perRow)
 		for i, m in list do
 			local own = profile ~= nil and profile.masks.owned[m.id] == true
-			local pill: string, pillColor: Color3
-			if own then
-				pill = if equipped == m.id then "EQUIPPED" else "OWNED"
-				pillColor = if equipped == m.id then MetaUI.Green else Theme.Colors.grey
-			else
-				pill, pillColor = MetaUI.acquisition(m.saleType, m.price or Prices.mask)
-			end
+			local isEq = own and equipped == m.id
 			local b = MetaUI.tile(row, {
 				name = m.name,
-				pill = pill,
-				pillColor = pillColor,
 				color = Rarity.color(m.rarity), -- tile color is the rarity; the mask's own color is on the icon
 				owned = own,
 				selected = selectedMask == m.id,
-				tag = if own and m.saleType ~= "Direct" then string.upper(m.saleType) else nil,
-				tagColor = MetaUI.SourceColors[m.saleType] or Theme.Colors.blue,
+				equipped = isEq,
 				icon = "mask",
 				iconColor = Color3.fromHex(m.color),
 				size = tileW,
 				order = i,
+				price = if not own and m.saleType == "Direct" then (m.price or Prices.mask) else nil,
+				source = if not own then m.saleType else nil,
+				pop = if isEq and equipPopFor(m.id) then "equip" elseif popSelect == m.id then "select" else nil,
 			})
 			b.Activated:Connect(function()
+				if selectedMask ~= m.id then
+					popSelect = m.id
+				end
 				selectedMask = m.id
 				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
 				scene.refresh()
@@ -102,27 +119,22 @@ local function renderMasks(scene: any, panel: Frame)
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
 
-	MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color))
-	MetaUI.heading(
-		card,
-		2,
-		mask.name,
-		string.format(
-			"%s · %s · %s",
-			string.upper(mask.type),
-			string.upper(Rarity.name(mask.rarity)),
-			if isOwned then "OWNED" else string.upper(mask.saleType)
-		),
-		if isOwned then Theme.Colors.gold else Theme.Colors.grey
-	)
-	MetaUI.statRow(card, 10, "Type", string.upper(mask.type), nil)
-	MetaUI.statRow(card, 11, "Rarity", string.upper(Rarity.name(mask.rarity)), nil)
+	-- Detail: the art box (rarity on it, the equipped check), name, the accessory type, where it comes from.
+	local ic = MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color))
+	local well = ic.Parent :: Frame
+	MetaUI.rarityChip(well, mask.rarity)
 	if equipped == mask.id then
-		MetaUI.button(card, 20, "EQUIPPED", "disabled", nil)
+		MetaUI.wellCheck(well, equipPopFor(mask.id))
+	end
+	MetaUI.heading(card, 2, mask.name, string.upper(mask.type) .. " ACCESSORY")
+	MetaUI.statRow(card, 10, "From", MetaUI.sourceName(mask.saleType, "mask", mask.id), nil)
+	if equipped == mask.id then
+		MetaUI.equippedButton(card, 20)
 	elseif isOwned then
 		MetaUI.button(card, 20, "EQUIP", "green", function()
 			local r = scene.request("equipMask", { maskId = mask.id })
 			if r.ok then
+				markEquipPop(mask.id)
 				scene.preview.commit()
 				scene.refresh()
 			end
@@ -131,12 +143,17 @@ local function renderMasks(scene: any, panel: Frame)
 		MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(mask.price or Prices.mask), "green", function()
 			local r = scene.request("buyMask", { maskId = mask.id })
 			if r.ok then
+				markEquipPop(mask.id) -- buying equips it
 				scene.preview.commit()
 				scene.refresh()
 			end
 		end)
 	else
 		MetaUI.sourceButton(scene, card, 20, "mask", mask.id, mask.saleType)
+	end
+	popSelect = nil
+	if popEquip and popEquip == equipped then
+		popEquip = nil -- played
 	end
 end
 
@@ -168,36 +185,33 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 		table.insert(if own then ownedList else unownedList, e)
 	end
 	local function tilesFor(list: { Emotes.Emote }, header: string, order: number)
-		MetaUI.header(grid, order, header)
+		MetaUI.header(grid, order, header, #list)
 		if #list == 0 then
 			return
 		end
 		local row = MetaUI.row(grid, order + 1, tileW, perRow)
 		for i, e in list do
 			local own = profile ~= nil and profile.emotes ~= nil and profile.emotes.owned[e.id] == true
-			local pill: string, pillColor: Color3
-			if own then
-				pill = if equipped == e.id then "EQUIPPED" else "OWNED"
-				pillColor = if equipped == e.id then MetaUI.Green else Theme.Colors.grey
-			else
-				pill, pillColor = MetaUI.acquisition(e.saleType, e.price or Prices.emote)
-			end
+			local isEq = own and equipped == e.id
 			local b = MetaUI.tile(row, {
 				name = e.name,
-				pill = pill,
-				pillColor = pillColor,
 				color = Rarity.color(e.rarity),
 				owned = own,
 				selected = sel == e.id,
-				tag = if own and e.saleType ~= "Direct" then string.upper(e.saleType) else nil,
-				tagColor = MetaUI.SourceColors[e.saleType] or Theme.Colors.blue,
+				equipped = isEq,
 				icon = "class",
 				iconColor = Theme.Colors.white,
-				glyph = "▶",
+				glyph = initial(e.name),
 				size = tileW,
 				order = i,
+				price = if not own and e.saleType == "Direct" then (e.price or Prices.emote) else nil,
+				source = if not own then e.saleType else nil,
+				pop = if isEq and equipPopFor(e.id) then "equip" elseif popSelect == e.id then "select" else nil,
 			})
 			b.Activated:Connect(function()
+				if selectedEmote[category] ~= e.id then
+					popSelect = e.id
+				end
 				selectedEmote[category] = e.id
 				-- Tap = preview: the emote plays on the avatar right away.
 				scene.preview.emote(e.animationId, e.holdSec)
@@ -208,29 +222,24 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
 
-	MetaUI.well(card, 1, Rarity.color(emote.rarity), "class", "▶", color)
-	MetaUI.heading(
-		card,
-		2,
-		emote.name,
-		string.format(
-			"%s · %s · %s",
-			if slot == "mvp" then "MVP FLEX" else "SQUAD POSE",
-			string.upper(Rarity.name(emote.rarity)),
-			if isOwned then "OWNED" else string.upper(emote.saleType)
-		),
-		if isOwned then Theme.Colors.gold else Theme.Colors.grey
-	)
-	MetaUI.statRow(card, 10, "Rarity", string.upper(Rarity.name(emote.rarity)), nil)
-	MetaUI.button(card, 15, "▶ PREVIEW", "blue", function()
+	local ic = MetaUI.well(card, 1, Rarity.color(emote.rarity), "class", initial(emote.name), color)
+	local well = ic.Parent :: Frame
+	MetaUI.rarityChip(well, emote.rarity)
+	if equipped == emote.id then
+		MetaUI.wellCheck(well, equipPopFor(emote.id))
+	end
+	MetaUI.heading(card, 2, emote.name, if slot == "mvp" then "MVP FLEX" else "SQUAD POSE")
+	MetaUI.statRow(card, 10, "From", MetaUI.sourceName(emote.saleType, "emote", emote.id), nil)
+	MetaUI.button(card, 15, "PREVIEW", "blue", function()
 		scene.preview.emote(emote.animationId, emote.holdSec)
 	end)
 	if equipped == emote.id then
-		MetaUI.button(card, 20, "EQUIPPED", "disabled", nil)
+		MetaUI.equippedButton(card, 20)
 	elseif isOwned then
 		MetaUI.button(card, 20, "EQUIP", "green", function()
 			local r = scene.request("equipEmote", { emoteId = emote.id })
 			if r.ok then
+				markEquipPop(emote.id)
 				scene.refresh()
 			end
 		end)
@@ -238,11 +247,16 @@ local function renderEmotes(scene: any, panel: Frame, slot: string)
 		MetaUI.button(card, 20, "UNLOCK - " .. MetaUI.fmtGold(emote.price or Prices.emote), "green", function()
 			local r = scene.request("buyEmote", { emoteId = emote.id })
 			if r.ok then
+				markEquipPop(emote.id) -- buying equips it
 				scene.refresh()
 			end
 		end)
 	else
 		MetaUI.sourceButton(scene, card, 20, "emote", emote.id, emote.saleType)
+	end
+	popSelect = nil
+	if popEquip and popEquip == equipped then
+		popEquip = nil -- played
 	end
 end
 
@@ -267,6 +281,8 @@ function AvatarTab.onProfile(scene: any)
 end
 
 function AvatarTab.leave(scene: any)
+	popSelect = nil
+	popEquip = nil
 	scene.preview.mask(nil, nil)
 end
 

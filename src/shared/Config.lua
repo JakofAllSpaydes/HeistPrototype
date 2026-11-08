@@ -302,6 +302,16 @@ local Config = {
 	-- Kill cash = archetype cash x (1 + CashWaveMult x (wave - 1)) x elite x heat x CASH GAIN.
 	CashWaveMult = 0.1,
 
+	------------------------------------------------------------------ Synergy upgrades (conditional cards)
+	-- Conditional stats (Upgrades.lua `requires`) sit outside CategoryWeights: they show up only while their condition
+	-- holds (an element held, the equipped class), marked with a SYNERGY pill. Per magnitudes in Upgrades.Magnitude.
+	SynergyChance = 0.2, -- per card slot (pick-3 and dealer stands), while at least one synergy card qualifies
+	SynergyColor = "5CE1E6", -- the pill on a synergy card
+	WildfireRadius = 10, -- WILDFIRE: a Fire Ammo burn jumps to enemies this close when the burning enemy dies...
+	WildfireMaxPct = 100, -- ...at the card's % of its strength, never more than this (100 = the burn carries whole)
+	ShatterFrozenMult = 2, -- SHATTER: a frozen enemy takes this x the bonus a chilled one does
+	AftershockRadius = 7, -- AFTERSHOCK: an Impact stagger hits other enemies this close for the card's % of gun damage
+
 	------------------------------------------------------------------ Ground loot
 	SwapCooldownSec = 0.5, -- after a swap, further swaps are ignored for this long (anti-spam mid-combat)
 	GroundWeaponLifetime = 30, -- floor guns despawn after this; a fresh drop (or swap) restarts it
@@ -390,7 +400,7 @@ local Config = {
 		flameturret = 20,
 		oildrum = 15,
 	},
-	StructurePlaceDistance = 5, -- studs in front of the player (placeables: turrets, barricade, oil drum, med bag, claymore)
+	StructurePlaceDistance = 0, -- studs in front of the player (placeables: turrets, barricade, oil drum, med bag, claymore); 0 = right where you stand (Round 18b; players walk through placeables)
 	ThrowDistance = 12, -- studs in front of the player a thrown ability lands when no aim point comes with it (flashbang, molotov)
 	ThrowMaxRange = 100, -- thrown abilities land at the cursor's floor point, no further than this from the player
 	-- Aim assist (Round 16): the throw locks, and homes on in flight, the enemy under the cursor; else the one
@@ -420,10 +430,10 @@ local Config = {
 	TurretDmg = 12,
 	TurretFireRate = 3, -- shots per second
 	TurretRange = 45,
-	TurretLifetime = 30,
+	TurretLifetime = 0, -- seconds; 0 = stands until destroyed (Round 18d: every placeable but the med bag)
 	BarricadeHP = 300,
 	BarricadeSize = Vector3.new(8, 4, 1),
-	BarricadeLifetime = 45,
+	BarricadeLifetime = 0,
 	-- Adrenaline (ability id "stim"): fire rate, reload and move speed; no heal (DOC's stim shot heals)
 	AdrenalineDuration = 6,
 	AdrenalineMoveMult = 1.5,
@@ -436,18 +446,18 @@ local Config = {
 	StimShotReloadSpeedMult = 1.3,
 	MedBagHealPerSec = 8, -- every standing teammate inside the circle
 	MedBagRadius = 6,
-	MedBagLifetime = 15,
+	MedBagLifetime = 15, -- the one placeable with a duration
 	HealTurretHP = 150,
 	HealTurretBeamHeal = 6, -- HP per second on the beam
 	HealTurretRange = 30, -- picks the hurt teammate with the lowest HP share in range
 	HealTurretTickSec = 0.5,
-	HealTurretLifetime = 30,
+	HealTurretLifetime = 0,
 	-- SHARPSHOOTER
 	ClaymoreDamage = 220, -- to every enemy in the blast
 	ClaymoreTriggerRadius = 5, -- an enemy this close sets it off
 	ClaymoreBlastRadius = 8,
 	ClaymoreArmSec = 1, -- it cannot go off before this
-	ClaymoreLifetime = 60,
+	ClaymoreLifetime = 0, -- until it goes off or is destroyed
 	DeadEyeDuration = 8,
 	DeadEyeDmgPct = 25, -- weapon damage x (1 + this / 100)
 	DeadEyeSpeedPct = 20,
@@ -471,9 +481,9 @@ local Config = {
 	FlameTurretDps = 30,
 	FlameTurretRange = 14, -- short: a stream, not a gun
 	FlameTurretTickSec = 0.25,
-	FlameTurretLifetime = 30,
+	FlameTurretLifetime = 0,
 	OilDrumHP = 200,
-	OilDrumLifetime = 45,
+	OilDrumLifetime = 0,
 	OilDrumBurnPerSec = 20, -- the fire it leaves when enemies break it (not when it expires)
 	OilDrumMoveSlowPct = 30,
 	OilDrumBurnRadius = 7,
@@ -512,7 +522,20 @@ local Config = {
 	CashBagsPerWave = 1, -- spawned at every wave start (not the boss cutscene), up to MaxActiveBags; fractions carry (0.5 = every other wave)
 	GoldBagsPerWave = 0.5,
 	MaxActiveBags = 6, -- caps the wave-start trickle; bursts (boss, vault) bypass it
-	BagCollectSec = 0.5, -- hold F on a bag
+	-- Pickup has no button: stand near a bag and it fills, then it is yours. One bag at a time per player.
+	BagChannelSec = 0.7, -- a bag fills over this long (the first one of a streak)
+	BagStartRadius = 6, -- studs (flat, root to bag): a bag in this reach starts filling (one with fill first, else the nearest)...
+	BagKeepRadius = 10, -- ...and keeps filling until you are past this, so a small step never cancels
+	BagStreakMult = 0.8, -- each bag started within BagStreakWindowSec of your last pickup fills this much faster (x per bag)...
+	BagStreakMinMult = 0.4, -- ...down to this fraction of BagChannelSec (a vault pile of 10 takes about 4s)
+	BagStreakWindowSec = 1.5, -- ...and the streak ends after this long with nothing filling
+	BagHoldSec = 0.6, -- a bag you leave keeps its fill this long...
+	BagDrainPerSec = 0.5, -- ...then loses this much of a full fill per second; anyone can finish it meanwhile
+	BagBusyGraceSec = 0.35, -- teammates' GRABBING tag stays up this long between bags of a pile
+	BagRingSegments = 16, -- ticks in the fill ring over a bag
+	BagRingMaxDistance = 45, -- the fill ring is drawn within this range only
+	BagPullStuds = 1.6, -- a filling bag slides this far toward whoever fills it, and lifts a little
+	BagSuckSec = 0.18, -- on pickup the bag shoots into the collector over this long while it shrinks
 	BagFarMult = 3, -- spot weight beyond BagFarDistance from the crew...
 	BagFarDistance = 60,
 	BagNearMult = 0.25, -- ...and within BagNearDistance
@@ -526,6 +549,7 @@ local Config = {
 	VaultSize = 24, -- the closet is this square, on the north wall
 	VaultDoorWidth = 12,
 	VaultBagSpots = 10, -- bag spots inside (BagSpots.Vault)
+	VaultJobDurationSec = 150, -- CRACK THE VAULT's window to get the door open (Round 18c: 2x SideJobDurationSec)
 	VaultJobMinWave = 3, -- CRACK THE VAULT can be drawn from this wave (weight in SideJobKindWeights)
 	VaultSafeTierMax = 3, -- the vault's Safe dial follows the wave bracket up to this tier (SafeNumbersByTier: 3 / 4 / 5)
 	VaultJobOnce = false, -- true: at most once per run (a failed draw can come back); false: a sealed vault resets for the next draw
@@ -733,6 +757,10 @@ local Config = {
 	MetaDragSensitivity = 0.012, -- radians per pixel when dragging the avatar round in the scene
 	MetaCameraTweenSec = 0.45,
 	MetaWrapZoomDistance = 3.5, -- CUSTOMIZE pushes the camera in on the gun to this distance
+	MetaWeaponPreview = true, -- tapping a gun in the Weapons tab puts it in the avatar's hand (local only; the real one comes back on leaving the tab or closing)
+	MetaTileHoverScale = 1.05, -- customization tiles grow this much under the cursor (scale only, they never move)
+	MetaSelectPopScale = 1.1, -- the tile you just tapped pops from this scale back to 1
+	MetaEquipBadgeShare = 0.36, -- the big equipped check on a tile, as a share of the tile's width
 
 	------------------------------------------------------------------ Payout (GDD_7)
 	GoldPerWaveBase = 20, -- per cleared wave
@@ -847,6 +875,7 @@ local Config = {
 	-- Fake clocks: every timer below runs on the player's fake clock (real UTC + the debug offset on the profile).
 	FeaturedRotationSec = 2 * 86400 + 14 * 3600, -- the featured bundle rotates this often (LEAVING IN hh:mm:ss)
 	DailyShopItems = 6, -- FEATURED's daily single items (DailyShop.lua), redrawn every fake UTC day
+	DailyShopRerollPrice = 25, -- R$: REROLL on DAILY ITEMS draws a fresh set for you today (no limit)
 	FeaturedEpochUtc = 1793318400, -- 2026-10-30 00:00 UTC: the rotation clock counts from here
 	BundleRevealStagger = 0.3, -- the stacked reveal cards each item in this far apart
 	-- Crates (Crates.lua): pity, dupes, the opening scene.
@@ -875,11 +904,10 @@ local Config = {
 	-- Battle pass (Pass.lua; the grid and the seasons live in PassSeason.lua).
 	SeasonEpochUtc = 1793232000, -- 2026-10-29 00:00 UTC: season 1 starts here, each season SeasonLengthDays long
 	SeasonLengthDays = 30,
-	PassLevels = 30,
+	PassLevels = 30, -- the season's own rewards; past it the track loops PassSeason.Bonus forever (Round 18c)
 	PassXpPerLevel = 1000,
 	PassXpPerWave = 40, -- pass XP per wave cleared...
 	PassXpPerBoss = 200, -- ...and per boss kill (plus Job rewards)
-	PassOverflowGold = 100, -- after level 30, every PassXpPerLevel more grants this Gold
 	PassPremiumPrice = 499, -- PREMIUM (tier 1)
 	PassPremiumPlusPrice = 999, -- PREMIUM+ (tier 2, includes PREMIUM; from PREMIUM it costs the difference)
 	PassSkipPrice = 149, -- R$ per level skipped
@@ -894,6 +922,13 @@ local Config = {
 	WeeklyTokens = 5,
 	JobBoardPosition = Vector3.new(-30, 0, 136), -- MARLOW's corkboard in the yard (floor point; faces +Z toward the spawn)
 	JobAnnounceLine = "New jobs on the board. Pick your poison.",
+	JobBoardStaggerSec = 0.07, -- the board's sheets cascade in this far apart when it opens
+	JobBarFillSec = 0.5, -- progress bars fill from empty over this long on open
+	JobStampSec = 0.18, -- the DONE / PAID stamp's slam
+	JobClaimPulseSec = 1.4, -- a claimable sheet's glow breathes at this period (also the scoreboard's Job cards)
+	ScoreJobCardH = 84, -- the scoreboard's Job cards (under the crew rows): card height in px before UI scaling
+	ScoreJobStaggerSec = 0.06, -- the cards cascade in this far apart when the scoreboard opens
+	ScoreJobFillSec = 0.35, -- a card's progress bar fills in (on open, and on live progress) over this long
 	-- Upsells (each a one-line nudge, never a blocking popup).
 	CashGlintMinCash = 400, -- the cash + glints when cash is under the next upgrade's price by less than this
 }

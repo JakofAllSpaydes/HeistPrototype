@@ -1,12 +1,15 @@
 --!strict
 -- Shared pieces for the three tabs, styled to the reference: filter pills, dark section bars (OWNED /
--- UNOWNED), colored item tiles with the name on top and a price / level pill at the bottom, stat rows with
--- "42 » 54" deltas, big flat action buttons, and the two-column grid + detail layout.
+-- UNOWNED), rarity-colored item tiles with the name on top, stat rows with "42 » 54" deltas, big flat action
+-- buttons, and the two-column grid + detail layout. State reads without words (Round 18c): equipped is a big
+-- green check over the art plus a green outline, selected is a white outline, unowned is dimmed, and an unowned
+-- item's source is a 3-letter chip (CRT / VIP / EVT ...) with the full name in the detail column.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Prices = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Prices"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local MasteryCopy = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("MasteryCopy"))
+local Rarity = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Rarity"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -16,43 +19,32 @@ local MetaUI = {}
 
 MetaUI.Prices = Prices
 
--- Tile colors by archetype (reference tiles are saturated blocks).
-MetaUI.ArchetypeColors = {
-	Pistol = Color3.fromHex("7A8AA0"),
-	SMG = Color3.fromHex("3FA873"),
-	Rifle = Color3.fromHex("D9822B"),
-	Shotgun = Color3.fromHex("C8323C"),
-	Sniper = Color3.fromHex("7A4DE8"),
-	LMG = Color3.fromHex("2F7FD6"),
-} :: { [string]: Color3 }
-
 MetaUI.Green = Color3.fromHex("2FD46A")
 MetaUI.Pink = Color3.fromHex("E8347A")
 
 export type TileOpts = {
 	name: string,
-	pill: string, -- bottom pill text: "LV 2", "◆ 100", "CRATE", "EVENT", "OWNED"
-	pillColor: Color3?,
-	color: Color3, -- tile background
+	color: Color3, -- tile background (the rarity)
 	owned: boolean,
 	selected: boolean,
-	tag: string?, -- STARTER / EQUIPPED / CRATE / EVENT, top-right
-	tagColor: Color3?,
+	equipped: boolean?, -- big check over the art + green outline
 	icon: string, -- gun | mask | wrap | class
 	iconColor: Color3?,
 	glyph: string?, -- for icon = "class": the letter in the circle
 	size: number, -- tile width; height = size x 1.18
 	order: number,
 	nameTag: string?, -- gold text after the name in the top bar ("LV 2" on an owned weapon)
-	noPill: boolean?, -- no bottom pill (the bottom carries the mastery bar); `tag` then sits bottom-center
+	price: number?, -- unowned and sold for Gold: the price pill at the bottom
+	source: string?, -- unowned and not sold for Gold: the saleType, drawn as a small 3-letter chip
+	pop: string?, -- "select" (just tapped: the tile pops) | "equip" (just equipped: the check pops in)
 }
 
 function MetaUI.fmtGold(n: number): string
 	return "◆ " .. UI.fmtNum(n)
 end
 
--- Acquisition label for an unowned item: the Gold price (Direct) or where it comes from (brief 6: CRATE, BUNDLE,
--- VIP, PASS, EVENT).
+-- Where an item comes from (brief 6: CRATE, BUNDLE, VIP, PASS, EVENT, plus MASTERY wraps): its color, the 3-letter
+-- chip on an unowned tile, and the full name for the detail column.
 MetaUI.SourceColors = {
 	Crate = Theme.Colors.blue,
 	Event = Theme.Colors.malus,
@@ -62,6 +54,34 @@ MetaUI.SourceColors = {
 	Mastery = Theme.Colors.gold,
 } :: { [string]: Color3 }
 
+local SOURCE_GLYPHS = { Crate = "CRT", Event = "EVT", Bundle = "BND", VIP = "VIP", Pass = "PAS", Mastery = "MST" }
+local SOURCE_NAMES = {
+	Direct = "SHOP",
+	Crate = "CRATE",
+	Event = "EVENT",
+	Bundle = "BUNDLE",
+	VIP = "VIP",
+	Pass = "BATTLE PASS",
+	Mastery = "MASTERY",
+}
+
+function MetaUI.sourceGlyph(saleType: string): string
+	return SOURCE_GLYPHS[saleType] or string.upper(string.sub(saleType, 1, 3))
+end
+
+-- The full source line for a detail column: the crate's own name when one drops it ("MASK CRATE").
+function MetaUI.sourceName(saleType: string, kind: string?, id: string?): string
+	if saleType == "Crate" and kind and id then
+		local Crates = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Crates")) :: any
+		local cid = Crates.crateOf(kind, id)
+		local crate = cid and Crates.ById[cid]
+		if crate then
+			return crate.name
+		end
+	end
+	return SOURCE_NAMES[saleType] or string.upper(saleType)
+end
+
 function MetaUI.acquisition(saleType: string, price: number): (string, Color3)
 	local c = MetaUI.SourceColors[saleType]
 	if c then
@@ -70,8 +90,155 @@ function MetaUI.acquisition(saleType: string, price: number): (string, Color3)
 	return MetaUI.fmtGold(price), Theme.Colors.cash
 end
 
--- Brief 6 deep links: VIEW CRATE / VIEW BUNDLE / VIEW PASS / VIEW VIP for an unowned item that is not Gold-priced
--- (EVENT ONLY stays disabled). `kind` is the Rewards kind (weapon | mask | wrap | emote | class).
+------------------------------------------------------------------ Juice
+-- Hover grows the object in place (the PunchScale UIScale UI.punch uses, so a press punch and the hover share one
+-- scale); it never moves away from the cursor.
+function MetaUI.hover(b: GuiButton, scale: number?)
+	local to = scale or Config.MetaTileHoverScale
+	local function sc(): UIScale
+		local s = b:FindFirstChild("PunchScale") :: UIScale?
+		if not s then
+			s = UI.new("UIScale", { Name = "PunchScale", Parent = b })
+		end
+		return s :: UIScale
+	end
+	b.MouseEnter:Connect(function()
+		UI.tween(sc(), { Scale = to }, 0.12)
+	end)
+	b.MouseLeave:Connect(function()
+		UI.tween(sc(), { Scale = 1 }, 0.12)
+	end)
+end
+
+-- A badge popping in (equip): from small to full with an overshoot, plus a few green sparks.
+function MetaUI.popIn(obj: GuiObject, sparksIn: GuiObject?)
+	UI.punch(obj, 0.2, 0.4)
+	if sparksIn then
+		local Fx = require(Client:WaitForChild("Store"):WaitForChild("Fx")) :: any
+		Fx.burst(sparksIn, UDim2.fromScale(0.5, 0.45), MetaUI.Green, 10, 40)
+	end
+end
+
+------------------------------------------------------------------ Glyphs drawn from frames (house style, no emoji)
+-- Equipped: a green disc with a white check drawn from two bars and a dark rim.
+function MetaUI.check(parent: Instance, size: number, z: number?): Frame
+	local zi = z or 4
+	local disc = UI.frame({
+		Name = "Check",
+		BackgroundColor3 = MetaUI.Green,
+		Size = UDim2.fromOffset(size, size),
+		ZIndex = zi,
+		Parent = parent,
+	})
+	UI.corner(disc, size)
+	UI.stroke(disc, Theme.Colors.bg, math.max(2, math.floor(size * 0.07)), 0)
+	local thick = 0.14
+	for _, arm in
+		{
+			{ len = 0.3, x = 0.34, y = 0.575, rot = 45 },
+			{ len = 0.54, x = 0.565, y = 0.48, rot = -50 },
+		}
+	do
+		local bar = UI.frame({
+			BackgroundColor3 = Theme.Colors.white,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(arm.x, arm.y),
+			Size = UDim2.fromScale(arm.len, thick),
+			Rotation = arm.rot,
+			ZIndex = zi + 1,
+			Parent = disc,
+		})
+		UI.corner(bar, math.max(1, math.floor(size * thick / 2)))
+	end
+	return disc
+end
+
+-- Locked: a padlock (shackle ring + body + keyhole).
+function MetaUI.lock(parent: Instance, size: number, color: Color3?, z: number?): Frame
+	local zi = z or 3
+	local c = color or Theme.Colors.grey
+	local root =
+		UI.frame({ Name = "Lock", BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), ZIndex = zi })
+	local shackle = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.12),
+		Size = UDim2.fromScale(0.42, 0.5),
+		ZIndex = zi,
+		Parent = root,
+	})
+	UI.corner(shackle, size)
+	UI.stroke(shackle, c, math.max(2, math.floor(size * 0.1)), 0)
+	local body = UI.frame({
+		BackgroundColor3 = c,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 0.92),
+		Size = UDim2.fromScale(0.64, 0.46),
+		ZIndex = zi + 1,
+		Parent = root,
+	})
+	UI.corner(body, math.max(2, math.floor(size * 0.1)))
+	local hole = UI.frame({
+		BackgroundColor3 = Theme.Colors.bg,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.48),
+		Size = UDim2.fromScale(0.2, 0.3),
+		ZIndex = zi + 2,
+		Parent = body,
+	})
+	UI.corner(hole, size)
+	root.Parent = parent
+	return root
+end
+
+-- Back: a left chevron from two bars.
+function MetaUI.backArrow(parent: Instance, size: number, color: Color3?, z: number?): Frame
+	local zi = z or 3
+	local root =
+		UI.frame({ Name = "Back", BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), ZIndex = zi })
+	for _, arm in { { y = 0.4, rot = -45 }, { y = 0.6, rot = 45 } } do
+		local bar = UI.frame({
+			BackgroundColor3 = color or Theme.Colors.white,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.47, arm.y),
+			Size = UDim2.fromScale(0.34, 0.12),
+			Rotation = arm.rot,
+			ZIndex = zi,
+			Parent = root,
+		})
+		UI.corner(bar, math.max(1, math.floor(size * 0.06)))
+	end
+	root.Parent = parent
+	return root
+end
+
+-- The rarity on an art box: a dark chip top-left with the rarity name in its color.
+function MetaUI.rarityChip(parent: GuiObject, rarity: number, z: number?): Frame
+	local S = UI.S
+	local color = Rarity.color(rarity)
+	local chip, label = UI.pill(
+		parent,
+		string.upper(Rarity.name(rarity)),
+		Theme.Colors.bg,
+		color:Lerp(Theme.Colors.white, 0.2),
+		S(22),
+		S(12)
+	)
+	chip.Position = UDim2.fromOffset(S(8), S(8))
+	chip.BackgroundTransparency = 0.15
+	chip.ZIndex = z or 3
+	label.ZIndex = (z or 3) + 1
+	label.Font = Theme.Fonts.display
+	UI.stroke(chip, color, S(1.5), 0.2)
+	return chip
+end
+
+-- The detail well's equipped check. Round 18c: the side panel carries no check (the grid tile does); kept as a
+-- no-op so the tabs' calls stay put.
+function MetaUI.wellCheck(_well: GuiObject, _pop: boolean?) end
+
+-- Deep links for an unowned item that is not Gold-priced: VIEW CRATE / VIEW BUNDLE / VIEW PASS / VIEW VIP (EVENT ONLY
+-- stays disabled). `kind` is the Rewards kind (weapon | mask | wrap | emote | class).
 function MetaUI.sourceButton(scene: any, card: Instance, order: number, kind: string, id: string, saleType: string)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local Crates = require(Shared:WaitForChild("Crates")) :: any
@@ -168,8 +335,8 @@ function MetaUI.masteryBar(parent: GuiObject, kind: string, id: string, xp: numb
 		BackgroundColor3 = Theme.Colors.bg,
 		BackgroundTransparency = 0.2,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -S(2)),
-		Size = UDim2.new(1, -pad * 2, 0, S(4)),
+		Position = UDim2.new(0.5, 0, 1, -S(4)),
+		Size = UDim2.new(1, -pad * 2, 0, S(5)),
 		ZIndex = 6,
 		Parent = parent,
 	})
@@ -349,7 +516,8 @@ function MetaUI.masteryPanel(
 	return row
 end
 
--- A grid tile: colored block, name on top, icon in the middle, pill at the bottom.
+-- A grid tile: rarity block, name on top, icon in the middle. Owned tiles carry nothing else at the bottom (the
+-- weapon tab adds its mastery bar there); unowned tiles show the Gold price or a small source chip and dim.
 function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 	local S = UI.S
 	local w = o.size
@@ -365,26 +533,51 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 		Parent = parent,
 	})
 	UI.corner(b, S(8))
+	-- Outline: green when equipped (the strongest state), white when selected, a faint dark edge otherwise.
+	local outline = if o.equipped then MetaUI.Green elseif o.selected then Theme.Colors.white else Theme.Colors.black
 	UI.stroke(
 		b,
-		if o.selected then Theme.Colors.white else Theme.Colors.black,
-		S(if o.selected then 3 else 1.5),
-		if o.selected then 0 else 0.4
+		outline,
+		S(if o.equipped then 3.5 elseif o.selected then 3 else 1.5),
+		if o.equipped or o.selected then 0 else 0.4
 	)
+	if o.equipped and o.selected then
+		-- Selected and equipped: a white ring inside the green one.
+		local ring = UI.frame({
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -S(5), 1, -S(5)),
+			ZIndex = 5,
+			Parent = b,
+		})
+		UI.corner(ring, S(6))
+		UI.stroke(ring, Theme.Colors.white, S(2), 0)
+	end
+	-- A soft dark band under the name so it reads on every rarity color.
+	local band = UI.frame({
+		BackgroundColor3 = Theme.Colors.black,
+		BackgroundTransparency = 0.78,
+		Size = UDim2.new(1, 0, 0, S(22)),
+		Parent = b,
+	})
+	band.BorderSizePixel = 0
 	UI.text({
 		Text = if o.nameTag then string.format('%s  <font color="#E8B64C">%s</font>', o.name, o.nameTag) else o.name,
 		RichText = o.nameTag ~= nil,
 		Font = Theme.Fonts.body,
 		TextSize = S(12),
-		TextColor3 = Theme.Colors.white,
+		TextColor3 = if o.owned then Theme.Colors.white else Theme.Colors.text,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.fromOffset(S(4), S(4)),
-		Size = UDim2.new(1, -S(8), 0, S(16)),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(6), S(3)),
+		Size = UDim2.new(1, -S(12), 0, S(16)),
+		ZIndex = 2,
 		Parent = b,
 	})
-	local ic = MetaUI.icon(o.icon, b, math.floor(w * 0.78), o.iconColor or Theme.Colors.white, o.glyph)
+	local ic = MetaUI.icon(o.icon, b, math.floor(w * 0.74), o.iconColor or Theme.Colors.white, o.glyph)
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
-	ic.Position = UDim2.new(0.5, 0, 0.5, S(2))
+	ic.Position = UDim2.new(0.5, 0, 0.5, S(3))
 	if not o.owned then
 		for _, c in ic:GetDescendants() do
 			if c:IsA("Frame") then
@@ -392,39 +585,47 @@ function MetaUI.tile(parent: Instance, o: TileOpts): TextButton
 			end
 		end
 	end
-	if not o.noPill then
-		local pill, label = UI.pill(b, o.pill, Theme.Colors.bg, o.pillColor or Theme.Colors.cash, S(20), S(11))
+	if not o.owned and o.source and o.source ~= "Direct" then
+		-- Where it comes from, without words: a small 3-letter chip in the source's color.
+		local c = MetaUI.SourceColors[o.source] or Theme.Colors.grey
+		local chip, label = UI.pill(b, MetaUI.sourceGlyph(o.source), c, Theme.Colors.bg, S(16), S(10))
+		chip.AnchorPoint = Vector2.new(1, 1)
+		chip.Position = UDim2.new(1, -S(5), 1, -S(5))
+		chip.ZIndex = 3
+		label.ZIndex = 3
+		label.Font = Theme.Fonts.display
+	elseif not o.owned and o.price then
+		local pill, label = UI.pill(b, MetaUI.fmtGold(o.price), Theme.Colors.bg, Theme.Colors.cash, S(20), S(11))
 		pill.AnchorPoint = Vector2.new(0.5, 1)
 		pill.Position = UDim2.new(0.5, 0, 1, -S(6))
 		pill.BackgroundTransparency = 0.15
+		pill.ZIndex = 3
+		label.ZIndex = 3
 		label.Font = Theme.Fonts.display
 	end
-	if o.tag then
-		local t, tl = UI.pill(b, o.tag, o.tagColor or Theme.Colors.gold, Theme.Colors.bg, S(14), S(9))
-		if o.noPill then
-			-- The top bar carries the name and level: the tag sits where the pill was.
-			t.AnchorPoint = Vector2.new(0.5, 1)
-			t.Position = UDim2.new(0.5, 0, 1, -S(12))
-		else
-			t.AnchorPoint = Vector2.new(1, 0)
-			t.Position = UDim2.new(1, -S(4), 0, S(4))
+	if o.equipped then
+		-- The big check, centered on the art (Round 18c).
+		local size = math.floor(w * Config.MetaEquipBadgeShare)
+		local check = MetaUI.check(b, size, 6)
+		check.AnchorPoint = Vector2.new(0.5, 0.5)
+		check.Position = UDim2.new(0.5, 0, 0.5, S(2))
+		if o.pop == "equip" then
+			MetaUI.popIn(check, b)
 		end
-		t.ZIndex = 3
-		tl.ZIndex = 3
-		tl.Font = Theme.Fonts.display
 	end
-	b.MouseEnter:Connect(function()
-		UI.punch(b, 1.04, 0.15)
-	end)
+	if o.pop == "select" then
+		UI.punch(b, Config.MetaSelectPopScale, 0.25)
+	end
+	MetaUI.hover(b)
 	return b
 end
 
--- Section bar: "OWNED" / "UNOWNED" on a dark strip.
-function MetaUI.header(parent: Instance, order: number, text: string)
+-- Section bar: "OWNED" / "UNOWNED" on a dark strip, with the count on the right.
+function MetaUI.header(parent: Instance, order: number, text: string, count: number?)
 	local S = UI.S
 	local bar = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel,
-		Size = UDim2.new(1, 0, 0, S(26)),
+		Size = UDim2.new(1, -S(8), 0, S(26)),
 		LayoutOrder = order,
 		Parent = parent,
 	})
@@ -439,18 +640,32 @@ function MetaUI.header(parent: Instance, order: number, text: string)
 		Size = UDim2.new(1, -S(10), 1, 0),
 		Parent = bar,
 	})
+	if count then
+		UI.text({
+			Text = tostring(count),
+			Font = Theme.Fonts.display,
+			TextSize = S(13),
+			TextColor3 = Theme.Colors.grey,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -S(10), 0, 0),
+			Size = UDim2.new(0, S(40), 1, 0),
+			Parent = bar,
+		})
+	end
 end
 
--- A wrapping row of tiles.
+-- A wrapping row of tiles (a little padding so a hovered tile's growth and outline never clip).
 function MetaUI.row(parent: Instance, order: number, tileW: number, perRow: number): Frame
 	local S = UI.S
 	local f = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.new(1, -S(8), 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = order,
 		Parent = parent,
 	})
+	UI.pad(f, S(4), S(4), S(4), S(4))
 	UI.new("UIGridLayout", {
 		CellSize = UDim2.fromOffset(tileW, math.floor(tileW * 1.18)),
 		CellPadding = UDim2.fromOffset(S(8), S(8)),
@@ -461,10 +676,10 @@ function MetaUI.row(parent: Instance, order: number, tileW: number, perRow: numb
 	return f
 end
 
--- Tile width for `perRow` tiles across a grid's width.
+-- Tile width for `perRow` tiles across a grid's width (row padding and the scroll bar taken off).
 function MetaUI.tileWidth(grid: GuiObject, perRow: number): number
 	local S = UI.S
-	local w = math.floor((grid.AbsoluteSize.X - S(8) * (perRow - 1) - S(12)) / perRow)
+	local w = math.floor((grid.AbsoluteSize.X - S(8) * (perRow - 1) - S(24)) / perRow)
 	return math.clamp(w, S(64), S(110))
 end
 
@@ -506,6 +721,38 @@ function MetaUI.statRow(parent: Instance, order: number, label: string, current:
 	return row
 end
 
+-- The level header over the stat rows: a gold LV badge, and what the next upgrade takes it to.
+function MetaUI.levelRow(parent: Instance, order: number, level: number, showNext: boolean): Frame
+	local S = UI.S
+	local row = UI.frame({
+		BackgroundColor3 = Theme.Colors.panel2,
+		Size = UDim2.new(1, 0, 0, S(30)),
+		LayoutOrder = order,
+		Parent = parent,
+	})
+	UI.corner(row, S(4))
+	UI.stroke(row, Theme.Colors.gold, S(1), 0.6)
+	local badge, label = UI.pill(row, string.format("LV %d", level), Theme.Colors.gold, Theme.Colors.bg, S(22), S(14))
+	badge.AnchorPoint = Vector2.new(0, 0.5)
+	badge.Position = UDim2.new(0, S(5), 0.5, 0)
+	label.Font = Theme.Fonts.display
+	if showNext then
+		UI.text({
+			Text = string.format('NEXT <font color="#2FD46A">» LV %d</font>', level + 1),
+			RichText = true,
+			Font = Theme.Fonts.display,
+			TextSize = S(13),
+			TextColor3 = Theme.Colors.textDim,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -S(10), 0, 0),
+			Size = UDim2.new(0.6, 0, 1, 0),
+			Parent = row,
+		})
+	end
+	return row
+end
+
 -- Big flat action button. kind: green | pink | blue | gold | disabled.
 function MetaUI.button(parent: Instance, order: number, text: string, kind: string, onPress: (() -> ())?): TextButton
 	local S = UI.S
@@ -531,15 +778,35 @@ function MetaUI.button(parent: Instance, order: number, text: string, kind: stri
 		Parent = parent,
 	})
 	UI.corner(b, S(6))
+	if enabled then
+		UI.new("UIGradient", {
+			Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(205, 205, 205)),
+			Rotation = 90,
+			Parent = b,
+		})
+	end
 	if enabled and onPress then
 		b.Activated:Connect(function()
 			UI.punch(b, 0.95, 0.15)
 			onPress()
 		end)
-		b.MouseEnter:Connect(function()
-			UI.punch(b, 1.03, 0.12)
-		end)
+		MetaUI.hover(b, 1.03)
 	end
+	return b
+end
+
+-- The equipped state where the EQUIP button was: the disabled EQUIPPED button (Round 18c: as before).
+function MetaUI.equippedButton(parent: Instance, order: number): TextButton
+	return MetaUI.button(parent, order, "EQUIPPED", "disabled", nil)
+end
+
+-- A disabled slab with a padlock (an ability of a class you don't own yet).
+function MetaUI.lockedButton(parent: Instance, order: number): TextButton
+	local S = UI.S
+	local b = MetaUI.button(parent, order, "", "disabled", nil)
+	local l = MetaUI.lock(b, S(26), Theme.Colors.grey, 3)
+	l.AnchorPoint = Vector2.new(0.5, 0.5)
+	l.Position = UDim2.fromScale(0.5, 0.5)
 	return b
 end
 
@@ -547,8 +814,9 @@ end
 -- and put back once the new canvas has its size. Only the player's own scrolling updates the memory.
 local scrollMemory: { [string]: number } = {}
 
--- Two-column layout: scrolling grid left, detail card (vertical list) right.
-function MetaUI.columns(panel: Frame, rightW: number, topOffset: number?, scrollKey: string?): (ScrollingFrame, Frame)
+-- Two-column layout: scrolling grid left, detail card (vertical list) right. The detail column scrolls too when a
+-- short screen can't fit it (mobile), with the bar inset so nothing sits under it.
+function MetaUI.columns(panel: Frame, rightW: number, topOffset: number?, scrollKey: string?): (ScrollingFrame, any)
 	local S = UI.S
 	local y = topOffset or 0
 	local left = UI.new("ScrollingFrame", {
@@ -585,19 +853,26 @@ function MetaUI.columns(panel: Frame, rightW: number, topOffset: number?, scroll
 			end)
 		end)
 	end
-	local right = UI.frame({
+	local right = UI.new("ScrollingFrame", {
 		Name = "Detail",
 		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, 0, 0, y),
 		Size = UDim2.new(0, rightW, 1, -y),
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
+		ScrollBarThickness = S(4),
+		ScrollBarImageColor3 = Theme.Colors.grey,
 		Parent = panel,
 	})
 	UI.list(right, Enum.FillDirection.Vertical, S(8))
 	return left, right
 end
 
--- The detail card's image well: a colored block with a big icon. Returns the icon.
+-- The detail card's image well: a rarity block with a big icon. Returns the icon (its Parent is the well).
 function MetaUI.well(
 	card: Frame,
 	order: number,
@@ -608,41 +883,60 @@ function MetaUI.well(
 ): GuiObject
 	local S = UI.S
 	local well = UI.frame({
+		Name = "Well",
 		BackgroundColor3 = color,
 		Size = UDim2.new(1, 0, 0, S(150)),
 		LayoutOrder = order,
+		ClipsDescendants = true,
 		Parent = card,
 	})
 	UI.corner(well, S(8))
 	UI.stroke(well, Theme.Colors.white, S(1.5), 0.6)
+	-- A light sheen top to bottom so the block reads as a lit box.
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)),
+		Rotation = 90,
+		Parent = well,
+	})
 	local ic = MetaUI.icon(icon, well, S(130), iconColor or Theme.Colors.white, glyph)
 	ic.AnchorPoint = Vector2.new(0.5, 0.5)
-	ic.Position = UDim2.fromScale(0.5, 0.5)
+	ic.Position = UDim2.fromScale(0.5, 0.52)
 	return ic
 end
 
 -- Detail name and the small line under it.
 function MetaUI.heading(card: Frame, order: number, name: string, sub: string, subColor: Color3?)
+	-- Round 18c: the sub line sits beside the name on one row ("Skorpion  SMG · FULL-AUTO").
 	local S = UI.S
+	local row = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, S(30)),
+		LayoutOrder = order,
+		ClipsDescendants = true,
+		Parent = card,
+	})
+	UI.list(row, Enum.FillDirection.Horizontal, S(10), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Bottom)
 	UI.text({
 		Text = name,
 		Font = Theme.Fonts.body,
 		TextSize = S(24),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(28)),
-		LayoutOrder = order,
-		Parent = card,
+		Size = UDim2.fromOffset(0, S(28)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 1,
+		Parent = row,
 	})
 	UI.text({
 		Text = sub,
-		Font = Theme.Fonts.body,
-		TextSize = S(11),
-		TextColor3 = subColor or Theme.Colors.grey,
+		Font = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = subColor or Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(14)),
-		LayoutOrder = order + 1,
-		Parent = card,
+		Size = UDim2.fromOffset(0, S(22)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 2,
+		Parent = row,
 	})
 end
 
@@ -675,10 +969,15 @@ function MetaUI.pills(
 		})
 		UI.corner(b, S(4))
 		UI.pad(b, S(14), 0, S(14), 0)
+		if on then
+			UI.stroke(b, Theme.Colors.white, S(1.5), 0.5)
+		end
 		if not e.disabled then
 			b.Activated:Connect(function()
+				UI.punch(b, 0.94, 0.15)
 				onPick(e.id)
 			end)
+			MetaUI.hover(b, 1.04)
 		end
 	end
 	return row

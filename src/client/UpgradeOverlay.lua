@@ -302,6 +302,11 @@ local function buildCard(index: number, card: Types.Card): CardUI
 		})
 		detail(malus)
 	end
+	-- A conditional card says why it showed up ("FIRE SYNERGY") on a pill on its top edge.
+	local synergy = CardFace.synergyPill(inner, card.stat, S(20))
+	if synergy then
+		detail(synergy)
+	end
 
 	local button = UI.button({
 		BackgroundTransparency = 1,

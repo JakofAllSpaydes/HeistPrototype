@@ -12,6 +12,7 @@ local Rewards = require(Shared:WaitForChild("Rewards"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Clock = require(Shared:WaitForChild("Clock"))
 local DailyShop = require(Shared:WaitForChild("DailyShop"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -357,8 +358,8 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 			end,
 		})
 	end)
-	-- The leaving countdown, top-right of the bar.
-	return timerPill(bar, UDim2.new(1, -S(16), 0, S(12)), Vector2.new(1, 0), Color3.fromHex("FF6A3D"))
+	-- The leaving countdown sits on the section's title row (Round 18: on the bar it covered the price).
+	return timerPill(parent, UDim2.new(1, 0, 0, y - S(42)), Vector2.new(1, 0), Color3.fromHex("FF6A3D"))
 end
 
 ------------------------------------------------------------------ The daily items
@@ -366,8 +367,54 @@ local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
 	local S = UI.S
 	local profile = ctx.profile()
 	local day = Clock.day(ClientState.fakeNow())
+	local rerolls = DailyShop.rerollsOn(profile, day)
 	sectionTitle(parent, "DAILY ITEMS", y, Theme.Colors.text)
 	local pill = timerPill(parent, UDim2.new(1, 0, 0, y), Vector2.new(1, 0), Color3.fromHex("4D9FE8"))
+	-- Round 18: REROLL draws a fresh set of daily items for fake Robux, left of the timer.
+	local reroll, _rh =
+		Fx.button(parent, "", Color3.fromHex("2A2A33"), Theme.Colors.white, UDim2.fromOffset(S(150), S(34)), 8)
+	reroll.AnchorPoint = Vector2.new(1, 0)
+	reroll.Position = UDim2.new(1, -S(242), 0, y)
+	local rr = UI.frame({
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 9,
+		Parent = reroll,
+	})
+	UI.list(rr, Enum.FillDirection.Horizontal, S(6), Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+	UI.text({
+		Text = "REROLL",
+		Font = Theme.Fonts.display,
+		TextSize = S(15),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromOffset(0, S(20)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 1,
+		ZIndex = 10,
+		Parent = rr,
+	})
+	local plate = Fx.robux(rr, S(16), 10)
+	plate.LayoutOrder = 2
+	UI.text({
+		Text = UI.fmtInt(Config.DailyShopRerollPrice),
+		Font = Theme.Fonts.display,
+		TextSize = S(15),
+		TextColor3 = Color3.fromHex("8FE3A1"),
+		Size = UDim2.fromOffset(0, S(20)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 3,
+		ZIndex = 10,
+		Parent = rr,
+	})
+	reroll.Activated:Connect(function()
+		ctx.buy("daily_reroll", {
+			context = "store DAILY reroll",
+			onSuccess = function()
+				UI.sound(Fx.Sounds.whoosh, 1.3, 0.3)
+				ctx.refresh(true) -- loud: the new cards cascade in
+			end,
+		})
+	end)
 	local area = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, y + S(46)),
@@ -392,7 +439,7 @@ local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
 		Parent = grid,
 	})
 	local cards: { GuiObject } = {}
-	for i, e in DailyShop.forDay(day) do
+	for i, e in DailyShop.forDay(day, rerolls) do
 		local r = e :: any
 		local own = Rewards.owned(profile, r)
 		local rarity = Rewards.rarity(r)
@@ -407,7 +454,7 @@ local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
 			price = DailyShop.price(e),
 			owned = own,
 			ribbons = if rarity >= 5 then { "LIMITED" } else {},
-			layoutOrder = i,
+			layoutOrder = if own then 100 + i else i, -- owned ones go to the back
 			z = 8,
 			onClick = function()
 				if own then

@@ -1,8 +1,8 @@
 --!strict
 -- Brief 6: the stacked reveal. Everything a purchase or a claim granted cards in one by one
 -- (Config.BundleRevealStagger apart) over a dim, each with its rarity glow, art, name and a NEW or DUPLICATE line,
--- a stinger by tier; DONE returns to wherever it was opened from. Bundles use it full size, pass and Job claims in
--- miniature (`mini`).
+-- a stinger by tier; a tap anywhere returns to wherever it was opened from (Round 18: no DONE button). Bundles use it
+-- full size, pass and Job claims in miniature (`mini`).
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Rewards = require(Shared:WaitForChild("Rewards"))
@@ -40,12 +40,13 @@ function Reveal.stack(parent: Instance, items: { Item }, title: string, opts: { 
 			table.insert(shown, it)
 		end
 	end
-	local layer = UI.frame({
+	-- Round 18: the whole dim is the dismiss target (no DONE button). A tap while cards are still landing lands them
+	-- all at once; the next tap closes.
+	local layer = UI.button({
 		Name = "Reveal",
 		BackgroundColor3 = Color3.new(0, 0, 0),
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
-		Active = true,
 		ZIndex = 60,
 		Parent = parent,
 	})
@@ -82,6 +83,7 @@ function Reveal.stack(parent: Instance, items: { Item }, title: string, opts: { 
 		Parent = grid,
 	})
 	local stagger = Config.BundleRevealStagger * (if mini then 0.6 else 1)
+	local landers: { (boolean?) -> () } = {}
 	for i, it in shown do
 		local rarity = it.rarity or Rewards.rarity(it :: any)
 		local color = Fx.rarityColor(rarity)
@@ -152,41 +154,80 @@ function Reveal.stack(parent: Instance, items: { Item }, title: string, opts: { 
 			ZIndex = 66,
 			Parent = body,
 		})
-		task.delay(0.25 + (i - 1) * stagger, function()
-			if not cell.Parent then
+		local landed = false
+		local function land(quiet: boolean?)
+			if landed or not cell.Parent then
 				return
 			end
+			landed = true
 			cell.Visible = true
 			local sc = UI.new("UIScale", { Scale = 0.3, Parent = cell })
 			UI.tween(sc, { Scale = 1 }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-			Fx.stinger(rarity)
+			if not quiet then
+				Fx.stinger(rarity)
+			end
 			if rarity >= 5 then
 				Fx.haptic(0.8)
 			end
+		end
+		table.insert(landers, land)
+		task.delay(0.25 + (i - 1) * stagger, land)
+	end
+	-- A quiet hint under the cards once they have all landed.
+	local hint = UI.text({
+		Text = "TAP ANYWHERE TO CONTINUE",
+		Font = Theme.Fonts.display,
+		TextSize = S(if mini then 13 else 15),
+		TextColor3 = Theme.Colors.textDim,
+		TextTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, if mini then 0.8 else 0.92, 0),
+		Size = UDim2.fromOffset(S(400), S(20)),
+		ZIndex = 64,
+		Parent = layer,
+	})
+	local ready = false
+	local function showHint()
+		if ready or not hint.Parent then
+			return
+		end
+		ready = true
+		UI.tween(hint, { TextTransparency = 0.15 }, 0.3)
+		task.spawn(function()
+			while hint.Parent do
+				task.wait(1.1)
+				UI.tween(hint, { TextTransparency = 0.55 }, 0.5)
+				task.wait(0.6)
+				UI.tween(hint, { TextTransparency = 0.15 }, 0.5)
+			end
 		end)
 	end
-	local done, _ =
-		Fx.button(layer, "DONE", Color3.fromHex("2FB75A"), Theme.Colors.white, UDim2.fromOffset(S(220), S(52)), 64)
-	done.AnchorPoint = Vector2.new(0.5, 1)
-	done.Position = UDim2.new(0.5, 0, if mini then 0.8 else 0.92, 0)
-	done.Visible = false
-	task.delay(0.35 + #shown * stagger, function()
-		if done.Parent then
-			done.Visible = true
-			UI.punch(done, 1.2, 0.3)
-		end
-	end)
+	task.delay(0.35 + #shown * stagger, showHint)
+	local opened = os.clock()
 	local function finish()
 		if not layer.Parent then
 			return
 		end
-		UI.tween(layer, { BackgroundTransparency = 1 }, 0.15)
 		layer:Destroy()
 		if o.onDone then
 			o.onDone()
 		end
 	end
-	done.Activated:Connect(finish)
+	layer.Activated:Connect(function()
+		-- A stray tap in the first instant (the same press that bought / claimed) never skips the moment.
+		if os.clock() - opened < 0.3 then
+			return
+		end
+		if not ready then
+			for _, land in landers do
+				land(true)
+			end
+			showHint()
+			return
+		end
+		UI.sound(Fx.Sounds.press, 1.1, 0.2)
+		finish()
+	end)
 	return layer
 end
 

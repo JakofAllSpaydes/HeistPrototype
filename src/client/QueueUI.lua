@@ -1,6 +1,6 @@
 --!strict
 -- Queue zone client: the Create Party card (reference layout: header bar with X, Select Map thumbnails,
--- Difficulty segment with the bonus row, Party size segment, a boosts row of placeholder chips, CREATE
+-- Difficulty segment with the bonus row, Party size segment, the boosts row (live: boosts and revive tokens), CREATE
 -- PARTY) and the compact party card under PLAY in the hub HUD (map · difficulty, slots, countdown).
 -- Driven by Remotes.QueueState; toasts via "QueueToast". Movement is locked while the card is open.
 local Players = game:GetService("Players")
@@ -15,6 +15,10 @@ local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
+local PurchaseSheet = require(script.Parent:WaitForChild("PurchaseSheet"))
+local BoostDefs = require(Shared:WaitForChild("BoostDefs"))
+local ReviveTokenPacks = require(Shared:WaitForChild("ReviveTokenPacks"))
+local Clock = require(Shared:WaitForChild("Clock"))
 
 local QueueUI = {}
 
@@ -22,7 +26,6 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local GREEN = Color3.fromHex("2FD46A")
-local PURPLE = Color3.fromHex("A23BD6")
 
 local view: any = nil
 local createGui: ScreenGui? = nil
@@ -346,45 +349,104 @@ local function openCreate(v: any)
 		end
 	end)
 
-	-- Boost chips (Robux placeholders: out of scope, they toast).
+	-- Round 18: the boosts row is live. POWER / CASH / LUCKY (BoostDefs) and REVIVE TOKENS, drawn like the hub's
+	-- chips: the glyph, then either the live timer (active, in the boost's color) or the cheapest price; tokens show
+	-- the count you hold. A tap opens the purchase sheet on that boost's durations (or the token packs); the card
+	-- stays open behind it.
 	local boosts = UI.frame({
 		BackgroundTransparency = 1,
-		Size = UDim2.new(1, 0, 0, S(44)),
+		Size = UDim2.new(1, 0, 0, S(52)),
 		LayoutOrder = 8,
 		Parent = body,
 	})
 	UI.list(boosts, Enum.FillDirection.Horizontal, S(8))
-	for i, chip in { { "2x Power", 99 }, { "2x Luck", 149 }, { "2x Cash", 199 }, { "Revive Token", 99 } } do
+	local timers: { [string]: TextLabel } = {}
+	local function boostChip(order: number, id: string, glyph: string, color: Color3, onTap: () -> ()): TextLabel
 		local b = UI.button({
 			Text = "",
-			BackgroundColor3 = PURPLE,
+			BackgroundColor3 = Theme.Colors.panel,
 			Size = UDim2.new(0.25, -S(6), 1, 0),
-			LayoutOrder = i,
+			LayoutOrder = order,
 			Parent = boosts,
 		})
-		UI.corner(b, S(4))
+		b.Name = id
+		UI.corner(b, S(6))
+		UI.stroke(b, color, S(1.5), 0)
 		UI.text({
-			Text = tostring(chip[1]),
-			Font = Theme.Fonts.body,
-			TextSize = S(12),
-			TextColor3 = Theme.Colors.white,
+			Text = glyph,
+			Font = Theme.Fonts.display,
+			TextSize = S(18),
+			TextColor3 = color,
 			Position = UDim2.fromOffset(0, S(4)),
+			Size = UDim2.new(1, 0, 0, S(22)),
+			Parent = b,
+		})
+		local sub = UI.text({
+			Text = "",
+			Font = Theme.Fonts.display,
+			TextSize = S(13),
+			TextColor3 = Theme.Colors.text,
+			Position = UDim2.fromOffset(0, S(27)),
 			Size = UDim2.new(1, 0, 0, S(18)),
 			Parent = b,
 		})
-		UI.text({
-			Text = "◉ " .. tostring(chip[2]),
-			TextSize = S(11),
-			TextColor3 = Theme.Colors.white,
-			Position = UDim2.fromOffset(0, S(22)),
-			Size = UDim2.new(1, 0, 0, S(16)),
-			Parent = b,
-		})
+		b.MouseEnter:Connect(function()
+			UI.punch(b, 1.04, 0.12)
+		end)
 		b.Activated:Connect(function()
 			UI.punch(b, 0.95, 0.15)
-			HUD.get("toast").show("BOOSTS · PHASE 4", Theme.Colors.gold, 1.2)
+			onTap()
+		end)
+		return sub
+	end
+	for i, def in BoostDefs.List do
+		timers[def.id] = boostChip(i, def.id, def.glyph, Color3.fromHex(def.color), function()
+			local ids = {}
+			for _, d in def.durations do
+				table.insert(ids, BoostDefs.productId(def.id, d.id))
+			end
+			PurchaseSheet.choose(def.name .. " BOOST", ids, { context = "create party " .. def.id, note = def.desc })
 		end)
 	end
+	local tokenLabel = boostChip(#BoostDefs.List + 1, "tokens", "+", Color3.fromHex("3FD47A"), function()
+		local ids = {}
+		for _, pack in ReviveTokenPacks.List do
+			table.insert(ids, pack.id)
+		end
+		PurchaseSheet.choose("REVIVE TOKENS", ids, { context = "create party tokens" })
+	end)
+	local function paintBoosts()
+		local p = ClientState.sync and ClientState.sync.profile
+		local now = ClientState.osNow()
+		for _, def in BoostDefs.List do
+			local label = timers[def.id]
+			local st = p and p.boosts and p.boosts[def.id]
+			local left = if st then (tonumber(st.expiresAt) or 0) - now else 0
+			if left > 0 then
+				label.Text = Clock.timer(left)
+				label.TextColor3 = Color3.fromHex(def.color)
+			else
+				label.Text = "R$ " .. UI.fmtInt(def.durations[1].price)
+				label.TextColor3 = Theme.Colors.cash
+			end
+		end
+		local n = if p and typeof(p.reviveTokens) == "number" then p.reviveTokens else 0
+		tokenLabel.Text = "×" .. tostring(n)
+		tokenLabel.TextColor3 = if n > 0 then Theme.Colors.cash else Theme.Colors.red
+	end
+	paintBoosts()
+	local lastPaint = 0
+	local paintConn: RBXScriptConnection
+	paintConn = RunService.Heartbeat:Connect(function()
+		if not boosts.Parent then
+			paintConn:Disconnect()
+			return
+		end
+		if os.clock() - lastPaint >= 0.5 then
+			lastPaint = os.clock()
+			paintBoosts()
+		end
+	end)
 
 	local create = UI.button({
 		Text = "CREATE PARTY",

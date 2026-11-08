@@ -3,6 +3,8 @@
 -- FREE (everyone), PREMIUM (tier 1) and PREMIUM+ (tier 2, includes PREMIUM). The FREE lane has something every
 -- level; PREMIUM+ carries the hero cosmetics at 10 / 20 / 30. Seasons run Config.SeasonLengthDays on the fake
 -- clock from Config.SeasonEpochUtc; after the last defined season the list cycles (the number keeps counting).
+-- Round 18c: the track never ends. Past Config.PassLevels every level is a BONUS level whose three cells come from
+-- PassSeason.Bonus (twelve rows of Gold, tokens, crate opens, boosts and mastery, never cosmetics), cycling.
 local Config = require(script.Parent.Config)
 local Rewards = require(script.Parent.Rewards)
 
@@ -153,6 +155,26 @@ PassSeason.Seasons = {
 	},
 } :: { Season }
 
+-- The bonus loop past the last level (shared by every season), one row per level, cycling.
+PassSeason.Bonus = {
+	{ free = gold(250), p1 = crate("arms", 1), p2 = crate("mask", 1) },
+	{ free = tokens(2), p1 = gold(400), p2 = boost("power", 1800) },
+	{ free = crate("arms", 1), p1 = mastery(200), p2 = gold(750) },
+	{ free = gold(300), p1 = tokens(3), p2 = crate("arms", 2) },
+	{ free = mastery(150), p1 = boost("cash", 1800), p2 = tokens(5) },
+	{ free = crate("mask", 1), p1 = gold(500), p2 = boost("lucky", 1800) },
+	{ free = gold(350), p1 = crate("mask", 1), p2 = mastery(400) },
+	{ free = tokens(3), p1 = boost("power", 1800), p2 = crate("mask", 2) },
+	{ free = boost("cash", 1800), p1 = mastery(250), p2 = gold(1000) },
+	{ free = gold(400), p1 = crate("arms", 2), p2 = boost("power", 7200) },
+	{ free = crate("arms", 1), p1 = tokens(5), p2 = tokens(8) },
+	{ free = gold(500), p1 = crate("mask", 2), p2 = crate("arms", 3) },
+} :: { Level }
+
+function PassSeason.isBonus(level: number): boolean
+	return level > Config.PassLevels
+end
+
 -- The season number at fake time `t` (1 from SeasonEpochUtc).
 function PassSeason.numberAt(t: number): number
 	local len = Config.SeasonLengthDays * 86400
@@ -170,7 +192,9 @@ function PassSeason.endsAt(n: number): number
 end
 
 function PassSeason.cell(season: Season, level: number, lane: string): Cell?
-	local row = season.grid[level]
+	local row = if level > Config.PassLevels
+		then PassSeason.Bonus[((level - Config.PassLevels - 1) % #PassSeason.Bonus) + 1]
+		else season.grid[level]
 	return if row then (row :: any)[lane] else nil
 end
 
@@ -201,7 +225,7 @@ function PassSeason.claimableCount(pass: any): number
 	end
 	local n = 0
 	local tier = tonumber(pass.tier) or 0
-	for level = 1, math.min(tonumber(pass.level) or 1, Config.PassLevels) do
+	for level = 1, tonumber(pass.level) or 1 do
 		local c = pass.claimed and pass.claimed["L" .. level]
 		for _, lane in PassSeason.Lanes do
 			if (PassSeason.LaneTier[lane] or 9) <= tier and not (c and c[lane]) then

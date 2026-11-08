@@ -72,7 +72,7 @@ Purchases.register("item", {
 			return "Already owned"
 		end
 		local day = Clock.day(Clock.fake(os.time(), profile))
-		if not DailyShop.offeredOn(day, r.kind, r.id or "") then
+		if not DailyShop.offeredOn(day, r.kind, r.id or "", DailyShop.rerollsOn(profile, day)) then
 			return "That item has left the shop"
 		end
 		return nil
@@ -84,6 +84,16 @@ Purchases.register("item", {
 			{ source = product.id, owned = "skip" }
 		)
 		return { results = { res } }
+	end,
+})
+
+-- Round 18: REROLL on DAILY ITEMS. A fresh draw for this profile today (the count resets with the fake day).
+Purchases.register("daily_reroll", {
+	grant = function(_player, profile, _product)
+		local day = Clock.day(Clock.fake(os.time(), profile))
+		local count = DailyShop.rerollsOn(profile, day) + 1
+		profile.dailyReroll = { day = day, count = count }
+		return { day = day, rerolls = count }
 	end,
 })
 

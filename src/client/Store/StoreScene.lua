@@ -1,7 +1,7 @@
 --!strict
 -- Brief 6 (Round 17b): the premium store as an overlay window over a dark dim, not a scene. Opens from the hub's
--- SHOP tile, the Gold +, and VIEW CRATE / VIEW BUNDLE / VIEW VIP deep links. Header: SHOP, the R$ balance with +
--- (GET ROBUX), Gold with + and LEAVE. The tabs are a rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD, a red
+-- SHOP tile, the Gold +, and VIEW CRATE / VIEW BUNDLE / VIEW VIP deep links. Header: SHOP, Gold with + and LEAVE
+-- (Round 18: no R$ balance; a tap on the dim outside the window closes it too). The tabs are a rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD, a red
 -- dot = something claimable or new) and the whole store is one scrolling page: a tab scrolls to the start of its
 -- section and the rail follows the scroll, so nothing is ever hidden. Every section is a module under Store/ that
 -- renders into its own fixed-height frame. The window keeps clear of the Roblox top bar (Fx.topInset).
@@ -51,9 +51,8 @@ local sections: { [string]: Frame } = {}
 local sectionCtx: { [string]: any } = {}
 local railButtons: { [string]: { button: TextButton, dot: Frame, label: TextLabel } } = {}
 local railHighlight: Frame? = nil
-local robuxLabel: TextLabel? = nil
 local goldLabel: TextLabel? = nil
-local shownRobux, shownGold = -1, -1
+local shownGold = -1
 local currentTab = "FEATURED"
 local scrollTween: Tween? = nil
 local baseCtx: any
@@ -66,18 +65,8 @@ end
 
 local function paintBalances(animate: boolean)
 	local p = profile()
-	local robux = if p and typeof(p.fakeRobux) == "number" then p.fakeRobux else 0
 	local gold = if p and typeof(p.gold) == "number" then p.gold else 0
-	local rl, gl = robuxLabel, goldLabel
-	if rl and robux ~= shownRobux then
-		if animate and shownRobux >= 0 then
-			Fx.countUp(rl, shownRobux, robux, 0.6, nil, robux > shownRobux)
-			UI.punch(rl, if robux > shownRobux then 1.15 else 0.92, 0.3)
-		else
-			rl.Text = UI.fmtInt(robux)
-		end
-		shownRobux = robux
-	end
+	local gl = goldLabel
 	if gl and gold ~= shownGold then
 		if animate and shownGold >= 0 then
 			Fx.countUp(gl, shownGold, gold, 0.9, nil, gold > shownGold)
@@ -193,19 +182,23 @@ local function build(focus: string, arg: any?)
 	railButtons = {}
 	sections = {}
 	sectionCtx = {}
-	shownRobux, shownGold = -1, -1
+	shownGold = -1
 
-	-- The dim behind the window.
-	local dim = UI.frame({
+	-- The dim behind the window: a tap on it (outside the window) closes the store.
+	local dim = UI.button({
 		Name = "Dim",
 		BackgroundColor3 = Color3.new(0, 0, 0),
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
-		Active = true,
 		ZIndex = 1,
 		Parent = g,
 	})
 	UI.tween(dim, { BackgroundTransparency = 0.3 }, 0.25)
+	dim.Activated:Connect(function()
+		if not PurchaseSheet.isOpen() and not (overlay and #overlay:GetChildren() > 0) then
+			StoreScene.close()
+		end
+	end)
 
 	-- The window, clear of the top bar.
 	local winW = math.min(vp.X - S(32), S(1240))
@@ -231,7 +224,7 @@ local function build(focus: string, arg: any?)
 	UI.tween(winScale, { Scale = 1 }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	Fx.slideIn(w, UDim2.fromOffset(0, S(30)), 0.3)
 
-	-- Header: SHOP · R$ · Gold · LEAVE.
+	-- Header: SHOP · Gold · LEAVE.
 	local headerH = if mobile then S(56) else S(64)
 	local header = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, headerH), ZIndex = 4, Parent = w })
 	local title = UI.text({
@@ -280,22 +273,16 @@ local function build(focus: string, arg: any?)
 		})
 		UI.corner(pill, S(8))
 		UI.stroke(pill, color, S(1.5), 0.3)
-		if glyph == "R$" then
-			local b = Fx.robux(pill, S(18), 6)
-			b.AnchorPoint = Vector2.new(0, 0.5)
-			b.Position = UDim2.new(0, S(8), 0.5, 0)
-		else
-			UI.text({
-				Text = glyph,
-				Font = Theme.Fonts.display,
-				TextSize = S(20),
-				TextColor3 = color,
-				Position = UDim2.fromOffset(S(6), 0),
-				Size = UDim2.new(0, S(24), 1, 0),
-				ZIndex = 6,
-				Parent = pill,
-			})
-		end
+		UI.text({
+			Text = glyph,
+			Font = Theme.Fonts.display,
+			TextSize = S(20),
+			TextColor3 = color,
+			Position = UDim2.fromOffset(S(6), 0),
+			Size = UDim2.new(0, S(24), 1, 0),
+			ZIndex = 6,
+			Parent = pill,
+		})
 		local label = UI.text({
 			Text = "0",
 			Font = Theme.Fonts.display,
@@ -324,9 +311,6 @@ local function build(focus: string, arg: any?)
 		plus.Activated:Connect(onPlus)
 		return label
 	end
-	robuxLabel = balancePill(1, "R$", Color3.fromHex("2FD46A"), function()
-		PurchaseSheet.getRobux({ context = "store R$ +" })
-	end)
 	goldLabel = balancePill(2, "◆", Theme.Colors.gold, function()
 		scrollTo("GOLD")
 	end)
@@ -483,8 +467,8 @@ local function build(focus: string, arg: any?)
 			})
 		end
 		local c = setmetatable({ content = sec, quiet = false, arg = nil }, { __index = baseCtx }) :: any
-		c.refresh = function()
-			renderSection(tab, true, nil)
+		c.refresh = function(loud: boolean?)
+			renderSection(tab, loud ~= true, nil)
 		end
 		sectionCtx[tab] = c
 	end
@@ -579,7 +563,7 @@ function StoreScene.close()
 		gui = nil
 	end
 	scroller, overlay, railHighlight = nil, nil, nil
-	robuxLabel, goldLabel = nil, nil
+	goldLabel = nil
 	sections, sectionCtx, railButtons = {}, {}, {}
 	ClientState.setBlock("store", false)
 	ClientState.lockMovement("store", false)
@@ -610,7 +594,13 @@ local function profileStamp(p: any): string
 	if not p then
 		return ""
 	end
-	local parts = { tostring(p.fakeRobux), tostring(p.gold), tostring(p.reviveTokens) }
+	local reroll = p.dailyReroll or {}
+	local parts = {
+		tostring(p.fakeRobux),
+		tostring(p.gold),
+		tostring(p.reviveTokens),
+		tostring(reroll.day) .. ":" .. tostring(reroll.count),
+	}
 	for _, key in { "weapons", "boosts", "crateOpens", "cratePity" } do
 		local n = 0
 		for id, v in (p[key] or {}) do

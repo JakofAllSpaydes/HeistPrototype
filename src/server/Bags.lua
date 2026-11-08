@@ -1,9 +1,20 @@
 --!strict
--- Cash bags and gold bags (brief 4). Both are Parts with a beacon column and a hold-F prompt; a cash bag
--- pays match cash to every member, a gold bag ticks the team's Banked total (paid in full to everyone at
--- the summary). Wave-start spawns pick weighted spots far from the crew (BagSpots.Arena) up to
--- MaxActiveBags; bursts (boss body, the vault) bypass the cap. Uncollected bags persist until the run ends.
+-- Cash bags and gold bags (brief 4). Both are Parts with a beacon column; a cash bag pays match cash to every
+-- member, a gold bag ticks the team's Banked total (paid in full to everyone at the summary). Wave-start spawns
+-- pick weighted spots far from the crew (BagSpots.Arena) up to MaxActiveBags; bursts (boss body, the vault)
+-- bypass the cap. Uncollected bags persist until the run ends.
+--
+-- Pickup has no button (round 18). Every frame each standing party member within BagStartRadius of a free bag
+-- claims one (a bag that already has fill first, else the nearest) and fills it over BagChannelSec; it stays
+-- theirs until they step past BagKeepRadius, go down or the run stops. A full bag is collected and the next one
+-- in reach is claimed the same frame, so walking through a pile empties it in sequence; bags started within
+-- BagStreakWindowSec of the last pickup fill faster (BagStreakMult per bag, floor BagStreakMinMult). A bag
+-- someone leaves keeps its fill for BagHoldSec, then drains at BagDrainPerSec; anyone may claim it meanwhile and
+-- carry on from there. A claimed bag is skipped by everyone else, so two players in a pile take different bags.
+-- Clients draw it from the model's Progress (0..1) / By (userId) / Kind attributes (client BagChannel.lua).
+-- Everything is dt-driven inside a loop that stands still while Pause.active(), so a pause freezes it.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
@@ -17,6 +28,7 @@ local Economy = require(script.Parent.Economy)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
 local RunEvents = require(script.Parent.RunEvents)
+local Pause = require(script.Parent.Pause)
 
 export type Bag = {
 	id: number,
@@ -27,6 +39,19 @@ export type Bag = {
 	value: number,
 	vault: boolean, -- dropped inside the vault (fizzles with the gas)
 	active: boolean,
+	progress: number, -- fill 0..1
+	by: Player?, -- who is filling it now
+	idle: number, -- seconds unclaimed since it was last filled (hold, then drain)
+	shown: number, -- last Progress attribute written
+	shownBy: number, -- last By attribute written
+}
+
+-- One per party member in a run: the bag they are filling and their pickup streak.
+type Channel = {
+	bag: Bag?,
+	streak: number, -- bags picked in a row
+	idle: number, -- seconds with nothing to fill
+	busyOn: boolean, -- teammates see GRABBING
 }
 
 local Bags = {}
@@ -38,6 +63,7 @@ local DARK = Color3.fromRGB(26, 26, 31)
 
 local effects = Workspace:WaitForChild("Effects")
 local bags: { [number]: Bag } = {}
+local channels: { [Player]: Channel } = {}
 local nextId = 0
 
 function Bags.count(): number
@@ -74,10 +100,14 @@ local function busy(player: Player, on: boolean)
 	World.fireRun("PlayerBusy", { userId = player.UserId, name = player.Name, label = "GRABBING", on = on })
 end
 
--- The bag itself: a green duffel with a $ or a gold case with a bar, a beacon column, a prompt.
+-- The bag itself: a green duffel with a $ or a gold case with a bar, a beacon column. No prompt: standing
+-- near it fills it (the channel loop below).
 local function build(b: Bag): Model
 	local model = Instance.new("Model")
 	model.Name = "Bag_" .. b.id
+	model:SetAttribute("Kind", b.kind)
+	model:SetAttribute("Progress", 0)
+	model:SetAttribute("By", 0)
 	local isGold = b.kind == "gold"
 	local color = if isGold then GOLD else CASH
 	local yaw = math.random() * math.pi * 2
@@ -138,23 +168,6 @@ local function build(b: Bag): Model
 		Parent = model,
 	})
 	local _ = column
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = if isGold then "BANK" else "COLLECT"
-	prompt.ObjectText = if isGold then "GOLD BAG" else "CASH BAG"
-	prompt.KeyboardKeyCode = Enum.KeyCode.F
-	prompt.HoldDuration = Config.BagCollectSec
-	prompt.MaxActivationDistance = 8
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = body
-	prompt.PromptButtonHoldBegan:Connect(function(player: Player)
-		busy(player, true)
-	end)
-	prompt.PromptButtonHoldEnded:Connect(function(player: Player)
-		busy(player, false)
-	end)
-	prompt.Triggered:Connect(function(player: Player)
-		Bags.collect(player, b)
-	end)
 	model.PrimaryPart = body
 	model.Parent = effects
 	return model
@@ -172,6 +185,11 @@ function Bags.spawnAt(kind: string, position: Vector3, vault: boolean?): Bag
 		value = Bags.valueFor(kind, World.wave),
 		vault = vault == true,
 		active = true,
+		progress = 0,
+		by = nil,
+		idle = 0,
+		shown = 0,
+		shownBy = 0,
 	}
 	b.model = build(b)
 	bags[b.id] = b
@@ -320,12 +338,11 @@ local function remove(b: Bag, popped: boolean)
 		return
 	end
 	b.active = false
+	b.by = nil
 	bags[b.id] = nil
 	local model = b.model
 	for _, p in model:GetDescendants() do
-		if p:IsA("ProximityPrompt") then
-			p.Enabled = false
-		elseif p:IsA("BasePart") then
+		if p:IsA("BasePart") then
 			TweenService
 				:Create(p, TweenInfo.new(if popped then 0.2 else 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 					Size = if popped then Vector3.new(0.05, 0.05, 0.05) else p.Size,
@@ -339,20 +356,30 @@ local function remove(b: Bag, popped: boolean)
 	end)
 end
 
-function Bags.collect(player: Player, b: Bag)
+local function rootOf(player: Player): BasePart?
+	local char = player.Character
+	return char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+-- Within `radius` studs of the bag on the floor plane (and not a floor above or below).
+local function within(root: BasePart, b: Bag, radius: number): boolean
+	local d = root.Position - b.position
+	return math.abs(d.Y) <= Config.BagKeepRadius and Vector2.new(d.X, d.Z).Magnitude <= radius
+end
+
+-- `streak` is the player's pickup streak before this bag (for the log and the client's rising tick).
+function Bags.collect(player: Player, b: Bag, streak: number?): boolean
 	if not b.active or not World.inRun() or not World.isInParty(player) then
-		return
+		return false
 	end
 	local state = PlayerState.get(player)
 	if not PlayerState.isStanding(state) then
-		return
+		return false
 	end
-	local char = player.Character
-	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root or (root.Position - b.position).Magnitude > 12 then
-		return
+	local root = rootOf(player)
+	if not root or not within(root, b, Config.BagKeepRadius + 2) then
+		return false
 	end
-	busy(player, false)
 	remove(b, true)
 	state.bags += 1
 	state.dirty = true
@@ -380,18 +407,186 @@ function Bags.collect(player: Player, b: Bag)
 		name = player.Name,
 		toast = toast,
 		banked = World.banked,
+		streak = streak or 0,
 	})
 	Log.event(
 		"Bags",
-		"%s %s a %s bag worth %d (banked %d, %d bags left)",
+		"%s %s a %s bag worth %d (banked %d, %d bags left, streak %d)",
 		player.Name,
 		if b.kind == "gold" then "banked" else "grabbed",
 		b.kind,
 		b.value,
 		World.banked,
-		Bags.count()
+		Bags.count(),
+		streak or 0
 	)
+	return true
 end
+
+------------------------------------------------------------------ the channel (round 18)
+
+local function channelSec(streak: number): number
+	return math.max(0.05, Config.BagChannelSec * math.max(Config.BagStreakMinMult, Config.BagStreakMult ^ streak))
+end
+
+local function setBusy(player: Player, ch: Channel, on: boolean)
+	if ch.busyOn ~= on then
+		ch.busyOn = on
+		busy(player, on)
+	end
+end
+
+-- Let go of the bag (it keeps its fill: hold, then drain).
+local function release(player: Player, ch: Channel)
+	local b = ch.bag
+	if b and b.by == player then
+		b.by = nil
+		b.idle = 0
+	end
+	ch.bag = nil
+end
+
+-- The bag to start on: free (or already ours), within BagStartRadius; the most filled first, else the nearest.
+local function pick(player: Player, root: BasePart): Bag?
+	local best: Bag? = nil
+	local bestFill, bestDist = -1, math.huge
+	for _, b in bags do
+		if not b.active or (b.by ~= nil and b.by ~= player) then
+			continue
+		end
+		local d = root.Position - b.position
+		local dist = Vector2.new(d.X, d.Z).Magnitude
+		if math.abs(d.Y) > Config.BagKeepRadius or dist > Config.BagStartRadius then
+			continue
+		end
+		local fill = math.floor(b.progress * 20) -- 5% bands, so a sliver of drain does not outrank a nearer bag
+		if fill > bestFill or (fill == bestFill and dist < bestDist) then
+			best, bestFill, bestDist = b, fill, dist
+		end
+	end
+	return best
+end
+
+local function claim(player: Player, ch: Channel, b: Bag)
+	b.by = player
+	b.idle = 0
+	ch.bag = b
+	ch.idle = 0
+	setBusy(player, ch, true)
+end
+
+-- Writes Progress / By only when they change (rounded to 1%).
+local function publish(b: Bag)
+	local p = math.floor(b.progress * 100 + 0.5) / 100
+	if p ~= b.shown then
+		b.shown = p
+		b.model:SetAttribute("Progress", p)
+	end
+	local by = if b.by then b.by.UserId else 0
+	if by ~= b.shownBy then
+		b.shownBy = by
+		b.model:SetAttribute("By", by)
+	end
+end
+
+local function stopAll()
+	for player, ch in channels do
+		release(player, ch)
+		if ch.busyOn and player.Parent then
+			busy(player, false)
+		end
+	end
+	table.clear(channels)
+end
+
+local function step(dt: number)
+	if Pause.active() then
+		return -- fills, holds, drains and streak windows all stand still
+	end
+	if not World.inRun() then
+		if next(channels) then
+			stopAll()
+		end
+		return
+	end
+	local present: { [Player]: boolean } = {}
+	for _, player in World.runAudience() do
+		if not World.isInParty(player) then
+			continue
+		end
+		present[player] = true
+		local ch = channels[player]
+		if not ch then
+			ch = { bag = nil, streak = 0, idle = 0, busyOn = false }
+			channels[player] = ch
+		end
+		local c = ch :: Channel
+		local root = rootOf(player)
+		if not root or not PlayerState.isStanding(PlayerState.get(player)) then
+			-- Downed, bled out or between characters: no channel, no streak.
+			release(player, c)
+			c.streak = 0
+			setBusy(player, c, false)
+			continue
+		end
+		local b = c.bag
+		if b and (not b.active or b.by ~= player or not within(root, b, Config.BagKeepRadius)) then
+			release(player, c)
+			b = nil
+		end
+		if not b then
+			b = pick(player, root)
+			if b then
+				claim(player, c, b)
+			end
+		end
+		if b then
+			c.idle = 0
+			b.progress = math.min(1, b.progress + dt / channelSec(c.streak))
+			if b.progress >= 1 then
+				release(player, c)
+				if Bags.collect(player, b, c.streak) then
+					c.streak += 1
+				end
+				-- Straight on to the next bag in reach, this frame, so a pile empties without a gap.
+				local nextBag = pick(player, root)
+				if nextBag then
+					claim(player, c, nextBag)
+				end
+			end
+		else
+			c.idle += dt
+			if c.idle > Config.BagStreakWindowSec then
+				c.streak = 0
+			end
+			if c.idle > Config.BagBusyGraceSec then
+				setBusy(player, c, false)
+			end
+		end
+	end
+	-- Left the party or the server: let go of their bag.
+	for player, ch in channels do
+		if not present[player] then
+			release(player, ch)
+			if ch.busyOn and player.Parent then
+				busy(player, false)
+			end
+			channels[player] = nil
+		end
+	end
+	-- Unclaimed bags hold their fill, then drain.
+	for _, b in bags do
+		if b.by == nil and b.progress > 0 then
+			b.idle += dt
+			if b.idle > Config.BagHoldSec then
+				b.progress = math.max(0, b.progress - Config.BagDrainPerSec * dt)
+			end
+		end
+		publish(b)
+	end
+end
+
+RunService.Heartbeat:Connect(step)
 
 -- The gas: every bag still inside the vault fizzles.
 function Bags.fizzleVault()
@@ -410,6 +605,7 @@ end
 
 function Bags.clearAll()
 	carry.cash, carry.gold = 0, 0
+	stopAll()
 	for _, b in table.clone(bags) do
 		remove(b, false)
 		World.fireRun("BagFizzled", { id = b.id })

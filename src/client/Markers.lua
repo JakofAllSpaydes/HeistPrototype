@@ -367,7 +367,8 @@ function Markers.init()
 		elseif name == "CallEnd" or name == "CallCleared" then
 			Markers.remove("job")
 		elseif name == "BagSpawned" and typeof(data.position) == "Vector3" then
-			-- Bag beacons read through walls: kind, the hold hint and the value; a $ / ◆ badge far away.
+			-- Bag beacons read through walls: kind and value; a $ / ◆ badge far away. No key hint: walking up
+			-- to a bag picks it up (BagChannel.lua draws the fill).
 			local gold = data.kind == "gold"
 			local value = tonumber(data.value) or 0
 			Markers.add(
@@ -375,7 +376,7 @@ function Markers.init()
 				data.position,
 				if gold then Theme.Colors.gold else Theme.Colors.cash,
 				if gold then "GOLD BAG" else "CASH BAG",
-				string.format("HOLD F · %s", if gold then "◆ " .. tostring(value) else "$" .. tostring(value)),
+				if gold then "◆ " .. tostring(value) else "$" .. tostring(value),
 				0,
 				if gold then "◆" else "$"
 			)

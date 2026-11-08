@@ -24,6 +24,7 @@ local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
 local MetaFolder = script.Parent:WaitForChild("Meta")
+local GunPreview = require(MetaFolder:WaitForChild("GunPreview"))
 
 local MetaScene = {}
 
@@ -45,6 +46,7 @@ export type Scene = {
 export type Preview = {
 	wrap: (string?) -> (), -- hex color or nil = clear
 	mask: (string?, string?, string?) -> (), -- color hex, shape, mask id (nil = the equipped one from the server)
+	weapon: (string?) -> (), -- weapon id held in the avatar's hand (nil, or the gun already held = the real one)
 	classIdle: (string) -> (),
 	reset: () -> (),
 	commit: () -> (), -- after an equip landed on the server: forget the old baseline
@@ -72,6 +74,9 @@ local idleTrack: AnimationTrack? = nil
 local previewMask: BasePart? = nil
 local savedHeadColor: Color3? = nil
 local savedWrapColor: Color3? = nil
+local savedWrapMaterial: Enum.Material? = nil
+local previewGun: Model? = nil -- GunPreview model in the hand while a different gun than the held one is selected
+local previewGunKey: string? = nil -- weapon id | applied wrap the preview was built for
 
 local TABS = { "WEAPONS", "CLASSES", "AVATAR" }
 local PANEL_W = 0.58 -- share of the viewport the panel takes (62% on mobile)
@@ -88,13 +93,54 @@ local function stopIdle()
 	end
 end
 
+-- The wrappable band the wrap preview paints: the preview gun's grip when one is in the hand, else the real one.
+local function wrapTarget(): BasePart?
+	local pg = previewGun
+	local grip = if pg and pg.Parent then pg:FindFirstChild("Grip") else nil
+	if not grip then
+		local c = char()
+		grip = c and c:FindFirstChild("HeldGunWrap")
+	end
+	return if grip and grip:IsA("BasePart") then grip else nil
+end
+
+-- Put the band back to its worn color / material and forget the baseline (before the target band changes).
+local function restoreWrap()
+	local grip = wrapTarget()
+	if grip and savedWrapColor then
+		grip.Color = savedWrapColor
+		grip.Material = savedWrapMaterial or Enum.Material.Metal
+	end
+	savedWrapColor = nil
+	savedWrapMaterial = nil
+end
+
+local function heldWeaponId(): string?
+	local sync = ClientState.sync
+	return if sync and sync.held then sync.held.weaponId else nil
+end
+
+-- Drop the preview gun and show the real held one again.
+local function clearGunPreview()
+	if previewGun then
+		restoreWrap()
+		previewGun:Destroy()
+		previewGun = nil
+	end
+	previewGunKey = nil
+	local c = char()
+	if c then
+		GunPreview.setServerGunHidden(c, false)
+	end
+end
+
 local preview: Preview = {
 	wrap = function(hex: string?)
-		local c = char()
-		local grip = c and c:FindFirstChild("HeldGunWrap")
-		if grip and grip:IsA("BasePart") then
+		local grip = wrapTarget()
+		if grip then
 			if not savedWrapColor then
 				savedWrapColor = grip.Color
+				savedWrapMaterial = grip.Material
 			end
 			grip.Color = if hex then Color3.fromHex(hex) else savedWrapColor :: Color3
 			-- Brief 6: a wrap with its own material (the Legendary pass wraps glow) previews in it.
@@ -110,7 +156,34 @@ local preview: Preview = {
 			grip.Material = if wrapDef
 				then Wraps.material(wrapDef)
 				elseif hex then Enum.Material.SmoothPlastic
-				else Enum.Material.Metal
+				else savedWrapMaterial or Enum.Material.Metal
+		end
+	end,
+	-- Round 18c: the selected gun in the avatar's hand, like the mask preview. The gun already held needs no copy
+	-- (the real model is exact); any other gets a local GunPreview model with the real one hidden.
+	weapon = function(id: string?)
+		local c = char()
+		if not Config.MetaWeaponPreview or not id or not c or id == heldWeaponId() then
+			clearGunPreview()
+			return
+		end
+		local sync = ClientState.sync
+		local weapons = sync and sync.profile and sync.profile.weapons
+		local entry = weapons and weapons[id]
+		local wrapId: string? = if entry then entry.wrap else nil
+		local key = id .. "|" .. tostring(wrapId)
+		local pg = previewGun
+		if pg and pg.Parent and previewGunKey == key then
+			GunPreview.setServerGunHidden(c, true)
+			return
+		end
+		restoreWrap()
+		clearGunPreview()
+		previewGun = GunPreview.build(c, id, wrapId)
+		previewGunKey = if previewGun then key else nil
+		GunPreview.setServerGunHidden(c, previewGun ~= nil)
+		if previewGun then
+			UI.sound(Theme.Sounds.take, 1.3, 0.25)
 		end
 	end,
 	-- `hex` / `shape` preview a mask (nil restores the worn one); `id` (brief 6) previews a Masks.lua mask with its
@@ -168,12 +241,9 @@ local preview: Preview = {
 			previewMask:Destroy()
 			previewMask = nil
 		end
-		local grip = c and c:FindFirstChild("HeldGunWrap")
-		if grip and grip:IsA("BasePart") and savedWrapColor then
-			grip.Color = savedWrapColor
-		end
+		restoreWrap()
+		clearGunPreview()
 		savedHeadColor = nil
-		savedWrapColor = nil
 	end,
 	emote = function(animationId: string, holdSec: number?)
 		-- The idle keeps looping underneath; the emote plays on top at action priority and stops after hold.
@@ -191,6 +261,7 @@ local preview: Preview = {
 		end
 		savedHeadColor = nil
 		savedWrapColor = nil
+		savedWrapMaterial = nil
 	end,
 }
 
@@ -204,7 +275,8 @@ local function shot(push: boolean): CFrame
 	local forward = base.LookVector
 	local right = base.RightVector
 	if push then
-		local gun = c and c:FindFirstChild("HeldGun")
+		local pg = previewGun
+		local gun = if pg and pg.Parent then pg.PrimaryPart else (c and c:FindFirstChild("HeldGun"))
 		local target = if gun and gun:IsA("BasePart") then gun.Position else base.Position + right * 1
 		local pos = target + forward * Config.MetaWrapZoomDistance + Vector3.new(0, 0.4, 0)
 		return CFrame.lookAt(pos, target)
@@ -739,6 +811,20 @@ function MetaScene.open(tab: string?)
 		if open then
 			faceCamera()
 			setHubTagVisible(false) -- the server rebuilds the tag on class changes; keep it off while the scene is up
+			-- A preview gun keeps the real one hidden, even when the server rebuilds it (equip, wrap); a respawn drops it.
+			local pg = previewGun
+			if pg then
+				local c = char()
+				if pg.Parent and c and pg:IsDescendantOf(c) then
+					GunPreview.setServerGunHidden(c, true)
+				else
+					pg:Destroy()
+					previewGun = nil
+					previewGunKey = nil
+					savedWrapColor = nil
+					savedWrapMaterial = nil
+				end
+			end
 			stepCamera()
 		end
 	end)

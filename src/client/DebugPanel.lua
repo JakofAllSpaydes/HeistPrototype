@@ -157,6 +157,13 @@ local function build()
 	toggles.god = btn(r4, "God mode", 0.5, function()
 		send("GodMode")
 	end)
+	local r4b = row(panel, 4.5, rh)
+	toggles.nocd = btn(r4b, "No cooldowns", 0.5, function()
+		send("NoCooldowns")
+	end)
+	btn(r4b, "Synergy", 0.5, function()
+		send("ForceSynergy")
+	end, Color3.fromHex("5CE1E6"))
 
 	UI.text({
 		Text = "FORCE RARITY (next roll)",
@@ -434,6 +441,10 @@ local function refreshToggles()
 	if toggles.god and toggles.god.Parent then
 		toggles.god.Text = if sync.god then "God mode ON" else "God mode"
 		toggles.god.TextColor3 = if sync.god then Theme.Colors.gold else Theme.Colors.text
+	end
+	if toggles.nocd and toggles.nocd.Parent then
+		toggles.nocd.Text = if sync.noCooldowns then "No cooldowns ON" else "No cooldowns"
+		toggles.nocd.TextColor3 = if sync.noCooldowns then Theme.Colors.gold else Theme.Colors.text
 	end
 	for t = 1, 3 do
 		local b = toggles["tier" .. t]

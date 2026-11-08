@@ -40,9 +40,11 @@ export type State = {
 	forcedRarity: number?,
 	forceTradeoff: boolean,
 	forceElement: boolean, -- debug: the next pick-3 holds an element card
+	forceSynergy: boolean, -- debug (Round 18): the next pick-3 holds a synergy card if any qualifies
 	waveCash: number, -- cash earned since the last wave end (the income log)
 	waveUpgrades: number, -- upgrades bought since the last wave end
 	god: boolean,
+	noCooldowns: boolean, -- debug (Round 18): abilities never spend a charge or start a cooldown
 	lastShotAt: number,
 	lastSwapAt: number,
 	nextUid: number,
@@ -104,9 +106,11 @@ local function freshState(player: Player, joinIndex: number): State
 		forcedRarity = nil,
 		forceTradeoff = false,
 		forceElement = false,
+		forceSynergy = false,
 		waveCash = 0,
 		waveUpgrades = 0,
 		god = false,
+		noCooldowns = false,
 		lastShotAt = 0,
 		lastSwapAt = 0,
 		nextUid = 2,
@@ -703,6 +707,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		tracker = { order = state.upgradeOrder, items = state.upgrades, total = total },
 		openPick3 = state.openPick3,
 		god = state.god,
+		noCooldowns = state.noCooldowns,
 		abilities = abilityView(state),
 		classId = PlayerState.classOf(state),
 		profile = state.profile,

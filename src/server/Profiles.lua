@@ -79,6 +79,7 @@ export type Profile = {
 	crateOpens: { [string]: number }, -- crate id -> banked free opens (bundles, the pass)
 	purchases: { { id: string, price: number, at: number } }, -- the readout log (last Config.PurchaseLogKeep)
 	clockOffset: number, -- seconds added to UTC for this player's fake clock (debug advance day)
+	dailyReroll: { day: number, count: number }, -- Round 18: FEATURED daily items rerolled `count` times on `day`
 	version: number,
 }
 
@@ -195,6 +196,7 @@ function Profiles.fresh(): Profile
 		crateOpens = {},
 		purchases = {},
 		clockOffset = 0,
+		dailyReroll = { day = 0, count = 0 },
 		version = VERSION,
 	}
 end
@@ -430,6 +432,10 @@ local function migrate(raw: any): Profile
 		end
 	end
 	p.clockOffset = num(raw.clockOffset, 0)
+	if typeof(raw.dailyReroll) == "table" then
+		p.dailyReroll.day = math.floor(num(raw.dailyReroll.day, 0))
+		p.dailyReroll.count = math.max(0, math.floor(num(raw.dailyReroll.count, 0)))
+	end
 	local fromVersion = tonumber(raw.version) or 1
 	if fromVersion < 2 and p.classes.owned.SHARPSHOOTER and (p.abilities.claymore or 0) > 0 then
 		Log.event("Profile", "v1 -> v2: claymore LV %d now on INITIATE's Z", p.abilities.claymore)

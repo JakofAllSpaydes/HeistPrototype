@@ -179,9 +179,6 @@ function PassSummary.show(parent: Instance, width: number, position: UDim2, awar
 				end)
 			end
 		end
-		if (tonumber(award.overflowGold) or 0) > 0 then
-			gainLabel.Text = gainLabel.Text .. string.format(" · +%d ◆", award.overflowGold)
-		end
 	end)
 	return frame
 end

@@ -1,7 +1,7 @@
 --!strict
 -- The fifteen class abilities (Classes.lua), server side. Brief 5 adds INITIATE's Frag (thrown, fused blast),
 -- ENGINEER's Overclock (team-wide placeable rate + barricade shields) and SHARPSHOOTER's Eagle Eye (marks).
---   Placeables stand StructurePlaceDistance in front of the player: turret, barricade, healing turret, flame
+--   Placeables stand StructurePlaceDistance in front of the player (0: on the spot you stand on): turret, barricade, healing turret, flame
 --   turret and oil drum are attackable (HP bar, enemies walk to them and hit them); med bag and claymore are not.
 --   Ground fields (med bag, molotov, the fire a broken drum leaves) act on whoever stands in the circle every
 --   FieldTickSec. Thrown abilities (flashbang, molotov) arc ThrowDistance over ThrowFlightSec and go off where
@@ -64,7 +64,7 @@ type Structure = {
 	shield: number, -- barricade: Overclock's shield, absorbs damage first (0 = none)
 	shieldPart: BasePart?, -- its look
 	rate: number, -- the owner's own fire-rate multiplier (ENGINEER I: REINFORCED)
-	range: number, -- healing turret reach (DOC I: WIDE NET)
+	range: number, -- healing turret reach (DOC I: WIDE NET); claymore blast radius (BLAST RADIUS synergy)
 	repair: boolean, -- ENGINEER II: FIELD REPAIR
 	triage: boolean, -- healing turret of a DOC II: downed allies in range stand up on their own
 }
@@ -399,7 +399,8 @@ local function newStructure(kind: string, owner: Player, model: Model, hit: Base
 		attackable = false,
 		hp = 1,
 		maxHP = 1,
-		expiresAt = now() + lifetime,
+		-- Round 18d: a lifetime of 0 (every placeable today) stands until destroyed.
+		expiresAt = if lifetime > 0 then now() + lifetime else math.huge,
 		fill = nil,
 		lastTick = 0,
 		lastSound = 0,
@@ -489,7 +490,8 @@ local function placeTurret(player: Player, state: PlayerState.State, char: Model
 	local pw = PlayerState.abilityPower(state)
 	s.hp = math.round(grown("turret", "Hp", Config.TurretHP, lv) * pw)
 	s.maxHP = s.hp
-	s.dmg = grown("turret", "Damage", Config.TurretDmg, lv) * pw
+	-- TURRET DAMAGE (ENGINEER synergy card).
+	s.dmg = grown("turret", "Damage", Config.TurretDmg, lv) * pw * PlayerState.computed(state).turretDmgMult
 	s.head = head
 	s.fill = hpBar(base, COLOR.gold)
 	placed(s, COLOR.gold)
@@ -920,7 +922,9 @@ local function stimShot(player: Player, state: PlayerState.State, _char: Model)
 		state,
 		"stimshot",
 		Config.StimShotDuration,
-		grown("stimshot", "Heal", Config.StimShotHeal, level(state, "stimshot")) * PlayerState.abilityPower(state)
+		grown("stimshot", "Heal", Config.StimShotHeal, level(state, "stimshot"))
+			* PlayerState.abilityPower(state)
+			* PlayerState.computed(state).healMult -- HEALING (DOC synergy card)
 	)
 end
 
@@ -929,7 +933,9 @@ local function placeMedBag(player: Player, state: PlayerState.State, char: Model
 	local pos = placementCFrame(char, Config.StructurePlaceDistance).Position
 	-- WIDE NET (DOC I) and FIELD HOSPITAL (DOC III) widen it; FIELD HOSPITAL heals harder.
 	local radius = Config.MedBagRadius
-	local heal = grown("medbag", "HealPerSec", Config.MedBagHealPerSec, lv) * PlayerState.abilityPower(state)
+	local heal = grown("medbag", "HealPerSec", Config.MedBagHealPerSec, lv)
+		* PlayerState.abilityPower(state)
+		* PlayerState.computed(state).healMult -- HEALING (DOC synergy card)
 	if PlayerState.passive(state, "DOC", 1) then
 		radius *= 1 + Config.DocReachPct
 	end
@@ -950,7 +956,7 @@ local function placeHealTurret(player: Player, state: PlayerState.State, char: M
 	local pw = PlayerState.abilityPower(state)
 	s.hp = math.round(grown("healturret", "Hp", Config.HealTurretHP, lv) * pw)
 	s.maxHP = s.hp
-	s.heal = grown("healturret", "BeamHeal", Config.HealTurretBeamHeal, lv) * pw
+	s.heal = grown("healturret", "BeamHeal", Config.HealTurretBeamHeal, lv) * pw * PlayerState.computed(state).healMult
 	s.range = Config.HealTurretRange * (if PlayerState.passive(state, "DOC", 1) then 1 + Config.DocReachPct else 1)
 	s.triage = PlayerState.passive(state, "DOC", 2)
 	s.head = head
@@ -1053,6 +1059,7 @@ local function placeClaymore(player: Player, state: PlayerState.State, char: Mod
 	local lv = level(state, "claymore")
 	local s = newStructure("claymore", player, model, body, Config.ClaymoreLifetime)
 	s.dmg = grown("claymore", "ClaymoreDamage", Config.ClaymoreDamage, lv) * PlayerState.abilityPower(state)
+	s.range = Config.ClaymoreBlastRadius * PlayerState.computed(state).blastRadiusMult -- BLAST RADIUS (INITIATE synergy)
 	s.armedAt = now() + Config.ClaymoreArmSec
 	placed(s, Color3.fromHex("4D9FE8"), 3)
 	Log.event("Ability", "%s planted a claymore (LV %d: %d dmg)", player.Name, lv, math.round(s.dmg))
@@ -1066,11 +1073,9 @@ local function claymoreTick(s: Structure, t: number)
 	if not Enemy.nearest(pos, Config.ClaymoreTriggerRadius, nil) then
 		return
 	end
-	local victims = Enemy.within(pos, Config.ClaymoreBlastRadius)
-	World.fireRun(
-		"Blast",
-		{ position = pos, radius = Config.ClaymoreBlastRadius, color = COLOR.red, shake = 0.3, pitch = 0.8 }
-	)
+	local radius = if s.range > 0 then s.range else Config.ClaymoreBlastRadius
+	local victims = Enemy.within(pos, radius)
+	World.fireRun("Blast", { position = pos, radius = radius, color = COLOR.red, shake = 0.3, pitch = 0.8 })
 	local kills = 0
 	for _, model in victims do
 		local ep = Enemy.rootPosition(model) or pos
@@ -1079,7 +1084,7 @@ local function claymoreTick(s: Structure, t: number)
 		local hit: Enemy.Hit = {
 			dir = if away.Magnitude > 0.1 then away.Unit else nil,
 			blast = true,
-			blastT = 1 - math.clamp(away.Magnitude / Config.ClaymoreBlastRadius, 0, 1),
+			blastT = 1 - math.clamp(away.Magnitude / radius, 0, 1),
 		}
 		if hitEnemy(s.owner, model, s.dmg, ep, false, hit) then
 			kills += 1
@@ -1093,7 +1098,8 @@ local function claymoreTick(s: Structure, t: number)
 end
 
 local function deadEye(player: Player, state: PlayerState.State, _char: Model)
-	startBuff(player, state, "deadeye", Config.DeadEyeDuration, 0)
+	-- DEAD EYE TIME (SHARPSHOOTER synergy card).
+	startBuff(player, state, "deadeye", Config.DeadEyeDuration * PlayerState.computed(state).deadEyeTimeMult, 0)
 end
 
 local function throwFlashbang(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
@@ -1113,7 +1119,9 @@ end
 ------------------------------------------------------------------ TORCH
 local function throwMolotov(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "molotov")
-	local burn = grown("molotov", "BurnPerSec", Config.MolotovBurnPerSec, lv) * PlayerState.abilityPower(state)
+	local burn = grown("molotov", "BurnPerSec", Config.MolotovBurnPerSec, lv)
+		* PlayerState.abilityPower(state)
+		* PlayerState.computed(state).fireAbilityMult -- ACCELERANT (TORCH synergy card)
 	local slowPct = math.min(90, grown("molotov", "MoveSlowPct", Config.MolotovMoveSlowPct, lv))
 	throw(char, COLOR.allyFire, true, function(pos: Vector3)
 		placeField("molotov", player, pos, Config.MolotovRadius, Config.MolotovLifetime, burn, 1 - slowPct / 100)
@@ -1138,7 +1146,9 @@ local function placeFlameTurret(player: Player, state: PlayerState.State, char: 
 	local pw = PlayerState.abilityPower(state)
 	s.hp = math.round(grown("flameturret", "Hp", Config.FlameTurretHP, lv) * pw)
 	s.maxHP = s.hp
-	s.dmg = grown("flameturret", "FlameDps", Config.FlameTurretDps, lv) * pw
+	s.dmg = grown("flameturret", "FlameDps", Config.FlameTurretDps, lv)
+		* pw
+		* PlayerState.computed(state).fireAbilityMult
 	s.head = head
 	s.fill = hpBar(base, COLOR.red)
 	placed(s, COLOR.fire)
@@ -1212,7 +1222,9 @@ local function placeOilDrum(player: Player, state: PlayerState.State, char: Mode
 	local pw = PlayerState.abilityPower(state)
 	s.hp = math.round(Config.OilDrumHP * pw)
 	s.maxHP = s.hp
-	s.dmg = grown("oildrum", "DrumBurnPerSec", Config.OilDrumBurnPerSec, lv) * pw
+	s.dmg = grown("oildrum", "DrumBurnPerSec", Config.OilDrumBurnPerSec, lv)
+		* pw
+		* PlayerState.computed(state).fireAbilityMult -- ACCELERANT (TORCH synergy card)
 	s.slowMult = 1 - math.min(90, grown("oildrum", "DrumMoveSlowPct", Config.OilDrumMoveSlowPct, lv)) / 100
 	s.fill = hpBar(drum, COLOR.fire)
 	placed(s, COLOR.fire)
@@ -1253,7 +1265,7 @@ end
 local function throwFrag(player: Player, state: PlayerState.State, char: Model, aim: Vector3?)
 	local lv = level(state, "frag")
 	local dmg = grown("frag", "FragDamage", Config.FragDamage, lv) * PlayerState.abilityPower(state)
-	local radius = Config.FragRadius
+	local radius = Config.FragRadius * PlayerState.computed(state).blastRadiusMult -- BLAST RADIUS (INITIATE synergy)
 	throw(char, Color3.fromRGB(60, 70, 50), false, function(pos: Vector3)
 		do
 			local victims = Enemy.within(pos, radius)
@@ -1495,6 +1507,13 @@ function Abilities.use(player: Player, id: any, aim: any, origin: any, hit: any)
 		return
 	end
 	handler(player, state, char, aimPoint)
+	if state.noCooldowns then
+		-- Debug NO COOLDOWNS (Round 18): nothing spent, nothing to recharge.
+		state.charges[id] = nil
+		state.cooldowns[id] = 0
+		state.dirty = true
+		return
+	end
 	state.charges[id] = Abilities.chargesLeft(state, id) - 1
 	if (state.cooldowns[id] or 0) <= now() then
 		state.cooldowns[id] = now() + PlayerState.abilityCooldown(state, id)

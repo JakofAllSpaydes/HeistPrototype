@@ -30,9 +30,19 @@ function DailyShop.price(e: Entry): number
 	return DailyShop.PriceByRarity[math.clamp(Rewards.rarity(e :: any), 1, 5)]
 end
 
--- The day's items (a fake UTC day number), in display order.
-function DailyShop.forDay(day: number): { Entry }
-	local rng = Random.new(day * 7919 + 17)
+-- Round 18: REROLL (R$ Config.DailyShopRerollPrice) draws this profile a fresh set for the day; the count resets
+-- with the day. The draw is seeded by (day, rerolls), so client and server agree without storing the list.
+function DailyShop.rerollsOn(profile: any, day: number): number
+	local r = profile and profile.dailyReroll
+	if typeof(r) ~= "table" or tonumber(r.day) ~= day then
+		return 0
+	end
+	return math.max(0, math.floor(tonumber(r.count) or 0))
+end
+
+-- The day's items (a fake UTC day number) after `rerolls` rerolls, in display order.
+function DailyShop.forDay(day: number, rerolls: number?): { Entry }
+	local rng = Random.new(day * 7919 + 17 + (rerolls or 0) * 104729)
 	local pool = table.clone(DailyShop.Pool)
 	local out = {}
 	for _ = 1, math.min(Config.DailyShopItems, #pool) do
@@ -43,8 +53,8 @@ function DailyShop.forDay(day: number): { Entry }
 	return out
 end
 
-function DailyShop.offeredOn(day: number, kind: string, id: string): boolean
-	for _, e in DailyShop.forDay(day) do
+function DailyShop.offeredOn(day: number, kind: string, id: string, rerolls: number?): boolean
+	for _, e in DailyShop.forDay(day, rerolls) do
 		if e.kind == kind and e.id == id then
 			return true
 		end

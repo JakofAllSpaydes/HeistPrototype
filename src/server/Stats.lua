@@ -64,6 +64,11 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 	local base = Weapons.atLevel(w, held.level or 0)
 	local crit = upgrades.CritChance
 	local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
+	-- ELEMENTAL POWER (synergy) raises every held element's power; an element not held stays at 0.
+	local elemMult = 1 + math.max(0, pct(upgrades, "ElementalPower"))
+	local function boost(id: string): number
+		return 1 + math.max(0, pct(upgrades, id))
+	end
 	return {
 		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage"), held.level) * b.damageMult,
 		fireRate = base.fireRate * mult(upgrades, "FireRate") * b.fireRateMult,
@@ -77,9 +82,9 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		cashGain = mult(upgrades, "CashGain"),
 		abilityCdr = math.clamp(points(upgrades, "AbilityCooldown"), -100, Config.AbilityCooldownCap) / 100,
 		abilityPower = mult(upgrades, "AbilityPower"),
-		incendiaryPower = power(upgrades, "Incendiary"),
-		cryoPower = power(upgrades, "Cryo"),
-		concussivePower = power(upgrades, "Concussive"),
+		incendiaryPower = power(upgrades, "Incendiary") * elemMult,
+		cryoPower = power(upgrades, "Cryo") * elemMult,
+		concussivePower = power(upgrades, "Concussive") * elemMult,
 		spreadMult = math.clamp(1 - pct(upgrades, "Accuracy"), 0.05, 3),
 		pierce = math.max(0, math.floor(points(upgrades, "Pierce")))
 			+ Weapons.builtInPierce(w, held.rarity)
@@ -88,6 +93,14 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		splash = math.max(0, points(upgrades, "Splash")),
 		multishot = math.max(0, points(upgrades, "Multishot")),
 		lifesteal = math.max(0, points(upgrades, "Lifesteal")),
+		wildfire = math.clamp(points(upgrades, "Wildfire"), 0, Config.WildfireMaxPct),
+		shatter = math.max(0, points(upgrades, "Shatter")),
+		aftershock = math.max(0, points(upgrades, "Aftershock")),
+		fireAbilityMult = boost("Accelerant"),
+		turretDmgMult = boost("TurretDamage"),
+		healMult = boost("HealPower"),
+		deadEyeTimeMult = boost("DeadEyeTime"),
+		blastRadiusMult = boost("BlastRadius"),
 	}
 end
 

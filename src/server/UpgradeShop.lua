@@ -1,6 +1,8 @@
 --!strict
 -- Pick-3 generation, Take, stat application and the run tracker state. The dealer (brief 5) draws its stock
 -- through the same generator (UpgradeShop.generate with a count) and applies it through UpgradeShop.applyCard.
+-- Conditional "synergy" stats (Upgrades.lua `requires`) are offered on their own roll (Config.SynergyChance) only
+-- while their condition holds (Upgrades.meets: an element held, the equipped class).
 -- Cards draw a category by Config.CategoryWeights (gun / element / utility), then a stat inside it. Tradeoff
 -- cards roll at Config.TradeoffChance per tier, never on an element card, and the malus never lands on an element
 -- or CASH GAIN. An element goes on every shot: the first take grants 100% power, later takes add the card's percent.
@@ -20,10 +22,28 @@ local Boosts = require(script.Parent.Boosts)
 
 local UpgradeShop = {}
 
+-- The normal draw's pool. Conditional (synergy) stats never come from here: see synergyPool.
 local function statsIn(category: string?, exclude: { [string]: boolean }, forMalus: boolean?): { string }
 	local pool = {}
 	for _, s in Upgrades.Stats do
-		if (category == nil or s.category == category) and not exclude[s.id] and not (forMalus and s.noMalus) then
+		if
+			not s.requires
+			and (category == nil or s.category == category)
+			and not exclude[s.id]
+			and not (forMalus and s.noMalus)
+		then
+			table.insert(pool, s.id)
+		end
+	end
+	return pool
+end
+
+-- The conditional stats whose `requires` holds for this player right now (Upgrades.meets is the filter).
+local function synergyPool(state: PlayerState.State, exclude: { [string]: boolean }): { string }
+	local pool = {}
+	local classId = PlayerState.classOf(state)
+	for _, s in Upgrades.Stats do
+		if s.requires and not exclude[s.id] and Upgrades.meets(s, state.upgrades, classId) then
 			table.insert(pool, s.id)
 		end
 	end
@@ -77,38 +97,55 @@ local function cardValue(state: PlayerState.State, statId: string, tier: number)
 	return Upgrades.magnitude(statId, tier)
 end
 
--- `count` cards (3 for the pick-3, Config.DealerStock for the dealer), each a different stat.
+-- `count` cards (3 for the pick-3, Config.DealerStock for the dealer), each a different stat. Each slot first
+-- rolls Config.SynergyChance for a conditional card when any qualifies (not on a debug-forced slot), else draws
+-- normally. Element and synergy cards are never tradeoffs.
 function UpgradeShop.generate(state: PlayerState.State, wave: number, count: number?): { Types.Card }
 	local n = count or 3
 	local cards: { Types.Card } = {}
 	local used: { [string]: boolean } = {}
 	local forcedIndex = if state.forceTradeoff then math.random(1, n) else nil
 	local elementIndex = if state.forceElement then math.random(1, n) else nil
+	-- Debug FORCE SYNERGY (Round 18): one slot takes a qualifying synergy card when any qualifies.
+	local synergyIndex: number? = nil
+	if state.forceSynergy then
+		repeat
+			synergyIndex = math.random(1, n)
+		until n == 1 or (synergyIndex ~= forcedIndex and synergyIndex ~= elementIndex) or n <= 2
+	end
 	for i = 1, n do
 		local tier = Rarity.roll(wave, nil, nil, Boosts.luckyShift(state.player)) -- LUCKY (brief 6)
-		local statId = randomStat(used, if elementIndex == i then "element" else nil)
-		used[statId] = true
-		local element = Upgrades.isElement(statId)
-		local isTradeoff = not element and (forcedIndex == i or math.random() < Config.TradeoffChance[tier])
+		local statId: string? = nil
+		if synergyIndex == i or (forcedIndex ~= i and elementIndex ~= i and math.random() < Config.SynergyChance) then
+			local pool = synergyPool(state, used)
+			if #pool > 0 then
+				statId = pool[math.random(#pool)]
+			end
+		end
+		local stat = statId or randomStat(used, if elementIndex == i then "element" else nil)
+		used[stat] = true
+		local plain = not Upgrades.isElement(stat) and not Upgrades.isConditional(stat)
+		local isTradeoff = plain and (forcedIndex == i or math.random() < Config.TradeoffChance[tier])
 		local card: Types.Card = {
-			stat = statId,
+			stat = stat,
 			tier = tier,
-			pct = cardValue(state, statId, tier),
-			name = Upgrades.cardName(statId, tier),
+			pct = cardValue(state, stat, tier),
+			name = Upgrades.cardName(stat, tier),
 			isTradeoff = isTradeoff,
 			malusStat = nil,
 			malusPct = nil,
 		}
 		if isTradeoff then
 			-- Buff rolls one tier higher; malus on a different random stat at the ratio.
-			card.pct = Upgrades.magnitude(statId, math.min(tier + 1, 5))
-			card.malusStat = malusStat(statId)
+			card.pct = Upgrades.magnitude(stat, math.min(tier + 1, 5))
+			card.malusStat = malusStat(stat)
 			card.malusPct = math.round(card.pct * Config.TradeoffMalusRatio * 10) / 10
 		end
 		cards[i] = card
 	end
 	state.forceTradeoff = false
 	state.forceElement = false
+	state.forceSynergy = false
 	return cards
 end
 

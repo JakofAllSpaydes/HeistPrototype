@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Upgrades = require(Shared:WaitForChild("Upgrades"))
 
@@ -40,6 +41,24 @@ function CardFace.statIcon(parent: Instance, statId: string, color: Color3, size
 		Parent = tile,
 	})
 	return tile
+end
+
+-- A conditional (synergy) card's pill, centred on the card's top edge, saying why it showed up ("TORCH SYNERGY",
+-- Upgrades.synergyTag). nil (and nothing drawn) for ordinary stats. `height` in px.
+function CardFace.synergyPill(parent: GuiObject, statId: string, height: number): Frame?
+	local tag = Upgrades.synergyTag(statId)
+	if not tag then
+		return nil
+	end
+	local pill, label =
+		UI.pill(parent, tag, Color3.fromHex(Config.SynergyColor), Theme.Colors.bg, height, math.floor(height * 0.62))
+	pill.Name = "Synergy"
+	pill.AnchorPoint = Vector2.new(0.5, 0.5)
+	pill.Position = UDim2.fromScale(0.5, 0)
+	pill.ZIndex = 4
+	label.ZIndex = 4
+	label.Font = Theme.Fonts.display
+	return pill
 end
 
 -- The card body under the icon: NAME, the big number ("+30%" / "NEW"), the stat line, and the malus strip on a

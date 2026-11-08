@@ -211,9 +211,25 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = root,
 	})
 	local shop = iconTile(shopHolder, 1, "Shop", "$", Theme.Colors.amber, Theme.Colors.bg, shopSize)
+	-- Round 18: the breadcrumb. A red dot when the store holds something free to take (banked crate opens, the VIP
+	-- daily gift); the store then opens on that section.
+	local shopDot = UI.frame({
+		BackgroundColor3 = Theme.Colors.red,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -S(4), 0, S(4)),
+		Size = UDim2.fromOffset(S(14), S(14)),
+		Visible = false,
+		ZIndex = 5,
+		Parent = shopHolder,
+	})
+	UI.corner(shopDot, S(7))
+	UI.stroke(shopDot, Theme.Colors.white, S(1.5), 0)
+	component.shopFocus = nil :: string?
 	shop.Activated:Connect(function()
 		UI.punch(shop, 0.92, 0.15)
-		if component.onShop then
+		if component.onStoreTab and component.shopFocus then
+			component.onStoreTab(component.shopFocus)
+		elseif component.onShop then
 			component.onShop() -- brief 6: the store scene
 		else
 			component.showPlaceholder("Shop")
@@ -552,10 +568,29 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 		jobsSub.Text = string.format("%d / %d", done, if fresh then #jobs.daily else 3)
 		jobsDot.Visible = ready or not fresh
+		-- The SHOP breadcrumb: free crate opens first, then the VIP gift.
+		local focus: string? = nil
+		for _, n in (if profile and profile.crateOpens then profile.crateOpens else {}) do
+			if (tonumber(n) or 0) > 0 then
+				focus = "CRATES"
+			end
+		end
+		local vip = profile and profile.vip
+		if
+			not focus
+			and vip
+			and vip.active
+			and Clock.day(ClientState.fakeNow()) > (tonumber(profile.vipGiftDay) or 0)
+		then
+			focus = "VIP"
+		end
+		shopDot.Visible = focus ~= nil
+		component.shopFocus = focus
 	end
 	component.paintTop = paintTop
 	local passStroke = passBtn:FindFirstChildOfClass("UIStroke")
 	local jobsStroke = jobsBtn:FindFirstChildOfClass("UIStroke")
+	local shopScale = UI.new("UIScale", { Name = "BreadcrumbScale", Parent = shopDot })
 	component.pulseTop = function(t: number)
 		local k = (math.sin(t * 4) + 1) / 2
 		if passStroke then
@@ -564,6 +599,7 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		if jobsStroke then
 			jobsStroke.Thickness = if jobsDot.Visible then S(2 + k * 2) else S(2)
 		end
+		shopScale.Scale = if shopDot.Visible then 1 + k * 0.25 else 1
 	end
 
 	component.frame = root
