@@ -14,6 +14,9 @@ local Config = require(Shared.Config)
 local Enemies = require(Shared.Enemies)
 local Room = require(script.Parent.Room)
 local Log = require(script.Parent.Log)
+local World = require(script.Parent.World)
+local EnemyPath = require(script.Parent.EnemyPath)
+local TweenService = game:GetService("TweenService")
 
 export type Volume = { cframe: CFrame, size: Vector3 }
 export type Zone = { id: string, depth: number, label: string, parts: { Volume } }
@@ -542,11 +545,102 @@ function MapLoader.read()
 		if MapLoader.errors == 1 then "" else "s"
 	)
 	Room.invalidate(MapLoader.MAP_ID)
+	if MapLoader.bank and MapLoader.bank:FindFirstChild("LadderLink") then
+		MapLoader.rebuildLadder()
+		MapLoader.setHatch(MapLoader.hatchOpen, true)
+	end
 end
 
 -- Can a run start on THE BANK? (MapLoaderStrict refuses one on a map with node errors.)
 function MapLoader.playable(): boolean
 	return MapLoader.loaded and (not Config.MapLoaderStrict or MapLoader.errors == 0)
+end
+
+------------------------------------------------------------------ The hatch and the ladder
+-- The ladder is a TrussPart players climb as a normal Roblox ladder; enemies use a PathfindingLink (label
+-- `ladder`, both ways) from the tunnel floor to the pavement beside the hole, which EnemyPath turns into a lift.
+-- Closed, the lid is solid and the link is off; open, the lid swings up and the link is on.
+local hatchParts: { { part: BasePart, closed: CFrame, collide: boolean } } = {}
+local ladderLink: PathfindingLink? = nil
+local linkHolder: BasePart? = nil
+MapLoader.hatchOpen = false
+
+local function buildLadder()
+	for _, h in hatchParts do
+		if h.part.Parent then
+			h.part.CFrame = h.closed
+		end
+	end
+	hatchParts = {}
+	if ladderLink then
+		ladderLink:Destroy()
+		ladderLink = nil
+	end
+	if linkHolder then
+		linkHolder:Destroy()
+		linkHolder = nil
+	end
+	local hatch = MapLoader.hatch
+	local bank = MapLoader.bank
+	if not hatch or not bank then
+		return
+	end
+	if hatch.mesh then
+		for _, p in MapLoader.meshParts(hatch.cframe, hatch.size, hatch.mesh, hatch.meshMargin) do
+			table.insert(hatchParts, { part = p, closed = p.CFrame, collide = p.CanCollide })
+		end
+	end
+	local holder = Instance.new("Part")
+	holder.Name = "LadderLink"
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.CFrame = CFrame.new(hatch.ladderTop)
+	holder.Parent = bank
+	local a0 = Instance.new("Attachment")
+	a0.Name = "Bottom"
+	a0.WorldPosition = hatch.ladderBottom
+	a0.Parent = holder
+	local a1 = Instance.new("Attachment")
+	a1.Name = "Top"
+	a1.WorldPosition = hatch.ladderTop
+	a1.Parent = holder
+	local link = Instance.new("PathfindingLink")
+	link.Label = "ladder"
+	link.IsBidirectional = true
+	link.Attachment0 = a0
+	link.Attachment1 = a1
+	linkHolder = holder
+	ladderLink = link
+end
+
+MapLoader.rebuildLadder = buildLadder
+
+-- Open (lid swung up, non-solid, the ladder link on) or closed (lid down and solid, link off).
+function MapLoader.setHatch(open: boolean, instant: boolean?)
+	MapLoader.hatchOpen = open
+	local hatch = MapLoader.hatch
+	if not hatch then
+		return
+	end
+	-- The lid hinges on its edge nearest the ladder top (the -X side of the node) and swings up 110 degrees.
+	local hinge = hatch.cframe * CFrame.new(-hatch.size.X / 2, 0, 0)
+	local swing = hinge * CFrame.Angles(0, 0, math.rad(-110)) * hinge:Inverse()
+	for _, h in hatchParts do
+		local goal = if open then swing * h.closed else h.closed
+		h.part.CanCollide = if open then false else true
+		if instant then
+			h.part.CFrame = goal
+		else
+			TweenService:Create(h.part, TweenInfo.new(0.6, Enum.EasingStyle.Back), { CFrame = goal }):Play()
+		end
+	end
+	if ladderLink then
+		ladderLink.Parent = if open then linkHolder else nil
+	end
 end
 
 function MapLoader.init()
@@ -559,7 +653,16 @@ function MapLoader.init()
 	placeBank(bank)
 	anchorAll(bank)
 	MapLoader.read()
+	buildLadder()
+	MapLoader.setHatch(false, true)
 	Room.registerMap(MapLoader.MAP_ID, buildView)
+	-- Paths share routes per zone pair on THE BANK; the arena is all one zone.
+	EnemyPath.zoneAt = function(p: Vector3): string?
+		if World.map ~= MapLoader.MAP_ID then
+			return nil
+		end
+		return MapLoader.zoneAt(p)
+	end
 end
 
 return MapLoader

@@ -45,6 +45,18 @@ end
 
 local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	-- Brief 7 MAP: re-read Workspace.Bank.Nodes after a Studio drag, without restarting.
+	-- Brief 7 MAP: stand on the zone's first bag spot (THE BANK; works in the hub or a run on any map).
+	TeleportZone = function(player, _state, args)
+		local zone = tostring(args)
+		local char = player.Character
+		for _, s in MapLoader.bagSpots do
+			if s.zone == zone and char then
+				char:PivotTo(CFrame.new(s.position + Vector3.new(0, 3, 0)))
+				return
+			end
+		end
+		toast(player, "NO SPOT IN ZONE " .. zone)
+	end,
 	RecomputeNodes = function(player, _state, _args)
 		MapLoader.read()
 		toast(
@@ -83,6 +95,9 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			elite = true
 			id = string.sub(id, 7)
 		end
+		-- Brief 7: "<id>@<box>" spawns at a named spawn box (THE BANK's or the current map's).
+		local boxName = string.match(id, "@(.+)$")
+		id = string.gsub(id, "@.*$", "")
 		if not Enemies.ById[id] then
 			toast(player, "NO SUCH ENEMY: " .. id)
 			return
@@ -90,6 +105,18 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local box, best = Room.nearestBox(if root then root.Position else nil)
+		if boxName then
+			for _, b in MapLoader.boxes do
+				if b.name == boxName then
+					box, best = b, Room.pointInBox(b)
+				end
+			end
+			for _, b in Room.current().spawnBoxes do
+				if b.name == boxName then
+					box, best = b, Room.pointInBox(b)
+				end
+			end
+		end
 		Enemy.spawn(id, World.wave, best, { elite = elite, box = box })
 		World.enemiesLeft = math.max(World.enemiesLeft, Enemy.count())
 		PlayerState.markAllDirty()

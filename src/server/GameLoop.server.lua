@@ -16,6 +16,7 @@ Room.build()
 -- Brief 7: THE BANK's nodes (Workspace.Bank.Nodes) become Room.forMap("TheBank").
 local MapLoader = require(script.Parent.MapLoader)
 MapLoader.init()
+local EnemyPath = require(script.Parent.EnemyPath)
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Log)
@@ -197,6 +198,7 @@ local function runWaves()
 			RunEvents.emit(p, "wave", wave) -- brief 6 Jobs: the best wave reached
 		end
 		Economy.logWave(wave, World.partyPlayers())
+		EnemyPath.logWave(wave)
 		Mastery.onWaveEnd(wave, World.partyPlayers())
 		if advanced then
 			Log.event("Wave", "Wave %d rolled into the next by AUTO SKIP, %d still alive", wave, Enemy.count())
@@ -296,6 +298,7 @@ task.spawn(function()
 		-- Run start: fresh run state for the party, then the drive-in sequence (IntroSec); WAVE 1 follows.
 		World.wave = 1
 		Heat.reset()
+		EnemyPath.resetRun()
 		Hub.beginRun()
 		Economy.resetRun(World.partyPlayers())
 		Mastery.beginRun(World.partyPlayers())

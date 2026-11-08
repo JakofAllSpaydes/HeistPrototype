@@ -115,8 +115,28 @@ local Config = {
 	HpPerPlayerMult = 0.5,
 	RetargetInterval = 1.0, -- how often an enemy re-picks its target
 	EnemyCollidesWithPlayers = false, -- false: enemies walk through players and each other, never body-block
-	EnemyStuckDetourSec = 1, -- no progress for this long -> sidestep + jump around the obstacle
-	EnemyStuckTeleportSec = 8, -- still stuck after this long -> re-spawn at a random spawn point
+	EnemyStuckDetourSec = 1, -- PathfindingEnabled false only (Round 18d walk): no progress this long -> sidestep + jump
+	EnemyStuckTeleportSec = 8, -- PathfindingEnabled false only: still stuck after this long -> a random spawn box
+
+	------------------------------------------------------------------ Pathfinding (brief 7, EnemyPath.lua)
+	PathfindingEnabled = true, -- false = the Round 18d straight MoveTo everywhere (A / B)
+	DirectRange = 30, -- studs: within this and with a clear walk, enemies walk straight at the target (no path)
+	RepathDistance = 12, -- re-plan when the target is this far from where the path was planned...
+	RepathSec = 1.5, -- ...or this often, whichever first
+	PathComputesPerSec = 40, -- server budget across all enemies (oldest request first); raise DirectRange first if pinned
+	PathCacheSec = 1, -- a route is shared per (target zone, enemy zone) this long
+	PathAgent = { -- agent sizes per archetype id (lower case); TITAN's wide agent keeps it out of narrow doorways
+		default = { r = 2, h = 5 },
+		heavy = { r = 3, h = 6 },
+		titan = { r = 6, h = 12 },
+	},
+	PathStructureCost = 10, -- placeables are walkable but this expensive: round a barricade when a route exists
+	PathGasCost = 5, -- the gassed vault room
+	StuckSec = 2.5, -- no progress toward the next waypoint this long -> sidestep
+	StuckTeleportSec = 6, -- still stuck -> a random point in the enemy's own spawn box
+	PathFailDirectSec = 3, -- three failed computes in a row -> walk direct this long, then retry
+	LadderClimbSec = 1.6, -- an enemy on the ladder link is lifted over this long
+	EnemyClimbAnimationId = "", -- [TBA] played while lifted (empty: none)
 	SpawnRingRadius = 90, -- studs from room center
 	SpawnPointCount = 8,
 	-- Proximity-weighted spawning (GDD): each marker's chance scales by its distance to the nearest living player.

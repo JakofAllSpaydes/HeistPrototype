@@ -2,8 +2,9 @@
 -- Enemy base: spawn (a Rig from the roster row, scaled by wave and party size), targeting and movement
 -- helpers, damage / flinch / kill / ragdoll, stun and slow, and the per-archetype brains in
 -- src/server/Enemies/ (Melee, Marksman, Boomer, Grenadier, Heavy; Boss.lua adds its own). Every brain
--- gets the same `api` of helpers each heartbeat; no pathfinding, straight MoveTo with a sidestep + jump
--- when stuck and a re-spawn as a last resort.
+-- gets the same `api` of helpers each heartbeat. Brief 7: the walk is EnemyPath's (direct near range, path
+-- mode through PathfindingService otherwise, the stuck sidestep and the teleport home as the last resort);
+-- PathfindingEnabled false is the Round 18d straight MoveTo.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +22,7 @@ local Log = require(script.Parent.Log)
 local Rig = require(script.Parent.Enemies.Rig)
 local Hazards = require(script.Parent.Enemies.Hazards)
 local Pause = require(script.Parent.Pause)
+local EnemyPath = require(script.Parent.EnemyPath)
 
 local BRAINS: { [string]: any } = {
 	melee = require(script.Parent.Enemies.Melee),
@@ -64,6 +66,7 @@ export type Data = {
 	markUntil: number, -- Eagle Eye: server clock the mark ends
 	mem: { [string]: any }, -- the brain's scratch space
 	box: any?, -- Room.SpawnBox it came from (the stuck teleport goes back there)
+	path: any, -- EnemyPath.State
 }
 
 -- What the killing (or hitting) shot looked like: its direction, whether it took the head, and how hard it
@@ -308,13 +311,19 @@ end
 local function chase(d: Data, target: BasePart, now: number)
 	d.holding = false
 	local root = d.root
+	local blocked = false
 	if Players:GetPlayerFromCharacter(target.Parent) then
 		-- Blocked by a placeable: attack it until it breaks, then carry on (a Heavy stomps, a boss breaks it).
 		local blocker = nearestStructure(root.Position, d.row.range + 1)
 		if blocker and blocker ~= target then
 			local mult = if d.row.boss then 100000 elseif d.row.attack == "heavy" then Config.HeavyPlaceableMult else 1
 			swing(d, blocker, now, 1, mult)
+			blocked = true
 		end
+	end
+	if Config.PathfindingEnabled then
+		EnemyPath.steer(d, target.Position, now, d.row.range, blocked)
+		return
 	end
 	if now - d.lastSteer >= Config.RetargetInterval then
 		local step = now - d.lastSteer
@@ -331,7 +340,8 @@ local function chase(d: Data, target: BasePart, now: number)
 		if d.stuckFor >= Config.EnemyStuckTeleportSec then
 			d.stuckFor = 0
 			d.detourUntil = 0
-			d.model:PivotTo(CFrame.new(Room.randomSpawnPoint() + Vector3.new(0, root.Size.Y / 2 + 1, 0)))
+			local _, home = Room.nearestBox(nil) -- a random spawn box of the current map
+			d.model:PivotTo(CFrame.new(home + Vector3.new(0, root.Size.Y / 2 + 1, 0)))
 			return
 		end
 		if d.stuckFor >= Config.EnemyStuckDetourSec and now >= d.detourUntil then
@@ -481,6 +491,7 @@ function Enemy.spawn(archetype: string, wave: number, position: Vector3, opts: S
 		markUntil = 0,
 		mem = {},
 		box = opts and opts.box,
+		path = EnemyPath.new(),
 	}
 	count += 1
 	local d = active[model]
@@ -859,6 +870,11 @@ function Enemy.init()
 	end
 	Hazards.hitStructure = hitStructure
 	Hazards.init()
+	EnemyPath.structures = function()
+		local extra = Enemy.extraTargets
+		return if extra then extra() else {}
+	end
+	EnemyPath.init()
 
 	RunService.Heartbeat:Connect(function(dt)
 		if Enemy.frozen then

@@ -202,11 +202,29 @@ local function build()
 		Parent = panel,
 	})
 	local elitePrefix = false
+	-- Brief 7: spawn at a chosen box (cycled in the MAP group); "nearest" uses the box nearest you.
+	local boxNames = { "nearest" }
+	do
+		local bank = workspace:FindFirstChild("Bank")
+		local nodes = bank and bank:FindFirstChild("Nodes")
+		local boxes = nodes and nodes:FindFirstChild("SpawnBoxes")
+		if boxes then
+			for _, b in boxes:GetChildren() do
+				table.insert(boxNames, b.Name)
+			end
+		end
+	end
+	local boxIndex = 1
 	local rE1 = row(panel, 18, rh)
 	local rE2 = row(panel, 19, rh)
 	for i, e in Enemies.List do
 		btn(if i <= 4 then rE1 else rE2, e.name, if i <= 4 then 0.25 else 0.25, function()
-			send("SpawnEnemy", (if elitePrefix then "elite:" else "") .. e.id)
+			send(
+				"SpawnEnemy",
+				(if elitePrefix then "elite:" else "")
+					.. e.id
+					.. (if boxIndex > 1 then "@" .. boxNames[boxIndex] else "")
+			)
 		end, Color3.fromHex(e.color):Lerp(Theme.Colors.text, 0.45))
 	end
 	toggles.elite = btn(rE2, "ELITE", 0.25, function()
@@ -449,6 +467,23 @@ local function build()
 		send("RecomputeNodes")
 		task.delay(0.5, NodeOverlay.refresh)
 	end)
+	-- Teleport to zone: one button per THE BANK zone.
+	local zoneRow: Frame? = nil
+	for i, z in { "street", "lobby", "upper", "back", "stairs", "vault", "tunnel" } do
+		if (i - 1) % 4 == 0 then
+			zoneRow = row(panel, 30.15 + math.floor((i - 1) / 4) * 0.001, rh)
+		end
+		local b = btn(zoneRow :: Frame, string.upper(z), 0.25, function()
+			send("TeleportZone", z)
+		end, Theme.Colors.blue)
+		b.TextSize = S(9)
+	end
+	local rBox = row(panel, 30.18, rh)
+	local boxBtn: TextButton
+	boxBtn = btn(rBox, "Spawn at: nearest", 1, function()
+		boxIndex = boxIndex % #boxNames + 1
+		boxBtn.Text = "Spawn at: " .. boxNames[boxIndex]
+	end, Theme.Colors.malus)
 	-- Per-type toggles, four to a row.
 	local typeRow: Frame? = nil
 	for i, typeName in NodeOverlay.TYPES do
