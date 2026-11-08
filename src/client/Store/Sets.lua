@@ -1,6 +1,6 @@
 --!strict
--- Brief 6: the private sets the premium scenes play on, built locally on this client far from the map so nobody
--- else sees them: the SHOWROOM (dark, gold key light, a pedestal on the left for the mannequin), the CRATE ROOM
+-- Brief 6: the private sets the premium scenes play on, built locally on this client (under the arena floor since
+-- Round 19m, prebuilt at startup) so nobody else sees them: the SHOWROOM (dark, gold key light, a pedestal on the left for the mannequin), the CRATE ROOM
 -- (one spotlight, the crate on a pedestal center frame) and the PASS STAGE. Each set is an enclosed room so the
 -- sky never leaks in; while a set is up the lighting goes dark and warm (restored on close). The mannequin is a
 -- local clone of the player's character standing on the set's pedestal, for previews (masks, poses, wraps,
@@ -120,8 +120,14 @@ local function light(
 end
 
 ------------------------------------------------------------------ The sets
+-- Round 19m: the sets sit in a row of sealed rooms just under the arena floor (PremiumSetsOrigin), inside the lighting
+-- the engine already keeps around the hub camera, instead of 3000+ studs away where their lights took seconds to
+-- come up after the camera jumped there. -1 / 0 / 1 = SHOWROOM / CRATE ROOM / PASS STAGE.
+local function setOrigin(slot: number): CFrame
+	return CFrame.new(Config.PremiumSetsOrigin + Vector3.new(slot * Config.PremiumSetsSpacing, 0, 0))
+end
 local function buildShowroom(): Set
-	local origin = CFrame.new(3000, 600, 0)
+	local origin = setOrigin(-1)
 	local m = room("Showroom", origin, 46, 34, 16, Color3.fromRGB(16, 15, 18), Color3.fromRGB(22, 20, 24))
 	-- Gold strips along the back wall and the floor edge.
 	for i = -1, 1 do
@@ -209,7 +215,7 @@ local function buildShowroom(): Set
 end
 
 local function buildCrateRoom(): Set
-	local origin = CFrame.new(3200, 600, 0)
+	local origin = setOrigin(0)
 	local m = room("CrateRoom", origin, 40, 40, 18, Color3.fromRGB(10, 10, 12), Color3.fromRGB(16, 16, 19))
 	local pedTop = origin * CFrame.new(0, 1.2, 0)
 	part(
@@ -258,7 +264,7 @@ local function buildCrateRoom(): Set
 end
 
 local function buildPassStage(): Set
-	local origin = CFrame.new(3400, 600, 0)
+	local origin = setOrigin(1)
 	local orange = Color3.fromHex("E8792A")
 	local m = room("PassStage", origin, 46, 34, 16, Color3.fromRGB(14, 13, 16), Color3.fromRGB(20, 18, 22))
 	for i = 0, 6 do
@@ -322,6 +328,14 @@ function Sets.get(name: string): Set
 	built[name] = made
 	return made
 end
+
+-- Round 19m: build every set at startup so its parts and lights are already in place (and lit) before the first
+-- scene opens.
+task.defer(function()
+	for _, name in { "Showroom", "CrateRoom", "PassStage" } do
+		pcall(Sets.get, name)
+	end
+end)
 
 ------------------------------------------------------------------ Lighting
 local saved: { [string]: any }? = nil

@@ -36,7 +36,7 @@ wave 10), 19f (the glass offices as mini vaults), 19g (door waves 2 / 5 / 8 / 12
 pass (stand-in gun models, a procedural hold / aim / fire / reload animation, 3D viewport icons for guns and
 cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h (feedback on it: the gun-only
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
-screen overlay, softer kill sounds, the door guide up until the door opens) 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick) and 19l (particles on picking an upgrade; unplayed).
+screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade) and 19m (the premium scene sets moved under the arena so the pass lights up at once; unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list" and the "Brief 7 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -1170,6 +1170,8 @@ Server run on THE BANK from the hub to a summary, through every door, one vault 
     A kill is a light tick and a soft thud. A called door's chevrons, loud beacon and edge arrow stay until it opens.
     Round 19i: solve a minigame and walk off on the last input → it still stamps DONE and pays; walk off mid-game →
     TOO FAR, then the cancel after `MinigameWalkAwayGraceSec` (step back in range within it and it stays open).
+    Round 19m: open the battle pass, the store and a crate from the hub → each set is lit from the first frame (no
+    fade-up over a few seconds).
 10. Logs and stats: `[GHS Zone]`, `[GHS Spawn] … contact`, debug Stats prints the MAP block (zone times, doors, contact
     per box, path budget).
 11. Mobile (emulator, landscape): the map tiles swipe, door signs and the `UNLOCKS · WAVE N` beacons read, the door
@@ -1735,6 +1737,10 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Tools: `genmap.luau`
   drag, spin and a late fade, a shockwave ring and a glow, on their own top ScreenGui (`JuiceFxDisplayOrder`) so they
   outlive the overlay. Picking an upgrade bursts them off the card (`UpgradeFxSparkBase` + `UpgradeFxSparkPerTier` ×
   tier), trails sparkles behind the flying icon and pops at the tracker tile (`UpgradeFx*`).
+
+- **Round 19m (7 Nov) — premium sets light up at once.** The showroom, crate room and pass stage moved from 3000+
+  studs out (where their local lights took seconds to come up after the camera jumped there) into a row of sealed
+  rooms under the arena floor (`PremiumSetsOrigin`, `PremiumSetsSpacing`), and `Sets.lua` builds all three at startup.
 
 ## Open design notes (not built)
 
