@@ -42,7 +42,10 @@ cosmetics, drawn pictograms for abilities, classes, boosts and upgrades) and 19h
 CUSTOMIZE close-up, the upgrade pick sound, no minigame twice in a row, no hold-to-HACK job, the crate reel on a
 screen overlay, softer kill sounds, the door guide up until the door opens), 19i (a minigame solved as you walk off still counts), 19j and 19k (the upgrade pick sound, now Jack's own pick), 19l (particles on picking an upgrade), 19m (the premium scene sets moved under the arena so the pass lights up at once) 19n (the hub nameplate: level badge, name, class block, best wave) and 19o (the game-wide style pass: Oswald / Builder Sans, sharp corners, bigger text, fuller HUD tiles; seen by Jack in Studio), and the
 brief 8 build (Round 20: the warehouse hub, concurrent runs, the departure beat, the training range; one commit per
-step, built unplayed: the hub's nodes were authored from the asset's geometry offline, so expect drags).
+step), then Rounds 20b–20t from Jack's first plays of it (the load fixes, walk-in booths, R15 dummies, the range HUD,
+a clean customization shot, hub walk speed, the place's own lighting, the pass stage spotlight, the van cutscene,
+doors taking the objective slot, smaller pad boards, MARLOW at his board, the upper doors gone from THE BANK, and map
+dressing as a Workspace file: `Workspace.Hub.Dressing`).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list" and the "Brief 8 verify list"
 are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
