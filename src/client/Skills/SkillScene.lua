@@ -530,6 +530,14 @@ local function select(id: string)
 		if not was then
 			Fx.slideIn(s, UDim2.fromOffset(UI.S(40), 0), 0.25)
 		end
+		-- Keep the hex clear of the sheet (on a phone it takes 40% of the width): ease it into the free space.
+		if v then
+			local sheetLeft = viewCentre().X * 2 - s.Size.X.Offset - UI.S(14)
+			local hexX = viewCentre().X + pan.X + v.x * zoom
+			if hexX + side * zoom > sheetLeft - UI.S(12) then
+				panTarget = clampPan(Vector2.new(pan.X - (hexX - sheetLeft / 2), pan.Y))
+			end
+		end
 	end
 	local ps = paintSheet
 	if ps then
@@ -629,7 +637,7 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 		Parent = s,
 	})
 	-- Bottom block: the price pill, BUY, the status line under it (BUY sits in the bottom-right thumb zone).
-	local buyH = if mobile then S(56) else S(52)
+	local buyH = if mobile then math.max(44, S(56)) else S(52) -- a thumb-sized target on a phone
 	local status = UI.text({
 		Name = "Status",
 		Text = "",
@@ -1110,6 +1118,17 @@ build = function()
 		Parent = playerGui,
 	}) :: ScreenGui
 	gui = g
+	-- Phone: every label reads MobileStoreTextScale bigger, as in the store (FixedTextSize opts out: the hexes).
+	if mobile and (Config.MobileStoreTextScale or 1) ~= 1 then
+		local k = Config.MobileStoreTextScale
+		g.DescendantAdded:Connect(function(d)
+			if (d:IsA("TextLabel") or d:IsA("TextButton")) and not d:GetAttribute("FixedTextSize") then
+				-- At once, as the store does: UI.caps' deferred font factor then builds on this size.
+				local t = d :: TextLabel
+				t.TextSize = math.round(t.TextSize * k)
+			end
+		end)
+	end
 
 	-- Sizes: a hex is SkillHexPx wide at zoom 1 (never under 56 px on a phone).
 	local hexW = math.max(S(Config.SkillHexPx), if mobile then 56 else 0)
@@ -1231,6 +1250,7 @@ build = function()
 	})
 	UI.list(legend, Enum.FillDirection.Vertical, S(4))
 	table.insert(chrome, legend)
+	UI.mobileGrow(legend, mobile) -- the hub HUD's mobile size (MobileButtonScale)
 	for i, b in Skills.Branches do
 		local color = Color3.fromHex(b.color)
 		local row = UI.frame({
@@ -1284,6 +1304,7 @@ build = function()
 	UI.corner(pill, S(6))
 	UI.stroke(pill, Theme.Colors.gold, S(1.5), 0.3)
 	goldPill = pill
+	UI.mobileGrow(pill, mobile)
 	table.insert(chrome, pill)
 	UI.text({
 		Text = "◆",
@@ -1339,6 +1360,7 @@ build = function()
 		Parent = g,
 	})
 	table.insert(chrome, backHolder)
+	UI.mobileGrow(backHolder, mobile)
 	local back = UI.button({
 		Name = "BackButton",
 		Text = "",

@@ -23,8 +23,11 @@ Brief 8 replaces the generated yard with a builder-made warehouse hub: four queu
 (runs on different maps play at the same time on one server), the three customization booths with mannequins in your
 own loadout, MARLOW's board on the wall, the van leaving through a roll-up garage on run start, and a walled training
 range where the helicopter bay was.
+Brief 9 adds the Skill Web: a hex web of 90 one-time account perks bought with Gold from the hub's SKILLS tile
+(six branches, five rings around START), small account-wide stats that stack on the Armory and apply in every run
+and the range.
 
-State as of **8 Nov 2026 (Round 25)**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
+State as of **8 Nov 2026 (Round 26)**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
 phase 2 (Round 12: all twelve class abilities live, with the 12b / 12c feedback passes), the Round 13 multiplayer pass
 (revive pauses the bleed, teammates' tracers and shot sounds, busy tags, everyone votes to skip, mags live with the gun,
@@ -73,10 +76,11 @@ EXPLOSIVE (RPG-7, M32, Cluster Launcher, TNT) and ELEMENTAL (Flamethrower, Cryo 
 weapon types, eight more guns and the four showcase guns made real, per-gun receiver shapes and silhouettes, icon
 category tiles, favourites (weapons and avatar), two starter slots, soft-capped weapon and ability levels, a Shift sprint
 prototype, faint mouse aim assist, a centred camera when the cursor is unlocked, and the Railcaster beam hitting real
-body parts).
+body parts), then
+Round 26 (8 Nov: the brief 9 build, the Skill Web; one commit per step, built unplayed).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
-list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list" and the "Brief 8 verify list"
-are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
+list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list", the "Brief 8 verify list" and the
+"Brief 9 verify list" are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
 where those changes came from); the full verify lists have not been walked end to end.
 
 ## Run it
@@ -132,6 +136,7 @@ dummies, the seven minigame props and the tier pad. Party and downed / revive li
 | Walk onto a queue pad | Create Match card (party size, map, difficulty, info, CREATE, X). Walking in joins an open party; walking out leaves it. Brief 8: four pads, one party each; a pad whose party is in a run refuses entry; a party whose map is busy waits on its pad (`MAP BUSY · <name> IS INSIDE`). |
 | PLAY (hub HUD) | Walks you to the nearest open pad (no party, or a party with room). Dock tiles WEAPONS · CLASSES · AVATAR open the customization scene; LEAVE (red X) or Esc closes it. |
 | SHOP tile / Gold + (hub HUD) | Brief 6: the store window over a dark dim, scrolled to FEATURED (the Gold + scrolls to GOLD). The rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD) scrolls the one page to that section; LEAVE, Esc or a tap outside the window closes it (Esc closes an open detail sheet first). A red dot on the SHOP tile means banked crate opens or the VIP gift wait; the tile then opens on that section. VIEW CRATE / VIEW BUNDLE / VIEW VIP on customization tiles open it on that item. |
+| SKILLS tile (hub HUD, under SHOP) | Brief 9: the Skill Web scene. Drag to pan (mouse, touch, right stick), scroll / pinch / triggers to zoom, double-tap the backdrop to recentre on START. Tap a hex → its sheet docks right; BUY there (never a single tap). Esc / BACK / B closes the sheet, then the scene. The red badge counts nodes you can buy right now. Hub only (hidden in runs and the range). |
 | PASS / JOBS (hub HUD, right-center) | The battle pass scene and the JOBS board. E at MARLOW's corkboard (`OPEN`) opens the board too; VIEW PASS on a PASS item opens the pass; CLAIM IN PASS on the summary takes you back to the hub first and opens it there (Round 19c). Esc / LEAVE / BACK closes either. |
 | $ + (match HUD cash row) | Brief 6: the cash-pack sheet (+$5,000 / +$20,000 / +$100,000 for fake Robux); the game keeps running behind it. Short of cash at the dealer, the same sheet opens (REROLL offers the R$ RESTOCK). |
 | E (hold `ReviveHoldSec`) | Revive a downed teammate within `ReviveRadius`. Their bleed timer stands still while you hold (`RevivePausesBleed`); letting go resumes it. Outranks floor guns: their prompts hide while a downed teammate is in reach. Mobile: a REVIVE hold button appears bottom-center. |
@@ -944,6 +949,56 @@ them (Range is a volume, off by default like Zones). The arena is a standalone r
   goes for players in the range, is pulled back if it wanders out and is cleared when the range empties. Logs:
   `[GHS Range] <name> enter / leave / reset dummy N`.
 
+**The Skill Web (brief 9; `Skills.lua`, `SkillLayout.lua`, `SkillService.lua`, `client/Skills/SkillScene.lua`).**
+Horizontal progression beside the Armory: 90 one-time nodes bought with Gold (never R$) on a regular hex grid of
+91 hexes, START at the centre and five rings (6 / 12 / 18 / 24 / 30). Six branches clockwise from the top, each a
+60° wedge holding N nodes in ring N (15 a branch): DAMAGE · SURVIVAL · SPEED · CASH · LUCK · ARSENAL.
+`SkillLayout` places every node deterministically (axial coordinates; wedge k owns 60k..60k+60° clockwise from
+straight up, a ring's cells in the wedge sorted by angle, slot j takes cell j); positions are never hand-authored and
+the server validates adjacency from the same table. The node values are `Config.SkillNodes` (per branch, per ring,
+in slot order, `{ stat, value }`); ids (`<branch>_<stat>_<n>`, e.g. `damage_crit_2`), names (CRIT CHANCE II, a numeral
+only when the stat repeats in its branch), pictograms and the effect line come from `Skills.lua`. A node can be
+bought when one of its six hex neighbours is owned (START counts; seams between wedges are real neighbours) and the
+Gold covers `SkillCostByRing` (500 · 1,500 · 4,000 · 10,000 · 25,000; about 300k for the web). Nothing is a rule
+change: `Skills.modifiers(owned)` folds the owned set into one flat table that the run start (`Hub.beginRun`) and
+the range entry arm on the player (`PlayerState.armSkills`, logged `[GHS Skills] <id> applied <stat> <value>` per
+node and `[GHS Skills] <player> applied N nodes (run start): damage +9% hp +16% …`); the hub runs on zeros. The
+hooks read one field each: damage, type damage, mag %, flat rounds and reload add to the Armory level's own
+multipliers in `Weapons.atLevel` (so the weapon card, DPS and floor-gun tags show them); max HP, move speed, regen,
+crit and headshot sit under the run's upgrade multipliers (`Stats.compute`); ELITE / BOSS DAMAGE on every gun and
+ability hit on an elite / TITAN (`Combat.dealDamage`, `Abilities.hitEnemy`); ABILITY DAMAGE on ability hits;
+COOLDOWN on the ability base before the run's ABILITY COOLDOWN; TOUGHNESS before armor soaks; ARMOR flat points
+(full at the run start like a new card) with ARMOR RECOVERY on the refill delay; REVIVE SPEED on the reviver's hold;
+LAST STAND on the bleed-out; QUICK HANDS on door holds (server) and the side job HACK prompt (each client shortens
+its own prompt: `QuickHandsBase`); MAGNET / FAST HANDS on the bag start reach and fill; BAG VALUE on each member's
+cash-bag share; SEED MONEY on the starting cash; HAGGLE on every dealer price; FENCE on the banked Gold this player is
+paid; CARD / DEALER / CRATE LUCK move `LuckOddsStep` (3%) of the tier weights per node off the lowest tier with
+weight onto the higher tiers that have some (`Rarity.applyLuck`: the pick-3, the dealer's stock, the in-run gun
+crate; never the store's crates). Profile v5 stores `skills = { owned, seen }` (START implicit; a respec is a
+wipe). `SkillService`: `Remotes.SkillBuy(id)` validates (known, not owned, adjacent, Gold, hub only, rate
+`SkillBuyRateSec`), charges through `Profiles.tryCharge` like an Armory level, logs `[GHS Economy] <player> spent N
+gold on skill <id>` and replies with the owned set and balance; `SkillSeen(ids)` records the pulse-once set.
+The scene: a full-screen overlay over the blurred hub (the hub HUD and your nameplate hidden, movement locked):
+SKILL WEB and the branch legend top-left (the hovered / selected branch lit; pictograms only under 720 px wide), the
+Gold pill top-right (its + opens the store's GOLD), BACK bottom-left. Hexes are drawn from frames (three rotated
+bars each, an edge layer and a fill): owned = the branch tint with lit white edges to owned neighbours; affordable =
+panel colour, the price in the Gold style, a slow white edge pulse; short = a red price, no pulse; two steps out = a
+dim hex with ?; farther = a faint outline, so the web's shape shows from the start. START is a larger gold hex with
+the star. A hex that became affordable since the last visit pulses once on open (`SkillNewPulseSec`). Pan by drag
+(mouse, touch, right stick), zoom by scroll / pinch / triggers between `SkillZoomMin` (never above "the whole web
+fits") and `SkillZoomMax`; it opens on the last selected hex at zoom 1 (`SkillHexPx` wide, at least 56 px on a
+phone); double-tap the backdrop to recentre on START. Tap a hex → the sheet docks right (40% of the width on a phone,
+BUY in the bottom-right thumb zone): branch tag, pictogram, name, effect line, RING N, the price, BUY / NOT ENOUGH
+GOLD (the store's refusal tick on a tap) / OWNED / LOCKED · UNLOCK A NEIGHBOUR. BUY → the hex wipes in with the loot
+ding and a small burst, the edges to owned neighbours light one by one, the newly revealed neighbours pop in, the Gold
+counts down, the sheet flips to OWNED and stays up; a refused buy shakes the Gold pill. Breadcrumbs: the SKILLS tile
+(directly under SHOP, hub only) wears a red badge with the number of nodes affordable right now; it pulses once on
+the first hub entry while you own only START, and MARLOW's daily announce card adds "Planning board's open. Spend
+some Gold on yourself." (`Lines.skillsIntro`) while the web is empty; the summary adds `N SKILLS AFFORDABLE` under
+the Gold gain once the count-up lands. `SkillsEnabled` false hides the tile and zeroes every modifier. Debug (PROFILE
+group): Unlock all skills, Reset skills, +10,000 Gold, Grant (a branch row, then ring 1–5: the ring's first unowned
+node of that branch); Stats prints the owned count per branch and the modifier table.
+
 ## Verifying a change
 
 ```
@@ -1333,6 +1388,44 @@ player shoots every owned gun at a dummy in the range and plays every test prop 
 9. Mobile (emulator, landscape): pads, booths, the board and the RANGE sign prompt with a tap; the fire / ADS / reload
    and ability buttons appear only inside the range.
 
+### Brief 9 verify list
+
+Written and built (`stylua`, `luau-lsp`, `rojo build`) one commit per step, not yet run in Studio. Done-line: a
+fresh profile opens the web from the hub HUD, buys its way from the centre to a ring-5 node in one branch with debug
+Gold, every bought node measurably changes a run (or a range dummy), and the web, badge and summary line read on a
+phone in landscape.
+
+1. Rejoin an existing profile → `[GHS Profile] v4 -> v5` once (not on the next join). A fresh profile: the SKILLS
+   tile under SHOP with a red `6` badge (10,000 Gold covers ring 1), its edge pulses white once; MARLOW's first
+   card of the day adds the Skill Web line.
+2. SKILLS → the web over the blurred hub: no hub HUD, no nameplate over you, you can't walk; START gold at the
+   centre, six affordable ring-1 hexes pulsing once then breathing, twelve ? hexes, the rest faint outlines. Esc / BACK
+   closes; the hub HUD, nameplate and walking come back.
+3. Drag pans, scroll zooms around the cursor (out until the whole web fits, in to 1.6x), double-tap empty space eases
+   back to START. A drag that ends on a hex does not open its sheet.
+4. Tap DAMAGE I → the sheet (DAMAGE tag, skull, +3% weapon damage, RING 1, ◆ 500, BUY). BUY → the wipe, ding and burst,
+   a lit edge to START, CRIT CHANCE I / HEADSHOT I reveal, the ? ring moves out, Gold counts 10,000 → 9,500, the
+   sheet says OWNED; `[GHS Economy] … spent 500 gold on skill damage_damage_1`. Rejoin → still owned.
+5. Debug +10,000 Gold a few times and buy DAMAGE II → III → IV (or any path to ring 5) in one branch; a ring-2 hex in
+   SURVIVAL is reachable from DAMAGE ring 2 across the seam. A node you can't afford: red price, BUY dimmed with NOT
+   ENOUGH GOLD (the refusal tick); a ? hex: ???, LOCKED · UNLOCK A NEIGHBOUR.
+6. Range: walk in → `[GHS Skills] damage_damage_1 applied damagePct 3%` … and the summary line; the weapon card's
+   DMG is 3% higher than before the buy, a dummy's numbers match; walk out → back to zeros. A buy while in the range
+   applies at once.
+7. Run start: the same log lines once per player; HP bar max (MAX HP), the weapon card (DAMAGE, ARSENAL type
+   damage / mags), cash at the start (SEED MONEY), dealer prices (HAGGLE), pick-3 / dealer / crate tiers (LUCK: Unlock
+   all skills then compare a few pick-3 rolls at wave 1), bag pickup reach and fill (MAGNET / FAST HANDS), cash floats
+   on a cash bag (BAG VALUE), the summary's Gold (FENCE: `… + N banked (team M)`), revive hold and bleed-out
+   (REVIVE SPEED / LAST STAND on a 2-player Local Server), door holds on THE BANK and the HACK prompt (QUICK HANDS).
+8. The summary: with nodes affordable after the payout, `N SKILLS AFFORDABLE` fades in under GOLD BANKED once the
+   count-up lands; back in the hub the badge shows the same N.
+9. Debug PROFILE: Unlock all skills (the badge goes, the web fills), Reset skills (back to START), Grant (pick a
+   branch, then a ring), Stats (`[GHS Skills] <you> owned: DAMAGE 15/15 …` and the modifier table).
+10. Phone (emulator, landscape): the whole web fits at minimum zoom, pinch zooms, one finger pans, hexes ≥ 56 px at
+    zoom 1, the legend is pictograms only under 720 px wide, the sheet docks right at 40% with BUY bottom-right and
+    the tapped hex eases left out from under it; the badge and the summary line read.
+11. Armory levels, the store, the pass and Jobs behave as before.
+
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
@@ -1342,7 +1435,7 @@ See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/serv
 Nodes). Brief 8: `src/server/Run/` holds every run-scoped module and is cloned per map at startup (`Runs.lua`); the
 shared modules (below, unmarked) sit in `src/server/`: GameLoop (the entry), Runs, RemoteRouter, HubMap, Hub, Queue,
 PlayerState, Profiles, Economy, RunEvents, Purchases, Grants, Shop, CrateOpen, Boosts, Vip, Pass, Jobs, Meta,
-Progression, Stats, Log. `Run/` also has Main (a slot's loop), Slot (its id and map), SlotRemotes and Range.
+Progression, Stats, Log, and brief 9's SkillService. `Run/` also has Main (a slot's loop), Slot (its id and map), SlotRemotes and Range.
 
 Server modules: World (run state, the party, `fireRun`, payout accumulators, heat effects, the run clock, the boss
 view and the roster), Room (map refs including `Room.vault`), Stats, Profiles (DataStore), PlayerState (per-player run
@@ -1364,7 +1457,8 @@ data: Config, Prices, Weapons (with `saleType` and the level math), Enemies (ros
 LevelRewards, Classes, AbilityGrowth, Masks, Wraps, Rarity, Upgrades, Types, Remotes, Signal, CrewCall/Lines, CrateReel
 (reel timing), Callouts (ally lines), MasteryCopy (mastery copy and tier math), and brief 6: Products, Rewards,
 Crates, Bundles, GoldPacks, BoostDefs, CashPacks, ReviveTokenPacks, PassSeason, JobPool, Clock (the fake clock),
-MaskShapes, Poses, and brief 7: Maps (the map rows), Ground (the floor under a point).
+MaskShapes, Poses, and brief 7: Maps (the map rows), Ground (the floor under a point), and brief 9: Skills (the web's node defs,
+neighbours, affordability, `modifiers`), SkillLayout (the hex grid).
 
 Client: ClientState (sync + juice bus + downed / camera mode flags + `inHub`), HUD components under `src/client/HUD`
 (with `HUD.setMode` for hub / meta / downed / spectate / cinematic / boss and `HubHUD` for the hub layout; `BossBar`
@@ -1379,7 +1473,7 @@ DebugPanel, Juice (rarity tiers), Camera, Gun, Main. Brief 6: PurchaseSheet, `sr
 Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, GoldTab, CrateScene),
 `src/client/Pass/` (PassScene, PassSummary), `src/client/Jobs/` (JobBoard, JobSummary), HUD/BoostChips. Brief 7:
 NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the open beat). Round 19d: Music (the
-soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothMannequins. Tools: `genmap.luau`,
+soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothMannequins. Brief 9: `src/client/Skills/SkillScene.lua`. Tools: `genmap.luau`,
 `importbank.luau`, `genbanknodes.luau`, `importhub.luau`, `genhubnodes.luau`, `exportnodes.luau`, `nodestyle.luau`,
 `rbxl-uncompress.js` (node).
 
@@ -1963,8 +2057,40 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothManneq
   *Upgrades:* EXPLOSIVE synergies (Demolition, and Blast Radius widened) offered with an Explosive gun, Splash or INITIATE, raising Explosive guns, Splash kill blasts, Frag and Claymore; Elemental Power also comes with an Elemental gun and raises its damage (Upgrades `requires` gained archetype / owns / anyOf, `tag`). Ability Power now amplifies buffs, durations and radii (`AbilityPower*Share`). Defense category (above).
   *Run:* the shared crate's first roll draws from guns every member owns, each later roll from one member's own pool in turn. The dealer revives the downed / bled-out crew (`DealerRevivesCrew`) and prices cards off your UPGRADE price. Gas toasts show only near the gas (`GasToastNearStuds`). THE BANK vault gas never ended (VaultJob.init returned before its Heartbeat on maps without the arena closet); it now seals once nobody standing is inside or after `VaultGasMaxSec`. Bags, crates and ejected guns move out of walls / out-of-zone spots (`Ground.clearSpot`, `LootClear*`, a `WARN` log names bad bag spots); spawns re-roll points outside their box's zone or height or inside geometry (`[GHS Spawn] WARN box`). Loot / job beacon columns stop at the ceiling (`Ground.ceiling`). Teammate markers at any range with an edge arrow (TeammateMarkers.lua, `TeammateMarker*`).
   *Meta / UI:* a tile tap re-styles in place and rebuilds only the detail card (no viewport blink); grid and category viewports hold still; detail headings in the display face; successful upgrades / unlocks / buys burst off the button (`MetaSuccessSparks`); the class detail drops the ability list; equipping into slot 2 re-renders at once.
+- **Round 26 (8 Nov) — the brief 9 build: the Skill Web.** Built unplayed, one commit per step. Step 1: `Skills.lua` /
+  `SkillLayout.lua` (90 nodes from `Config.SkillNodes` on a five-ring hex web), profile v5 (`skills.owned / seen`),
+  `SkillService` (SkillBuy / SkillSeen, debug unlock / reset / grant, the stats print), `PlayerState.armSkills` at
+  the run start and range entry, and every hook (Weapons.atLevel's skill bonus, Stats.compute, Combat / Abilities
+  elite-boss-ability damage, armor / toughness / regen, cooldowns, revive / bleed-out, door / hack holds, bags, seed
+  money, haggle, fence, `Rarity.applyLuck` for the pick-3, dealer and gun crate). Step 2: the SkillScene (blurred
+  overlay, hex canvas with pan / zoom / pinch, states, lit edges, the sheet, the buy beat) and the SKILLS tile under
+  SHOP; new pictograms (skills, star, die, arsenal, crown, boss, hand, moneybag, magnet, goldbar). Step 3: the tile's
+  count badge and first-time pulse, the summary's `N SKILLS AFFORDABLE`, MARLOW's intro line, the pulse-once
+  `seen` set. Step 4: the phone pass (56 px hexes, the 40% sheet with a thumb-sized BUY, the legend collapse, store
+  text scale, the tapped hex eased out from under the sheet) and this README.
 
 ## Open design notes (not built)
+
+- **Brief 9 notes and deviations (Round 26, unplayed).** The canvas is a plain Frame with a UIScale, not a
+  `CanvasGroup`: a CanvasGroup bigger than the screen renders into a capped texture (blurry when zoomed) and
+  re-renders on every pan step. Hexes are frames (three rotated bars for the edge, three for the fill), so a faint
+  hex is an edge with a backdrop-coloured fill. Stacking: damage / type damage / mag / reload add to the Armory
+  level's own multipliers (the brief's order); HP, move speed, regen, crit and headshot have no Armory stat, so they
+  sit on the base under the run's upgrade multipliers; COOLDOWN multiplies the base before (and outside the cap of)
+  the run's ABILITY COOLDOWN. ELITE / BOSS DAMAGE apply to every gun and ability hit on an elite / TITAN (splash and
+  ricochet included); ABILITY DAMAGE to ability hits only (not heals or placeable HP). BAG VALUE raises cash bags (each
+  member's own share); gold bags are FENCE, which raises the banked Gold this player is paid (the team's banked total
+  and the best-banked record stay the raw total). QUICK HANDS: door holds on the server and the side job HACK prompt
+  shortened on each client (the server never times a prompt hold); minigames, revives and the bag fill are not
+  touched (REVIVE SPEED and FAST HANDS are their own nodes). The Gold spend goes through `Profiles.tryCharge` like
+  an Armory level and logs `[GHS Economy]`; the purchase readout (the fake-R$ log) does not list it. A buy is
+  refused in a run; in the range it applies at once. The badge is a red circle with the count (the pass's dot has no
+  number); the first-time pulse is the tile's edge breathing white for 2.4 s once per session while you own only
+  START (the pass has no first-time pulse to copy). `seen` keeps every node seen affordable on an open, so a node
+  that drops out of reach and comes back does not pulse again. The summary line says `1 SKILL AFFORDABLE` in the
+  singular. Ids use the stat key in lower case (`survival_maxhp_1`, `arsenal_explosiveammo_1`). Debug Grant takes
+  the ring's first unowned node of the branch. The SKILLS tile hides in the range like the other hub-only tiles
+  (SHOP stays there). The web was never seen on a screen: expect size, colour and text-fit passes.
 
 - **Brief 8 notes and deviations (Round 20, unplayed).** The hub's nodes were authored from the asset read in Lune
   (no Studio look), so expect drags. North is −Z in the warehouse: the pads and the board are on the north wall, the
