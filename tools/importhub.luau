@@ -5,6 +5,8 @@
 -- spawn) lands on Config.HubOrigin, clear of the arena and THE BANK. Then:
 --   * drops every model named by Config.HubImportDrop (matched against the names of the parts inside it, so the
 --     builder's unnamed "Model" holding helicopterbase / helicopterblades ... is found and logged);
+--   * brief 10: drops every model Config.HubImportDropAt places by name and position (the boxed shelving by the
+--     range door is an unnamed `Model` of plain Parts, so only where it stands identifies it);
 --   * strips scripts (the booth rigs carry the default Animate LocalScript);
 --   * names the parked van's model `Van` (the hub drives it on run start; the Van node points at it).
 -- Nothing else is renamed or re-authored.
@@ -30,10 +32,75 @@ local Config = luau.load(fs.readFile("src/shared/Config.lua"), {
 
 local path = process.args[1]
 if not path then
-	error("usage: lune run tools/importhub.luau <Lobby.rbxl | Lobby.rbxlx>")
+	error(
+		"usage: lune run tools/importhub.luau <Lobby.rbxl | Lobby.rbxlx>; "
+			.. "or: lune run tools/importhub.luau drop   (re-apply the HubImportDropAt drops to src/map/Hub.rbxm)"
+	)
 end
 local origin = Config.HubOrigin :: { number }
 local drop = Config.HubImportDrop :: { string }
+local dropAt = (Config.HubImportDropAt or {}) :: { { name: string, models: { string }, at: { number }, radius: number } }
+
+-- Brief 10: positional drops. `ax, az` is the floor star's x / z in the geometry's current frame. Only models directly
+-- under a top-level child (the builder's `Lobby` folder) are candidates, so a matching model nested in a kept one stays.
+local function dropByPosition(geometry: any, ax: number, az: number): number
+	local n = 0
+	for _, rule in dropAt do
+		local names = {}
+		for _, m in rule.models do
+			names[m] = true
+		end
+		local hit = {}
+		for _, top in geometry:GetChildren() do
+			for _, m in top:GetChildren() do
+				if m:IsA("Model") and names[m.Name] then
+					local sx, sz, parts = 0, 0, 0
+					for _, d in m:GetDescendants() do
+						if d:IsA("BasePart") then
+							local p = d.CFrame.Position
+							sx += p.X
+							sz += p.Z
+							parts += 1
+						end
+					end
+					if parts > 0 then
+						local dx = sx / parts - ax - rule.at[1]
+						local dz = sz / parts - az - rule.at[2]
+						if math.sqrt(dx * dx + dz * dz) <= rule.radius then
+							table.insert(hit, m)
+						end
+					end
+				end
+			end
+		end
+		for _, m in hit do
+			print(
+				string.format(
+					"[importhub] dropped %s (%d descendants) for HubImportDropAt %q",
+					m:GetFullName(),
+					#m:GetDescendants(),
+					rule.name
+				)
+			)
+			m.Parent = nil
+			n += 1
+		end
+		if #hit == 0 then
+			print(string.format("[importhub] HubImportDropAt %q matched nothing (already dropped?)", rule.name))
+		end
+	end
+	return n
+end
+
+-- `drop`: the place was imported before the rule existed; apply the positional drops to the baked geometry (the
+-- star already sits on HubOrigin) and write it back.
+if path == "drop" then
+	local geometry = roblox.deserializeModel(fs.readFile("src/map/Hub.rbxm"))[1]
+	local n = dropByPosition(geometry, origin[1] or 0, origin[3] or 0)
+	fs.writeFile("src/map/Hub.rbxm", roblox.serializeModel({ geometry }))
+	print(string.format("[importhub] drop: %d model%s dropped -> src/map/Hub.rbxm", n, if n == 1 then "" else "s"))
+	return
+end
 
 local game = roblox.deserializePlace(fs.readFile(path))
 local ws = game:GetService("Workspace")
@@ -120,6 +187,8 @@ for _, key in drop do
 		end
 	end
 end
+
+dropped += dropByPosition(root, anchor.X, anchor.Z)
 
 -- Scripts never come along.
 local stripped = 0

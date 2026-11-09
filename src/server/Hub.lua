@@ -391,6 +391,142 @@ local function buildJobBoard()
 	end
 end
 
+------------------------------------------------------------------ The daily crate podium (brief 10)
+-- Built from the DailyCrate node (the pedestal's volume, facing the room) where the boxed shelving stood: a low
+-- pedestal with a trimmed top, a spot above it, a slanted plaque in front and the E prompt. Everything that changes
+-- per player (the crate model and its lid, the chain, the glow and beacon, the plaque's words, the prompt's words) is
+-- drawn by each client for its own state (client/Retention/DailyPodium.lua); the server only builds the stand and
+-- routes the prompt to DailyCrate.lua (Hub.onDailyPrompt, installed there so this module never requires it).
+Hub.dailyPodium = nil :: Model?
+Hub.onDailyPrompt = nil :: ((Player) -> ())?
+
+local function buildDailyPodium()
+	local node = HubMap.view and HubMap.view.dailyCrate
+	if not node then
+		return
+	end
+	local k = math.max(0.25, Config.DailyCratePodiumScale)
+	local size = node.size * k
+	local look = node.cframe.LookVector * Vector3.new(1, 0, 1)
+	look = if look.Magnitude > 0.01 then look.Unit else Vector3.new(0, 0, 1)
+	-- The pedestal stands on the node's floor, scaled about its base.
+	local floor = node.cframe.Position - Vector3.new(0, node.size.Y / 2, 0)
+	local base = CFrame.lookAt(floor, floor + look)
+	local m = Instance.new("Model")
+	m.Name = "DailyPodium"
+	local function part(name: string, sz: Vector3, cf: CFrame, color: Color3, material: Enum.Material): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Size = sz
+		p.CFrame = cf
+		p.Color = color
+		p.Material = material
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = m
+		return p
+	end
+	local pedestal =
+		part("Pedestal", size, base * CFrame.new(0, size.Y / 2, 0), Color3.fromRGB(30, 32, 38), Enum.Material.Metal)
+	pedestal.CanCollide = true
+	pedestal.CanQuery = true
+	pedestal.CastShadow = true
+	local topY = size.Y
+	part(
+		"Top",
+		Vector3.new(size.X - 0.3 * k, 0.12 * k, size.Z - 0.3 * k),
+		base * CFrame.new(0, topY + 0.06 * k, 0),
+		Color3.fromRGB(52, 55, 62),
+		Enum.Material.DiamondPlate
+	)
+	-- A thin gold trim around the top edge (dim neon: the client brightens it when the crate is ready).
+	for _, e in
+		{
+			{ Vector3.new(size.X, 0.08 * k, 0.08 * k), CFrame.new(0, topY - 0.06 * k, -size.Z / 2) },
+			{ Vector3.new(size.X, 0.08 * k, 0.08 * k), CFrame.new(0, topY - 0.06 * k, size.Z / 2) },
+			{ Vector3.new(0.08 * k, 0.08 * k, size.Z), CFrame.new(-size.X / 2, topY - 0.06 * k, 0) },
+			{ Vector3.new(0.08 * k, 0.08 * k, size.Z), CFrame.new(size.X / 2, topY - 0.06 * k, 0) },
+		}
+	do
+		local t = part("Trim", e[1], base * e[2], GOLD, Enum.Material.Neon)
+		t.Transparency = 0.35
+	end
+	-- Where the client sets its crate down (the top's centre, facing the room).
+	local spot =
+		part("CrateSpot", Vector3.new(1, 1, 1), base * CFrame.new(0, topY + 0.12 * k, 0), GOLD, Enum.Material.Plastic)
+	spot.Transparency = 1
+	-- The spot: a lamp housing high above with a downward cone.
+	local lamp = part(
+		"Spot",
+		Vector3.new(1.2, 0.5, 1.2) * k,
+		base * CFrame.new(0, topY + 11 * k, 0),
+		Color3.fromRGB(24, 24, 28),
+		Enum.Material.Metal
+	)
+	local light = Instance.new("SpotLight")
+	light.Name = "SpotLight"
+	light.Face = Enum.NormalId.Bottom
+	light.Angle = 45
+	light.Range = 16 * k
+	light.Brightness = 1.2
+	light.Color = Color3.fromRGB(255, 226, 170)
+	light.Parent = lamp
+	-- The plaque leans out of the pedestal's front face; its words are the client's.
+	local plaqueCf = base * CFrame.new(0, topY * 0.55, -size.Z / 2 - 0.12 * k) * CFrame.Angles(math.rad(18), 0, 0) -- front (-Z) to the room, tilted up
+	local plaque = part(
+		"Plaque",
+		Vector3.new(math.min(size.X - 0.6 * k, 4.4 * k), 0.9 * k, 0.12 * k),
+		plaqueCf,
+		Color3.fromRGB(16, 16, 20),
+		Enum.Material.SmoothPlastic
+	)
+	local label = surfaceLabel(plaque, Enum.NormalId.Front, "DAILY CRATE", GOLD, 64)
+	label.Name = "PlaqueText"
+	-- The prompt hangs in front of the pedestal, at hand height.
+	local anchor = part(
+		"PromptAnchor",
+		Vector3.new(1, 1, 1),
+		base * CFrame.new(0, topY + 1.2 * k, -size.Z / 2 - 0.6 * k),
+		GOLD,
+		Enum.Material.Plastic
+	)
+	anchor.Transparency = 1
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "DailyPrompt"
+	prompt.ActionText = "OPEN"
+	prompt.ObjectText = "DAILY CRATE"
+	prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = Config.DailyCratePromptDistance
+	prompt.RequiresLineOfSight = false
+	prompt.Enabled = Config.DailyCrateEnabled
+	prompt.Parent = anchor
+	prompt.Triggered:Connect(function(player)
+		if Runs.inRunCycle(player) then
+			return
+		end
+		local f = Hub.onDailyPrompt
+		if f then
+			f(player)
+		end
+	end)
+	m.Parent = HubMap.model or Workspace
+	Hub.dailyPodium = m
+	Log.event(
+		"Hub",
+		"daily crate podium at (%.1f, %.1f, %.1f) scale %.2f",
+		floor.X,
+		floor.Y,
+		floor.Z - Config.HubOrigin.Position.Z,
+		k
+	)
+end
+
 ------------------------------------------------------------------ Roll-up doors (brief 8)
 -- The warehouse's two openings (the garage, the range) have no door panel in the asset: each gets a corrugated
 -- shutter filling its node. Down fills the opening; up rolls it into a short drum under the lintel. Everyone sees
@@ -850,6 +986,7 @@ function Hub.init()
 	buildProps()
 	decorate()
 	buildJobBoard()
+	buildDailyPodium() -- brief 10
 	startBoothWalkIns()
 	local function onPlayer(player: Player)
 		player.CharacterAdded:Connect(function(char)

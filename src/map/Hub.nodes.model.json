@@ -2917,6 +2917,129 @@
       ],
       "className": "Folder",
       "name": "TierPad"
+    },
+    {
+      "children": [
+        {
+          "attributes": {},
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DAILY · daily",
+                    "TextColor3": [
+                      0.91,
+                      0.714,
+                      0.298
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  1.75,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "daily",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  -45.7,
+                  1.75,
+                  940.7
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.714,
+              0.298
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              6,
+              1.5,
+              4.4
+            ],
+            "Tags": [
+              "GHS_DailyCrate"
+            ],
+            "Transparency": 0.55
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "DailyCrate"
     }
   ],
   "className": "Folder"

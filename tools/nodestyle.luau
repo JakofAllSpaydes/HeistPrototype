@@ -39,6 +39,7 @@ local SHORT = {
 	Dummies = "DUMMY",
 	PropSpots = "PROP",
 	TierPad = "TIER",
+	DailyCrate = "DAILY", -- brief 10
 }
 -- The attributes the label shows per type (the rest are in the Properties panel).
 local KEYS = {
@@ -65,6 +66,7 @@ local KEYS = {
 	Dummies = { "Plates" },
 	PropSpots = { "Game" },
 	TierPad = {},
+	DailyCrate = {},
 }
 
 local function hexColor(hex: string): { number }

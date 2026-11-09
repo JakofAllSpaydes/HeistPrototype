@@ -70,6 +70,7 @@ local MAPS: { [string]: MapDef } = {
 			"Dummies",
 			"PropSpots",
 			"TierPad",
+			"DailyCrate", -- brief 10
 		},
 		tags = {
 			Spawn = "GHS_Spawn",
@@ -83,6 +84,7 @@ local MAPS: { [string]: MapDef } = {
 			Dummies = "GHS_Dummy",
 			PropSpots = "GHS_PropSpot",
 			TierPad = "GHS_TierPad",
+			DailyCrate = "GHS_DailyCrate",
 		},
 	},
 }

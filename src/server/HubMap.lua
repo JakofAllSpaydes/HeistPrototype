@@ -30,6 +30,7 @@ export type View = {
 	dummies: { Dummy },
 	propSpots: { [string]: CFrame }, -- by game id (lockpick ... cut)
 	tierPad: Volume?,
+	dailyCrate: Volume?, -- brief 10: the daily crate podium's pedestal (Hub.lua builds it)
 }
 
 local HubMap = {}
@@ -198,6 +199,7 @@ function HubMap.read()
 		dummies = {},
 		propSpots = {},
 		tierPad = nil,
+		dailyCrate = nil,
 	}
 
 	local spawn = partsIn(nodes, "Spawn")[1]
@@ -312,6 +314,13 @@ function HubMap.read()
 	if tier then
 		view.tierPad = { cframe = tier.CFrame, size = tier.Size }
 		Log.event("Map", "hub TierPad %s", tier.Name)
+	end
+	local daily = partsIn(nodes, "DailyCrate")[1]
+	if daily then
+		view.dailyCrate = { cframe = daily.CFrame, size = daily.Size }
+		Log.event("Map", "hub DailyCrate %s", daily.Name)
+	else
+		fail("DailyCrate", "no DailyCrate node; the daily crate podium is off (run tools/genhubnodes.luau append)")
 	end
 
 	HubMap.view = view

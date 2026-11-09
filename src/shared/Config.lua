@@ -1166,6 +1166,13 @@ local Config = {
 	------------------------------------------------------------------ The hub (brief 8: the warehouse)
 	HubOrigin = CFrame.new(0, 0, 1000), -- where the hub bakes: the floor logo (the star, the spawn) lands here
 	HubImportDrop = { "Helicopter" }, -- models tools/importhub.luau drops (matched against the part names inside)
+	-- Brief 10: models dropped by where they stand (the builder's unnamed ones): every model directly under the place
+	-- whose name is in `models` and whose centre lies within `radius` studs (x / z from the floor star) of `at`.
+	-- The boxed steel shelving between the range door and pad 1 (a `Model` of Parts and Wedges plus the `Box` models
+	-- on its shelves) makes room for the daily crate podium.
+	HubImportDropAt = {
+		{ name = "BoxShelving", models = { "Model", "Box" }, at = { -45.7, -59.3 }, radius = 4.5 },
+	},
 	-- Round 25: the booth keepers are three R15 NPCs (server-built from these avatars' HumanoidDescriptions, a
 	-- plain body-coloured R15 if the fetch fails), named on a small tag that shows only right by the stall
 	-- (fading out over BoothNpcTagFadeNear..Far) and hides while a menu is open. Keyed by the booth's Tab. (Replaces Round 20's
@@ -1279,6 +1286,7 @@ local Config = {
 		Dummies = "E8554D",
 		PropSpots = "6FB8FF",
 		TierPad = "6FB8FF",
+		DailyCrate = "E8B64C", -- brief 10
 	},
 	-- Round 19c: Fence nodes (the strip behind the bank) become solid site hoardings in these colours.
 	FenceColor = "3B4048",

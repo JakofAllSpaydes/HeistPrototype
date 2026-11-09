@@ -36,6 +36,7 @@ NodeOverlay.TYPES = {
 	"Dummies",
 	"PropSpots",
 	"TierPad",
+	"DailyCrate", -- brief 10
 }
 local SHORT = {
 	Zones = "ZONE",
@@ -61,6 +62,7 @@ local SHORT = {
 	Dummies = "DUMMY",
 	PropSpots = "PROP",
 	TierPad = "TIER",
+	DailyCrate = "DAILY",
 }
 -- Which attributes the billboard shows per type (the rest stay in Studio's Properties panel).
 local KEYS = {
@@ -87,6 +89,7 @@ local KEYS = {
 	Dummies = { "Plates" },
 	PropSpots = { "Game" },
 	TierPad = {},
+	DailyCrate = {},
 }
 
 NodeOverlay.on = false

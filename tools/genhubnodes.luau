@@ -3,6 +3,7 @@
 -- Workspace.Hub.Nodes). After this run the file is maintained in Studio: drag the parts, save Workspace.Hub.Nodes
 -- as .rbxmx, and run `lune run tools/exportnodes.luau Nodes.rbxmx hub`; never edit attributes in the json.
 --   lune run tools/genhubnodes.luau
+--   lune run tools/genhubnodes.luau append   (brief 10: adds only the node types the file is missing, keeps the rest)
 --
 -- How it was authored (Nov 2026, from the builder's place read with Lune): coordinates below are relative to the
 -- floor logo (the star), which tools/importhub.luau bakes onto Config.HubOrigin. North is -Z.
@@ -20,6 +21,7 @@
 -- door, not on the striped pad by the door, so you shoot across the bay; the striped pad is the firing line.
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
+local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local serde = require("@lune/serde")
 
@@ -141,6 +143,11 @@ for i, game in { "lockpick", "hotwire", "keypad", "charges", "safe", "freq", "cu
 end
 local tierPad = { node("tier", { -110, 1.1, -23.3 }, { 10, 0.4, 4 }, 0, {}) }
 
+------------------------------------------------------------------ Brief 10: the daily crate podium
+-- Where the boxed steel shelving stood (dropped by Config.HubImportDropAt): against the north wall between the range
+-- door and pad 1, under the catwalk, in view from the star. The node is the pedestal's volume, facing the room.
+local dailyCrate = { node("daily", { -45.7, 1.75, -59.3 }, { 6, 1.5, 4.4 }, 180, {}) }
+
 local out = {
 	className = "Folder",
 	children = {
@@ -155,8 +162,35 @@ local out = {
 		folder("Dummies", "GHS_Dummy", dummies),
 		folder("PropSpots", "GHS_PropSpot", props),
 		folder("TierPad", "GHS_TierPad", tierPad),
+		folder("DailyCrate", "GHS_DailyCrate", dailyCrate),
 	},
 }
+if process.args[1] == "append" then
+	-- The file is maintained in Studio after the first run: add only the missing node types.
+	local existing = serde.decode("json", fs.readFile("src/map/Hub.nodes.model.json"))
+	local have = {}
+	for _, f in existing.children do
+		have[f.name] = true
+	end
+	local added = 0
+	for _, f in out.children do
+		if not have[f.name] then
+			table.insert(existing.children, f)
+			added += 1
+			print(
+				string.format(
+					"[genhubnodes] append %s (%d node%s)",
+					f.name,
+					#f.children,
+					if #f.children == 1 then "" else "s"
+				)
+			)
+		end
+	end
+	fs.writeFile("src/map/Hub.nodes.model.json", serde.encode("json", existing, true))
+	print(string.format("[genhubnodes] append: %d node type%s added", added, if added == 1 then "" else "s"))
+	return
+end
 fs.writeFile("src/map/Hub.nodes.model.json", serde.encode("json", out, true))
 local n = 0
 for _, f in out.children do
