@@ -143,8 +143,14 @@ local function dispatch(action: string, phase: string)
 		ClientState.Juice:Fire("UseAbilitySlot", { slot = ABILITY[action] })
 	elseif action == "sprint" then
 		ClientState.Juice:Fire("PadSprint", { on = on })
-	elseif action == "dealerTeleport" or action == "dealerPrev" or action == "dealerNext" or action == "dealerBuy" then
+	elseif action == "dealerTeleport" or action == "dealerBuy" then
 		ClientState.Juice:Fire("PadDealer", { action = action })
+	elseif action == "pause" then
+		-- vote / unvote to pause, like P (DealerUI)
+		local pv = ClientState.sync and (ClientState.sync :: any).pause
+		if pv and not pv.active then
+			Remotes.PauseAction:FireServer(if pv.myVote then "unvote" else "vote")
+		end
 	elseif action == "upgrade" then
 		ClientState.Juice:Fire("PadUpgrade")
 	elseif action == "voteSkip" then

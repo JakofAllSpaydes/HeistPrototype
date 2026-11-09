@@ -297,7 +297,7 @@ function Hotwire.open(host: Frame.Host)
 			settle(w, line, from, socket)
 		end)
 	end
-	-- Brief 11: the pad. Up / down (D-pad or left stick) pick a wire, A grabs it, up / down carry its end along
+	-- Brief 11: the pad. Up / down (D-pad or right stick) pick a wire, A grabs it, up / down carry its end along
 	-- the sockets, A drops it there (B puts it back; B with nothing in hand leaves the game).
 	local unlocked: { Wire } = {}
 	local pick = 1 -- index into the unlocked wires
@@ -438,7 +438,7 @@ function Hotwire.open(host: Frame.Host)
 			cursor.Visible = false
 			return
 		end
-		local s = Frame.stick(1)
+		local s = Frame.stick(2) -- the right stick (the left one still walks)
 		local dir = if s.Y > 0.6 then -1 elseif s.Y < -0.6 then 1 else 0
 		local now = os.clock()
 		if dir ~= held then

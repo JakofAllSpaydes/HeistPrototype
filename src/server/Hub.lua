@@ -954,22 +954,7 @@ function Hub.init()
 	if view then
 		Hub.garageShutter = buildShutter("GarageShutter", view.garage, false)
 		Hub.rangeShutter = buildShutter("RangeShutter", view.rangeDoor, Config.RangeDoorOpen)
-		-- The range door's RANGE prompt is only a sign (walking through is enough; on touch it reads the same).
-		local rd = view.rangeDoor
-		if rd then
-			local prompt = Instance.new("ProximityPrompt")
-			prompt.Name = "RangePrompt"
-			prompt.ActionText = "WALK IN"
-			prompt.ObjectText = "RANGE"
-			prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey]
-			prompt.HoldDuration = 0
-			prompt.MaxActivationDistance = 12
-			prompt.RequiresLineOfSight = false
-			prompt.Parent = rd.part
-			prompt.Triggered:Connect(function(player)
-				Remotes.Juice:FireClient(player, "Toast", { text = "WALK IN · YOUR GUN IS LIVE INSIDE" })
-			end)
-		end
+		-- Round 28c: no prompt at the range door (walking through is all it takes).
 		prepareVan()
 		-- Round 25: the booth keepers. Each rig gives way to a named R15 NPC (Config.BoothNpcs); the client draws
 		-- the close-range name tag (client/BoothMannequins.lua).

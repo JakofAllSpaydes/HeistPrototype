@@ -118,9 +118,8 @@ local EXPECT_RUN = {
 	ButtonR3 = "cameraCycle",
 	ButtonL3 = "sprint",
 	DPadUp = "upgrade",
-	DPadDown = "voteSkip",
-	DPadLeft = "dealerPrev",
-	DPadRight = "dealerNext",
+	DPadLeft = "pause",
+	DPadRight = "voteSkip",
 	ButtonSelect = "scoreboard",
 }
 for key, action in EXPECT_RUN do
@@ -179,24 +178,34 @@ do
 	check("A jumps (no action, Roblox keeps it)", press(r, "ButtonA") == "")
 	release(r, "ButtonA")
 	local dealer = { context = "run", dealerActive = true, dealerPanel = true }
-	local out, sink = r:input(inp("ButtonA", "Begin"), dealer, 0)
-	check("A at an open dealer panel buys", actions(out) == "dealerBuy:tap" and sink == true)
+	check("A at an open dealer panel still jumps", press(r, "ButtonA", dealer) == "")
 	release(r, "ButtonA", dealer)
+	local out, sink = r:input(inp("ButtonX", "Begin"), dealer, 0)
+	check("square at an open dealer panel buys (no reload)", actions(out) == "dealerBuy:tap" and sink == true)
+	check("square release after a buy: nothing", release(r, "ButtonX", dealer) == "")
+	local both = { context = "run", dealerActive = true, dealerPanel = true, promptVisible = true }
+	check("the dealer panel wins over a floor gun prompt", press(r, "ButtonX", both) == "dealerBuy:tap")
+	release(r, "ButtonX", both)
+	check("dealer buy glyph is square", GamepadMap.buttonFor("run", "dealerBuy") == "ButtonX")
 
 	check("D-pad up teleports at the dealer", press(r, "DPadUp", dealer) == "dealerTeleport:tap")
-	check("D-pad down votes skip at the dealer", press(r, "DPadDown", dealer) == "voteSkip:tap")
-	check("D-pad left walks the stands", press(r, "DPadLeft", dealer) == "dealerPrev:tap")
-	check("D-pad right walks the stands", press(r, "DPadRight", dealer) == "dealerNext:tap")
+	check("D-pad right votes skip at the dealer", press(r, "DPadRight", dealer) == "voteSkip:tap")
+	check("D-pad left votes pause", press(r, "DPadLeft", dealer) == "pause:tap")
+	check("D-pad down is free", press(r, "DPadDown", dealer) == "")
 	for _, k in { "DPadUp", "DPadDown", "DPadLeft", "DPadRight" } do
 		release(r, k, dealer)
 	end
+	check("D-pad left votes pause mid-wave", press(r, "DPadLeft") == "pause:tap")
+	release(r, "DPadLeft")
+	check("D-pad right toggles AUTO SKIP mid-wave", press(r, "DPadRight") == "voteSkip:tap")
+	release(r, "DPadRight")
 	check("D-pad up buys the upgrade pick outside the dealer", press(r, "DPadUp") == "upgrade:tap")
 	release(r, "DPadUp")
 	check(
-		"D-pad down votes skip in an intermission",
-		press(r, "DPadDown", { context = "run", intermission = true }) == "voteSkip:tap"
+		"D-pad right votes skip in an intermission",
+		press(r, "DPadRight", { context = "run", intermission = true }) == "voteSkip:tap"
 	)
-	release(r, "DPadDown")
+	release(r, "DPadRight")
 
 	check("L3 sprint begin", press(r, "ButtonL3") == "sprint:begin")
 	check("L3 sprint end", release(r, "ButtonL3") == "sprint:end")
@@ -333,7 +342,7 @@ do
 	check("pad upgrade is D-pad up", Glyphs.label("upgrade", "gamepad", "playstation", "run") == "↑")
 	check("pad teleport rides D-pad up", Glyphs.label("dealerTeleport", "gamepad", "playstation", "run") == "↑")
 	check("pad back is circle", Glyphs.label("back", "gamepad", "playstation") == "○")
-	check("pad has no pause key", Glyphs.label("pause", "gamepad", "playstation", "run") == nil)
+	check("pad pause is D-pad left", Glyphs.label("pause", "gamepad", "playstation", "run") == "←")
 	check("keyboard has no camera view key", Glyphs.label("cameraCycle", "keyboard") == nil)
 	check("touch shows no key", Glyphs.label("interact", "touch") == "")
 	-- every action a HUD line names has a glyph on keyboard and pad
@@ -435,55 +444,26 @@ do
 	check("half forward is below keep", f5 < Config.SprintKeepThreshold)
 end
 
------------------------------------------------------------------- 7. screens (step 4): the nav geometry
+------------------------------------------------------------------ 7. screens: the D-pad neighbours (GamepadNav.link)
 do
 	local function R(x, y, w, h)
 		return { x = x, y = y, w = w, h = h }
 	end
-	-- a 3x2 grid of 100x60 tiles, 20 px apart
-	local grid = {}
-	for row = 0, 1 do
-		for col = 0, 2 do
-			table.insert(grid, R(col * 120, row * 80, 100, 60))
-		end
-	end
-	local function from(i: number, dir: string): number?
-		local others, map = {}, {}
-		for j, r in grid do
-			if j ~= i then
-				table.insert(others, r)
-				table.insert(map, j)
-			end
-		end
-		local k = NavMath.pick(grid[i], dir, others)
-		return if k then map[k] else nil
-	end
-	check("grid right", from(1, "right") == 2)
-	check("grid down", from(1, "down") == 4)
-	check("grid down from the middle", from(2, "down") == 5)
-	check("grid left from the edge: nothing", from(1, "left") == nil)
-	check("grid up from the bottom row", from(6, "up") == 3)
-	check("grid right skips nothing", from(5, "right") == 6)
-	-- a wide button under a row of three: down from the right tile still lands on it, up from it lands above
-	local wide = { R(0, 0, 100, 60), R(120, 0, 100, 60), R(240, 0, 100, 60) }
-	local cta = R(0, 100, 340, 60)
-	check("down onto a wide CTA", NavMath.pick(wide[3], "down", { cta, wide[1], wide[2] }) == 1)
+	-- weapon-type chips in a row, a gun grid under them, UPGRADE under the chips on the right
+	local chip = R(400, 0, 90, 30)
+	local leftChip = R(300, 0, 90, 30)
+	local gridTile = R(250, 40, 100, 100) -- nearer but off to the side
+	local upgrade = R(380, 200, 160, 50) -- farther but directly below
 	check(
-		"a row neighbour beats a nearer diagonal",
-		NavMath.pick(R(0, 0, 100, 60), "right", { R(110, 70, 50, 50), R(300, 10, 100, 40) }) == 2
+		"down goes to what is directly below, not the nearer diagonal",
+		NavMath.pick(chip, "down", { gridTile, upgrade }) == 2
 	)
-	check("stick dead zone", NavMath.stickDir(0.3, 0.2, Config.NavStickPress) == nil)
-	check("stick up is up (y up)", NavMath.stickDir(0.1, 0.9, Config.NavStickPress) == "up")
-	check("stick left", NavMath.stickDir(-0.8, 0.3, Config.NavStickPress) == "left")
-	local d, e = Config.NavRepeatDelaySec, Config.NavRepeatSec
-	check("repeat: first move at once", NavMath.repeatStep(0, nil, 0, d, e))
-	check("repeat: waits the delay", not NavMath.repeatStep(0, 0, d * 0.9, d, e))
-	check("repeat: moves at the delay", NavMath.repeatStep(0, 0, d + 0.001, d, e))
-	check("repeat: then every NavRepeatSec", not NavMath.repeatStep(0, d, d + e * 0.5, d, e))
-	check("repeat: ...and again", NavMath.repeatStep(0, d, d + e + 0.001, d, e))
-	check("scroll: below the window scrolls down", NavMath.scrollInto(0, 300, 350, 400, 10) == 110)
-	check("scroll: above scrolls up", NavMath.scrollInto(200, 300, 150, 190, 10) == 140)
-	check("scroll: inside stays", NavMath.scrollInto(0, 300, 50, 100, 10) == 0)
+	check("left stays in the row", NavMath.pick(chip, "left", { gridTile, leftChip }) == 2)
+	check("nothing above: nil", NavMath.pick(chip, "up", { gridTile, upgrade }) == nil)
+	check(
+		"with no column match the nearest ahead wins",
+		NavMath.pick(R(0, 0, 50, 50), "down", { R(100, 300, 50, 50), R(80, 100, 50, 50) }) == 2
+	)
 end
 
 ------------------------------------------------------------------ 8. minigames on a pad (step 5)

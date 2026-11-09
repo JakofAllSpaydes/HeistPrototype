@@ -209,12 +209,7 @@ local function build()
 	end, Theme.Colors.amber)
 	local ri3 = row(panel, 0.131, rh)
 	local sprintBtn: TextButton
-	local navBtn: TextButton
-	navBtn = btn(ri3, if GamepadNav.showNav then "Show nav ON" else "Show nav", 0.5, function()
-		GamepadNav.showNav = not GamepadNav.showNav
-		navBtn.Text = if GamepadNav.showNav then "Show nav ON" else "Show nav"
-	end, Theme.Colors.amber)
-	sprintBtn = btn(ri3, if Sprint.showLog then "Sprint log ON" else "Sprint log on screen", 0.5, function()
+	sprintBtn = btn(ri3, if Sprint.showLog then "Sprint log ON" else "Sprint log on screen", 1, function()
 		Sprint.showLog = not Sprint.showLog
 		sprintBtn.Text = if Sprint.showLog then "Sprint log ON" else "Sprint log on screen"
 	end, Theme.Colors.amber)

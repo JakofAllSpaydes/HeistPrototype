@@ -17,7 +17,7 @@ local SAMPLES = 64
 local Freq = {
 	title = "FREQUENCY JAM",
 	hint = "SLIDE UNTIL THE WAVES OVERLAP, THEN HOLD",
-	padHint = "{Thumbstick1} SLIDES · HOLD {ButtonR2} TO KEEP IT THERE",
+	padHint = "{Thumbstick2} SLIDES · {DPadLeft} {DPadRight} NUDGE · HOLD {ButtonR2} TO KEEP IT",
 	color = Theme.Colors.red,
 	aspect = 0.85,
 }
@@ -198,10 +198,9 @@ function Freq.open(host: Frame.Host)
 		paintKnob()
 	end, function(_p: Vector2) end)
 
-	-- Brief 11: the pad. The left stick's position is the needle's (left edge to right edge); RT holds it where it
-	-- is so the stick can rest. After a lock the stick must come back to centre before it drives again.
+	-- Brief 11: the pad. The right stick slides the needle at a rate (slow, finer near the centre: FreqPadSpeed),
+	-- D-pad left / right nudge it by FreqPadNudge; RT holds it where it is. The left stick still walks.
 	local padHold = false
-	local padWait = false
 	local buzzAt = 0
 	host.pad = {
 		button = function(key: string, down: boolean): boolean?
@@ -211,22 +210,25 @@ function Freq.open(host: Frame.Host)
 					UI.punch(knob, 1.2, 0.15)
 				end
 				return true
+			elseif (key == "DPadLeft" or key == "DPadRight") and down then
+				if not padHold and not done and not merging then
+					t = math.clamp(t + (if key == "DPadRight" then 1 else -1) * Config.FreqPadNudge, 0, 1)
+					paintKnob()
+				end
+				return true
 			end
 			return false
 		end,
 	}
-	host.track(RunService.Heartbeat:Connect(function()
+	host.track(RunService.Heartbeat:Connect(function(dt: number)
 		if done or merging then
 			return
 		end
-		if Frame.onPad() then
-			local s = Frame.stick(1)
-			local deflected = math.abs(s.X) > 0.12 or math.abs(s.Y) > 0.35
-			if padWait and not deflected then
-				padWait = false
-			end
-			if deflected and not padHold and not padWait then
-				t = math.clamp(0.5 + s.X * 0.5, 0, 1)
+		if Frame.onPad() and not padHold then
+			local x = Frame.stick(2).X
+			if math.abs(x) > 0.15 then
+				local k = (math.abs(x) - 0.15) / 0.85
+				t = math.clamp(t + math.sign(x) * k * k * Config.FreqPadSpeed * dt, 0, 1)
 				paintKnob()
 			end
 		end
@@ -261,7 +263,6 @@ function Freq.open(host: Frame.Host)
 				merging = true
 				-- Drop the hold: the next frequency needs a fresh press, so a held slider can't drift onto it.
 				releaseDrag()
-				padWait = true
 				pips[locks].BackgroundColor3 = Theme.Colors.cash
 				UI.punch(pips[locks], 1.5, 0.3)
 				host.haptic(1)

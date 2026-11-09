@@ -321,6 +321,8 @@ local Config = {
 	AimAssistRange = 180, -- studs
 	AimAssistPull = 6, -- how fast the camera closes on the target (per second; higher = stronger)
 	AimAssistAdsPull = 10,
+	AimAssistGamepadHipConeDeg = 14, -- brief 11: hip fire on a pad (no ADS): the cone...
+	AimAssistGamepadHipPull = 8, -- ...and the pull (x AimAssistScale.gamepad), near the ADS values
 	AimAssistFiringMult = 1.4, -- pull multiplier while shooting
 	AimAssistHeadBias = 0.55, -- 0 = torso centre, 1 = head centre: crosshair above this switches the pull to the head
 	AimAssistFrictionDeg = 5, -- inside this cone look input slows down...
@@ -336,25 +338,24 @@ local Config = {
 		run = {
 			ButtonR2 = "fire", -- hold for auto; charge guns hold and release
 			ButtonL2 = "ads", -- hold (InputAdsToggle default false)
-			ButtonX = "reload", -- tap; hold = the active prompt (interact / revive / door / minigame / pickup)
+			ButtonX = "reload", -- tap; hold = the active prompt (interact / revive / door / minigame / pickup); buys at an open dealer panel
 			ButtonY = "swap",
-			ButtonA = "jump", -- Roblox's own jump; A buys at an open dealer panel
+			ButtonA = "jump", -- Roblox's own jump
 			ButtonL1 = "ability1",
 			ButtonR1 = "ability2",
 			ButtonB = "ability3", -- checkpoint 1: off R3 (B does nothing else in a run; screens block combat)
 			ButtonR3 = "cameraCycle", -- normal -> fully out over the shoulder -> first person -> normal
 			ButtonL3 = "sprint",
 			DPadUp = "upgrade", -- buys the upgrade pick (the 2 key); at the dealer break it teleports instead
-			DPadDown = "voteSkip", -- the dealer break or an intermission
-			DPadLeft = "dealerPrev", -- walk the stands
-			DPadRight = "dealerNext",
+			DPadLeft = "pause", -- vote to pause (the P key)
+			DPadRight = "voteSkip", -- the dealer break or an intermission (the V key)
 			ButtonSelect = "scoreboard", -- Create: a tap opens / closes it, a hold peeks (closes on release)
 		},
 		hub = {
 			ButtonX = "interact", -- the prompt (board, shelf, props); Roblox's prompt takes it
 			ButtonA = "jump",
 			ButtonL3 = "sprint",
-			-- Create is left to Roblox in the hub (its own UI selection mode) until GamepadNav has a HUD toggle
+			-- Create is left to Roblox in the hub: its own UI selection toggle (GamepadNav starts it on PLAY)
 		},
 	},
 	GamepadTapMaxSec = 0.3, -- Create: shorter than this is a tap (the scoreboard stays open), longer a peek
@@ -418,20 +419,9 @@ local Config = {
 			Thumbstick2 = "R STICK",
 		},
 	},
-	-- Brief 11 step 4: screens on a pad (GamepadNav, SelectionRing).
-	-- Brief 11 step 6: the 10-foot pass. On a pad the HUD (and prompts, minigame panels) scale up and keep inside the
-	-- console safe area: the gui inset plus this share of the screen on every edge.
-	UiScaleGamepad = 1.15,
-	SafeAreaPct = 3.5,
-	NavRepeatDelaySec = 0.35, -- a held direction (stick or D-pad) repeats after this...
+	-- Brief 11: a held direction in the pad minigames (Hotwire's wires, the Safe dial's D-pad mode) repeats after
+	NavRepeatDelaySec = 0.35, -- this...
 	NavRepeatSec = 0.18, -- ...every this long
-	NavStickPress = 0.55, -- the left stick counts as a direction past this
-	NavToggleButtons = { "ButtonSelect" }, -- hub: these enter / leave the HUD selection (add the touchpad's code here)
-	SelectionRingColor = "E8B64C",
-	SelectionRingStroke = 3,
-	SelectionRingGlow = 5,
-	SelectionRingPad = 4,
-	SelectionRingSlideSec = 0.12,
 	-- The face buttons' colours on the drawn chips (PlayStation shapes / Xbox letters).
 	GlyphColors = {
 		playstation = { ButtonA = "7DA9FF", ButtonB = "FF6B73", ButtonX = "E89BD0", ButtonY = "3FCCA6" },
@@ -453,7 +443,6 @@ local Config = {
 	HapticDoor = { motor = "Large", strength = 0.7, sec = 0.4 }, -- a door opening, the vault swing
 	HapticDowned = { motor = "Large", strength = 0.5, sec = 0.25, pulses = 3, gap = 0.45 }, -- a slow pulse
 	HapticSprint = { motor = "Small", strength = 0.3, sec = 0.04 },
-	HapticNav = { motor = "Small", strength = 0.12, sec = 0.02 }, -- the minigames' ticks (zone, tumbler)
 	-- Round 24 mobile: every HUD button (combat + hub) is scaled by this on phones / tablets.
 	MobileButtonScale = 1.3,
 	MobileStoreTextScale = 1.2, -- Round 24d: premium shop labels on mobile read this much bigger
@@ -472,7 +461,8 @@ local Config = {
 	SprintPushRadius = 1.3, -- touch: the stretch zone drawn out to this x the thumbstick ring
 	SprintPushAngle = 35, -- touch: the push must be within this many degrees of straight forward...
 	SprintPushHoldSec = 0.25, -- ...past the ring for this long to engage
-	SprintKeepThreshold = 0.6, -- pad / touch: sprint holds while the stick is at least this far forward
+	SprintKeepThreshold = 0.6, -- touch: a push-through sprint holds while the thumb is at least this far forward
+	SprintPadStopGraceSec = 0.3, -- pad: an L3 sprint ends after the stick has rested this long (any direction holds it)
 	SprintReArmRadius = 0.88, -- touch: the thumb back inside this x the ring re-arms the next push-through
 	SprintReEngageCooldownSec = 0.5, -- after a fire cancel, no sprint for this long (no instant bounce)
 	SprintPressGraceSec = 0.35, -- a toggle press (L3, toggle Shift) waits this long for the stick to move, then lapses
@@ -1206,8 +1196,6 @@ local Config = {
 	DealerPerTable = 3, -- cards per table (the last takes what is left)
 	DealerStandSpacing = 2.8, -- studs between cards on a table
 	DealerTeleportDistance = 4, -- TELEPORT TO DEALER (any number of times) lands you this far outside the middle table
-	DealerPadReach = 30, -- brief 11: D-pad left / right picks stands within this many studs (the camera turns to it, A buys)
-	DealerPadTurnSec = 0.25, -- how long the camera takes to turn onto the picked stand
 	DealerCardWidth = 190, -- the stand panel (a pick-3 card with a price bar), design px
 	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
 	-- Round 19c: about a quarter cheaper across the stall (was 100 / 160 / 260 / 420 / 700, crate 800, heal 300, reroll 150).
@@ -1663,6 +1651,8 @@ local Config = {
 	MinigameTouchEdgePct = 0.24,
 	MinigameTouchTopPct = 0.1,
 	SafeTouchGain = 0.55, -- mobile: the dial turns this much per degree your finger turns round it (1 = one to one)
+	FreqPadSpeed = 0.7, -- brief 11: the needle's top speed on the right stick (slider widths per second; Round 28d: was 0.35)
+	FreqPadNudge = 0.01, -- one D-pad press moves the needle this share of the slider
 	SafeDialPadMode = "stick", -- brief 11: "stick" (the right stick's angle turns the dial) or "dpad" (left / right)
 	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
 	-- A result faster than this (server clock, from the open) is treated as a script, not a player, and fails. Round 20u:

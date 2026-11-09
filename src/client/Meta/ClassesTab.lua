@@ -469,6 +469,22 @@ function ClassesTab.render(scene: any)
 	end
 end
 
+-- Brief 11: L1 / R1 on a pad walk the classes (the class pills).
+function ClassesTab.cycle(scene: any, dir: number)
+	local list = Classes.List
+	local i = 1
+	for k, c in list do
+		if c.id == selected then
+			i = k
+		end
+	end
+	local c = list[(i - 1 + dir) % #list + 1]
+	popSelect = c.id
+	selected = c.id
+	UI.sound(Theme.Sounds.toast, 1.25, 0.3)
+	scene.refresh()
+end
+
 function ClassesTab.onProfile(scene: any)
 	scene.refresh()
 end

@@ -575,11 +575,6 @@ local function select(id: string)
 	centreInFree(id, false)
 	paintLegend()
 	UI.sound(Fx.Sounds.tab, 1.4, 0.25)
-	-- Brief 11: on a pad the sheet's BUY is the next selection (B closes the sheet, back to the hex).
-	local b = s and s:FindFirstChild("Buy", true)
-	if b and b:IsA("GuiObject") and b.Visible then
-		GamepadNav.focus(b)
-	end
 end
 
 -- Round 26b: a compact card (was a full-height column, mostly empty): the branch tag and ring, the pictogram well
@@ -1395,12 +1390,17 @@ build = function()
 		hexes[n.id] = buildHex(c, n.id, n.q, n.r)
 	end
 	for id, v in hexes do
-		v.button.Activated:Connect(function()
+		v.button.Activated:Connect(function(input: InputObject?)
 			local dragged = SkillScene.dragged
 			if dragged and dragged() then
 				return
 			end
 			if v.state == "faint" then
+				return
+			end
+			-- Brief 11: on a pad the hex is already open (the selection opens it), so A buys it.
+			if input and string.sub(input.UserInputType.Name, 1, 7) == "Gamepad" and selected == id then
+				buy(id)
 				return
 			end
 			select(id)
@@ -1718,9 +1718,9 @@ local function stamp(p: any): string
 end
 
 function SkillScene.init()
-	-- Brief 11: the hex cursor. The pad hops hex to hex by direction (GamepadNav's geometry, hexes may be off
-	-- screen) and the view glides to keep the selected hex in the middle; the right stick pans and the triggers zoom
-	-- (below); A opens the sheet, whose BUY takes the selection.
+	-- Brief 11: on a pad the selection hops hex to hex (Roblox's selection along GamepadNav's neighbours), each hex
+	-- it lands on opens its sheet and the view glides to it; A buys; B closes the sheet (the selection stays on the
+	-- hex), B again leaves. The right stick pans and the triggers zoom (below).
 	local lastHex = START
 	local function hexOf(g: GuiObject): string?
 		for id, v in hexes do
@@ -1731,7 +1731,6 @@ function SkillScene.init()
 		return nil
 	end
 	GamepadNav.register("skills", {
-		offscreen = true,
 		default = function()
 			local v = hexes[selected or lastHex] or hexes[START]
 			return if v then v.button else nil
@@ -1740,8 +1739,18 @@ function SkillScene.init()
 			local id = hexOf(g)
 			if id then
 				lastHex = id
-				centreInFree(id, false)
+				local v = hexes[id]
+				if v and v.state ~= "faint" and selected ~= id then
+					select(id) -- moving onto a hex opens its sheet: A buys it, B closes the sheet and stays here
+				else
+					centreInFree(id, false)
+				end
 			end
+		end,
+		-- the hexes only: the sheet's BUY is the hex's own A on a pad
+		filter = function(g: GuiObject): boolean
+			local s = sheet
+			return not (s and g:IsDescendantOf(s))
 		end,
 		page = function() end, -- the triggers zoom here (polled below)
 	})

@@ -18,7 +18,6 @@ Glyphs.NAV = {
 	tabNext = "ButtonR1",
 	pagePrev = "ButtonL2",
 	pageNext = "ButtonR2",
-	navToggle = "ButtonSelect", -- the hub: Create enters / leaves the HUD selection (GamepadNav)
 } :: { [string]: string }
 
 -- Keyboard key caps per action (nil = the action has no key: the camera view cycle is the wheel).

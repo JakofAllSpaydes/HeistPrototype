@@ -950,6 +950,20 @@ function WeaponsTab.render(scene: any)
 	end
 end
 
+-- Brief 11: L1 / R1 on a pad walk the weapon categories (the filter pills).
+function WeaponsTab.cycle(scene: any, dir: number)
+	local i = 1
+	for k, f in FILTERS do
+		if f.id == filter then
+			i = k
+		end
+	end
+	filter = FILTERS[(i - 1 + dir) % #FILTERS + 1].id
+	pickFirst = true
+	UI.sound(Theme.Sounds.toast, 1.2, 0.3)
+	scene.refresh()
+end
+
 function WeaponsTab.onProfile(scene: any)
 	scene.refresh()
 end

@@ -1019,11 +1019,18 @@ function MetaScene.close()
 end
 
 function MetaScene.init()
-	-- Brief 11: LB / RB walk the booths (WEAPONS / CLASSES / AVATAR) on a pad.
+	-- Brief 11: on a pad L2 / R2 walk the big categories (WEAPONS / CLASSES / AVATAR), L1 / R1 the small ones in
+	-- each (weapon types, classes, avatar categories).
 	GamepadNav.register("meta", {
-		tabs = function(dir: number)
+		pages = function(dir: number)
 			local i = table.find(TABS, currentTab or TABS[1]) or 1
 			selectTab(TABS[(i - 1 + dir) % #TABS + 1])
+		end,
+		tabs = function(dir: number)
+			local mod = currentTab and tabs[currentTab]
+			if mod and mod.cycle and scene then
+				mod.cycle(scene, dir)
+			end
 		end,
 	})
 	tabs = {

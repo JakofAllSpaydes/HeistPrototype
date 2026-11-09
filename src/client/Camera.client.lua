@@ -318,8 +318,13 @@ local function aimAssist(dt: number, char: Model)
 	local camPos = camCf.Position
 	local look = camCf.LookVector
 	local ads = ClientState.ads
-	local cone = math.rad(if ads then Config.AimAssistAdsConeDeg else Config.AimAssistConeDeg)
-		* (if assistDevice == "keyboard" then Config.AimAssistMouseCone else 1)
+	local padHip = assistDevice == "gamepad" and not ads -- brief 11: hip fire on a pad gets its own cone and pull
+	local cone = math.rad(
+		if ads
+			then Config.AimAssistAdsConeDeg
+			elseif padHip then Config.AimAssistGamepadHipConeDeg
+			else Config.AimAssistConeDeg
+	) * (if assistDevice == "keyboard" then Config.AimAssistMouseCone else 1)
 	local range = Config.AimAssistRange
 	local vp = camera.ViewportSize
 	local centreY = vp.Y / 2
@@ -396,7 +401,9 @@ local function aimAssist(dt: number, char: Model)
 	local d = (point - camPos).Unit
 	local angle = math.acos(math.clamp(look:Dot(d), -1, 1))
 	local falloff = math.clamp(1 - angle / cone, 0, 1)
-	local pull = (if ads then Config.AimAssistAdsPull else Config.AimAssistPull) * assistScale
+	local pull = (
+		if ads then Config.AimAssistAdsPull elseif padHip then Config.AimAssistGamepadHipPull else Config.AimAssistPull
+	) * assistScale
 	local firingNow = os.clock() < firingUntil or ClientState.touchFire or ClientState.padFire
 	if firingNow then
 		pull *= Config.AimAssistFiringMult
@@ -494,7 +501,6 @@ local function pollPad(dt: number)
 		return
 	end
 	padLookMoving = true
-	ClientState.cameraYawGoal = nil -- the player takes the camera back
 	local k = assistFriction * opticSens * dt
 	yaw += yawRate * k
 	inputYaw += yawRate * k
@@ -564,17 +570,6 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	end
 	pollTouches()
 	pollPad(dt)
-	local goal = ClientState.cameraYawGoal
-	if goal then
-		-- brief 11: an eased turn onto a yaw (the dealer's D-pad walk); the stick cancels it
-		local diff = (goal.yaw - yaw + math.pi) % (2 * math.pi) - math.pi
-		if math.abs(diff) < 0.01 then
-			yaw = goal.yaw
-			ClientState.cameraYawGoal = nil
-		else
-			yaw += diff * math.clamp(dt / math.max(goal.sec / 3, 0.01), 0, 1)
-		end
-	end
 
 	zoom += (targetZoom - zoom) * math.min(1, dt * Config.CameraZoomSmoothing)
 	if math.abs(targetZoom - zoom) < 0.02 then

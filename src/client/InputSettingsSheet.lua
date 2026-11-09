@@ -1,6 +1,6 @@
 --!strict
 -- Brief 11 step 4: the INPUT settings page (CONTROLS). The game has no settings screen, so this is its own sheet:
--- opened from the hub (CONTROLS, bottom-left) and from the scoreboard in a run. Left: the settings (stored on the
+-- Round 28c: no button opens it for now (Juice "OpenInputSettings" still does); the defaults are the game. Left: the settings (stored on the
 -- profile under settings.input through Remotes.SetInputSetting); right: every binding, keyboard key and pad glyph
 -- side by side (Config.GamepadMap). Esc / B / X close it. Walkable on a pad like every screen (GamepadNav "settings").
 local Players = game:GetService("Players")
@@ -26,7 +26,6 @@ local paintRows: () -> () = function() end
 local LABELS: { [string]: string } = {
 	sprintTouch = "SPRINT · TOUCH",
 	sprintPc = "SPRINT · KEYBOARD",
-	sprintPad = "SPRINT · PAD",
 	lookSens = "LOOK SPEED · PAD",
 	invertY = "INVERT LOOK · PAD",
 	adsToggle = "AIM",
@@ -38,7 +37,6 @@ local LABELS: { [string]: string } = {
 local CHOICE_TEXT: { [string]: { [string]: string } } = {
 	sprintTouch = { push = "PUSH THROUGH", button = "BUTTON", off = "OFF" },
 	sprintPc = { hold = "HOLD SHIFT", toggle = "TAP SHIFT" },
-	sprintPad = { toggle = "CLICK L3", hold = "HOLD L3" },
 	glyphs = { auto = "AUTO", playstation = "PLAYSTATION", xbox = "XBOX" },
 }
 
@@ -57,8 +55,8 @@ local BINDINGS: { { label: string, action: string, ctx: string? } } = {
 	{ label = "CAMERA VIEW", action = "cameraCycle" },
 	{ label = "UPGRADE PICK · DEALER TELEPORT", action = "upgrade" },
 	{ label = "VOTE SKIP", action = "voteSkip" },
-	{ label = "DEALER STANDS", action = "dealerNext" },
-	{ label = "SCOREBOARD · PAUSE", action = "scoreboard" },
+	{ label = "PAUSE", action = "pause" },
+	{ label = "SCOREBOARD", action = "scoreboard" },
 }
 
 local function value(key: string): any

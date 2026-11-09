@@ -18,6 +18,7 @@ local ClientState = require(Client:WaitForChild("ClientState"))
 local Haptics = require(Client:WaitForChild("Haptics"))
 local InputGlyphs = require(Client:WaitForChild("InputGlyphs"))
 local Glyphs = require(Shared:WaitForChild("Glyphs"))
+local NavMath = require(Shared:WaitForChild("NavMath"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 
@@ -45,11 +46,10 @@ export type Host = {
 
 -- A pad button edge reaches the game here (ButtonA / B / X / Y, the D-pad, L1 / R1, and ButtonL2 / ButtonR2 past
 -- GamepadTriggerPress). Return true when the game used it; an unused B cancels the game (walking away). Sticks and
--- trigger depth are polled with Frame.stick / Frame.trigger. navWalk hands the D-pad, left stick and A to
--- GamepadNav so the pad walks the game's own buttons (Keypad, Charges).
+-- trigger depth are polled with Frame.stick / Frame.trigger. The left stick is never the game's: it still walks the
+-- character. Games with buttons to pick (Keypad, Charges) use Frame.padGrid.
 export type PadSpec = {
 	button: ((key: string, down: boolean) -> boolean?)?,
-	navWalk: boolean?,
 }
 
 export type GameSpec = {
@@ -284,6 +284,73 @@ function Frame.padHaptic(strength: number, sec: number?, motor: string?)
 	Haptics.pulse({ motor = motor or "Small", strength = strength, sec = sec or 0.05 })
 end
 
+-- A D-pad cursor over a game's buttons (Keypad keys, Charges caps): the D-pad moves it to the geometric neighbour
+-- (NavMath.pick), A presses. Drawn in the game itself, not Roblox's selection (which would stop the character).
+-- Returns the PadSpec button handler (chain it in the game's own handler) and setAt to move the cursor.
+export type GridItem = { button: GuiObject, press: () -> () }
+function Frame.padGrid(host: Host, items: { GridItem }, first: number?): ((string, boolean) -> boolean?, (number) -> ())
+	local at = math.clamp(first or 1, 1, math.max(1, #items))
+	local cursor = UI.frame({
+		Name = "PadCursor",
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 30,
+		Parent = host.content,
+	})
+	UI.corner(cursor, host.u(10))
+	UI.new("UIStroke", { Color = Theme.Colors.gold, Thickness = host.u(3), Parent = cursor })
+	local function paint()
+		local it = items[at]
+		cursor.Visible = Frame.onPad() and host.alive() and it ~= nil
+		if it then
+			local pad = host.u(5)
+			local p = it.button.AbsolutePosition - host.content.AbsolutePosition
+			cursor.Position = UDim2.fromOffset(p.X - pad, p.Y - pad)
+			cursor.Size = UDim2.fromOffset(it.button.AbsoluteSize.X + pad * 2, it.button.AbsoluteSize.Y + pad * 2)
+		end
+	end
+	host.track(RunService.RenderStepped:Connect(paint))
+	local DIR = { DPadUp = "up", DPadDown = "down", DPadLeft = "left", DPadRight = "right" }
+	local function rectOf(g: GuiObject): NavMath.Rect
+		local p, s = g.AbsolutePosition, g.AbsoluteSize
+		return { x = p.X, y = p.Y, w = s.X, h = s.Y }
+	end
+	local function handler(key: string, down: boolean): boolean?
+		if not down then
+			return DIR[key] ~= nil or key == "ButtonA"
+		end
+		local dir = DIR[key]
+		if dir then
+			local cur = items[at]
+			if cur then
+				local others, map = {}, {}
+				for i, it in items do
+					if i ~= at then
+						table.insert(others, rectOf(it.button))
+						table.insert(map, i)
+					end
+				end
+				local k = NavMath.pick(rectOf(cur.button), dir, others)
+				if k then
+					at = map[k]
+					UI.sound(Theme.Sounds.reelTick, 1.4, 0.2)
+				end
+			end
+			return true
+		elseif key == "ButtonA" then
+			local it = items[at]
+			if it then
+				it.press()
+			end
+			return true
+		end
+		return false
+	end
+	return handler, function(i: number)
+		at = math.clamp(i, 1, math.max(1, #items))
+	end
+end
+
 -- "{ButtonA} ON THE MARK" -> "✕ ON THE MARK" in the current glyph style.
 function Frame.padText(template: string): string
 	return (
@@ -349,9 +416,6 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	local vp = camera.ViewportSize
 	local short = math.min(vp.X, vp.Y)
 	local width = math.floor(short * Config.MinigamePanelPct)
-	if Frame.onPad() then
-		width = math.floor(width * Config.UiScaleGamepad) -- brief 11: read from a couch (the height check below still fits it)
-	end
 	local headerH = math.floor(width * 0.17)
 	local pad = math.floor(width * 0.03)
 	local contentH = math.floor(width * spec.aspect)
@@ -600,15 +664,10 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	end
 	padLine()
 	host.track(ClientState.DeviceChanged:Connect(padLine))
-	if host.pad and host.pad.navWalk then
-		gui:SetAttribute("NavWalk", true)
-	end
 end
 
--- Brief 11: every pad input goes to the open game (above the combat map and GamepadNav), so a game never jumps,
--- fires or walks the character; B cancels unless the game uses it.
-local WALK: { [string]: boolean } =
-	{ DPadUp = true, DPadDown = true, DPadLeft = true, DPadRight = true, ButtonA = true, Thumbstick1 = true }
+-- Brief 11: every pad button goes to the open game (above the combat map and GamepadNav), so a game never jumps or
+-- fires; the left stick still walks the character; B cancels unless the game uses it.
 local function onPadInput(_name: string, state: Enum.UserInputState, input: InputObject): Enum.ContextActionResult
 	local a = active
 	if not a or a.closed or string.sub(input.UserInputType.Name, 1, 7) ~= "Gamepad" then
@@ -616,11 +675,10 @@ local function onPadInput(_name: string, state: Enum.UserInputState, input: Inpu
 	end
 	local key = input.KeyCode.Name
 	local pad = a.host.pad
-	if pad and pad.navWalk and WALK[key] then
-		return Enum.ContextActionResult.Pass -- GamepadNav walks the game's buttons, Roblox's A presses them
-	end
-	if key == "Thumbstick1" or key == "Thumbstick2" then
-		return Enum.ContextActionResult.Sink -- polled by the game (Frame.stick); the character stays put
+	if key == "Thumbstick1" then
+		return Enum.ContextActionResult.Pass -- you can move while you work
+	elseif key == "Thumbstick2" then
+		return Enum.ContextActionResult.Sink -- polled by the game (Frame.stick); the camera stays put
 	end
 	local down: boolean? = nil
 	if key == "ButtonL2" or key == "ButtonR2" then

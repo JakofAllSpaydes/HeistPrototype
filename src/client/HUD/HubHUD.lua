@@ -399,25 +399,6 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	invite.Activated:Connect(function()
 		UI.punch(invite, 0.92, 0.15) -- present, does nothing (brief)
 	end)
-	-- Brief 11: CONTROLS (the INPUT settings: sprint, look, aim assist, vibration, button icons, the bindings).
-	local controls = UI.button({
-		Name = "Controls",
-		Text = "CONTROLS",
-		FontFace = Theme.Fonts.display,
-		TextSize = S(if mobile then 11 else 14),
-		TextColor3 = Theme.Colors.white,
-		BackgroundColor3 = Theme.Colors.panel,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, S(20), 1, -S(20) - S(34) - S(8)),
-		Size = UDim2.fromOffset(if mobile then S(88) else goldW, S(34)),
-		Parent = root,
-	})
-	UI.corner(controls, S(6))
-	UI.stroke(controls, Theme.Colors.black, S(1.5), 0.3)
-	controls.Activated:Connect(function()
-		UI.punch(controls, 0.92, 0.15)
-		ClientState.Juice:Fire("OpenInputSettings", {})
-	end)
 
 	-- Dock, bottom-center: WEAPONS · CLASSES · AVATAR icon tiles with labels.
 	local tile = if mobile then S(64) else S(92)

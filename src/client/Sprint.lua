@@ -44,7 +44,7 @@ end
 local function holdModeFor(device: string): boolean
 	local s = settings()
 	if device == "gamepad" then
-		return s.sprintPad == "hold"
+		return false -- L3 always toggles
 	elseif device == "touch" then
 		return false -- push-through and the button are edges
 	end
@@ -261,29 +261,22 @@ function Sprint.tapButton()
 	press("touch")
 end
 
------------------------------------------------------------------- the pad stick
-
-local function padForward(): number
-	if not UserInputService.GamepadEnabled then
-		return 0
-	end
-	for _, s in UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) do
-		if s.KeyCode == Enum.KeyCode.Thumbstick1 then
-			return s.Position.Y
-		end
-	end
-	return 0
-end
-
 ------------------------------------------------------------------ tick
+
+local lastMoving = 0
 
 local function cond(): SprintRule.Cond
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local moving = hum ~= nil and hum.MoveDirection.Magnitude > 0.1
+	local now = os.clock()
+	if moving then
+		lastMoving = now
+	end
 	local keep = moving
 	if rule.device == "gamepad" then
-		keep = moving and padForward() >= Config.SprintKeepThreshold
+		-- L3 is a toggle: it holds in any direction until you stop (a stick swinging through centre is not a stop)
+		keep = now - lastMoving <= Config.SprintPadStopGraceSec
 	elseif rule.device == "touch" then
 		-- the tap button holds while moving; push-through holds while the thumb stays forward
 		keep = moving and (touchMode() == "button" or touchForward >= Config.SprintKeepThreshold)

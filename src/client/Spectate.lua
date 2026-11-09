@@ -174,6 +174,7 @@ local function build()
 	UI.corner(revive, S(14))
 	UI.stroke(revive, Theme.Colors.black, S(2), 0.4)
 	reviveBtn = revive
+	revive:SetAttribute("NavDefault", true) -- brief 11: on a pad the selection starts here (A revives)
 	revive.TextYAlignment = Enum.TextYAlignment.Top
 	UI.pad(revive, 0, S(6), 0, 0)
 	reviveCostLabel = UI.text({

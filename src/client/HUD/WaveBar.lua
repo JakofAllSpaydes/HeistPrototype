@@ -180,15 +180,13 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Size = UDim2.new(1, 0, 0, S(14)),
 		Parent = pause,
 	})
-	-- Brief 11: the keys follow the device (a pad has no pause key: Create opens the scoreboard, which has PAUSE).
+	-- Brief 11: the keys follow the device (V / P, or D-pad right / left on a pad).
 	if not ClientState.isMobile then
 		Hint.bind(votesHint, function()
-			return Hint.text("{key} TO SKIP", "voteSkip", "run")
+			return Hint.text("{key} AUTO SKIP", "voteSkip", "run")
 		end)
 		Hint.bind(pauseHint, function()
-			return if Hint.gamepad()
-				then Hint.text("{key} TO PAUSE", "scoreboard", "run")
-				else Hint.text("{key} TO PAUSE", "pause", "run")
+			return Hint.text("{key} TO PAUSE", "pause", "run")
 		end)
 	end
 	local pauseView: any = nil
@@ -242,7 +240,8 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		votes.BackgroundTransparency = if intermission then 0 else 0.4
 		votesStroke.Color = if intermission then Theme.Colors.gold else Theme.Colors.grey
 		votesStroke.Transparency = if intermission then 0 else 0.5
-		votesHint.Visible = intermission and not on
+		-- Round 28d: V / D-pad right toggle AUTO SKIP all run long; touch taps the VOTES pill between waves
+		votesHint.Visible = if ClientState.isMobile then intermission and not on else not myAuto
 	end
 	local function paintAuto()
 		autoSkipLabel.TextColor3 = if myAuto then Theme.Colors.bg else Theme.Colors.grey
@@ -265,25 +264,28 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Remotes.VoteSkip:FireServer(myVote)
 	end
 	pillButton(votes, castVote)
-	pillButton(autoSkip, function()
+	local function toggleAuto()
 		myAuto = not myAuto
 		paintAuto()
 		paintVotes()
 		UI.sound(Theme.Sounds.toast, if myAuto then 1.4 else 0.9, 0.4)
+		UI.punch(autoSkip, 1.08, 0.15)
 		Remotes.SetAutoSkip:FireServer(myAuto)
-	end)
+	end
+	pillButton(autoSkip, toggleAuto)
+	-- Round 28d: V (and D-pad right on a pad) toggles AUTO SKIP in every phase of a run; between waves it is also your
+	-- skip vote. At the dealer V is the dealer's skip (DealerUI).
 	track(UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed or ClientState.blocked() or ClientState.inHub() then
+		if gameProcessed or ClientState.blocked() or ClientState.inHub() or state == "Dealer" then
 			return
 		end
 		if input.KeyCode == Enum.KeyCode.V then
-			castVote()
+			toggleAuto()
 		end
 	end))
-	-- Brief 11: D-pad down in an intermission (Input.lua).
 	track(ClientState.Juice:Connect(function(name: string)
-		if name == "PadVoteSkip" and not ClientState.blocked() and not ClientState.inHub() then
-			castVote()
+		if name == "PadVoteSkip" and not ClientState.blocked() and not ClientState.inHub() and state ~= "Dealer" then
+			toggleAuto()
 		end
 	end) :: any)
 

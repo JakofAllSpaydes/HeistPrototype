@@ -171,6 +171,8 @@ function Keypad.open(host: Frame.Host)
 	end
 
 	local layout = { 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -1 }
+	local padKeys: { Frame.GridItem } = {}
+	local firstKey = 1
 	for i, digit in layout do
 		if digit < 0 then
 			continue
@@ -194,20 +196,21 @@ function Keypad.open(host: Frame.Host)
 			UI.punch(key, 0.9, 0.12)
 			press(digit)
 		end)
-		-- Brief 11: the pad walks the keys (GamepadNav) and A presses the selected one.
-		host.track(key.Activated:Connect(function(input: InputObject?)
-			if input and string.sub(input.UserInputType.Name, 1, 7) == "Gamepad" and host.alive() then
+		-- Brief 11: the pad's cursor (D-pad over the keys, A presses), starting on 5.
+		table.insert(padKeys, {
+			button = key,
+			press = function()
 				UI.punch(key, 0.9, 0.12)
 				press(digit)
-			end
-		end))
+			end,
+		})
 		if digit == 5 then
-			key:SetAttribute("NavDefault", true)
+			firstKey = #padKeys
 		end
 	end
+	local grid = Frame.padGrid(host, padKeys, firstKey)
 	-- B takes back the last digit; with nothing typed it leaves the game.
 	host.pad = {
-		navWalk = true,
 		button = function(k: string, down: boolean): boolean?
 			if k == "ButtonB" and down and entered > 0 and not done then
 				entered -= 1
@@ -215,7 +218,7 @@ function Keypad.open(host: Frame.Host)
 				UI.sound(Theme.Sounds.reelTick, 0.8, 0.3)
 				return true
 			end
-			return false
+			return grid(k, down)
 		end,
 	}
 

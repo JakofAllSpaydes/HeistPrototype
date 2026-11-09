@@ -33,7 +33,7 @@ surfaces the first run of the day (the daily crate and the existing ×2 XP).
 Brief 11 makes the game playable on a controller end to end: the pad's combat map and right-stick camera with its own
 aim assist tier and rumble, a glyph for the current device on every prompt and hint, every screen walkable with an
 amber selection ring, the seven minigames on a pad, sprint on PC / pad / phone with the fire-always-wins rule, a
-CONTROLS sheet (the INPUT settings) and a 10-foot scale with the console safe area on a pad.
+CONTROLS sheet (the INPUT settings; no button opens it for now, Round 28c). The HUD keeps the PC layout and size on a pad (Round 28b).
 
 State as of **8 Nov 2026 (Round 28)**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
@@ -95,7 +95,8 @@ into view where the drums stood, glowing, with an overhead CTA, its sheet in eve
 unlock card, the hub guide and MARLOW's nudge; the glowing first-run bar under PLAY; a wider daily pool; the crate
 scene's HUD and lighting fixes and the eased camera out of the podium view; and the brief 11 build (Round 28, one
 commit per step, step 2 swept once on a DualSense at checkpoint 1): the controller end to end, device glyphs,
-GamepadNav and the ring, the minigames on a pad, sprint everywhere, CONTROLS and the 10-foot pass.
+screens on Roblox's own selection, the minigames on a pad, sprint everywhere, CONTROLS (Round 28b: the custom ring and
+the pad HUD scale taken back out).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list", the "Brief 8 verify list", the
 "Brief 9 verify list", the "Brief 10 verify list" and the "Brief 11 verify list" are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -165,7 +166,7 @@ dummies, the seven minigame props and the tier pad. Party and downed / revive li
 | ◀ ▶ / A D | Spectating (bled out): cycle living teammates. REVIVE EVERYBODY button bottom-center. |
 | E (hold 2s) | Hack the side-job beacon (hack jobs). Capture jobs: stand in the circle for `SideJobCaptureSec`; progress pauses when nobody is inside. Minigame jobs: E opens the game at the beacon. Kind is rolled per job from `SideJobKindWeights` (eight kinds, equal odds by default). |
 | Esc / X / 2 | Close the upgrade overlay. |
-| V | Vote to skip the intermission (or click the VOTES pill). Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
+| V | AUTO SKIP on / off, any time in a run (Round 28d; it also votes to skip the intermission). Click the VOTES pill to vote just this intermission. Everyone in the party has to vote (`SkipVoteFraction` = 1; `SkipMinIntermissionSec` is the floor). |
 | AUTO SKIP pill | Waves roll into each other: once the wave has fully spawned and `AutoSkipWaveSec` (10s) has passed, the next wave starts on top of whatever is left, with no intermission. |
 | Ctrl | In a run: toggle the cursor lock so you can click HUD tiles (the chip above the ammo reads CAMERA LOCKED / CAMERA FREE). While unlocked the camera holds still, the character turns to face the cursor and shots go where the cursor is, so you can aim all the way around. Left Alt frees the cursor while held. In the hub the cursor is always free (RMB drags the camera) and every combat hotkey (fire, 1 / 2, Q / F / Z, V, Ctrl) is off; the server also refuses rolls, upgrades and abilities outside a run. |
 | Backtick | Debug panel (brief 8 adds HUB: To hub / To range, Reset dummies, Open garage (the departure beat with nobody in the van), Force pad 1–4, Spawn at range (the archetype row, ELITE, Range boss); brief 7 adds MAP: Show nodes with per-type toggles, Recompute nodes, Teleport to zone, Open D1–D4, Close all doors, Open / Gas / Seal vault, Spawn at a chosen box (with the archetype row and ELITE), Pin the crew zone / AUTO, Path debug; Stats adds the MAP block; Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
@@ -183,28 +184,31 @@ customization panel takes the right 62% with 64px tiles and a 60px dock.
 Every minigame is tap or drag only (no double-tap, long-press or keyboard); the revive hold and spectate arrows are buttons.
 
 **Controller (Brief 11).** A DualSense (or any pad) plays the whole game; glyphs follow the device you last touched
-(PlayStation shapes by default, Xbox letters in CONTROLS). The map is `Config.GamepadMap`; CONTROLS lists it.
+(PlayStation shapes by default). The map is `Config.GamepadMap`.
 
 | Button | In a run | In the hub |
 | --- | --- | --- |
 | R2 | Fire (hold for auto; charge guns hold and release) | |
-| L2 | Aim (hold; toggle in CONTROLS) | |
-| □ | Reload (tap). While a prompt is up (or a downed teammate is in reach): hold = the prompt / revive | The prompt |
+| L2 | Aim (hold) | |
+| □ | Reload (tap). While a prompt is up (or a downed teammate is in reach): hold = the prompt / revive. At an open dealer panel: buy | The prompt |
 | △ | Swap guns | |
-| ✕ | Jump; buys at an open dealer panel | Jump; selects in screens |
-| L1 / R1 / ○ | Abilities 1 / 2 / 3 (checkpoint 1: ability 3 moved off R3) | L1 / R1: tabs in screens; ○: back |
+| ✕ | Jump | Jump; selects in screens |
+| L1 / R1 / ○ | Abilities 1 / 2 / 3 (checkpoint 1: ability 3 moved off R3) | L1 / R1: small categories in screens; ○: back |
 | R3 | Camera view: normal → fully out over the shoulder → first person → normal | |
-| L3 | Sprint (click; hold in CONTROLS) | Sprint |
+| L3 | Sprint (a toggle: any direction, until you stop, click again, or fire / aim / cast) | Sprint |
 | D-pad ↑ | Buy the upgrade pick; at the dealer break: teleport | |
-| D-pad ↓ | Vote skip (intermission, dealer break) | |
-| D-pad ← / → | Walk the dealer stands | |
-| Create | Scoreboard: tap opens / closes (the pad then walks to VOTE PAUSE / CONTROLS), hold peeks | Enter / leave the HUD selection (PLAY first) |
+| D-pad ← | Vote to pause (P) | |
+| D-pad → | AUTO SKIP on / off (V; between waves it is also your skip vote); at the dealer: skip the break | |
+| Create | Scoreboard: tap opens / closes (the selection sits on VOTE PAUSE), hold peeks | Enter / leave the HUD selection (PLAY first) |
 | Options | Roblox's menu (reserved) | Roblox's menu |
 | Right stick | Look (dead zone, curve, edge acceleration; ADS slower) | Look |
 
-In every screen: D-pad / left stick move the amber ring, ✕ presses, ○ backs out, L1 / R1 swap tabs, L2 / R2 page
-long lists. Minigames have their own pad lines (shown in the game's hint line).
-Sprint (Brief 11): Shift (hold, or tap in CONTROLS), L3, or push the phone's thumbstick through its ring (or a tap
+In every screen (Roblox's own selection, moving to the button directly above / below / beside): D-pad / left stick move
+it, ✕ presses and the selection stays where it was, ○ backs out. On a two-level screen L2 / R2 swap the big categories
+and L1 / R1 the small ones (customization: WEAPONS / CLASSES / AVATAR, then the weapon types / classes / avatar
+categories); a one-level screen swaps its tabs with L1 / R1 and pages long lists with L2 / R2. Minigames have their own
+pad lines (shown in the game's hint line); the left stick keeps walking during them.
+Sprint (Brief 11): Shift (hold), L3 (a toggle), or push the phone's thumbstick through its ring (or a tap
 button, or off). Fire always wins: any shot, ADS, ability, interact or swap ends the sprint and happens at once; sprint
 then needs a fresh Shift / L3 / thumb pump.
 
@@ -1644,35 +1648,35 @@ to fire. Rojo serve: new client and shared modules only, a running serve picks t
 
 1. Join with the pad in hand → `[GHS Input] device gamepad`; no cursor. Touch the mouse → `device keyboard` and every
    chip turns back into its key within a second; the pad again → the glyphs return.
-2. The hub: Create → the amber ring lands on PLAY; D-pad / left stick walk SHOP, SKILLS, PASS, JOBS, the dock, the
-   case chips, CONTROLS; ✕ opens; ○ or Create again leaves the selection (`[GHS Nav] push hud` / `pop hud`). Press the
-   touchpad with the monitor up and note its KeyCode (see the open notes).
-3. Every screen: open it with ✕ and walk it; ○ backs out (a sheet first, then the screen); L1 / R1 swap the store
-   tabs, the pass pages and the customization booths; L2 / R2 page a long list. Streak modal lands on CLAIM, the daily
-   crate sheet on OPEN NOW, the summary on PLAY AGAIN. The Skill Web: the ring hops hex to hex and the view glides to
-   it; ✕ opens the sheet and the ring jumps to BUY; ○ closes the sheet, then the web; right stick pans, triggers zoom.
-   Debug Show nav outlines every selectable and prints the stack; a screen that forgot to register logs
+2. The hub: Create (Roblox's own toggle) → Roblox's selection highlight lands on PLAY; D-pad / left stick walk SHOP,
+   SKILLS, PASS, JOBS, the dock; ✕ opens; Create again leaves it. (The DualSense touchpad click does nothing: Roblox
+   does not report it.)
+3. Every screen: open it with ✕ and walk it (down from a chip goes to the button directly under it); ✕ on UPGRADE keeps
+   the selection on UPGRADE; ○ backs out (a sheet first, then the screen); customization: L2 / R2 the booths, L1 / R1
+   the weapon types / classes / avatar categories; L1 / R1 swap the store tabs and the pass pages. Streak modal lands on CLAIM, the daily
+   crate sheet on OPEN NOW, the summary on PLAY AGAIN, bleeding out on REVIVE EVERYBODY; the selection never leaves the open screen for the HUD behind.
+   The Skill Web: the selection hops hex to hex, each hex opens its sheet and the view glides to it; ✕ buys it; ○
+   closes the sheet (the selection stays on that hex), ○ again leaves the web; right stick pans, triggers zoom. A screen with nothing to select logs
    `[GHS Nav] WARN`.
-4. CONTROLS (hub bottom-left or the scoreboard): each value cycles with ✕; LOOK SPEED −/+; the bindings column shows
-   the key and the glyph for every action. Rejoin → the values stuck (profile `settings.input`). BUTTON ICONS XBOX →
-   every chip turns to letters.
+4. No CONTROLS button in the hub or the scoreboard (the sheet is parked, Round 28c). No prompt at the range door.
 5. A run: R2 fires, L2 aims, □ reloads, △ swaps, L1 / R1 / ○ cast, R3 cycles the camera view three ways, D-pad ↑ buys
-   the upgrade pick, ↓ votes skip in an intermission, Create taps the scoreboard open (the ring walks to VOTE PAUSE)
+   the upgrade pick, ← votes pause, → toggles AUTO SKIP (at the dealer it skips the break, ↑ teleports and □ buys
+   the open stand), hip fire on the pad gets a noticeable pull, Create taps the scoreboard open (the selection sits on VOTE PAUSE)
    and taps it shut; held, it peeks. The ability tiles, the swap chip, the upgrade tile, the ammo hint (□ RELOAD,
-   L1 R1 ○ ABILITIES, R3 VIEW), the wave bar's ↓ TO SKIP and the dealer card read the pad's glyphs.
+   L1 R1 ○ ABILITIES, R3 VIEW), the wave bar's → AUTO SKIP / ← TO PAUSE and the dealer card read the pad's glyphs.
 6. Prompts on a pad: the drawn box with □, the object line and the action, the hold bar filling (doors, beacons, bags,
    the revive hold reads HOLD □ · REVIVE). On the keyboard they are Roblox's own again.
 7. Sprint, PC: hold Shift → `» SPRINT` by the ammo, a wider FOV, no crosshair; click → the shot goes out at once and
    the sprint ends (`[GHS Input] sprint engage keyboard 1.20s ended-by fire`); still holding Shift, no sprint until
-   it is pressed again. Pad: L3 → a tick rumble; ease the stick back → `ended-by stick`; R2 mid-sprint fires at once.
-   Debug Sprint log on screen toasts each one. CONTROLS → SPRINT · KEYBOARD TAP SHIFT makes Shift a toggle.
+   it is pressed again. Pad: L3 → a tick rumble; it holds strafing and backing up; let the stick rest → `ended-by stick`;
+   L3 again → `ended-by key`; R2 mid-sprint fires at once.
+   Debug Sprint log on screen toasts each one.
 8. Minigames (X opens at the prop): Lockpick ✕ / R2 on the mark with a tick as the pin enters the zone; Hotwire ↑ ↓
-   pick, ✕ grab, ↑ ↓ along the sockets, ✕ drop, a shock rumble on a wrong pair, △ COLORBLIND; Keypad and Charges walk
-   the keys / caps with the ring, ✕ presses (Keypad ○ takes back a digit); Safe dial at tiers 1, 2 and 3 with the
-   right stick, ✕ locks a hot number (if tier 3 feels wrong, `SafeDialPadMode = "dpad"`); Freq left stick slides,
-   R2 holds; Cut R2 depth is the pressure. ○ leaves any game. Debug Stats prints a line per game per device.
-9. 10-foot: at 1080p the HUD is about 15% bigger on the pad and nothing sits in the outer 3.5% (or under the top bar);
-   prompts and the minigame panels grow with it. Touch the keyboard → the HUD rebuilds at the PC size.
+   (or the right stick) pick, ✕ grab, ↑ ↓ along the sockets, ✕ drop, a shock rumble on a wrong pair, △ COLORBLIND; Keypad and Charges walk
+   the keys / caps with a gold cursor on the D-pad, ✕ presses (Keypad ○ takes back a digit); Safe dial at tiers 1, 2 and 3 with the
+   right stick, ✕ locks a hot number (if tier 3 feels wrong, `SafeDialPadMode = "dpad"`); Freq: the right stick slides slowly
+   (D-pad ← → nudge), R2 holds; Cut R2 depth is the pressure. ○ leaves any game; the left stick walks the whole time. Debug Stats prints a line per game per device.
+9. The HUD on a pad is the PC HUD at the PC size, with glyphs; switching device never rebuilds it.
 10. A phone and a pad in one 2-player Local Server: the phone keeps its layout and buttons; push the thumbstick through
     its ring and hold → the faint arc, then sprint with the » SPRINT mark over the stick; FIRE ends it and shoots at
     once; pump the thumb back inside the ring to sprint again. The pad player sees glyphs, the phone player none.
@@ -2412,23 +2416,46 @@ PlayRibbon, MatchCardLine, Round 27c's DailyGuide and SummaryCrateCard) and Came
   minigame pad layer in `Minigames/Frame.lua` and the seven mappings, `SafeDialPadMode`, the Stats device split.
   Step 6: `UiScaleGamepad` (HUD, prompts, minigame panels), `SafeAreaPct` (the HUD on a pad), the hover audit (the
   mastery and pick-3 tips and the model icons also answer to the pad's selection), this README.
+- **Round 28b (8 Nov) — console fixes after the first pad pass.** Screens use Roblox's own gamepad selection again
+  (its highlight, movement and ✕): the custom ring and the custom D-pad walk are gone, and `GuiService.AutoSelectGuiEnabled`
+  is no longer switched off (that was why Create showed no selection while the pad stopped moving the character).
+  GamepadNav now only picks the first button when a screen opens, keeps the selection inside it, starts Roblox's hub
+  toggle on PLAY and keeps L1 / R1 tabs and L2 / R2 paging. The pad HUD scale and safe area are out: the safe-area
+  frame broke the hub / match HUD switch (the wave bar's floating HUB showed in the hub), and any pad press after the
+  keyboard rebuilt the HUD into that state (the R2 "swap"). The pad HUD is the PC HUD at PC size. L3 sprint is always a
+  toggle that holds in any direction (`SprintPadStopGraceSec` 0.3 before a resting stick ends it); the SPRINT · PAD
+  setting is gone.
+- **Round 28c (8 Nov) — console pass 2.** D-pad ← votes pause and → votes skip (↓ is free; the dealer's D-pad
+  stand walk is gone, walk to a stand to browse); □ buys at an open dealer panel (its line already showed □). The
+  selection moves to the geometric neighbour (GamepadNav points Roblox's NextSelection* at it: the button directly
+  below wins over a nearer diagonal) and stays where it was after a press rebuilds the screen. Customization: L2 / R2
+  the booths, L1 / R1 the weapon types / classes / avatar categories. Skill Web: landing on a hex opens it, ✕ buys,
+  ○ closes and stays. The summary starts on PLAY AGAIN (its guis are walked together), bleeding out on REVIVE
+  EVERYBODY. Minigames leave the left stick to walking: Hotwire and Freq moved to the right stick (Freq at a slow rate,
+  `FreqPadSpeed`, with D-pad nudges), Keypad and Charges have their own D-pad cursor. Hip fire on a pad has its own
+  assist cone and pull (`AimAssistGamepadHipConeDeg` / `AimAssistGamepadHipPull`). The CONTROLS buttons and the range
+  door's prompt are gone.
+- **Round 28d (8 Nov) — Freq speed, crate confirm, AUTO SKIP.** The Freq needle on the right stick is twice as
+  fast (`FreqPadSpeed` 0.35 → 0.7). The crate scene pushes its own selection context, so NEXT / CONFIRM / DONE come
+  up selected on a pad wherever the crate was opened (store, daily podium, streak claim); a screen's marked next step
+  (NavDefault) now wins when the old selection disappears. V and D-pad → toggle AUTO SKIP in every phase of a run
+  (they only voted in an intermission before; AUTO SKIP is also the intermission vote); at the dealer they still skip
+  the break.
 
 ## Open design notes (not built)
 
 - **Brief 11 notes and deviations (Round 28, mostly unplayed).** There is no settings screen in the game: the INPUT
-  page is its own CONTROLS sheet (hub bottom-left, and the scoreboard in a run), and Options / Start stays Roblox's
+  page is its own CONTROLS sheet (parked since Round 28c: no button opens it), and Options / Start stays Roblox's
   menu, so "Options opens settings" and "Menu holds the scoreboard" became Create = the scoreboard (Jack's call at
   checkpoint 1). The abilities sit on L1 / R1 / ○ and R3 is the camera view cycle (checkpoint 1); ○ is still back in
   every screen because a screen turns the combat map off. MARLOW's cards time out on their own as before: ○ in a run is
   ability 3, so "B dismisses" is not wired. `InputDevice` is `ClientState.inputDevice` with `ClientState.DeviceChanged`
   (no separate module). Glyph style "auto" is PlayStation unless Roblox names the pad's ✕ as Cross; Roblox does not
-  report the pad model reliably. The touchpad click's KeyCode is still to be read on the Input monitor: if it differs
-  from Create, add it to `NavToggleButtons` and it toggles the hub HUD selection too. Screens are walked by geometry
-  over their visible buttons rather than per-screen groups; L1 / R1 tabs are wired for the store, the pass (pages) and
-  the customization booths; other screens have no tab strip to swap. A tapped-open scoreboard is a screen (the pad
-  walks to VOTE PAUSE / CONTROLS and the character stops); a held peek stays in play. The pick-3 stands at the dealer
-  are walked with D-pad ← / → as before (step 2). The safe area applies to the HUD; the full-screen scenes keep their
-  layouts (their edges were already inside about 3%). Touch push-through measures the raw touch against Roblox's own
+  report the pad model reliably. Roblox does not report the DualSense touchpad click, so it does nothing. Screens use Roblox's own selection (Round 28b) rather than per-screen groups; the customization scene has two levels (L2 / R2
+  booths, L1 / R1 their categories); the store's tabs and the pass pages are on L1 / R1. A tapped-open scoreboard is a screen (the pad
+  sits on VOTE PAUSE and the character stops); a held peek stays in play. At the dealer you walk to a stand to browse (Round 28c took out
+  the D-pad stand walk). Round 28b took out the 10-foot scale (`UiScaleGamepad`) and the HUD safe area
+  (`SafeAreaPct`): the pad keeps the PC sizes. Touch push-through measures the raw touch against Roblox's own
   thumbstick ring (read from `TouchGui` when it can be, else `SprintTouchRingPx`): Roblox's knob cannot be restyled,
   so the sprint mark rides above the thumbstick instead of on the knob. The Safe dial's A locks a hot number at once
   (holding in the hot range still locks too); the Cut trigger reads the depth held 0.15 s before the release.

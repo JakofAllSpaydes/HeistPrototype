@@ -173,7 +173,6 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local camera = Workspace.CurrentCamera :: Camera
 local connections: { RBXScriptConnection } = {}
-local builtForPad = false -- brief 11: the HUD was built at the pad scale / safe area
 
 function HUD.profile()
 	return if ClientState.isMobile then Theme.Mobile else Theme.Desktop
@@ -193,12 +192,6 @@ function HUD.build()
 	end
 	local p = HUD.profile()
 	UI.scale = math.clamp(camera.ViewportSize.Y / p.scaleBasis, p.minScale, p.maxScale)
-	-- Brief 11 step 6: read from a couch on a pad.
-	local pad = ClientState.inputDevice == "gamepad"
-	if pad then
-		UI.scale *= Config.UiScaleGamepad
-	end
-	builtForPad = pad
 
 	local gui = UI.new("ScreenGui", {
 		Name = "HUD",
@@ -209,36 +202,23 @@ function HUD.build()
 		Parent = playerGui,
 	}) :: ScreenGui
 	HUD.gui = gui
-	-- On a pad everything sits inside the console safe area (the inset plus SafeAreaPct on each edge).
-	local home: any = gui
-	if pad then
-		local k = Config.SafeAreaPct / 100
-		local inset = game:GetService("GuiService"):GetGuiInset()
-		home = UI.frame({
-			Name = "SafeArea",
-			BackgroundTransparency = 1,
-			Position = UDim2.new(k, 0, k, inset.Y),
-			Size = UDim2.new(1 - k * 2, 0, 1 - k * 2, -inset.Y),
-			Parent = gui,
-		})
-	end
 
 	HUD.components = {
-		waveBar = WaveBar.build(home, track),
-		callSlot = CallSlot.build(home, track),
-		topRight = TopRight.build(home, track),
-		buy = BuyColumn.build(home, track),
-		abilities = AbilityColumn.build(home, track),
-		currency = Currency.build(home, track),
-		bottom = BottomCenter.build(home, track),
-		ammo = Ammo.build(home, track),
+		waveBar = WaveBar.build(gui, track),
+		callSlot = CallSlot.build(gui, track),
+		topRight = TopRight.build(gui, track),
+		buy = BuyColumn.build(gui, track),
+		abilities = AbilityColumn.build(gui, track),
+		currency = Currency.build(gui, track),
+		bottom = BottomCenter.build(gui, track),
+		ammo = Ammo.build(gui, track),
 		crosshair = Crosshair.build(gui, track),
 		worldFx = WorldFx.build(gui, track),
-		toast = Toast.build(home, track),
+		toast = Toast.build(gui, track),
 		mobile = MobileControls.build(gui, track),
-		hub = HubHUD.build(home, track),
-		bossBar = BossBar.build(home, track),
-		boostChips = BoostChips.build(home, track),
+		hub = HubHUD.build(gui, track),
+		bossBar = BossBar.build(gui, track),
+		boostChips = BoostChips.build(gui, track),
 	}
 	if ClientState.sync then
 		HUD.update(ClientState.sync)
@@ -278,12 +258,6 @@ function HUD.init()
 			if c.onJuice then
 				c.onJuice(name, data)
 			end
-		end
-	end)
-	-- Brief 11 step 6: the pad scale and safe area follow the device (a rebuild when it crosses to / from a pad).
-	ClientState.DeviceChanged:Connect(function(d: string)
-		if (d == "gamepad") ~= builtForPad then
-			HUD.build()
 		end
 	end)
 	local lastY = camera.ViewportSize.Y

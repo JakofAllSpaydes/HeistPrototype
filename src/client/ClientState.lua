@@ -41,7 +41,6 @@ local ClientState = {
 	reviveNearby = false, -- a downed teammate is within ReviveRadius: F means revive, gun prompts step aside
 	downedPlayers = {} :: { [number]: boolean }, -- userId -> currently down (any player)
 	requestCameraYaw = nil :: number?, -- a sequence hands the gameplay camera back facing this yaw
-	cameraYawGoal = nil :: { yaw: number, sec: number }?, -- brief 11: ease the gameplay camera onto this yaw (the dealer's D-pad walk)
 	musicDuck = false, -- Round 19d: a big moment (the boss cutscene) holds the soundtrack down (Music.lua)
 	streakOpen = false, -- brief 10: the streak modal is up (first-time pulses wait behind it)
 	dailyOpenOnArrival = false, -- Round 27c: the summary's crate card was tapped: the podium opens once you land

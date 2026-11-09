@@ -49,8 +49,7 @@ local COMBAT: { [string]: boolean } = {
 	upgrade = true,
 	dealerTeleport = true,
 	voteSkip = true,
-	dealerPrev = true,
-	dealerNext = true,
+	pause = true,
 	scoreboard = true,
 	cameraCycle = true,
 }
@@ -65,7 +64,7 @@ end
 local SHARES: { [string]: string } = {
 	dealerTeleport = "upgrade", -- D-pad up: the upgrade pick, or the teleport at the dealer break
 	interact = "reload", -- X: the reload tap, or the prompt while one is up
-	dealerBuy = "jump", -- A: jump, or buy at an open dealer panel
+	dealerBuy = "reload", -- square: buy at an open dealer panel (like every other interaction)
 }
 
 -- The button an action is bound to in a context (glyphs, the settings list), or nil.
@@ -181,7 +180,12 @@ function Router.input(self: Router, obj: any, ctx: Ctx, now: number): ({ Emit },
 	local sink = false
 	if action == "reload" then
 		if pressed then
-			if ctx.promptVisible or ctx.reviveNearby then
+			if ctx.dealerPanel then
+				-- square at an open dealer panel buys it (the panel's line shows square, like the prompts)
+				self.xMode = "dealer"
+				emit("dealerBuy", "tap")
+				sink = true
+			elseif ctx.promptVisible or ctx.reviveNearby then
 				self.xMode = "interact"
 				emit("interact", "begin")
 			else
@@ -211,23 +215,15 @@ function Router.input(self: Router, obj: any, ctx: Ctx, now: number): ({ Emit },
 		emit(action, if pressed then "begin" else "end")
 		sink = true
 	elseif action == "jump" then
-		-- A at an open dealer panel buys it (and does not jump); otherwise Roblox's jump keeps it.
-		if pressed and ctx.dealerPanel then
-			emit("dealerBuy", "tap")
-			sink = true
-		end
+		-- Roblox's jump keeps it
 	elseif action == "upgrade" then
 		if pressed then
 			emit(if ctx.dealerActive then "dealerTeleport" else "upgrade", "tap")
 		end
 		sink = true
-	elseif action == "dealerTeleport" or action == "dealerPrev" or action == "dealerNext" then
-		if pressed and ctx.dealerActive then
-			emit(action, "tap")
-		end
-		sink = true
 	elseif action == "voteSkip" then
-		if pressed and (ctx.dealerActive or ctx.intermission) then
+		-- AUTO SKIP on / off (it is also your vote between waves); at the dealer, the dealer's skip
+		if pressed then
 			emit(action, "tap")
 		end
 		sink = true
@@ -249,7 +245,7 @@ function Router.input(self: Router, obj: any, ctx: Ctx, now: number): ({ Emit },
 		end
 		sink = true
 	else
-		-- swap, ability1..3, cameraCycle: one tap on the press.
+		-- swap, ability1..3, cameraCycle, pause: one tap on the press.
 		if pressed then
 			emit(action, "tap")
 		end

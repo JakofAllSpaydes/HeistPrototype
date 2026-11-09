@@ -32,7 +32,7 @@ InputSettings.SCHEMA = {
 
 -- The page's order.
 InputSettings.ORDER =
-	{ "sprintTouch", "sprintPc", "sprintPad", "lookSens", "invertY", "adsToggle", "aimAssist", "haptics", "glyphs" }
+	{ "sprintTouch", "sprintPc", "lookSens", "invertY", "adsToggle", "aimAssist", "haptics", "glyphs" } -- L3 always toggles
 
 -- A valid value for key, or nil when the value is not allowed.
 function InputSettings.sanitize(key: string, value: any): any

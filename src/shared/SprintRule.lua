@@ -13,7 +13,7 @@ local SprintRule = {}
 
 export type Cond = {
 	moving: boolean, -- the character is moving
-	keep: boolean, -- the stay condition: moving (keyboard) or the stick forward of SprintKeepThreshold (pad / touch)
+	keep: boolean, -- the stay condition: moving (keyboard, pad) or the thumb forward of SprintKeepThreshold (touch)
 	allowed: boolean, -- not downed, no screen, gameplay camera
 	downed: boolean?,
 }

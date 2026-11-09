@@ -25,6 +25,7 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
+local GamepadNav = require(Client:WaitForChild("GamepadNav"))
 local Sets = require(script.Parent:WaitForChild("Sets"))
 local Models = require(script.Parent:WaitForChild("Models"))
 local ItemArt = require(script.Parent:WaitForChild("ItemArt"))
@@ -152,6 +153,9 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		return
 	end
 	running = true
+	-- Round 28d: on a pad CONFIRM / NEXT / the summary's buttons come up selected wherever the crate was opened from
+	-- (the store, the daily podium, a streak claim), so A confirms.
+	GamepadNav.push("crate", { gui = { "CrateScene" }, quiet = true })
 	token += 1
 	local t = token
 	local S = UI.S
@@ -233,6 +237,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	nextBtn.AnchorPoint = Vector2.new(0.5, 1)
 	nextBtn.Position = UDim2.new(0.5, 0, 1, -S(24))
 	nextBtn.Visible = false
+	nextBtn:SetAttribute("NavDefault", true) -- Round 28d: the pad lands on NEXT / CONFIRM / DONE
 	local nextFill = UI.frame({
 		BackgroundColor3 = Color3.new(1, 1, 1),
 		BackgroundTransparency = 0.75,
@@ -316,6 +321,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			return
 		end
 		running = false
+		GamepadNav.pop("crate")
 		token += 1
 		clearAll()
 		-- Round 27c: the world's own lighting comes back under the black and gets CrateExitHoldSec to settle (the hub's
@@ -762,6 +768,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		local doneBtn, _d =
 			Fx.button(row, "DONE", Color3.fromHex("2E3135"), Theme.Colors.white, UDim2.fromOffset(S(200), btnH), 22)
 		doneBtn.Activated:Connect(finish)
+		doneBtn:SetAttribute("NavDefault", true)
 		if best >= 5 then
 			Fx.stinger(5)
 		end
@@ -800,6 +807,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 				confirm.Position = UDim2.new(0.5, 0, 1, -S(24))
 				UI.punch(confirm, 1.2, 0.3)
 				confirm.Activated:Connect(finish)
+				confirm:SetAttribute("NavDefault", true)
 				return
 			end
 			if i == #results then

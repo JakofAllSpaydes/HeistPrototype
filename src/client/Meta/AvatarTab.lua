@@ -146,6 +146,20 @@ local function initial(name: string): string
 end
 
 ------------------------------------------------------------------ Masks
+-- Brief 11: L1 / R1 on a pad walk the categories (MASKS / SQUAD / MVP).
+local function cycleCategory(scene: any, dir: number)
+	local i = 1
+	for k, c in CATEGORIES do
+		if c.id == category then
+			i = k
+		end
+	end
+	category = CATEGORIES[(i - 1 + dir) % #CATEGORIES + 1].id
+	UI.sound(Theme.Sounds.toast, 1.2, 0.3)
+	scene.preview.mask(nil, nil)
+	scene.refresh()
+end
+
 local function renderMasks(scene: any, panel: Frame)
 	local S = UI.S
 	local profile = scene.profile()
@@ -395,6 +409,8 @@ function AvatarTab.render(scene: any)
 		renderMasks(scene, panel)
 	end
 end
+
+AvatarTab.cycle = cycleCategory
 
 function AvatarTab.onProfile(scene: any)
 	scene.refresh()

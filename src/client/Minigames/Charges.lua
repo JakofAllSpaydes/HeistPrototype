@@ -112,9 +112,8 @@ function Charges.open(host: Frame.Host)
 		end)
 	end
 
-	-- Brief 11: the pad's cursor snaps cap to cap by direction (GamepadNav), A presses; cap 1 first.
-	host.pad = { navWalk = true }
-	caps[1].button:SetAttribute("NavDefault", true)
+	-- Brief 11: the pad's cursor snaps cap to cap by direction (D-pad), A presses; it starts on cap 1.
+	local padCaps: { Frame.GridItem } = {}
 	for _, cap in caps do
 		local function hit()
 			if done then
@@ -166,12 +165,10 @@ function Charges.open(host: Frame.Host)
 		Frame.press(host, cap.button, function()
 			hit()
 		end)
-		host.track(cap.button.Activated:Connect(function(input: InputObject?)
-			if input and string.sub(input.UserInputType.Name, 1, 7) == "Gamepad" and host.alive() then
-				hit()
-			end
-		end))
+		padCaps[cap.number] = { button = cap.button, press = hit }
 	end
+	local grid = Frame.padGrid(host, padCaps, 1)
+	host.pad = { button = grid }
 end
 
 return Charges
