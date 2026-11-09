@@ -2012,6 +2012,20 @@ local Config = {
 	DressingAmbienceBossMult = 1.7, -- the siren bed this much louder on a boss wave
 	DressingAmbienceCombatDuck = 0.6, -- ... and this much quieter while a wave is being fought
 	DressingAmbienceRollOff = { 60, 420 }, -- studs: full volume within the first, silent past the second (it carries in)
+	-- Relics (step 5): a map's ultra-rare masks (Relics.lua), dropped only by its gun crates (RelicService.lua).
+	RelicsEnabled = true, -- false = no roll, no first-crate drop, no Create Match rail
+	RelicsPerMap = 4, -- set size per map
+	RelicDropChance = 0.10, -- TESTING value (the real one is far lower): one roll per opened gun crate, no luck of any kind
+	StarterRelic = "bank_teller", -- the first gun crate a profile ever opens drops this for the whole party
+	RelicDupeGold = 500, -- Gold to a member who already owns the relic that dropped
+	RelicHangSec = 2.5, -- the relic hangs over the crate this long (spinning, rays, the sting) before it flies off
+	RelicPopupSec = 4, -- the RELIC FOUND popup's hold
+	RelicRiseSec = 0.9, -- the rise out of the crate on its beam
+	RelicColor = "FF3D7F", -- the relic rarity's colour (above Legendary's orange)
+	RelicSting = "rbxassetid://1842854092", -- Choir Of Glass - Sting (APMOfficial). Alternatives: 1842437759 Neon
+	-- Choir (sting), 1835495594 Holy Pop.
+	RelicStingVolume = 0.8,
+	HapticRelic = { motor = "Large", strength = 0.6, sec = 0.12, pulses = 2, gap = 0.18 }, -- the beat on a pad
 	-- Node colours for the node types added after NodeShowColor (debug Show nodes and Studio's edit mode).
 	NodeShowColorMore = {
 		Blockers = "8A2A2A",

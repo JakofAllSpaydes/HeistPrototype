@@ -292,6 +292,23 @@ local Lines = {
 		pillHint = "BLOW THE DOORS OR GO IN THROUGH A WINDOW",
 		idleRow = "IDLE BEFORE BREACH %s", -- the summary's small line under the time row
 	},
+	-- Brief 13: relics (RelicService, the RELIC FOUND popup, the Create Match rail, the booth). [Copy: TBA]
+	relicFound = "%s. Somebody in this crew has taste.", -- MARLOW once a relic has dropped
+	relic = {
+		typeLabel = "RELIC",
+		toast = "RELIC FOUND · %s",
+		stamp = "RELIC FOUND",
+		unlocked = "UNLOCKED",
+		dupe = "ALREADY OWNED · +%d G",
+		summaryRow = "RELIC FOUND · %s",
+		railHeader = "%s · RELICS %d/%d",
+		chip = "RELICS %d/%d",
+		unknown = "???",
+		dropsFrom = "DROPS FROM GUN CRATES",
+		firstCrate = "FIRST CRATE",
+		tag = "RELIC",
+		shelf = "%s RELICS",
+	},
 	-- MARLOW every Config.PreHeistNagSec of idling, cycling. [Copy: TBA]
 	preHeistNag = {
 		"Clock's ticking, in your head at least.",

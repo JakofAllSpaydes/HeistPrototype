@@ -5,6 +5,7 @@ local Client = script.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local TierMarkers = require(Client:WaitForChild("TierMarkers"))
+local Relics = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Relics"))
 
 local HeistDebug = {}
 
@@ -48,6 +49,32 @@ function HeistDebug.build(panel: Instance, h: Helpers)
 	local r3 = h.row(panel, 31.3, h.rh)
 	h.btn(r3, "Heli on / off", 1, function()
 		h.send("HeliToggle")
+	end, Theme.Colors.malus)
+	-- Step 5: relics.
+	local r4 = h.row(panel, 31.4, h.rh)
+	h.btn(r4, "Force relic drop", 0.5, function()
+		h.send("ForceRelic")
+	end, Theme.Colors.gold)
+	h.btn(r4, "Force first crate", 0.5, function()
+		h.send("ForceFirstCrate")
+	end, Theme.Colors.gold)
+	local r5 = h.row(panel, 31.5, h.rh)
+	local ids = {}
+	for _, r in Relics.List do
+		table.insert(ids, r.id)
+	end
+	local pickIndex = 1
+	local pick: TextButton
+	pick = h.btn(r5, "Relic: " .. (ids[1] or "-"), 0.5, function()
+		pickIndex = pickIndex % math.max(#ids, 1) + 1
+		pick.Text = "Relic: " .. (ids[pickIndex] or "-")
+	end, Theme.Colors.grey)
+	pick.TextSize = S(9)
+	h.btn(r5, "Grant relic", 0.25, function()
+		h.send("GrantRelic", ids[pickIndex])
+	end, Theme.Colors.gold)
+	h.btn(r5, "Reset relics", 0.25, function()
+		h.send("ResetRelics")
 	end, Theme.Colors.malus)
 end
 

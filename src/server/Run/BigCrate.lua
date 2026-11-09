@@ -22,6 +22,7 @@ local World = require(script.Parent.World)
 local Room = require(script.Parent.Room)
 local Log = require(script.Parent.Parent.Log)
 local Pause = require(script.Parent.Pause)
+local RelicService = require(script.Parent.RelicService) -- brief 13
 
 type Entry = { weapon: Weapons.Weapon }
 
@@ -411,6 +412,14 @@ function BigCrate.open(player: Player, crate: Crate)
 	task.spawn(function()
 		while crate.rolls > 0 and crate.model.Parent do
 			rollOnce(player, state, crate)
+		end
+		-- Brief 13: after the guns, the relic roll (one per crate); a hit rises out of the open crate and hangs.
+		local hold = 0
+		if crate.model.Parent then
+			hold = RelicService.afterCrate(player, crate.id, crate.landPos + Vector3.new(0, crate.body.Size.Y, 0))
+			if hold > 0 then
+				Pause.wait(hold)
+			end
 		end
 		if crate.model.Parent then
 			TweenService:Create(crate.lid, TweenInfo.new(0.25), { CFrame = crate.lidClosed }):Play()

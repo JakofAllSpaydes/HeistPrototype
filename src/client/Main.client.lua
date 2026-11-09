@@ -104,6 +104,7 @@ require(script.Parent:WaitForChild("UpgradeOverlay")).init()
 require(script.Parent:WaitForChild("CrateReelUI")).init()
 require(script.Parent:WaitForChild("StatusFx")).init()
 require(script.Parent:WaitForChild("MasteryUI")).init()
+require(script.Parent:WaitForChild("RelicShow")).init() -- brief 13
 require(script.Parent:WaitForChild("DealerUI")).init()
 require(script.Parent:WaitForChild("PauseUI")).init()
 require(script.Parent:WaitForChild("GroundLoot")).init()

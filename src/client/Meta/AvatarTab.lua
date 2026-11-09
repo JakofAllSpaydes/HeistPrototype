@@ -12,6 +12,9 @@ local Emotes = require(Shared:WaitForChild("Emotes"))
 local Prices = require(Shared:WaitForChild("Prices"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Config = require(Shared:WaitForChild("Config"))
+local Relics = require(Shared:WaitForChild("Relics")) -- brief 13
+local Maps = require(Shared:WaitForChild("Maps"))
+local Lines = require(Shared:WaitForChild("CrewCall"):WaitForChild("Lines"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -20,6 +23,9 @@ local MetaUI = require(script.Parent:WaitForChild("MetaUI"))
 local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 
 local AvatarTab = {}
+
+-- Brief 13: relics read in their own colour wherever a source badge or chip shows.
+MetaUI.SourceColors.Relic = Rarity.color(Rarity.Relic)
 
 local category = "MASKS" -- MASKS | SQUAD | MVP
 local selectedMask: string? = nil
@@ -178,6 +184,9 @@ local function renderMasks(scene: any, panel: Frame)
 
 	local ownedList, unownedList = {}, {}
 	for _, m in Masks.List do
+		if m.saleType == "Relic" then
+			continue -- brief 13: relics sit on their map's RELICS shelf below
+		end
 		local own = profile ~= nil and profile.masks.owned[m.id] == true
 		table.insert(if own then ownedList else unownedList, m)
 	end
@@ -241,6 +250,13 @@ local function renderMasks(scene: any, panel: Frame)
 		end
 		local mask = Masks.ById[selectedMask :: string] or Masks.ById[Masks.Default]
 		local isOwned = profile ~= nil and profile.masks.owned[mask.id] == true
+		-- Brief 13: an unowned relic is a silhouette: no name, no look, where it drops.
+		if mask.saleType == "Relic" and not isOwned then
+			MetaUI.well(card, 1, Theme.Colors.panel2, "mask", nil, Theme.Colors.panel2)
+			MetaUI.heading(card, 2, Lines.relic.unknown, string.format(Lines.relic.shelf, Maps.get(mask.map).name))
+			MetaUI.button(card, 20, Lines.relic.dropsFrom, "disabled", nil)
+			return
+		end
 		local ic =
 			MetaUI.well(card, 1, Rarity.color(mask.rarity), "mask", nil, Color3.fromHex(mask.color), { id = mask.id })
 		local well = ic.Parent :: Frame
@@ -277,6 +293,55 @@ local function renderMasks(scene: any, panel: Frame)
 	end
 	tilesFor(ownedList, "OWNED", 1)
 	tilesFor(unownedList, "UNOWNED", 10)
+	-- Brief 13: a RELICS shelf per map that has relics: owned in colour with their names (equippable), the rest dark
+	-- silhouettes reading ???.
+	for mi, map in Maps.live() do
+		local set = Relics.forMap(map.id)
+		if #set == 0 or not Config.RelicsEnabled then
+			continue
+		end
+		local order = 20 + mi * 2
+		MetaUI.header(grid, order, string.format(Lines.relic.shelf, map.name), #set)
+		local row = MetaUI.row(grid, order + 1, tileW, perRow)
+		for i, r in set do
+			local own = profile ~= nil and profile.masks.owned[r.id] == true
+			local isEq = own and equipped == r.id
+			local b = MetaUI.tile(row, {
+				name = if own then r.name else Lines.relic.unknown,
+				color = if own then Rarity.color(r.rarity) else Theme.Colors.panel2,
+				owned = own,
+				selected = selectedMask == r.id,
+				equipped = isEq,
+				icon = "mask",
+				iconColor = if own then Color3.fromHex(r.color) else Theme.Colors.panel2,
+				iconModel = if own then { id = r.id } else nil,
+				size = tileW,
+				order = i,
+				source = if own then nil else "Relic",
+				pop = if isEq and equipPopFor(r.id) then "equip" elseif popSelect == r.id then "select" else nil,
+			})
+			tiles[r.id] = { b = b, equipped = isEq }
+			b.Activated:Connect(function()
+				UI.sound(Theme.Sounds.toast, 1.25, 0.3)
+				if selectedMask == r.id then
+					return
+				end
+				local old = selectedMask and tiles[selectedMask :: string]
+				if old and old.b.Parent then
+					MetaUI.tileState(old.b, false, old.equipped)
+				end
+				selectedMask = r.id
+				MetaUI.tileState(b, true, isEq)
+				UI.punch(b, Config.MetaSelectPopScale, 0.25)
+				if own then
+					scene.preview.mask(r.color, r.shape, r.id)
+				else
+					scene.preview.mask(nil, nil)
+				end
+				renderDetail()
+			end)
+		end
+	end
 	renderDetail()
 	popSelect = nil
 	if popEquip and popEquip == equipped then

@@ -16,6 +16,7 @@ local Config = require(Shared.Config)
 local Weapons = require(Shared.Weapons)
 local Classes = require(Shared.Classes)
 local Masks = require(Shared.Masks)
+local Relics = require(Shared.Relics) -- brief 13
 local Emotes = require(Shared.Emotes)
 local Signal = require(Shared.Signal)
 local InputSettings = require(Shared.InputSettings)
@@ -32,6 +33,8 @@ export type Profile = {
 	classes: { owned: { [string]: boolean }, equipped: string },
 	abilities: { [string]: number }, -- ability id -> level
 	masks: { owned: { [string]: boolean }, equipped: string },
+	-- Brief 13 (v7): relic masks owned (also in masks.owned, so they equip like any mask) and the first-crate flag.
+	relics: { owned: { [string]: boolean }, firstCrateOpened: boolean },
 	emotes: { owned: { [string]: boolean }, squad: string, mvp: string }, -- line-up pose and MVP flex
 	wraps: { owned: { [string]: boolean } },
 	topWave: { [string]: number }, -- "<mapId>:<difficulty>" ("Arena:Normal", "TheBank:Hard") -> wave
@@ -136,7 +139,8 @@ local STORE_NAME = "GHS_Profiles_v1"
 -- 5 (brief 9): the Skill Web's owned / seen sets, empty on migration.
 -- 6 (brief 10): the login streak and the daily crate; a v5 profile starts the streak at day 1 today and has the
 -- crate locked today with everOpened false.
-local VERSION = 6
+-- 7 (brief 13): relics (owned relic masks, the first-gun-crate flag); a v6 profile owns none and has not opened one.
+local VERSION = 7
 local RETRY_BACKOFF = { 1, 2, 4 }
 
 local Profiles = {}
@@ -185,6 +189,7 @@ function Profiles.fresh(): Profile
 		classes = { owned = { [Classes.Default] = true }, equipped = Classes.Default },
 		abilities = {},
 		masks = { owned = { [Masks.Default] = true }, equipped = Masks.Default },
+		relics = { owned = {}, firstCrateOpened = false }, -- brief 13
 		emotes = (function()
 			local owned = {}
 			for _, id in Emotes.DefaultOwned do
@@ -549,6 +554,18 @@ local function migrate(raw: any): Profile
 		p.streak.skipDay = math.floor(num(rs.skipDay, 0))
 		p.streak.skipsToday = math.max(0, math.floor(num(rs.skipsToday, 0)))
 	end
+	-- Brief 13 (v7): relics. Every owned relic is in masks.owned too (the equip path), even after a hand edit.
+	if typeof(raw.relics) == "table" then
+		if typeof(raw.relics.owned) == "table" then
+			for id, v in raw.relics.owned do
+				if Relics.ById[id] and v then
+					p.relics.owned[id] = true
+					p.masks.owned[id] = true
+				end
+			end
+		end
+		p.relics.firstCrateOpened = raw.relics.firstCrateOpened == true
+	end
 	if typeof(raw.dailyCrate) == "table" then
 		local rd = raw.dailyCrate
 		p.dailyCrate.unlockedDay = math.floor(num(rd.unlockedDay, 0))
@@ -586,6 +603,9 @@ local function migrate(raw: any): Profile
 	end
 	if raw ~= nil and fromVersion < 6 then
 		Log.event("Profile", "v%d -> v6", fromVersion)
+	end
+	if raw ~= nil and fromVersion < 7 then
+		Log.event("Profile", "v%d -> v7", fromVersion)
 	end
 	if raw ~= nil and fromVersion < 3 then
 		Log.event(
@@ -849,7 +869,9 @@ function Profiles.unlockAll(player: Player)
 		p.classes.owned[c.id] = true
 	end
 	for _, m in Masks.List do
-		p.masks.owned[m.id] = true
+		if m.saleType ~= "Relic" then -- brief 13: relics only drop from gun crates (debug Grant relic)
+			p.masks.owned[m.id] = true
+		end
 	end
 	for _, e in Emotes.List do
 		p.emotes.owned[e.id] = true

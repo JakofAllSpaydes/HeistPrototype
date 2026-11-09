@@ -24,6 +24,7 @@ local Offices = require(script.Parent.Offices) -- Round 19f
 local Breach = require(script.Parent.Breach) -- brief 13
 local HeistDebug = require(script.Parent.HeistDebug) -- brief 13
 local Dressing = require(script.Parent.Dressing) -- brief 13
+local RelicService = require(script.Parent.RelicService) -- brief 13
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
@@ -244,6 +245,7 @@ local function playRun()
 	ZoneGas.resetRun()
 	Offices.resetRun()
 	Dressing.resetRun()
+	RelicService.resetRun()
 	Hub.beginRun(World.partyPlayers())
 	Economy.resetRun(World.partyPlayers())
 	Mastery.beginRun(World.partyPlayers())

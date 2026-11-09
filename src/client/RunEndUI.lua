@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Lines = require(Shared:WaitForChild("CrewCall"):WaitForChild("Lines")) -- brief 13
+local Rarity = require(Shared:WaitForChild("Rarity"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -340,8 +341,28 @@ local function showSummary(d: any)
 	wavePill.ZIndex = 11
 	waveLabel.ZIndex = 12
 	waveLabel.FontFace = Theme.Fonts.display
-	-- Brief 13: how long the crew stood on the street before the breach, small under the time, when it was long.
+	-- Brief 13: how long the crew stood on the street before the breach, small under the time, when it was long;
+	-- under it a RELIC FOUND row in the relic colour for each relic the run dropped.
 	local idle = tonumber(d.idleBeforeBreachSec) or 0
+	local underY = S(70) + (if idle > Config.BreachIdleShowSec then S(16) else 0)
+	if typeof(d.relics) == "table" then
+		for i, name in d.relics do
+			local row = UI.text({
+				Name = "RelicFound",
+				Text = string.format(Lines.relic.summaryRow, tostring(name)),
+				FontFace = Theme.Fonts.display,
+				TextSize = S(14),
+				TextColor3 = Rarity.color(Rarity.Relic),
+				TextXAlignment = Enum.TextXAlignment.Right,
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -S(26), 0, underY + (i - 1) * S(17)),
+				Size = UDim2.fromOffset(S(300), S(16)),
+				ZIndex = 11,
+				Parent = panel,
+			})
+			UI.stroke(row, Theme.Colors.black, S(1), 0.5)
+		end
+	end
 	if idle > Config.BreachIdleShowSec then
 		UI.text({
 			Name = "IdleBeforeBreach",

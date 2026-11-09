@@ -11,8 +11,10 @@ export type Mask = {
 	shape: string, -- what the accessory looks like (MaskShapes.lua): visor | bandana | none | goggles | skull | halfmask | mono | horns | helmet | crown | hood
 	accent: string?, -- hex, a second color some shapes use (lenses, eye holes, trim)
 	rarity: number, -- 1..5, Rarity.Colors
-	saleType: string, -- Direct | Crate | Event | Bundle | VIP | Pass
+	saleType: string, -- Direct | Crate | Event | Bundle | VIP | Pass | Relic (brief 13: gun-crate drops only)
 	price: number?, -- nil = Prices.mask
+	map: string?, -- brief 13: a relic's map
+	relic: boolean?, -- brief 13: a relic (Relics.lua)
 }
 
 local Masks = {}
@@ -232,6 +234,11 @@ Masks.List = {
 		saleType = "Pass",
 	},
 } :: { Mask }
+
+-- Brief 13: the relic masks (Relics.lua) are mask rows too, saleType "Relic" (never sold anywhere).
+for _, r in require(script.Parent.Relics).List do
+	table.insert(Masks.List, r :: any)
+end
 
 Masks.ById = {} :: { [string]: Mask }
 for _, m in Masks.List do

@@ -26,6 +26,8 @@ local Pass = require(script.Parent.Parent.Pass)
 local Jobs = require(script.Parent.Parent.Jobs)
 local RunEvents = require(script.Parent.Parent.RunEvents)
 local DailyCrate = require(script.Parent.Parent.DailyCrate)
+local RelicService = require(script.Parent.RelicService) -- brief 13
+local Relics = require(ReplicatedStorage.Shared.Relics)
 
 local RunEnd = {}
 
@@ -429,6 +431,13 @@ function RunEnd.play(): string
 		heat = World.heat,
 		survivedSec = math.floor(World.survivedSec()),
 		idleBeforeBreachSec = math.floor(World.idleBeforeBreach), -- brief 13
+		relics = (function() -- brief 13: the RELIC FOUND rows (names, in the order they dropped)
+			local out = {}
+			for _, id in RelicService.found do
+				table.insert(out, Relics.title(id))
+			end
+			return out
+		end)(),
 		xpFillSec = Config.XpFillSec,
 		line = line,
 		beats = beats,
