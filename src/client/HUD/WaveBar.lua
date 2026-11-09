@@ -459,9 +459,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = root,
 	})
 	UI.stroke(breachHint, Theme.Colors.black, S(1), 0.5)
-	if ClientState.isMobile then
-		UI.mobileGrow(breachPill)
-	end
+	UI.mobileGrow(breachPill, ClientState.isMobile)
 	local breathe = 0
 	track(RunService.Heartbeat:Connect(function(dt)
 		if breachPill.Visible then

@@ -1966,6 +1966,29 @@ local Config = {
 	BreachWaveDelaySec = 1.4, -- the HEIST ON stamp holds this long before wave 1's bell
 	BreachIdleShowSec = 20, -- the summary shows IDLE BEFORE BREACH when the crew idled longer than this
 	MusicPreHeist = { "rbxassetid://9038506583" }, -- the pre-heist's cue (Diamond Heist (b)), looping under MusicDuck
+	-- Markers (step 3): three tiers (Markers.lua, TierMarkers.lua). Objective (doors, the vault, offices, the hatch)
+	-- keeps the full beacon, arrow guide and chevrons; at most ObjectiveMarkerCap at once (the most urgent, then the
+	-- nearest). Job (side jobs): the prop outlined through walls, a pill with the name and a live distance beyond
+	-- JobNearRange, a soft floor chevron pulse every JobPulseSec. Loot (bags, gun crates, floor guns): small, through
+	-- walls only within BagWallRange (the whole map during an intermission), gone beyond BagMarkerRange, 3+ bags
+	-- within LootClusterRadius as one ×N, the nearest LootMarkerCap shown.
+	ObjectiveMarkerCap = 1,
+	JobNearRange = 25, -- studs: inside it the Job pill drops its distance and the pulse stops
+	JobPulseSec = 3, -- seconds between the Job tier's floor chevron pulses
+	JobPulseLength = 18, -- studs of floor the pulse runs ahead of you toward the job
+	JobHighlightFill = 0.1, -- the outline's fill opacity (0 = outline only); never a solid block
+	JobHighlightColor = "4D9FE8", -- the job blue
+	JobPillMobileScale = 1.15, -- phones: the Job pill this much bigger
+	BagWallRange = 30, -- studs: loot markers show through walls only this close
+	BagMarkerRange = 60, -- studs: loot markers fade out beyond this
+	LootMarkerCap = 6, -- loot markers on screen at once (the nearest)
+	LootClusterRadius = 10, -- studs: 3+ bags this close together collapse into one ×N marker
+	LootClusterMin = 3,
+	LootIconMobileScale = 0.85, -- phones: loot icons this size
+	LootLookAngle = 7, -- degrees off the screen centre that count as looking at a loot marker (its label shows)
+	LootLookLabelSec = 1, -- the looked-at label holds this long
+	GunCrateTagScale = 0.8, -- the GUN CRATE tag at Loot size
+	MarkerCrosshairClearPx = 70, -- a Job pill this close to the screen centre fades so it never covers the crosshair
 	-- Node colours for the node types added after NodeShowColor (debug Show nodes and Studio's edit mode).
 	NodeShowColorMore = {
 		Blockers = "8A2A2A",

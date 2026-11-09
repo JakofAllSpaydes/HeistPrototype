@@ -596,6 +596,10 @@ function CrewCall.trigger(forceKind: string?, forceGame: string?)
 			end
 		)
 	end
+	-- Brief 13: the client finds the job's prop by this to outline it (the Job marker tier).
+	if beacon then
+		beacon:SetAttribute("JobId", nextId)
+	end
 	thisJob = {
 		id = nextId,
 		kind = kind,

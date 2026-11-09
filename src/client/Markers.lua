@@ -14,6 +14,7 @@ local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local Hint = require(script.Parent:WaitForChild("Hint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local TierMarkers = require(script.Parent:WaitForChild("TierMarkers")) -- brief 13: the Job and Loot tiers
 
 type Marker = {
 	att: Attachment,
@@ -34,17 +35,22 @@ type Marker = {
 	wasInside: boolean?,
 	noCompact: boolean, -- the vault job's beacon never shrinks to a badge
 	diamond: Frame?, -- a rotating diamond over the box (the vault job)
+	prio: number, -- brief 13: Objective tier urgency (1 = most); only the top ObjectiveMarkerCap show
+	tierHidden: boolean, -- brief 13: held back by the Objective cap
 }
 
 -- Optional look for a marker: `scale` multiplies every size, `noCompact` keeps the full box at any distance,
--- `diamond` puts a rotating diamond in the marker color over it.
-export type Opts = { scale: number?, noCompact: boolean?, diamond: boolean?, maxDistance: number? }
+-- `diamond` puts a rotating diamond in the marker color over it. Brief 13: every marker drawn here is the Objective
+-- tier; `prio` ranks them for the cap (1 the vault job / open vault, 2 a called door, 3 an office, 4 the hatch, 5 a
+-- closed door's sign). Side jobs and loot are drawn by TierMarkers.
+export type Opts = { scale: number?, noCompact: boolean?, diamond: boolean?, maxDistance: number?, prio: number? }
 
 local Markers = {}
 
 local player = Players.LocalPlayer
 local markers: { [string]: Marker } = {}
 local jobMarkerId: any = nil -- the side job call the "job" marker belongs to
+local peakShown, peakHidden = 0, 0 -- brief 13: loot markers at the wave's busiest tick ([GHS Markers] log)
 
 local function fmtTime(seconds: number): string
 	local s = math.max(0, math.ceil(seconds))
@@ -240,6 +246,8 @@ function Markers.add(
 		position = position,
 		noCompact = opts ~= nil and opts.noCompact == true,
 		diamond = diamond,
+		prio = (opts and opts.prio) or 3,
+		tierHidden = false,
 	}
 end
 
@@ -380,6 +388,7 @@ local function drawDoors()
 				noCompact = loud,
 				-- Round 19: a closed door's beacon reads only within DoorBeaconRange; a called one from anywhere.
 				maxDistance = if called then nil else Config.DoorBeaconRange,
+				prio = if called then 2 else 5,
 			}
 		);
 		(markers[id] :: any).doorState = want
@@ -392,6 +401,16 @@ local function drawDoors()
 end
 
 function Markers.init()
+	TierMarkers.init()
+	TierMarkers.objectiveDebug = function()
+		for id, m in markers do
+			TierMarkers.debugMark(
+				"obj" .. id,
+				m.position + Vector3.new(0, 1.5, 0),
+				string.format("OBJECTIVE p%d %s", m.prio, if m.tierHidden then "CAP" else "SHOW")
+			)
+		end
+	end
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "DoorState" and typeof(data.doors) == "table" then
 			doorList = data.doors
@@ -407,7 +426,9 @@ function Markers.init()
 					Theme.Colors.amber,
 					tostring(data.label or o.markerTitle),
 					o.markerOpen,
-					tonumber(data.endsAt) or 0
+					tonumber(data.endsAt) or 0,
+					nil,
+					{ prio = 3 }
 				)
 			elseif data.phase == "warn" or data.phase == "gas" then
 				local m = markers[id]
@@ -432,19 +453,27 @@ function Markers.init()
 			jobMarkerId = data.id -- Round 24: a door call ending must not take the side job's beacon with it
 			local capture = data.jobKind == "capture"
 			local vault = data.jobKind == "vault"
-			Markers.add(
-				"job",
-				data.position,
-				if vault then Theme.Colors.amber else Theme.Colors.blue,
-				tostring(data.name),
-				if typeof(data.markerHint) == "string"
-					then data.markerHint
-					elseif capture then Lines.capture.markerHint
-					else Lines.hackMarkerHint,
-				data.endsAt or 0,
-				nil,
-				nil -- the vault job keeps the normal marker (amber); the floor chevrons are its extra guide
-			)
+			local hint = if typeof(data.markerHint) == "string"
+				then data.markerHint
+				elseif capture then Lines.capture.markerHint
+				else Lines.hackMarkerHint
+			if vault then
+				-- CRACK THE VAULT is the Objective tier: the normal marker (amber); the floor chevrons are its guide.
+				Markers.add(
+					"job",
+					data.position,
+					Theme.Colors.amber,
+					tostring(data.name),
+					hint,
+					data.endsAt or 0,
+					nil,
+					{ prio = 1 }
+				)
+			else
+				-- Brief 13: a side job is the Job tier (the outlined prop, the pill, the soft pulse).
+				Markers.remove("job")
+				TierMarkers.setJob(data.id, data.position, tostring(data.name), hint)
+			end
 		elseif name == "Resumed" then
 			local d = tonumber(data and data.duration) or 0
 			for _, m in markers do
@@ -463,41 +492,32 @@ function Markers.init()
 				Markers.setProgress("job", 0, true)
 			end
 		elseif name == "JobProgress" then
+			-- Brief 13: the capture job is the Job tier: its pill carries the bar and the hint line.
 			local pct = math.floor((data.progress or 0) * 100 + 0.5)
 			local inside = data.inside == true
-			Markers.setProgress("job", data.progress or 0, inside)
-			-- Only a step in / step out pops the box; the percent ticks quietly.
-			local m = markers.job
-			local flipped = m ~= nil and m.wasInside ~= inside
-			if m then
-				m.wasInside = inside
-			end
+			TierMarkers.jobProgress(data.progress or 0, inside)
 			if inside then
-				Markers.setSub("job", string.format(Lines.capture.holdingHint, pct), Theme.Colors.cash, flipped)
+				TierMarkers.jobHint(string.format(Lines.capture.holdingHint, pct), Theme.Colors.cash)
 			elseif pct > 0 then
-				Markers.setSub("job", string.format(Lines.capture.leftHint, pct), Theme.Colors.malus, flipped)
+				TierMarkers.jobHint(string.format(Lines.capture.leftHint, pct), Theme.Colors.malus)
 			else
-				Markers.setSub("job", Lines.capture.markerHint, nil, flipped)
+				TierMarkers.jobHint(Lines.capture.markerHint, nil)
 			end
 		elseif (name == "CallEnd" or name == "CallCleared") and (data.id == jobMarkerId or jobMarkerId == nil) then
 			jobMarkerId = nil
 			Markers.remove("job")
+			TierMarkers.clearJob()
 		elseif name == "BagSpawned" and typeof(data.position) == "Vector3" then
-			-- Bag beacons read through walls: kind and value; a $ / ◆ badge far away. No key hint: walking up
-			-- to a bag picks it up (BagChannel.lua draws the fill).
+			-- Brief 13: bags are the Loot tier (TierMarkers): a small $ / ◆ icon, its name only while looked at,
+			-- through walls only when close. No key hint: walking up to a bag picks it up (BagChannel.lua).
 			local gold = data.kind == "gold"
-			local value = tonumber(data.value) or 0
-			Markers.add(
-				"bag" .. tostring(data.id),
-				data.position,
-				if gold then Theme.Colors.gold else Theme.Colors.cash,
-				if gold then "GOLD BAG" else "CASH BAG",
-				if gold then "◆ " .. tostring(value) else "$" .. tostring(value),
-				0,
-				if gold then "◆" else "$"
-			)
+			TierMarkers.bag("bag" .. tostring(data.id), data.position, gold, if gold then "GOLD BAG" else "CASH BAG")
 		elseif name == "BagCollected" or name == "BagFizzled" then
-			Markers.remove("bag" .. tostring(data.id))
+			TierMarkers.unloot("bag" .. tostring(data.id))
+		elseif name == "Intermission" then
+			-- [GHS Markers] loot shown / hidden at the wave's busiest moment, once per wave.
+			print(string.format("[GHS Markers] loot shown %d hidden %d", peakShown, peakHidden))
+			peakShown, peakHidden = 0, 0
 		elseif name == "VaultOpen" and typeof(data.position) == "Vector3" then
 			-- Brief 7: on THE BANK the hatch gets a blue beacon on the street side for the window.
 			if typeof(data.hatch) == "Vector3" then
@@ -508,7 +528,8 @@ function Markers.init()
 					Lines.vault.hatchTitle,
 					Lines.vault.hatchHint,
 					0,
-					"▲"
+					"▲",
+					{ prio = 4 }
 				)
 			end
 			Markers.add(
@@ -518,7 +539,8 @@ function Markers.init()
 				tostring(data.name or "VAULT"),
 				tostring(data.hint or Lines.vault.lootHint),
 				tonumber(data.endsAt) or 0,
-				"◆"
+				"◆",
+				{ prio = 1 }
 			)
 		elseif name == "VaultGas" then
 			if data.phase == "warn" then
@@ -536,6 +558,8 @@ function Markers.init()
 				for id in table.clone(markers) do
 					Markers.remove(id)
 				end
+				TierMarkers.clearJob()
+				TierMarkers.clearLoot()
 			end
 		end
 	end)
@@ -551,8 +575,9 @@ function Markers.init()
 		local hide = ClientState.cameraMode == "cinematic"
 		for _, m in markers do
 			local bb = m.att:FindFirstChildOfClass("BillboardGui")
-			if bb and bb.Enabled == hide then
-				bb.Enabled = not hide
+			local off = hide or m.tierHidden -- brief 13: the Objective cap holds the rest back
+			if bb and bb.Enabled == off then
+				bb.Enabled = not off
 			end
 			local dm = m.diamond
 			if dm then
@@ -566,6 +591,24 @@ function Markers.init()
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local now = ClientState.serverNow()
+		-- Brief 13: the Objective cap. The most urgent (lowest prio), then the nearest, ObjectiveMarkerCap of them.
+		local ranked: { Marker } = {}
+		for _, m in markers do
+			table.insert(ranked, m)
+		end
+		local here = if root then root.Position else Vector3.zero
+		table.sort(ranked, function(a, b)
+			if a.prio ~= b.prio then
+				return a.prio < b.prio
+			end
+			return (a.position - here).Magnitude < (b.position - here).Magnitude
+		end)
+		for i, m in ranked do
+			m.tierHidden = i > Config.ObjectiveMarkerCap
+		end
+		local shownNow, hiddenNow = TierMarkers.lootStats()
+		peakShown = math.max(peakShown, shownNow)
+		peakHidden = math.max(peakHidden, hiddenNow)
 		for _, m in markers do
 			local timeText = ""
 			local warn = false
