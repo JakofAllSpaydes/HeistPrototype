@@ -14,6 +14,7 @@ local Config = require(Shared.Config)
 local Ground = require(Shared.Ground)
 local Remotes = require(script.Parent.SlotRemotes)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
 local WeaponRoll = require(script.Parent.WeaponRoll)
@@ -129,7 +130,7 @@ function Downed.down(player: Player)
 	end
 	state.downed = true
 	state.downs += 1
-	state.bleedEndsAt = now() + Config.BleedOutSec + state.skillMods.bleedOutFlat -- brief 9 LAST STAND
+	state.bleedEndsAt = now() + Config.BleedOutSec + Stats.resolve(state.player, "bleedOut") -- brief 9 LAST STAND
 	state.reviveProgress = 0
 	state.reviver = nil
 	state.buffId = nil
@@ -154,7 +155,7 @@ function Downed.down(player: Player)
 		"%s is down (down #%d), bleeds out in %ds",
 		player.Name,
 		state.downs,
-		Config.BleedOutSec + state.skillMods.bleedOutFlat
+		Config.BleedOutSec + Stats.resolve(state.player, "bleedOut")
 	)
 end
 
@@ -455,7 +456,7 @@ function Downed.init()
 				if ts.reviver == nil or ts.reviver == reviver then
 					ts.reviver = reviver
 					-- Brief 9 REVIVE SPEED: the reviver's Skill Web shortens the hold.
-					local speed = 1 + rs.skillMods.revivePct
+					local speed = Stats.mult(rs.player, "revive") -- haste
 					ts.reviveProgress =
 						math.min(1, ts.reviveProgress + dt * speed / math.max(Config.ReviveHoldSec, 0.1))
 					progressed[target] = reviver

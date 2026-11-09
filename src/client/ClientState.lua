@@ -8,7 +8,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
-local Skills = require(Shared:WaitForChild("Skills"))
 local Signal = require(Shared:WaitForChild("Signal"))
 local Types = require(Shared:WaitForChild("Types"))
 local InputSettings = require(Shared:WaitForChild("InputSettings"))
@@ -213,9 +212,12 @@ function ClientState.gunAsMine(weaponId: string, rarity: number): (number, numbe
 	local entry = sync and sync.profile and sync.profile.weapons and sync.profile.weapons[weaponId]
 	local level = if entry then tonumber(entry.level) or 0 else 0
 	local dmgPct = if sync then tonumber((sync :: any).dmgPct) or 0 else 0
-	-- Brief 9: the armed Skill Web's weapon bonus (damage, the gun type's damage) at the Armory stage.
-	local bonus = Skills.weaponBonus(sync and (sync :: any).skillMods, Weapons.ById[weaponId].archetype)
-	local dmg: number = Weapons.damageAt(weaponId, math.clamp(rarity, 1, 5), dmgPct, level, bonus)
+	-- Brief 12: every damage source adds (dmgPct already holds the web's and the run's), plus the gun type's own.
+	local r = sync and (sync :: any).resolved
+	local typed = if typeof(r) == "table" and typeof(r.typeDamage) == "table"
+		then tonumber(r.typeDamage[Weapons.ById[weaponId].archetype]) or 0
+		else 0
+	local dmg: number = Weapons.damageWith(weaponId, math.clamp(rarity, 1, 5), level, dmgPct * 100 + typed)
 	local rate: number = Weapons.levelRateMult(level)
 	return dmg, rate
 end

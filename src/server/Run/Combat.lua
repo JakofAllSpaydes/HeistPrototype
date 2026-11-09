@@ -11,6 +11,7 @@ local Weapons = require(Shared.Weapons)
 local Remotes = require(script.Parent.SlotRemotes)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local RunEvents = require(script.Parent.Parent.RunEvents)
 local Economy = require(script.Parent.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
@@ -81,13 +82,12 @@ local function dealDamage(
 	local ed = Enemy.data(model)
 	local elite = ed ~= nil and ed.elite
 	local boss = ed ~= nil and ed.row.boss == true
-	-- Brief 9: ELITE DAMAGE / BOSS DAMAGE (the shooter's Skill Web) on top of everything else.
-	local sk = shooter.state.skillMods
+	-- Brief 9: ELITE DAMAGE / BOSS DAMAGE on top of everything else (brief 12: through the resolver).
 	if elite then
-		dmg *= 1 + sk.eliteDamagePct
+		dmg *= Stats.mult(shooter.player, "eliteDamage")
 	end
 	if boss then
-		dmg *= 1 + sk.bossDamagePct
+		dmg *= Stats.mult(shooter.player, "bossDamage")
 	end
 	dmg = math.max(1, math.round(dmg))
 	local killed, killCash = Enemy.damage(model, dmg, shooter.player, {

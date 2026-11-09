@@ -19,6 +19,7 @@ local Remotes = require(script.Parent.SlotRemotes)
 local Classes = require(Shared.Classes)
 local AbilityGrowth = require(Shared.AbilityGrowth)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local Economy = require(script.Parent.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local Elements = require(script.Parent.Elements)
@@ -28,7 +29,6 @@ local Log = require(script.Parent.Parent.Log)
 local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
 local Slot = require(script.Parent.Slot)
-local Boosts = require(script.Parent.Parent.Boosts)
 
 -- Brief 8: the players this run slot looks after (its party; the hub slot: everyone not in a run).
 local function mine(): { [Player]: PlayerState.State }
@@ -187,17 +187,15 @@ local function hitEnemy(
 	secondary: boolean,
 	hit: Enemy.Hit?
 ): boolean
-	dmg = dmg * Boosts.damageMult(owner) -- POWER boost (brief 6)
-	-- Brief 9: ABILITY DAMAGE, and ELITE / BOSS DAMAGE, from the owner's Skill Web.
+	-- ABILITY DAMAGE (the web's nodes and the POWER boost, additive), then ELITE / BOSS DAMAGE (brief 12: resolver).
 	if owner.Parent then
-		local sk = PlayerState.get(owner).skillMods
 		local ed = Enemy.data(model)
-		dmg *= 1 + sk.abilityDamagePct
+		dmg *= Stats.mult(owner, "abilityDamage")
 		if ed and ed.elite then
-			dmg *= 1 + sk.eliteDamagePct
+			dmg *= Stats.mult(owner, "eliteDamage")
 		end
 		if ed and ed.row.boss == true then
-			dmg *= 1 + sk.bossDamagePct
+			dmg *= Stats.mult(owner, "bossDamage")
 		end
 	end
 	dmg = math.max(1, math.round(dmg))

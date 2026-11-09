@@ -1949,6 +1949,40 @@ local Config = {
 	DailyCratePodiumScale = 1, -- the generated podium's scale (fits the gap beside the range door at 1)
 	DailyCrateBeamHeight = 60, -- studs: the ready crate's beacon column
 	DailyCratePromptDistance = 9, -- studs: the podium's E prompt
+
+	------------------------------------------------------------------ Brief 12: Stats (server/Stats.lua, the resolver)
+	-- Every bonus to a stat is a source (an upgrade card, a dealer stand, the held gun's Armory level, a Skill Web node,
+	-- a class passive, a boost, a timed buff like Adrenaline or Overclock). How a stat's sources stack is its mode:
+	--   haste    points add; a time divides by (1 + h / 100), a rate multiplies by it (never reaches zero)
+	--   resist   1 - prod(1 - r): two -30% sources give -51%, never -100%
+	--   softcap  base x (1 + max x h / (h + k) / 100): every point counts, the ceiling is never met (max = k keeps the
+	--            first points close to linear)
+	--   additive plain sum (the default for any stat not listed)
+	--   capped   plain sum (plus `base`, a Config key), hard ceiling at `cap`
+	-- Typed stats ("typeDamage.Rifle") use their root's row. Card and web labels never change (COOLDOWN -8% is +8 haste).
+	StatDefs = {
+		cooldown = { mode = "haste" }, -- ability cooldowns
+		fireRate = { mode = "haste" },
+		reload = { mode = "haste" },
+		typeReload = { mode = "haste" }, -- reload haste on one archetype (SHARPSHOOTER II)
+		interact = { mode = "haste" }, -- door / job holds
+		revive = { mode = "haste" },
+		pickup = { mode = "haste" }, -- bag fill speed
+		armorDelay = { mode = "haste" }, -- the wait before armor refills
+		damageTaken = { mode = "resist" },
+		moveSpeed = { mode = "softcap" }, -- max / k: MoveSpeedSoftMax / MoveSpeedK
+		pickupRadius = { mode = "softcap", max = 300, k = 300 }, -- the bag magnet
+		turretRange = { mode = "softcap", max = 200, k = 200 }, -- turret / sentry reach
+		area = { mode = "softcap", max = 200, k = 200 }, -- anything that is not a bullet (brief 12 step 5)
+		critChance = { mode = "capped", cap = 100, base = "BaseCritChancePct" },
+		elementProc = { mode = "capped", cap = 100 },
+		droneInherit = { mode = "capped", cap = 100 }, -- SWARM's UPLINK share of the gun's damage
+	},
+	AbilityMinCooldownSec = 2, -- engine floor under any stack of cooldown haste
+	MoveSpeedSoftMax = 1000, -- move speed's softcap ceiling, in percent: an asymptote nobody meets
+	MoveSpeedK = 1000,
+	StatMultFloor = 0.2, -- no pile of maluses takes a multiplier (or a haste factor) below this
+	StatsLogEnabled = false, -- `[GHS Stats] <name> <stat> <resolved> <- <n> sources` on every change (debug: Stats log)
 }
 
 return Config

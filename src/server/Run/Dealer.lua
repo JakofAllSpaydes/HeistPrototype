@@ -22,6 +22,7 @@ local Upgrades = require(Shared.Upgrades)
 local Rarity = require(Shared.Rarity)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local Economy = require(script.Parent.Parent.Economy)
 local UpgradeShop = require(script.Parent.UpgradeShop)
 local BigCrate = require(script.Parent.BigCrate)
@@ -338,7 +339,7 @@ end
 
 -- Brief 9 HAGGLE: the buyer's Skill Web takes its share off every dealer price.
 local function haggle(state: PlayerState.State): number
-	return math.max(0.05, 1 - state.skillMods.dealerPct)
+	return math.max(0.05, 1 - Stats.resolve(state.player, "dealerDiscount") / 100)
 end
 
 local function cardPrice(card: Types.Card, s: Stock, state: PlayerState.State): number
@@ -444,7 +445,7 @@ local function restock(player: Player, rerolls: number?)
 			state,
 			World.wave,
 			Config.DealerStock,
-			state.skillMods.dealerLuck * Config.LuckOddsStep
+			Stats.resolve(state.player, "dealerLuck") * Config.LuckOddsStep
 		),
 		sold = {},
 		rerolls = rerolls or 0,

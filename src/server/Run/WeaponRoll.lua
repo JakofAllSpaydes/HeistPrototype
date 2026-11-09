@@ -13,6 +13,7 @@ local Rarity = require(Shared.Rarity)
 local Remotes = require(script.Parent.SlotRemotes)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local Pause = require(script.Parent.Pause)
 local Log = require(script.Parent.Parent.Log)
 local Boosts = require(script.Parent.Parent.Boosts)
@@ -312,7 +313,7 @@ function WeaponRoll.rollRarity(
 			note = string.format("pity floor %s", Rarity.name(floor))
 		end
 		-- LUCKY (brief 6); brief 9 CRATE LUCK (the in-run gun crate only; the store's crates never read it).
-		local luck = state.skillMods.crateLuck * Config.LuckOddsStep
+		local luck = Stats.resolve(state.player, "crateLuck") * Config.LuckOddsStep
 		rarity = Rarity.roll(wave, floor, weights, Boosts.luckyShift(state.player), luck)
 		if pity then
 			state.pityStreak = 0

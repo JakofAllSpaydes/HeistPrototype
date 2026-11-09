@@ -788,6 +788,14 @@ function Weapons.damageAt(weaponId: string, rarity: number, dmgPct: number, leve
 	return Weapons.atLevel(w, level or 0, bonus).dmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
 end
 
+-- Brief 12: damage per shot with every bonus additive (the resolver's rule): base x rarity x (1 + (the Armory
+-- level's points + `addPct`) / 100). The floor-gun tags use it with the viewer's own damage points.
+function Weapons.damageWith(weaponId: string, rarity: number, level: number?, addPct: number): number
+	local w = Weapons.ById[weaponId]
+	local pts = (Weapons.levelDmgMult(level or 0) - 1) * 100 + addPct
+	return w.baseDmg * math.max(Config.StatMultFloor, 1 + pts / 100) * Config.RarityDmgMult[rarity]
+end
+
 -- Gold cost of the next level: upgBaseCost x RarityUpgCostMult ^ level (both 100 / 1.0 in the prototype).
 function Weapons.upgradeCost(w: Weapon, level: number): number
 	return math.round((w.upgBaseCost or Prices.weaponUpgrade) * Config.RarityUpgCostMult ^ math.max(0, level))

@@ -324,46 +324,89 @@ function PlayerState.buffFor(state: State, id: string): Stats.Buffs
 	return b
 end
 
--- Round 25: ABILITY POWER on effects that aren't damage or healing. Read straight from the upgrades (computed()
--- calls buffFor, so this can't go through it). Strength: the buff's bonus x this (1 = no Ability Power).
+-- Round 25: ABILITY POWER on effects that aren't damage or healing (brief 12: read through the resolver).
+-- Strength: the buff's bonus x this (1 = no Ability Power).
 function PlayerState.abilityBuffAmp(state: State): number
-	local u = state.upgrades.AbilityPower
-	local pw = math.max(0.2, 1 + (if u then u.pct / 100 else 0))
+	local pw = Stats.mult(state.player, "abilityPower")
 	return 1 + (pw - 1) * Config.AbilityPowerBuffShare
 end
 
 -- Durations and radii take a smaller share, so a stacked build never turns a slow into a freeze or a radius
 -- into the whole map (AbilityPowerDurationShare / AbilityPowerRadiusShare).
 function PlayerState.abilityDurationAmp(state: State): number
-	local u = state.upgrades.AbilityPower
-	local pw = math.max(0.2, 1 + (if u then u.pct / 100 else 0))
+	local pw = Stats.mult(state.player, "abilityPower")
 	return 1 + (pw - 1) * Config.AbilityPowerDurationShare
 end
 
 function PlayerState.abilityRadiusAmp(state: State): number
-	local u = state.upgrades.AbilityPower
-	local pw = math.max(0.2, 1 + (if u then u.pct / 100 else 0))
+	local pw = Stats.mult(state.player, "abilityPower")
 	return 1 + (pw - 1) * Config.AbilityPowerRadiusShare
 end
 
--- A class mastery passive: on while `classId` is the class the run started with at `tier` or better.
-function PlayerState.passive(state: State, classId: string, tier: number): boolean
-	return state.masteryClass == classId and state.masteryTier >= tier
+------------------------------------------------------------------ Brief 12: sources this module registers
+-- The Skill Web: one `web:<node>` source per owned node (armSkills), none in the hub.
+function PlayerState.registerWeb(state: State, owned: { [string]: any }?)
+	local player = state.player
+	Stats.removeGroup(player, "web:")
+	if not Config.SkillsEnabled or not owned then
+		return
+	end
+	for _, n in Skills.List do
+		if owned[n.id] == true then
+			local e = n.effect
+			local root = Stats.WebStat[e.stat]
+			if root then
+				local stat = if e.filter then root .. "." .. e.filter else root
+				local value = if e.kind == "pct" then e.value * 100 else e.value
+				Stats.add(player, "web:" .. n.id, stat, value)
+			end
+		end
+	end
 end
 
-function PlayerState.computed(state: State): Types.Computed
-	local buffs: Stats.Buffs? = nil
+-- Class passives and mastery tiers that move a shared stat (SHARPSHOOTER I headshot, II sniper / pistol reload).
+-- Kit-only passives (ENGINEER's placeables, TORCH's tick rate, DOC's reach) stay on their abilities.
+function PlayerState.registerPassives(state: State)
+	local player = state.player
+	Stats.removeGroup(player, "passive:")
+	if PlayerState.passive(state, "SHARPSHOOTER", 1) then
+		Stats.add(player, "passive:sharp1", "headshot", Config.SharpHeadshotAdd / Config.HeadshotMult * 100)
+	end
+	if PlayerState.passive(state, "SHARPSHOOTER", 2) then
+		Stats.add(player, "passive:sharp2:sniper", "typeReload.Sniper", Config.MarksmanKitReloadPct * 100)
+		Stats.add(player, "passive:sharp2:pistol", "typeReload.Pistol", Config.MarksmanKitReloadPct * 100)
+	end
+end
+
+-- Timed windows (a self buff, Overclock on your own gun, CREW OVERCLOCK, FIELD HOSPITAL): each registers its sources
+-- when it starts and unregisters them when it ends. Checked here so every way a window ends (expiry, downed, the
+-- range, a reset) drops its sources cleanly. Stats.set is a no-op while nothing changed.
+local function syncTimedSources(state: State)
+	local player = state.player
+	local nowT = Workspace:GetServerTimeNow()
 	local id = state.buffId
-	if id and PlayerState.buffActive(state) then
-		buffs = PlayerState.buffFor(state, id)
+	local buffKey = (state :: any).statBuffKey :: string?
+	local want = if id and PlayerState.buffActive(state) then id else nil
+	if want ~= buffKey then
+		Stats.removeGroup(player, "buff:")
+		if want then
+			local b = PlayerState.buffFor(state, want)
+			local tag = "buff:" .. want .. ":"
+			Stats.add(player, tag .. "rate", "fireRate", (b.fireRateMult - 1) * 100)
+			Stats.add(player, tag .. "reload", "reload", (b.reloadSpeedMult - 1) * 100)
+			Stats.add(player, tag .. "move", "moveSpeed", (b.moveSpeedMult - 1) * 100)
+			Stats.add(player, tag .. "dmg", "damage", (b.damageMult - 1) * 100)
+			Stats.add(player, tag .. "acc", "accuracy", (1 - (b.spreadMult or 1)) * 100)
+			Stats.add(player, tag .. "pierce", "pierce", b.pierceAdd)
+		end
+		(state :: any).statBuffKey = want
 	end
 	-- CREW OVERCLOCK (ENGINEER III): every crew member's gun runs faster while the Overclock lasts.
 	-- Round 28e: the ENGINEER's own Overclock speeds up their own gun too (Config.OverclockSelfGunShare of the
 	-- placeable rate bonus, on fire rate and reload); with CREW OVERCLOCK the better of the two applies, not both.
-	local W = Runs.worldOf(state.player)
-	local nowT = Workspace:GetServerTimeNow()
+	local W = Runs.worldOf(player)
 	local rateAdd, reloadAdd = 0, 0
-	if W.crewOverclockUntil > nowT and W.isInParty(state.player) then
+	if W.crewOverclockUntil > nowT and W.isInParty(player) then
 		rateAdd, reloadAdd = Config.CrewOverclockFireRatePct, Config.CrewOverclockReloadPct
 	end
 	local ocUntil = state.abilityActive.overclock
@@ -371,36 +414,46 @@ function PlayerState.computed(state: State): Types.Computed
 		local own = (state.overclockGunMult - 1) * Config.OverclockSelfGunShare
 		rateAdd, reloadAdd = math.max(rateAdd, own), math.max(reloadAdd, own)
 	end
-	if rateAdd > 0 or reloadAdd > 0 then
-		local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
-		b.fireRateMult *= 1 + rateAdd
-		b.reloadSpeedMult *= 1 + reloadAdd
-		buffs = b
-	end
-	local st = Stats.compute(state.upgrades, state.held, buffs, state.skillMods)
-	-- SHARPSHOOTER I / II.
-	if PlayerState.passive(state, "SHARPSHOOTER", 1) then
-		st.headshotMult += Config.SharpHeadshotAdd
-	end
-	if PlayerState.passive(state, "SHARPSHOOTER", 2) then
-		local w = Weapons.ById[state.held.weaponId]
-		if w and (w.archetype == "Sniper" or w.archetype == "Pistol") then
-			st.reloadTime /= 1 + Config.MarksmanKitReloadPct
-		end
-	end
+	Stats.set(player, "overclock:rate", "fireRate", rateAdd * 100)
+	Stats.set(player, "overclock:reload", "reload", reloadAdd * 100)
 	-- FIELD HOSPITAL (a DOC III's med bag): allies inside deal more damage.
-	if state.fieldHospitalUntil > Workspace:GetServerTimeNow() then
-		st.damage *= 1 + Config.FieldHospitalDmgPct
-	end
-	-- Brief 6 boosts: POWER on weapon damage, CASH (and VIP's +25%) on CASH GAIN.
-	st.damage *= Boosts.damageMult(state.player)
-	st.cashGain *= Boosts.cashMult(state.player)
-	return st
+	Stats.set(
+		player,
+		"field:hospital",
+		"damage",
+		if state.fieldHospitalUntil > nowT then Config.FieldHospitalDmgPct * 100 else 0
+	)
 end
 
+-- A class mastery passive: on while `classId` is the class the run started with at `tier` or better.
+function PlayerState.passive(state: State, classId: string, tier: number): boolean
+	return state.masteryClass == classId and state.masteryTier >= tier
+end
+
+-- Brief 12: every number on the sheet comes out of the resolver (Stats.compute). This only makes sure the held
+-- gun's Armory level and the timed windows are registered first; boosts register from Boosts, cards from
+-- UpgradeShop, the web from armSkills, passives from Mastery.
+function PlayerState.computed(state: State): Types.Computed
+	local uid = (state :: any).statGunUid
+	if uid ~= state.held.uid then
+		(state :: any).statGunUid = state.held.uid
+		Stats.registerGun(state.player, state.held)
+	end
+	syncTimedSources(state)
+	return Stats.compute(state.player, state.held)
+end
+
+-- The damage points the floor-gun tags add to any gun (every damage source but the held gun's own Armory level,
+-- which a floor gun replaces with its own).
 function PlayerState.damagePct(state: State): number
-	local u = state.upgrades.Damage
-	return if u then u.pct / 100 else 0
+	PlayerState.computed(state)
+	local own = 0
+	for _, s in Stats.sourcesOf(state.player, "damage") do
+		if string.sub(s.id, 1, 8) == "armory:g" then
+			own += s.value
+		end
+	end
+	return (Stats.resolve(state.player, "damage") - own) / 100
 end
 
 ------------------------------------------------------------------ Character dressing
@@ -536,6 +589,13 @@ end
 
 function PlayerState.reset(state: State, cash: number?)
 	local fresh = freshState(state.player, state.joinIndex)
+	-- Brief 12: a fresh run starts with no sources but the account's own (boosts re-assert at once; the web and
+	-- passives register at the run start).
+	Stats.clear(state.player)
+	local st: any = state -- the next computed() re-registers the gun and any window
+	st.statGunUid = nil
+	st.statBuffKey = nil
+	Boosts.sync(state.player)
 	for k, v in fresh do
 		(state :: any)[k] = v
 	end
@@ -564,6 +624,7 @@ function PlayerState.armSkills(state: State, why: string)
 	local p = state.profile or Profiles.get(state.player)
 	local owned = p and p.skills and p.skills.owned
 	state.skillMods = Skills.modifiers(owned)
+	PlayerState.registerWeb(state, owned) -- brief 12: every node is a resolver source
 	if state.skillMods.nodes > 0 then
 		for _, n in Skills.List do
 			if owned and owned[n.id] then
@@ -594,6 +655,7 @@ end
 -- Back to nothing (leaving the range).
 function PlayerState.disarmSkills(state: State)
 	state.skillMods = Skills.zero()
+	Stats.removeGroup(state.player, "web:")
 	state.armor = 0
 	state.armorMax = 0
 	PlayerState.applyCharacterStats(state)
@@ -612,7 +674,8 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 		return
 	end
 	-- Brief 9 TOUGHNESS: less damage taken, before armor soaks it.
-	amount *= math.max(0.05, 1 - state.skillMods.damageTakenPct)
+	-- Brief 12: damage-taken reduction stacks multiplicatively (resist), never 100%.
+	amount *= Stats.mult(player, "damageTaken")
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then
@@ -658,12 +721,16 @@ function PlayerState.inParty(state: State): boolean
 	return not Runs.slotOf(state.player).isHub
 end
 
--- An ability's cooldown for this player: the Config base less ABILITY COOLDOWN (capped in Stats).
+-- An ability's base cooldown (Config.AbilityCooldown, or the brief 12 abilities' own keys).
+function PlayerState.baseCooldown(abilityId: string): number
+	return (Config.AbilityCooldown :: any)[abilityId] or (Config.AbilityCooldownB12 :: any)[abilityId] or 10
+end
+
+-- An ability's cooldown for this player. Brief 12: every cooldown source (ABILITY COOLDOWN cards, COOLDOWN nodes,
+-- anything later) is haste: base / (1 + h / 100), never under AbilityMinCooldownSec.
 function PlayerState.abilityCooldown(state: State, abilityId: string): number
-	local base = Config.AbilityCooldown[abilityId] or 10
-	-- Brief 9 COOLDOWN nodes take their share off the base first; the run's ABILITY COOLDOWN (capped) then applies.
-	local skill = math.max(0.05, 1 - state.skillMods.cooldownPct)
-	return base * skill * math.max(0.05, 1 - PlayerState.computed(state).abilityCdr)
+	local base = PlayerState.baseCooldown(abilityId)
+	return Stats.time(state.player, "cooldown", base, math.min(base, Config.AbilityMinCooldownSec))
 end
 
 -- ABILITY POWER: ability damage, heal and placeable HP multiplier.
@@ -723,6 +790,58 @@ function PlayerState.offhandView(state: State): Types.OffhandView?
 	}
 end
 
+-- Brief 12: the resolver's answers the client reads (hold speeds it times itself, the floor-gun tags' typed damage,
+-- the weapon card): resolved values by stat, plus `<stat>Mult` for the haste stats.
+local ARCHETYPES: { string } = {}
+do
+	local seen: { [string]: boolean } = {}
+	for _, w in Weapons.List do
+		if not seen[w.archetype] then
+			seen[w.archetype] = true
+			table.insert(ARCHETYPES, w.archetype)
+		end
+	end
+end
+local VIEW_STATS = {
+	"interact",
+	"revive",
+	"pickup",
+	"cooldown",
+	"fireRate",
+	"reload",
+	"moveSpeed",
+	"area",
+	"critChance",
+	"damageTaken",
+}
+
+function PlayerState.resolvedView(state: State): { [string]: any }
+	local p = state.player
+	local out: { [string]: any } = {}
+	for _, stat in VIEW_STATS do
+		out[stat] = Stats.resolve(p, stat)
+		out[stat .. "Mult"] = Stats.mult(p, stat)
+	end
+	local typed = {}
+	for _, a in ARCHETYPES do
+		local v = Stats.resolve(p, "typeDamage." .. a)
+		if v ~= 0 then
+			typed[a] = v
+		end
+	end
+	out.typeDamage = typed
+	out.critMaxed = Stats.isMaxed(p, "critChance")
+	return out
+end
+
+function PlayerState.cardViews(state: State): { [string]: Stats.CardView }
+	local out = {}
+	for _, statId in state.upgradeOrder do
+		out[statId] = Stats.cardView(state.player, statId)
+	end
+	return out
+end
+
 -- Modules that sit above PlayerState add their own per-player views here (dealer, pause): key -> fn(player).
 PlayerState.syncHooks = {} :: { [string]: (Player) -> any }
 
@@ -755,7 +874,9 @@ function PlayerState.buildSync(state: State): Types.Sync
 		maxHP = st.maxHP,
 		armor = math.floor(state.armor), -- Round 25 ARMOR (the HP bar's overlay)
 		maxArmor = state.armorMax,
-		dmgPct = PlayerState.damagePct(state), -- the floor-gun tags show guns at your own damage upgrades
+		dmgPct = PlayerState.damagePct(state), -- the floor-gun tags show guns at your own damage sources (brief 12)
+		resolved = PlayerState.resolvedView(state), -- brief 12: the resolver's answers the client needs
+		cardViews = PlayerState.cardViews(state), -- brief 12: the tracker's resolved totals and their sources
 		skillMods = state.skillMods, -- brief 9: the armed Skill Web (floor-gun tags add its weapon bonus too)
 		held = {
 			weaponId = w.id,
@@ -765,7 +886,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 			rarityName = Rarity.name(state.held.rarity),
 			level = state.held.level,
 			dmg = st.damage,
-			dps = Stats.weaponDps(w.id, state.held.rarity, state.upgrades, state.held.level, state.skillMods),
+			dps = Stats.weaponDps(state.player, state.held, st),
 			fireRate = st.fireRate,
 			magSize = st.magSize,
 			reloadTime = st.reloadTime,
@@ -933,6 +1054,7 @@ function PlayerState.init()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
+		Stats.clear(player)
 	end)
 
 	local acc = 0
@@ -954,9 +1076,8 @@ function PlayerState.init()
 			end
 			-- Round 25: ARMOR. A new card fills its points at once; spent armor refills at ArmorRegenPctPerSec of
 			-- the total once ArmorRegenDelay passes without a hit.
-			local up = state.upgrades.Armor
 			-- Brief 9 ARMOR nodes add flat points (full at the run start, like a new card).
-			local maxArmor = math.max(0, (if up then up.pct else 0) + state.skillMods.armorFlat)
+			local maxArmor = math.max(0, Stats.resolve(player, "armor")) -- brief 12: cards + ARMOR nodes, additive
 			if maxArmor ~= state.armorMax then
 				if maxArmor > state.armorMax then
 					state.armor += maxArmor - state.armorMax
@@ -970,9 +1091,10 @@ function PlayerState.init()
 				and hum.Health > 0
 				and not state.downed
 				and state.armor < maxArmor
-				and Workspace:GetServerTimeNow() - state.lastHurtAt >= Config.ArmorRegenDelay * math.max(
-					0,
-					1 - state.skillMods.armorDelayPct
+				and Workspace:GetServerTimeNow() - state.lastHurtAt >= Stats.time(
+					player,
+					"armorDelay",
+					Config.ArmorRegenDelay
 				)
 				and not Runs.modOf(player, "Pause").active()
 			then

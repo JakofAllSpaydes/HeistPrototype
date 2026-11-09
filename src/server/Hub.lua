@@ -24,6 +24,7 @@ local HubMap = require(script.Parent.HubMap)
 local Log = require(script.Parent.Log)
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
+local Stats = require(script.Parent.Stats)
 
 local Hub = {}
 
@@ -856,7 +857,7 @@ function Hub.beginRun(players: { Player })
 		PlayerState.reset(state, Config.StartingCash)
 		-- Brief 9: the Skill Web applies for the whole run; SEED MONEY lands on the starting cash.
 		PlayerState.armSkills(state, "run start")
-		state.cash += state.skillMods.startCashFlat
+		state.cash += Stats.resolve(state.player, "startCash")
 		if not player.Character then
 			player:LoadCharacter()
 		end

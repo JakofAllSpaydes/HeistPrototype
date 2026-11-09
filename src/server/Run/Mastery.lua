@@ -68,6 +68,7 @@ local function applyClassTier(state: PlayerState.State, classId: string, tier: n
 		return
 	end
 	state.masteryTier = tier
+	PlayerState.registerPassives(state) -- brief 12
 	if PlayerState.passive(state, "TORCH", 2) and World.inRun() then
 		UpgradeShop.grantElement(state, "Incendiary") -- HOT ROUNDS
 	end
@@ -146,6 +147,7 @@ function Mastery.beginRun(players: { Player })
 		state.masteryTier = MasteryCopy.classTier(Mastery.classXp(state.profile, classId))
 		state.stimExtended = 0
 		state.charges = {}
+		PlayerState.registerPassives(state) -- brief 12: the stat-moving passives are resolver sources
 		if PlayerState.passive(state, "TORCH", 2) then
 			UpgradeShop.grantElement(state, "Incendiary")
 		end

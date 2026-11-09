@@ -773,6 +773,46 @@ local function build()
 		b.TextSize = S(9)
 		b.TextColor3 = if NodeOverlay.shown[typeName] then Theme.Colors.gold else Theme.Colors.grey
 	end
+	-- Brief 12: CLASSES & STATS (the resolver, the kits, SWARM, area and knockback). The STATS block prints with
+	-- the Stats button above.
+	UI.text({
+		Text = "CLASSES & STATS",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.amber,
+		Size = UDim2.new(1, 0, 0, S(16)),
+		LayoutOrder = 31,
+		Parent = panel,
+	})
+	local rB1 = row(panel, 31.1, rh)
+	btn(rB1, "Stats log", 0.2, function()
+		send("StatsLog")
+	end, Theme.Colors.gold)
+	local hasteBox = numberBox(rB1, "haste…", 0.2)
+	btn(rB1, "Set haste", 0.2, function()
+		send("SetHaste", tonumber(hasteBox.Text) or 0)
+	end)
+	local areaBox = numberBox(rB1, "area…", 0.2)
+	btn(rB1, "Set area", 0.2, function()
+		send("SetArea", tonumber(areaBox.Text) or 0)
+	end)
+	local rB2 = row(panel, 31.2, rh)
+	btn(rB2, "Combat log", 0.25, function()
+		send("CombatLog")
+	end, Theme.Colors.gold)
+	local classBox = numberBox(rB2, "class id…", 0.35)
+	btn(rB2, "Force class", 0.4, function()
+		send("ForceClass", classBox.Text)
+	end)
+	local rB3 = row(panel, 31.3, rh)
+	local abilityBox = numberBox(rB3, "ability id [slot]…", 0.3)
+	btn(rB3, "Grant ability", 0.25, function()
+		send("GrantAbility", abilityBox.Text)
+	end)
+	local droneBox = numberBox(rB3, "n…", 0.2)
+	btn(rB3, "Spawn drones", 0.25, function()
+		send("SpawnDrones", tonumber(droneBox.Text) or 10)
+	end)
 end
 
 local function refreshToggles()

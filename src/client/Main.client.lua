@@ -79,7 +79,7 @@ ClientState.Changed:Connect(syncPlayerList)
 syncPlayerList()
 
 -- Brief 9 QUICK HANDS: a hold prompt the server marks with QuickHandsBase (the side job's HACK) runs shorter on this
--- client by the armed Skill Web's interactPct (the server never times the hold; doors scale on the server).
+-- client by the resolved interact haste (brief 12: StateSync's resolved.interactMult; doors scale on the server).
 do
 	local ProximityPromptService = game:GetService("ProximityPromptService")
 	ProximityPromptService.PromptShown:Connect(function(prompt: ProximityPrompt)
@@ -87,9 +87,9 @@ do
 		if typeof(base) ~= "number" then
 			return
 		end
-		local mods = ClientState.sync and (ClientState.sync :: any).skillMods
-		local pct = if typeof(mods) == "table" then tonumber(mods.interactPct) or 0 else 0
-		prompt.HoldDuration = base / (1 + math.max(0, pct))
+		local r = ClientState.sync and (ClientState.sync :: any).resolved
+		local mult = if typeof(r) == "table" then tonumber(r.interactMult) or 1 else 1
+		prompt.HoldDuration = base / math.max(0.2, mult)
 	end)
 end
 

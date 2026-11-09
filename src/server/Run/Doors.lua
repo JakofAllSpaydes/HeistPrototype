@@ -26,6 +26,7 @@ local MapLoader = require(script.Parent.MapLoader)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local Bags = require(script.Parent.Bags)
 local CrewCall = require(script.Parent.CrewCall)
 local Pause = require(script.Parent.Pause)
@@ -1305,7 +1306,7 @@ function Doors.init()
 			local before = g.progress
 			if holder then
 				-- Brief 9 QUICK HANDS: the holder's Skill Web speeds the hold.
-				local speed = 1 + PlayerState.get(holder).skillMods.interactPct
+				local speed = Stats.mult(holder, "interact") -- haste
 				g.progress = math.min(1, g.progress + dt * speed / math.max(door.interactTime, 0.1))
 				g.keepUntil = now + Config.DoorHoldSec
 			elseif g.progress > 0 and now > g.keepUntil then

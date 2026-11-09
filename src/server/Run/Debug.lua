@@ -10,6 +10,7 @@ local Rarity = require(Shared.Rarity)
 local Enemies = require(Shared.Enemies)
 local Room = require(script.Parent.Room)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local Economy = require(script.Parent.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local WeaponRoll = require(script.Parent.WeaponRoll)
@@ -376,7 +377,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			if World.inRun() or s.inRange then
 				PlayerState.armSkills(s, "debug reset run") -- brief 9
 				if World.inRun() then
-					s.cash += s.skillMods.startCashFlat
+					s.cash += Stats.resolve(s.player, "startCash")
 				end
 			end
 		end
@@ -445,6 +446,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		Economy.printStats()
 		MapLoader.printStats(Doors.openedLog, Spawner.contactRun, EnemyPath.history)
 		SkillService.printStats(player) -- brief 9: owned per branch and the modifier table
+		Stats.print(player) -- brief 12: every resolved stat, its mode and its sources
 		Streak.printStats(player) -- brief 10
 		DailyCrate.printStats(player)
 	end,
@@ -596,6 +598,26 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 	ReviveAll = function(_player, _state, _args)
 		Downed.reviveEverybody(nil)
+	end,
+	-- Brief 12: the resolver's debug (the STATS block prints with the Stats button).
+	StatsLog = function(player, _state, _args)
+		Stats.logEnabled = not Stats.logEnabled
+		toast(player, if Stats.logEnabled then "STATS LOG ON" else "STATS LOG OFF")
+	end,
+	SetHaste = function(player, state, args)
+		local n = tonumber(args) or 0
+		for stat, def in Config.StatDefs :: { [string]: any } do
+			if def.mode == "haste" and stat ~= "typeReload" then
+				Stats.add(player, "debug:haste:" .. stat, stat, n)
+			end
+		end
+		PlayerState.applyCharacterStats(state)
+		toast(player, string.format("HASTE OVERRIDE %+d", n))
+	end,
+	SetArea = function(player, _state, args)
+		local n = tonumber(args) or 0
+		Stats.add(player, "debug:area", "area", n)
+		toast(player, string.format("AREA OVERRIDE %+d (now %+d%%)", n, math.round(Stats.resolve(player, "area"))))
 	end,
 }
 

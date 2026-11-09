@@ -20,6 +20,7 @@ local Economy = require(script.Parent.Parent.Economy)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
 local Boosts = require(script.Parent.Parent.Boosts)
+local Stats = require(script.Parent.Parent.Stats)
 
 local UpgradeShop = {}
 
@@ -106,6 +107,19 @@ local function cardValue(state: PlayerState.State, statId: string, tier: number)
 	return Upgrades.magnitude(statId, tier)
 end
 
+-- Brief 12: stats this player can no longer use leave their draws (crit at 100%: Stats.isMaxed on any capped stat),
+-- and AREA cards only show with an eligible gun or class (UpgradeShop.areaEligible, step 5).
+local CAPPED_CARDS: { [string]: string } = { CritChance = "critChance" }
+function UpgradeShop.excluded(state: PlayerState.State): { [string]: boolean }
+	local out: { [string]: boolean } = {}
+	for statId, stat in CAPPED_CARDS do
+		if Stats.isMaxed(state.player, stat) then
+			out[statId] = true
+		end
+	end
+	return out
+end
+
 -- `count` cards (3 for the pick-3, Config.DealerStock for the dealer), each a different stat. Each slot first
 -- rolls Config.SynergyChance for a conditional card when any qualifies (not on a debug-forced slot), else draws
 -- normally. Element and synergy cards are never tradeoffs.
@@ -114,7 +128,7 @@ end
 function UpgradeShop.generate(state: PlayerState.State, wave: number, count: number?, luck: number?): { Types.Card }
 	local n = count or 3
 	local cards: { Types.Card } = {}
-	local used: { [string]: boolean } = {}
+	local used: { [string]: boolean } = UpgradeShop.excluded(state)
 	local forcedIndex = if state.forceTradeoff then math.random(1, n) else nil
 	local elementIndex = if state.forceElement then math.random(1, n) else nil
 	-- Debug FORCE SYNERGY (Round 18): one slot takes a qualifying synergy card when any qualifies.
@@ -173,7 +187,24 @@ local function describeCards(cards: { Types.Card }): string
 end
 UpgradeShop.describeCards = describeCards
 
-local function applyStat(state: PlayerState.State, statId: string, pct: number, tier: number, isMalus: boolean)
+-- Brief 12: every card (and dealer stand, and HOT ROUNDS) also registers a resolver source `<from>:<n>` on the
+-- card's stat; the tracker keeps the running total for the HUD tiles.
+local function applyStat(
+	state: PlayerState.State,
+	statId: string,
+	pct: number,
+	tier: number,
+	isMalus: boolean,
+	from: string?
+)
+	local seq = ((state :: any).cardSeq or 0) + 1;
+	(state :: any).cardSeq = seq
+	Stats.add(
+		state.player,
+		string.format("%s:%d:%s%s", from or "card", seq, statId, if isMalus then ":malus" else ""),
+		Stats.cardStat(statId),
+		pct
+	)
 	local item = state.upgrades[statId]
 	if not item then
 		item = { count = 0, pct = 0, highestTier = 0, everMalus = false }
@@ -195,7 +226,7 @@ function UpgradeShop.grantElement(state: PlayerState.State, statId: string)
 	if state.upgrades[statId] then
 		return
 	end
-	applyStat(state, statId, Upgrades.elementBase(statId), 1, false)
+	applyStat(state, statId, Upgrades.elementBase(statId), 1, false, "passive")
 	state.dirty = true
 end
 
@@ -211,9 +242,10 @@ end
 -- Apply a card (the pick-3 take or a dealer purchase): the stat, its malus, character stats, the juice.
 function UpgradeShop.applyCard(player: Player, card: Types.Card, source: string)
 	local state = PlayerState.get(player)
-	applyStat(state, card.stat, card.pct, card.tier, false)
+	local from = if source == "dealer" then "dealer" else "card"
+	applyStat(state, card.stat, card.pct, card.tier, false, from)
 	if card.malusStat and card.malusPct then
-		applyStat(state, card.malusStat, -card.malusPct, 0, true)
+		applyStat(state, card.malusStat, -card.malusPct, 0, true, from)
 	end
 	PlayerState.applyCharacterStats(state)
 	state.dirty = true
@@ -244,7 +276,8 @@ function UpgradeShop.buy(player: Player): any
 	end
 	state.upgradesBought += 1
 	state.waveUpgrades += 1
-	state.openPick3 = UpgradeShop.generate(state, World.wave, nil, state.skillMods.cardLuck * Config.LuckOddsStep)
+	state.openPick3 =
+		UpgradeShop.generate(state, World.wave, nil, Stats.resolve(player, "cardLuck") * Config.LuckOddsStep)
 	state.dirty = true
 	Log.event(
 		"Upgrade",

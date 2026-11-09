@@ -16,6 +16,7 @@ local Maps = require(Shared.Maps)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local RunStart = require(script.Parent.RunStart)
 local Hub = require(script.Parent.Parent.Hub)
 local Squad = require(script.Parent.Squad)
@@ -235,7 +236,7 @@ end
 -- Brief 9 FENCE: the player's Skill Web adds its share to the banked bags this player is paid (the team's total
 -- stays the team's). Returns the Gold this player gets for `banked`.
 local function fenced(s: PlayerState.State, banked: number): number
-	return math.round(banked * (1 + s.skillMods.bankedPct))
+	return math.round(banked * Stats.mult(s.player, "banked"))
 end
 
 local function payout(p: Player, s: PlayerState.State, base: number, teamBanked: number): (number, boolean, boolean)

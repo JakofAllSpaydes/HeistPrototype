@@ -12,6 +12,7 @@ local Remotes = require(Shared.Remotes)
 local BoostDefs = require(Shared.BoostDefs)
 local Profiles = require(script.Parent.Profiles)
 local Log = require(script.Parent.Log)
+local Stats = require(script.Parent.Stats)
 
 local Boosts = {}
 
@@ -75,6 +76,18 @@ function Boosts.cashMult(player: Player?): number
 	return m
 end
 
+-- Brief 12: the boosts register their resolver sources (POWER on gun, ability and element damage; CASH and VIP on
+-- CASH GAIN, additive with the cards) and drop them when they run out. Re-asserted every second (Boosts.init) and
+-- after a run reset; Stats.set is a no-op while nothing changed.
+function Boosts.sync(player: Player)
+	local power = if Boosts.active(player, "power") then Config.PowerBoostPct * 100 else 0
+	Stats.set(player, "boost:power:gun", "damage", power)
+	Stats.set(player, "boost:power:ability", "abilityDamage", power)
+	Stats.set(player, "boost:power:element", "elementDamage", power)
+	Stats.set(player, "boost:cash", "cashGain", if Boosts.active(player, "cash") then Config.CashBoostPct * 100 else 0)
+	Stats.set(player, "vip:cash", "cashGain", if vipActive(player) then Config.VipCashPct * 100 else 0)
+end
+
 -- LUCKY: wave-bracket rows the in-run rarity rolls move up.
 function Boosts.luckyShift(player: Player?): number
 	if player and Boosts.active(player, "lucky") then
@@ -107,6 +120,7 @@ function Boosts.init()
 						Log.event("Boost", "%s %s expired", player.Name, id)
 					end
 				end
+				Boosts.sync(player)
 			end
 		end
 	end)

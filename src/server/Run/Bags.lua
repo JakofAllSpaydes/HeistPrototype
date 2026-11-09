@@ -26,6 +26,7 @@ local Ground = require(Shared.Ground)
 local Room = require(script.Parent.Room)
 local Lines = require(Shared.CrewCall.Lines)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local Economy = require(script.Parent.Parent.Economy)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
@@ -546,7 +547,7 @@ function Bags.collect(player: Player, b: Bag, streak: number?): boolean
 		for _, p in World.runAudience() do
 			-- Each member's own CASH GAIN, and (brief 9) their own BAG VALUE on the cash it pays them.
 			local ps = PlayerState.get(p)
-			Economy.addEarned(ps, b.value * (1 + ps.skillMods.bagValuePct))
+			Economy.addEarned(ps, b.value * Stats.mult(ps.player, "bagValue"))
 		end
 		toast = string.format(Lines.bagGrabbed, string.upper(player.Name), "$" .. tostring(b.value))
 	end
@@ -616,7 +617,7 @@ local function pick(player: Player, root: BasePart): Bag?
 	local best: Bag? = nil
 	local bestFill, bestDist = -1, math.huge
 	-- Brief 9 MAGNET: the player's Skill Web widens the reach a bag starts filling from.
-	local reach = Config.BagStartRadius * (1 + PlayerState.get(player).skillMods.pickupRadiusPct)
+	local reach = Config.BagStartRadius * Stats.mult(player, "pickupRadius") -- brief 12: softcap
 	for _, b in bags do
 		if not b.active or (b.by ~= nil and b.by ~= player) then
 			continue
@@ -710,7 +711,7 @@ local function step(dt: number)
 		if b then
 			c.idle = 0
 			-- Brief 9 FAST HANDS: the player's Skill Web shortens the fill.
-			local speed = 1 + PlayerState.get(player).skillMods.pickupSpeedPct
+			local speed = Stats.mult(player, "pickup") -- haste
 			b.progress = math.min(1, b.progress + dt * speed / channelSec(c.streak))
 			if b.progress >= 1 then
 				release(player, c)

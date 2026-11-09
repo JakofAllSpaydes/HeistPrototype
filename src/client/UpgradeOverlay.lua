@@ -97,8 +97,16 @@ local function buildTrackerTile(
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	-- Elements show the proc chance, utility stats the running total, gun stats the count.
-	local badge, badgeLabel =
-		UI.pill(tile, Upgrades.badgeText(statId, item), Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
+	-- Brief 12: utility / defense / synergy totals show the RESOLVED value (COOLDOWN -23% from all its haste), not
+	-- the cards' raw sum; the tip lists every source behind it.
+	local views = ClientState.sync and (ClientState.sync :: any).cardViews
+	local view = if typeof(views) == "table" then views[statId] else nil
+	local badgeText = Upgrades.badgeText(statId, item)
+	local cat = Upgrades.category(statId)
+	if view and cat ~= "gun" and cat ~= "element" then
+		badgeText = view.text
+	end
+	local badge, badgeLabel = UI.pill(tile, badgeText, Theme.Colors.gold, Theme.Colors.bg, S(16), S(10))
 	badge.AnchorPoint = Vector2.new(1, 1)
 	badge.Position = UDim2.new(1, S(4), 1, S(4))
 	badge.ZIndex = 4
@@ -126,7 +134,7 @@ local function buildTrackerTile(
 		BackgroundColor3 = Theme.Colors.panel2,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 0, -S(8)),
-		Size = UDim2.fromOffset(S(230), S(56)),
+		Size = UDim2.fromOffset(S(230), if view and view.n > 0 then S(74) + S(13) * math.min(view.n, 6) else S(56)),
 		Visible = false,
 		ZIndex = 10,
 		Parent = tile,
@@ -135,11 +143,20 @@ local function buildTrackerTile(
 	UI.stroke(tip, Theme.Colors.grey, S(1))
 	UI.text({
 		Text = string.format(
-			"%s · %s %s\n%s",
+			"%s · %s %s\n%s%s",
 			string.upper(Upgrades.statName(statId)),
-			Upgrades.pctText(item.pct, statId),
+			if view then view.text else Upgrades.pctText(item.pct, statId),
 			Upgrades.effectName(statId) or "TOTAL", -- elements: "FIRE AMMO · +130% BURN"
-			Upgrades.tierTable(statId)
+			Upgrades.tierTable(statId),
+			-- Brief 12: the breakdown ("FROM 5 SOURCES" and each one).
+			if view and view.n > 0
+				then string.format(
+					"\nFROM %d SOURCE%s\n%s",
+					view.n,
+					if view.n == 1 then "" else "S",
+					table.concat(view.lines, "\n", 1, math.min(#view.lines, 6))
+				)
+				else ""
 		),
 		TextSize = S(11),
 		TextWrapped = true,

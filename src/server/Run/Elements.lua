@@ -20,11 +20,11 @@ local Config = require(Shared.Config)
 local Remotes = require(script.Parent.SlotRemotes)
 local Types = require(Shared.Types)
 local PlayerState = require(script.Parent.Parent.PlayerState)
+local Stats = require(script.Parent.Parent.Stats)
 local Economy = require(script.Parent.Parent.Economy)
 local Enemy = require(script.Parent.Enemy)
 local World = require(script.Parent.World)
 local Pause = require(script.Parent.Pause)
-local Boosts = require(script.Parent.Parent.Boosts)
 
 type Status = {
 	model: Model,
@@ -383,7 +383,7 @@ end
 -- A burn tick on the owner's behalf: kill cash with their CASH GAIN, the Hit juice to them.
 local function burnTick(s: Status)
 	local owner = s.burnOwner
-	local dmg = math.max(1, math.round(s.burnDps * Config.FieldTickSec * Boosts.damageMult(owner))) -- POWER (brief 6)
+	local dmg = math.max(1, math.round(s.burnDps * Config.FieldTickSec * Stats.mult(owner, "elementDamage"))) -- POWER (brief 6; brief 12: a source)
 	ownedHit(owner, s.model, dmg, Enemy.rootPosition(s.model) or Vector3.zero)
 end
 
