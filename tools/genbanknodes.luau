@@ -633,6 +633,62 @@ if process.args[1] == "brief13" then
 	-- The grass dealer spot moves onto the pavement in front of the bank.
 	put("DealerSpots", node("dealer_grass", { -60, 1.5, -138 }, { 4, 2, 4 }, 180, { Zone = "street" }))
 
+	-- Step 4: the street dressing. Every piece is a Dressing node: Mesh names a template under
+	-- Workspace.Bank.Dressing.Templates (tools/genbankdressing.luau), Stage the stage it shows from (1 wave 5,
+	-- 2 wave 10, 3 wave 15: Config.DressingStageWaves), Boss = shown on boss waves only. The fence-end pieces carry
+	-- StreetScale, so they follow the fence in (their x here is the 1.0 street: runtime x = x * the mult). All of it
+	-- sits behind the fence line, clear of the spawn boxes' mouths, and nothing of it collides.
+	local K = 1 / 0.7 -- drawn so that at the shipped StreetSpawnDistanceMult 0.7 they land where intended
+	local function dress(name: string, at: { number }, size: { number }, facing: number, a: { [string]: any })
+		put("Dressing", node(name, at, size, facing, a))
+	end
+	local function ends(name: string, x: number, z: number, size: { number }, facingW: number, a: { [string]: any })
+		-- West at -x facing facingW, east mirrored.
+		local fe = if facingW == 90 or facingW == -90 then facingW else -facingW
+		dress(name .. "_w", { -x * K, 2, z }, size, facingW, table.clone(a))
+		dress(name .. "_e", { x * K, 2, z }, size, fe, table.clone(a))
+	end
+	local scaled = function(stage: number, mesh: string, extra: { [string]: any }?): { [string]: any }
+		local a: { [string]: any } = { Stage = stage, Mesh = mesh, StreetScale = true }
+		for k, v in extra or {} do
+			a[k] = v
+		end
+		return a
+	end
+	-- Stage 1 (wave 5): tape across both fence ends, two cruisers nosed in at each end, cones.
+	ends("tape_n", 101, -166, { 34, 3.6, 0.6 }, 90, scaled(1, "Tape"))
+	ends("tape_s", 101, -200, { 34, 3.6, 0.6 }, 90, scaled(1, "Tape"))
+	ends("cruiser_n", 138, -168, { 7, 5, 14 }, -65, scaled(1, "Cruiser"))
+	ends("cruiser_s", 138, -198, { 7, 5, 14 }, -115, scaled(1, "Cruiser"))
+	for i, z in { -158, -183, -208 } do
+		ends("cone_" .. i, 105, z, { 1.6, 2.5, 1.6 }, 0, scaled(1, "Cone"))
+	end
+	-- Stage 2 (wave 10): barricades in front of the cruisers, the SWAT van at the east end, two searchlights on the
+	-- far side of the grass sweeping the facade.
+	ends("barricade_n", 126, -168, { 8, 3, 2.6 }, 90, scaled(2, "Barricade"))
+	ends("barricade_s", 126, -198, { 8, 3, 2.6 }, 90, scaled(2, "Barricade"))
+	dress("swat_van", { 160 * K, 2, -183 }, { 8, 8, 22 }, 90, scaled(2, "SwatVan"))
+	dress("searchlight_w", { -120, 2, -296 }, { 2.2, 4.5, 2.4 }, 180, { Stage = 2, Mesh = "Searchlight" })
+	dress("searchlight_e", { 120, 2, -296 }, { 2.2, 4.5, 2.4 }, 180, { Stage = 2, Mesh = "Searchlight" })
+	-- Stage 3 (wave 15): roadblock sawhorses and more cruisers (the helicopter flies the HeliPath loop).
+	ends("sawhorse_n", 108, -175, { 6, 3, 1.2 }, 90, scaled(3, "Sawhorse"))
+	ends("sawhorse_s", 108, -191, { 6, 3, 1.2 }, 90, scaled(3, "Sawhorse"))
+	ends("cruiser_far_n", 150, -160, { 7, 5, 14 }, -90, scaled(3, "Cruiser"))
+	ends("cruiser_far_s", 150, -206, { 7, 5, 14 }, -90, scaled(3, "Cruiser"))
+	-- Boss waves (additive): an ambulance and extra cruiser lights.
+	dress("ambulance", { -165 * K, 2, -183 }, { 8, 8, 17 }, -90, scaled(0, "Ambulance", { Boss = true }))
+	ends("cruiser_boss", 172, -170, { 7, 5, 14 }, -100, scaled(0, "Cruiser", { Boss = true }))
+	-- The helicopter's loop: an oval over the street and the bank front, flown in Index order at HeliAltitude.
+	for i = 1, 8 do
+		local a = (i - 1) / 8 * math.pi * 2
+		put(
+			"HeliPath",
+			node(string.format("heli_%d", i), { math.cos(a) * 150, 90, -110 + math.sin(a) * 100 }, { 4, 4, 4 }, 0, {
+				Index = i,
+			})
+		)
+	end
+
 	fs.writeFile("src/map/Bank.nodes.model.json", serde.encode("json", existing, true))
 	print("[genbanknodes] brief13 -> src/map/Bank.nodes.model.json")
 	return

@@ -13075,6 +13075,4843 @@
       ],
       "className": "Folder",
       "name": "Blockers"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "Mesh": "Tape",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · tape_n_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.8,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "tape_n_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -144.28571428571428,
+                  2,
+                  -1166
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              34,
+              3.6,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Tape",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · tape_n_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.8,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "tape_n_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  144.28571428571428,
+                  2,
+                  -1166
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              34,
+              3.6,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Tape",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · tape_s_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.8,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "tape_s_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -144.28571428571428,
+                  2,
+                  -1200
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              34,
+              3.6,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Tape",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · tape_s_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.8,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "tape_s_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  144.28571428571428,
+                  2,
+                  -1200
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              34,
+              3.6,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_n_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_n_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0.422618,
+                    0,
+                    -0.906308
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0.906308,
+                    0,
+                    0.422618
+                  ]
+                ],
+                "position": [
+                  -197.14285714285714,
+                  2,
+                  -1168
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_n_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_n_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0.422618,
+                    0,
+                    0.906308
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -0.906308,
+                    0,
+                    0.422618
+                  ]
+                ],
+                "position": [
+                  197.14285714285714,
+                  2,
+                  -1168
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_s_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_s_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -0.422618,
+                    0,
+                    -0.906308
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0.906308,
+                    0,
+                    -0.422618
+                  ]
+                ],
+                "position": [
+                  -197.14285714285714,
+                  2,
+                  -1198
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_s_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_s_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -0.422618,
+                    0,
+                    0.906308
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -0.906308,
+                    0,
+                    -0.422618
+                  ]
+                ],
+                "position": [
+                  197.14285714285714,
+                  2,
+                  -1198
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cone",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cone_1_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cone_1_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -150,
+                  2,
+                  -1158
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.6,
+              2.5,
+              1.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cone",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cone_1_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cone_1_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  150,
+                  2,
+                  -1158
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.6,
+              2.5,
+              1.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cone",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cone_2_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cone_2_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -150,
+                  2,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.6,
+              2.5,
+              1.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cone",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cone_2_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cone_2_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  150,
+                  2,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.6,
+              2.5,
+              1.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cone",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cone_3_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cone_3_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -150,
+                  2,
+                  -1208
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.6,
+              2.5,
+              1.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cone",
+            "Stage": 1,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cone_3_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cone_3_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  150,
+                  2,
+                  -1208
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              1.6,
+              2.5,
+              1.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Barricade",
+            "Stage": 2,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · barricade_n_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "barricade_n_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -180,
+                  2,
+                  -1168
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              3,
+              2.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Barricade",
+            "Stage": 2,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · barricade_n_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "barricade_n_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  180,
+                  2,
+                  -1168
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              3,
+              2.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Barricade",
+            "Stage": 2,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · barricade_s_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "barricade_s_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -180,
+                  2,
+                  -1198
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              3,
+              2.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Barricade",
+            "Stage": 2,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · barricade_s_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "barricade_s_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  180,
+                  2,
+                  -1198
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              3,
+              2.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "SwatVan",
+            "Stage": 2,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · swat_van",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "swat_van",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  228.57142857142858,
+                  2,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              8,
+              22
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Searchlight",
+            "Stage": 2
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · searchlight_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "searchlight_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  -120,
+                  2,
+                  -1296
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              2.2,
+              4.5,
+              2.4
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Searchlight",
+            "Stage": 2
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · searchlight_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.25,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "searchlight_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  120,
+                  2,
+                  -1296
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              2.2,
+              4.5,
+              2.4
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Sawhorse",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · sawhorse_n_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "sawhorse_n_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -154.28571428571428,
+                  2,
+                  -1175
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              6,
+              3,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Sawhorse",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · sawhorse_n_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "sawhorse_n_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  154.28571428571428,
+                  2,
+                  -1175
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              6,
+              3,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Sawhorse",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · sawhorse_s_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "sawhorse_s_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -154.28571428571428,
+                  2,
+                  -1191
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              6,
+              3,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Sawhorse",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · sawhorse_s_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "sawhorse_s_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  154.28571428571428,
+                  2,
+                  -1191
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              6,
+              3,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_far_n_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_far_n_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -214.28571428571428,
+                  2,
+                  -1160
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_far_n_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_far_n_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  214.28571428571428,
+                  2,
+                  -1160
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_far_s_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_far_s_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -214.28571428571428,
+                  2,
+                  -1206
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 3,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_far_s_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_far_s_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  214.28571428571428,
+                  2,
+                  -1206
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Boss": true,
+            "Mesh": "Ambulance",
+            "Stage": 0,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · ambulance",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "ambulance",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -235.71428571428572,
+                  2,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              8,
+              17
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Boss": true,
+            "Mesh": "Cruiser",
+            "Stage": 0,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_boss_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_boss_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -0.173648,
+                    0,
+                    -0.984808
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0.984808,
+                    0,
+                    -0.173648
+                  ]
+                ],
+                "position": [
+                  -245.71428571428572,
+                  2,
+                  -1170
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Boss": true,
+            "Mesh": "Cruiser",
+            "Stage": 0,
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · cruiser_boss_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "cruiser_boss_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -0.173648,
+                    0,
+                    0.984808
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -0.984808,
+                    0,
+                    -0.173648
+                  ]
+                ],
+                "position": [
+                  245.71428571428572,
+                  2,
+                  -1170
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "Dressing"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "Index": 1
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_1",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_1",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  150,
+                  90,
+                  -1110
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Index": 2
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_2",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_2",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  106.06601717798213,
+                  90,
+                  -1039.2893218813451
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Index": 3
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_3",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_3",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  9.184850993605149e-15,
+                  90,
+                  -1010
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Index": 4
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_4",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_4",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -106.06601717798212,
+                  90,
+                  -1039.2893218813451
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Index": 5
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_5",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_5",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -150,
+                  90,
+                  -1110
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Index": 6
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_6",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_6",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -106.06601717798215,
+                  90,
+                  -1180.7106781186549
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Index": 7
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_7",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_7",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -2.7554552980815446e-14,
+                  90,
+                  -1210
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Index": 8
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "HELI · heli_8",
+                    "TextColor3": [
+                      0.435,
+                      0.847,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "heli_8",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  106.0660171779821,
+                  90,
+                  -1180.7106781186549
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.847,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              4,
+              4,
+              4
+            ],
+            "Tags": [
+              "GHS_HeliPath"
+            ],
+            "Transparency": 0.55
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "HeliPath"
     }
   ],
   "className": "Folder"

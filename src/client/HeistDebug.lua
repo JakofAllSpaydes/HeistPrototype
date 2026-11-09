@@ -37,6 +37,18 @@ function HeistDebug.build(panel: Instance, h: Helpers)
 		markerBtn.Text = if TierMarkers.debugEnabled() then "Marker debug ON" else "Marker debug"
 		markerBtn.TextColor3 = if TierMarkers.debugEnabled() then Theme.Colors.gold else Theme.Colors.text
 	end, Theme.Colors.blue)
+	-- Step 4: the street dressing at a stage (0..3, BOSS = stage 3 + the boss pieces) and the helicopter.
+	local r2 = h.row(panel, 31.2, h.rh)
+	for _, n in { 0, 1, 2, 3, 4 } do
+		local b = h.btn(r2, if n == 4 then "BOSS" else "Stage " .. n, 0.2, function()
+			h.send("DressingStage", n)
+		end, Theme.Colors.malus)
+		b.TextSize = S(9)
+	end
+	local r3 = h.row(panel, 31.3, h.rh)
+	h.btn(r3, "Heli on / off", 1, function()
+		h.send("HeliToggle")
+	end, Theme.Colors.malus)
 end
 
 return HeistDebug

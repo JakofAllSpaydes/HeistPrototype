@@ -1989,6 +1989,29 @@ local Config = {
 	LootLookLabelSec = 1, -- the looked-at label holds this long
 	GunCrateTagScale = 0.8, -- the GUN CRATE tag at Loot size
 	MarkerCrosshairClearPx = 70, -- a Job pill this close to the screen centre fades so it never covers the crosshair
+	-- Dressing (step 4): the street tells the wave count (Dressing.lua, DressingFx.client.lua). Dressing nodes carry
+	-- their Stage; templates live in src/map/Bank.dressing.rbxmx (Workspace.Bank.Dressing.Templates).
+	DressingStageWaves = { 5, 10, 15 }, -- the wave each stage arrives for (dressed in the intermission before it)
+	DressingClearance = 3, -- studs: a piece waits while a member stands this close inside where it goes
+	DressingFlashHz = 2.5, -- light bars alternate this many times a second
+	SearchlightSweepDeg = 35, -- the searchlights sweep the facade this far either side
+	SearchlightSweepSec = 7, -- one sweep across and back
+	HeliEnabled = true, -- false = no helicopter at stage 3 (performance)
+	HeliAltitude = 90, -- studs above the bank's ground: the loop's height, over the roofline
+	HeliSpeed = 24, -- studs a second round the HeliPath loop
+	HeliSpotSwitchSec = 8, -- the spotlight moves to another crew member this often
+	HeliRotorSound = "rbxassetid://9113417360", -- Bell Huey Helicopter Hover Hovering Fly By 1 (ProSoundEffects).
+	-- Alternatives (ProSoundEffects, verified): 9113417561 Hover Hovering Fly By 3, 9113454674 Blades Helicopters
+	-- Overhead Fly Bys 3, 9125389900 Huey Fly Bys Low End Blade.
+	HeliRotorVolume = 0.5,
+	-- Siren bed per stage (looped at the street, ducked during a wave, faint inside the bank). Picks (ProSoundEffects):
+	-- 1 Police Siren Slow Vehicle Away 1, 2 Accident Scene 4, 3 Siren Composite 2. Alternatives: 9117810961 Police Siren
+	-- Slow Vehicle Away 2, 9117810647 Police Siren Old Hand Crank Style 1, 9112759347 City Night Ambience 1.
+	DressingAmbience = { "rbxassetid://9117810852", "rbxassetid://9112736857", "rbxassetid://9112871933" },
+	DressingAmbienceVolume = 0.35,
+	DressingAmbienceBossMult = 1.7, -- the siren bed this much louder on a boss wave
+	DressingAmbienceCombatDuck = 0.6, -- ... and this much quieter while a wave is being fought
+	DressingAmbienceRollOff = { 60, 420 }, -- studs: full volume within the first, silent past the second (it carries in)
 	-- Node colours for the node types added after NodeShowColor (debug Show nodes and Studio's edit mode).
 	NodeShowColorMore = {
 		Blockers = "8A2A2A",
