@@ -122,6 +122,10 @@ function StreakModal.open(view: View)
 	end
 	local S = UI.S
 	local mobile = ClientState.isMobile
+	-- Phones draw at about half the desktop scale: text reads the store's MobileStoreTextScale bigger there.
+	local function T(n: number): number
+		return if mobile then math.round(S(n) * (Config.MobileStoreTextScale or 1)) else S(n)
+	end
 	local lost = view.state == "lost"
 	local day = math.clamp(math.floor(tonumber(view.day) or 1), 1, StreakTrack.LENGTH)
 	ClientState.streakOpen = true
@@ -156,19 +160,20 @@ function StreakModal.open(view: View)
 	local pad = S(if mobile then 14 else 20)
 	local gap = S(if mobile then 6 else 8)
 	local maxW = vp.X - 32
-	local w = math.min(maxW, S(if mobile then 900 else 820))
-	local tile = math.floor(math.min(S(if mobile then 92 else 100), (w - pad * 2 - gap * 6) / 7))
-	local titleH = S(if mobile then 34 else 42)
-	local lineH = S(if mobile then 22 else 26)
-	local rowH = S(if mobile then 22 else 26) -- a collapsed week
+	-- A phone gets the whole width (a 16px gutter each side, capped) and tiles as big as the height allows.
+	local w = if mobile then math.min(maxW, 820) else math.min(maxW, S(820))
+	local tile = math.floor(math.min(if mobile then S(150) else S(100), (w - pad * 2 - gap * 6) / 7))
+	local titleH = T(if mobile then 36 else 42)
+	local lineH = T(if mobile then 24 else 26)
+	local rowH = T(if mobile then 24 else 26) -- a collapsed week
 	local btnH = if mobile then math.max(56, S(60)) else S(58)
-	local trackH = tile + S(22) + 3 * (rowH + gap)
+	local trackH = tile + T(22) + 3 * (rowH + gap)
 	local h = pad + titleH + S(10) + trackH + S(10) + lineH + S(12) + btnH + pad
 	local maxH = vp.Y - top - 8
 	if h > maxH then
 		-- Short phone screens: shrink the expanded tiles until the card fits.
 		tile = math.max(S(52), tile - (h - maxH))
-		trackH = tile + S(22) + 3 * (rowH + gap)
+		trackH = tile + T(22) + 3 * (rowH + gap)
 		h = math.min(maxH, pad + titleH + S(10) + trackH + S(10) + lineH + S(12) + btnH + pad)
 	end
 	local panel = UI.button({
@@ -192,7 +197,7 @@ function StreakModal.open(view: View)
 	UI.text({
 		Text = if lost then "STREAK LOST" else "DAILY STREAK",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(if mobile then 28 else 34),
+		TextSize = T(if mobile then 28 else 34),
 		TextColor3 = if lost then Theme.Colors.red else Theme.Colors.gold,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(pad, pad),
@@ -203,7 +208,7 @@ function StreakModal.open(view: View)
 	UI.text({
 		Text = if lost then string.format("YOU WERE ON DAY %d", day) else string.format("DAY %d", day),
 		FontFace = Theme.Fonts.display,
-		TextSize = S(if mobile then 24 else 30),
+		TextSize = T(if mobile then 24 else 30),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
@@ -250,7 +255,7 @@ function StreakModal.open(view: View)
 			local row = UI.frame({
 				Name = "Week" .. week,
 				BackgroundTransparency = 1,
-				Size = UDim2.new(1, 0, 0, tile + S(22)),
+				Size = UDim2.new(1, 0, 0, tile + T(22)),
 				LayoutOrder = week,
 				ZIndex = 3,
 				Parent = track,
@@ -262,7 +267,7 @@ function StreakModal.open(view: View)
 				local big = StreakTrack.isBig(d)
 				local holder = UI.frame({
 					BackgroundTransparency = 1,
-					Size = UDim2.fromOffset(tile, tile + S(22)),
+					Size = UDim2.fromOffset(tile, tile + T(22)),
 					LayoutOrder = d,
 					ZIndex = 3,
 					Parent = row,
@@ -288,7 +293,7 @@ function StreakModal.open(view: View)
 				UI.text({
 					Text = tostring(d),
 					FontFace = Theme.Fonts.display,
-					TextSize = S(if mobile then 13 else 15),
+					TextSize = T(if mobile then 13 else 15),
 					TextColor3 = if big then Theme.Colors.gold else Theme.Colors.textDim,
 					TextXAlignment = Enum.TextXAlignment.Left,
 					Position = UDim2.fromOffset(S(5), S(2)),
@@ -303,13 +308,13 @@ function StreakModal.open(view: View)
 				UI.text({
 					Text = shortLine(d),
 					FontFace = Theme.Fonts.display,
-					TextSize = S(if mobile then 14 else 17),
+					TextSize = T(if mobile then 14 else 17),
 					TextColor3 = if isToday and not lost
 						then Theme.Colors.white
 						elseif claimed then Color3.fromHex("6E6E78")
 						else Theme.Colors.textDim,
-					Position = UDim2.new(0, 0, 1, -S(20)),
-					Size = UDim2.new(1, 0, 0, S(20)),
+					Position = UDim2.new(0, 0, 1, -T(20)),
+					Size = UDim2.new(1, 0, 0, T(20)),
 					ZIndex = 4,
 					Parent = holder,
 				})
@@ -348,7 +353,7 @@ function StreakModal.open(view: View)
 			UI.text({
 				Text = "WEEK " .. week,
 				FontFace = Theme.Fonts.display,
-				TextSize = S(if mobile then 14 else 16),
+				TextSize = T(if mobile then 14 else 16),
 				TextColor3 = Theme.Colors.textDim,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Position = UDim2.fromOffset(S(8), 0),
@@ -375,7 +380,7 @@ function StreakModal.open(view: View)
 			UI.text({
 				Text = string.format("DAY %d · %s", bigDay, fullLine(bigDay)),
 				FontFace = Theme.Fonts.display,
-				TextSize = S(if mobile then 14 else 16),
+				TextSize = T(if mobile then 14 else 16),
 				TextColor3 = if bigDay < day then Color3.fromHex("6E6E78") else Theme.Colors.gold,
 				TextXAlignment = Enum.TextXAlignment.Right,
 				TextTruncate = Enum.TextTruncate.AtEnd,
@@ -407,7 +412,7 @@ function StreakModal.open(view: View)
 			then string.format("RESTORE TO KEEP DAY %d · %s", day, fullLine(day))
 			else "TODAY · " .. fullLine(day),
 		FontFace = Theme.Fonts.display,
-		TextSize = S(if mobile then 18 else 22),
+		TextSize = T(if mobile then 18 else 22),
 		TextColor3 = if lost then Theme.Colors.textDim else Theme.Colors.white,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Position = UDim2.fromOffset(pad, lineY),
@@ -495,7 +500,7 @@ function StreakModal.open(view: View)
 
 	local function mkButton(text: string, bg: Color3, frac: number): TextButton
 		local b, handle = Fx.button(row, text, bg, Theme.Colors.white, UDim2.new(frac, 0, 1, 0), 4)
-		b.TextSize = S(if mobile then 24 else 26)
+		b.TextSize = T(if mobile then 24 else 26)
 		b.Selectable = true
 		table.insert(buttons, handle)
 		return b

@@ -439,7 +439,8 @@ local function build()
 	btn(rM3, "Buy log", 1 / 3, function()
 		send("PurchaseLog")
 	end)
-	-- Brief 10: the login streak (the modal opens on the set day / the lost streak right away; +1 day above).
+	-- Brief 10: the login streak (the modal opens on the set day / the lost streak right away; +1 day above) and the
+	-- daily crate (unlock / reset for today; Force tier rolls that band whatever your level, AUTO goes back to it).
 	local rR1 = row(panel, 17.4, rh)
 	local streakBox = numberBox(rR1, "Day…", 0.25)
 	btn(rR1, "Set streak day", 0.4, function()
@@ -448,6 +449,19 @@ local function build()
 	btn(rR1, "Break streak", 0.35, function()
 		send("BreakStreak")
 	end, Theme.Colors.malus)
+	local rR2 = row(panel, 17.5, rh)
+	btn(rR2, "Unlock daily crate", 0.5, function()
+		send("UnlockDailyCrate")
+	end, Theme.Colors.gold)
+	btn(rR2, "Reset daily crate", 0.5, function()
+		send("ResetDailyCrate")
+	end, Theme.Colors.malus)
+	local rR3 = row(panel, 17.6, rh)
+	for _, tier in { "auto", "basic", "gold", "diamond", "elite" } do
+		btn(rR3, string.upper(tier), 0.2, function()
+			send("ForceDailyTier", tier)
+		end, if tier == "auto" then Theme.Colors.grey else Theme.Colors.amber)
+	end
 
 	local r8b = row(panel, 10, rh)
 	btn(r8b, "Down me", 1 / 3, function()

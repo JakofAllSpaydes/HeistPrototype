@@ -133,6 +133,10 @@ function DailySheet.open(state: string)
 	local claimed = state == "claimed"
 	local S = UI.S
 	local mobile = ClientState.isMobile
+	-- Phones draw at about half the desktop scale: text reads the store's MobileStoreTextScale bigger there.
+	local function T(n: number): number
+		return if mobile then math.round(S(n) * (Config.MobileStoreTextScale or 1)) else S(n)
+	end
 	local vp = (workspace.CurrentCamera :: Camera).ViewportSize
 	local def = tierDef()
 	local trim = Color3.fromHex(def.trim)
@@ -172,9 +176,10 @@ function DailySheet.open(state: string)
 	local w = if mobile then math.floor(vp.X * 0.4) else S(390)
 	local margin = S(14)
 	local pad = S(14)
-	local headH = S(22)
-	local wellSize = if mobile then S(70) else S(92)
-	local oddsH = S(if mobile then 22 else 24)
+	local headH = if mobile then T(24) else S(22)
+	local wellSize = if mobile then math.floor(w * 0.26) else S(92)
+	local oddsH = T(if mobile then 22 else 24)
+	local nameH = if mobile then T(26) else S(32) -- the name line; the lines under it step by this
 	local btnH = if mobile then math.max(48, S(56)) else S(52)
 	local backH = S(if mobile then 34 else 30)
 	local h = pad + headH + S(10) + wellSize + S(10) + oddsH + S(12) + btnH + S(8) + backH + pad
@@ -198,7 +203,7 @@ function DailySheet.open(state: string)
 	local tag = UI.text({
 		Text = string.upper(def.name),
 		FontFace = Theme.Fonts.display,
-		TextSize = S(14),
+		TextSize = T(14),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundTransparency = 0,
 		BackgroundColor3 = trim,
@@ -213,7 +218,7 @@ function DailySheet.open(state: string)
 	UI.text({
 		Text = "LV " .. level,
 		FontFace = Theme.Fonts.display,
-		TextSize = S(14),
+		TextSize = T(14),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
@@ -254,24 +259,24 @@ function DailySheet.open(state: string)
 	UI.text({
 		Text = string.upper(def.name) .. " DAILY CRATE",
 		FontFace = Theme.Fonts.display,
-		TextSize = if mobile then S(20) else S(26),
+		TextSize = if mobile then T(20) else S(26),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Position = UDim2.fromOffset(textX, bodyY - S(2)),
-		Size = UDim2.new(1, -textX - pad, 0, if mobile then S(24) else S(32)),
+		Size = UDim2.new(1, -textX - pad, 0, nameH),
 		ZIndex = 21,
 		Parent = s,
 	})
 	UI.text({
 		Text = if claimed then "OPENED TODAY · BACK TOMORROW" else "GUNS + MASKS · YOUR LEVEL BAND",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(if mobile then 14 else 16),
+		TextSize = T(if mobile then 14 else 16),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextWrapped = true,
-		Position = UDim2.fromOffset(textX, bodyY + (if mobile then S(26) else S(34))),
-		Size = UDim2.new(1, -textX - pad, 0, S(20)),
+		Position = UDim2.fromOffset(textX, bodyY + nameH),
+		Size = UDim2.new(1, -textX - pad, 0, T(20)),
 		ZIndex = 21,
 		Parent = s,
 	})
@@ -279,11 +284,11 @@ function DailySheet.open(state: string)
 		UI.text({
 			Text = "FIRST ONE'S A GUN",
 			FontFace = Theme.Fonts.display,
-			TextSize = S(if mobile then 15 else 17),
+			TextSize = T(if mobile then 15 else 17),
 			TextColor3 = Theme.Colors.gold,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(textX, bodyY + (if mobile then S(48) else S(58))),
-			Size = UDim2.new(1, -textX - pad, 0, S(20)),
+			Position = UDim2.fromOffset(textX, bodyY + nameH + T(22)),
+			Size = UDim2.new(1, -textX - pad, 0, T(20)),
 			ZIndex = 21,
 			Parent = s,
 		})
@@ -311,7 +316,7 @@ function DailySheet.open(state: string)
 			local chip = UI.text({
 				Text = string.format("%d%%", math.max(1, math.round(shares[r] * 100))),
 				FontFace = Theme.Fonts.display,
-				TextSize = S(if mobile then 13 else 15),
+				TextSize = T(if mobile then 13 else 15),
 				TextColor3 = Theme.Colors.bg,
 				BackgroundTransparency = 0,
 				BackgroundColor3 = Rarity.color(r),
@@ -331,14 +336,14 @@ function DailySheet.open(state: string)
 		else "OPEN"
 	local btn, handle = Fx.button(s, label, GREEN, Theme.Colors.white, UDim2.new(1, -pad * 2, 0, btnH), 22)
 	btn.Position = UDim2.fromOffset(pad, btnY)
-	btn.TextSize = S(if mobile then 22 else 24)
+	btn.TextSize = T(if mobile then 22 else 24)
 	btn.Selectable = true
 	if not claimed then
 		Fx.shine(btn)
 	end
 	local back, _b = Fx.button(s, "BACK", DARK, Theme.Colors.white, UDim2.new(1, -pad * 2, 0, backH), 22)
 	back.Position = UDim2.fromOffset(pad, btnY + btnH + S(8))
-	back.TextSize = S(16)
+	back.TextSize = T(16)
 	back.Activated:Connect(DailySheet.close)
 	if UserInputService.GamepadEnabled then
 		GuiService.SelectedObject = btn
