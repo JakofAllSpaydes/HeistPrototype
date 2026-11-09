@@ -304,6 +304,7 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	track(offhand.Activated:Connect(function()
 		local sync = ClientState.sync :: any
 		if sync and sync.offhand and not ClientState.downed then
+			ClientState.Juice:Fire("SprintCancel", { reason = "swap" })
 			Remotes.SwitchWeapon:FireServer()
 		end
 	end))

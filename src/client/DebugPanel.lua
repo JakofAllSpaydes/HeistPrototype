@@ -18,8 +18,24 @@ local Input = require(script.Parent:WaitForChild("Input"))
 local InputMonitor = require(script.Parent:WaitForChild("InputMonitor"))
 local Haptics = require(script.Parent:WaitForChild("Haptics"))
 local GamepadMap = require(Shared:WaitForChild("GamepadMap"))
+local Sprint = require(script.Parent:WaitForChild("Sprint"))
 
 local DebugPanel = {}
+
+-- Brief 11 step 3: Sprint log on screen, a toast per finished sprint.
+Sprint.Ended:Connect(function(rec: any)
+	if not Sprint.showLog then
+		return
+	end
+	local toast = HUD.get("toast")
+	if toast then
+		toast.show(
+			string.format("SPRINT %s %.2fs · %s", string.upper(rec.device), rec.sec, string.upper(rec.reason)),
+			if rec.reason == "fire" and rec.sec < 0.5 then Theme.Colors.malus else Theme.Colors.gold,
+			1.5
+		)
+	end
+end)
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local gui: ScreenGui? = nil
@@ -189,6 +205,12 @@ local function build()
 	local ri2 = row(panel, 0.13, rh)
 	btn(ri2, "Haptics test", 0.5, function()
 		Haptics.test()
+	end, Theme.Colors.amber)
+	local ri3 = row(panel, 0.131, rh)
+	local sprintBtn: TextButton
+	sprintBtn = btn(ri3, if Sprint.showLog then "Sprint log ON" else "Sprint log on screen", 1, function()
+		Sprint.showLog = not Sprint.showLog
+		sprintBtn.Text = if Sprint.showLog then "Sprint log ON" else "Sprint log on screen"
 	end, Theme.Colors.amber)
 	btn(ri2, "Reset input settings", 0.5, function()
 		Remotes.SetInputSetting:FireServer("reset", true)

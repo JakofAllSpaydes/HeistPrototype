@@ -198,8 +198,9 @@ function Crosshair.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	track(RunService.Heartbeat:Connect(function()
 		-- Round 24l: aiming down sights in first person, the sights are the crosshair: the lines and dot hide
 		-- (the hitmarker and the reload ring stay).
-		local hide = ClientState.firstPerson == true and ClientState.ads and heldSight() ~= "bare" -- Round 24aa: sightless guns keep it
-		local sight = if hide then heldSight() else nil
+		local adsHide = ClientState.firstPerson == true and ClientState.ads and heldSight() ~= "bare" -- Round 24aa: sightless guns keep it
+		local sight = if adsHide then heldSight() else nil
+		local hide = adsHide or ClientState.sprinting -- brief 11 step 3: no crosshair while sprinting
 		local optic = sight == "red" or sight == "holo" or sight == "acog" or sight == "medium" or sight == "scope"
 		reticle.Visible = optic
 		if optic then

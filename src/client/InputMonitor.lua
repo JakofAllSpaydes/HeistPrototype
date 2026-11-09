@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GamepadMap = require(Shared:WaitForChild("GamepadMap"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local Input = require(script.Parent:WaitForChild("Input"))
+local Sprint = require(script.Parent:WaitForChild("Sprint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 
@@ -107,7 +108,7 @@ local function build()
 		TextYAlignment = Enum.TextYAlignment.Top,
 		RichText = true,
 		Position = UDim2.fromOffset(0, S(28)),
-		Size = UDim2.new(1, -S(200), 0, S(110)),
+		Size = UDim2.new(1, -S(200), 0, S(130)),
 		Parent = panel,
 	}) :: TextLabel
 	local sticks = UI.frame({
@@ -175,6 +176,12 @@ local function paintLog()
 	end
 end
 
+local function lastSprint(): string
+	local hist = Sprint.history
+	local e = hist[#hist]
+	return if e then string.format("%.2fs %s (%s)", e.sec, e.reason, e.device) else "-"
+end
+
 local acc = 0
 local function paint(dt: number)
 	acc += dt
@@ -189,7 +196,7 @@ local function paint(dt: number)
 	local h = header
 	if h then
 		h.Text = string.format(
-			"device <b>%s</b>%s\nR (%.2f, %.2f) amt %.2f\nlook yaw %+.0f°/s  pitch %+.0f°/s\nedge %.2fs  ads %s  prompt %s\nfire %s  revive %s  dealer %s",
+			"device <b>%s</b>%s\nR (%.2f, %.2f) amt %.2f\nlook yaw %+.0f°/s  pitch %+.0f°/s\nedge %.2fs  ads %s  prompt %s\nfire %s  revive %s  dealer %s\nsprint %s  last %s",
 			ClientState.inputDevice,
 			if Input.forcedDevice then " (forced)" else "",
 			r.X,
@@ -202,7 +209,9 @@ local function paint(dt: number)
 			if ClientState.promptVisible then "UP" else "-",
 			if ClientState.padFire then "HELD" else "-",
 			if ClientState.reviveNearby then "NEAR" else "-",
-			if ClientState.dealerActive then (if ClientState.dealerFocus then "PANEL" else "ON") else "-"
+			if ClientState.dealerActive then (if ClientState.dealerFocus then "PANEL" else "ON") else "-",
+			if ClientState.sprinting then "ON" else "-",
+			lastSprint()
 		)
 	end
 end

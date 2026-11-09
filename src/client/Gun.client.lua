@@ -13,6 +13,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Types = require(Shared:WaitForChild("Types"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Sprint = require(script.Parent:WaitForChild("Sprint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Tracer = require(script.Parent:WaitForChild("Tracer"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
@@ -319,52 +320,27 @@ local burstLeft = 0
 local burstEndedAt = -math.huge
 local chargeStart: number? = nil -- Round 24v: the plasma trigger went down at this clock
 
--- Round 24aa prototype: sprint. Hold Shift while moving: the gun goes away (no fire, no ADS) and the server runs
--- you SprintSpeedMult faster. Letting go, stopping, or a menu ends it.
-local shiftHeld = false
-local padSprint = false
-local function updateSprint()
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	local moving = hum ~= nil and hum.MoveDirection.Magnitude > 0.1
-	if not moving then
-		padSprint = false
+-- Brief 11 step 3: sprint lives in Sprint.lua (PC / pad / touch, one rule). Fire always wins: a trigger pull while
+-- sprinting ends the sprint here, in the same frame, and the shot goes out below.
+Sprint.init()
+Sprint.Changed:Connect(function(on: boolean)
+	if on then
+		chargeStart = nil
+		ClientState.chargeProgress = 0
 	end
-	local want = Config.SprintEnabled
-		and (shiftHeld or padSprint)
-		and moving
-		and not ClientState.downed
-		and not ClientState.blocked()
-		and ClientState.cameraMode == "gameplay"
-	if want ~= ClientState.sprinting then
-		ClientState.sprinting = want
-		Remotes.SetSprint:FireServer(want)
-		if want then
-			ClientState.setAds(false)
-			chargeStart = nil
-			ClientState.chargeProgress = 0
-		elseif
-			-- Round 25: RMB still held when the sprint ends (or pressed during it): straight back into ADS.
-			UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-			and not ClientState.blocked()
-			and not ClientState.downed
-			and not ClientState.combatOff()
-		then
-			ClientState.setAds(true)
-		end
-	end
-end
-ContextActionService:BindActionAtPriority("GHSSprint", function(_name, inputState: Enum.UserInputState)
-	if inputState == Enum.UserInputState.Begin then
-		shiftHeld = true
-	elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
-		shiftHeld = false
-	end
-	return Enum.ContextActionResult.Pass
-end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.LeftShift)
+end)
 
 RunService.Heartbeat:Connect(function()
-	updateSprint()
+	Sprint.update()
+	if
+		ClientState.sprinting
+		and held
+		and (firing or ClientState.touchFire or ClientState.padFire)
+		and not ClientState.blocked()
+		and not ClientState.combatOff()
+	then
+		Sprint.cancel("fire")
+	end
 	local h = held
 	-- Downed: the sidearm still fires while crawling (Config.DownedCanShoot); a bled-out spectator never does.
 	if
@@ -455,12 +431,8 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
 		-- No ADS while downed: the sidearm is hip-fire only. Round 24d: none in the hub either (outside the range):
 		-- there RMB only drags the camera round.
-		if
-			not ClientState.blocked()
-			and not ClientState.downed
-			and not ClientState.combatOff()
-			and not ClientState.sprinting
-		then
+		-- Brief 11: ADS ends a sprint (Sprint.lua hears the Ads juice) and raises straight into the aim.
+		if not ClientState.blocked() and not ClientState.downed and not ClientState.combatOff() then
 			ClientState.setAds(true)
 		end
 	elseif input.KeyCode == Enum.KeyCode.R then
@@ -482,6 +454,7 @@ ContextActionService:BindActionAtPriority("GHSSwitchWeapon", function(_name, inp
 	if UserInputService:GetFocusedTextBox() or ClientState.combatOff() then
 		return Enum.ContextActionResult.Pass
 	end
+	ClientState.Juice:Fire("SprintCancel", { reason = "swap" })
 	Remotes.SwitchWeapon:FireServer()
 	return Enum.ContextActionResult.Sink
 end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.One)
@@ -509,9 +482,6 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		end
 	elseif name == "TouchFireReleased" or name == "PadFireReleased" then
 		semiLatch = false
-	elseif name == "PadSprint" and typeof(data) == "table" and data.on then
-		-- Brief 11 step 2: L3 latches the sprint until you stop moving (step 3 gives it the full model).
-		padSprint = true
 	elseif name == "MagAdd" then
 		-- SHARPSHOOTER's DEAD EYE OVERDRIVE mastery: a headshot during Dead Eye puts a round back in the mag.
 		local h = held

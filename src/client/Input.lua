@@ -124,7 +124,7 @@ local function dispatch(action: string, phase: string)
 		end
 	elseif action == "ads" then
 		if on then
-			if ClientState.canAds() and not ClientState.sprinting then
+			if ClientState.canAds() then -- a sprint ends on the Ads juice (Sprint.lua)
 				ClientState.setAds(true)
 			end
 		else
@@ -136,6 +136,7 @@ local function dispatch(action: string, phase: string)
 		ClientState.padInteract = on
 	elseif action == "swap" then
 		if not ClientState.combatOff() and not UserInputService:GetFocusedTextBox() then
+			ClientState.Juice:Fire("SprintCancel", { reason = "swap" })
 			Remotes.SwitchWeapon:FireServer()
 		end
 	elseif ABILITY[action] then

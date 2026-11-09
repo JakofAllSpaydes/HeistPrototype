@@ -450,6 +450,19 @@ local Config = {
 	-- Round 24aa PROTOTYPE: sprint (PC, Shift while moving). The gun goes away: no fire, no ADS.
 	SprintEnabled = true,
 	SprintSpeedMult = 2,
+	-- Brief 11 step 3: sprint on every platform. Fire always wins: fire / ADS / ability / interact / swap / minigame
+	-- end the sprint and happen in the same frame; sprint then needs a fresh engage (Sprint.lua, SprintRule.lua).
+	SprintFovAdd = 6, -- degrees of FOV pushed while sprinting
+	SprintFovRate = 8, -- how fast the FOV eases in / out
+	SprintRaiseAnimSec = 0.12, -- the arms catch up this long after a cancel (the shot itself is instant)
+	SprintPushRadius = 1.3, -- touch: the stretch zone drawn out to this x the thumbstick ring
+	SprintPushAngle = 35, -- touch: the push must be within this many degrees of straight forward...
+	SprintPushHoldSec = 0.25, -- ...past the ring for this long to engage
+	SprintKeepThreshold = 0.6, -- pad / touch: sprint holds while the stick is at least this far forward
+	SprintReArmRadius = 0.88, -- touch: the thumb back inside this x the ring re-arms the next push-through
+	SprintReEngageCooldownSec = 0.5, -- after a fire cancel, no sprint for this long (no instant bounce)
+	SprintPressGraceSec = 0.35, -- a toggle press (L3, toggle Shift) waits this long for the stick to move, then lapses
+	SprintTouchRingPx = 60, -- touch: the thumbstick ring radius when Roblox's own frame cannot be read (UI px)
 	CameraFov = 70,
 	CameraCenterRate = 8, -- Round 24aa: how fast the camera slides to centre when the cursor unlocks (and back)
 	FireFovKick = 2.5, -- degrees of FOV punch per shot

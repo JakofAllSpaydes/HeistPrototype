@@ -95,6 +95,22 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		)
 	end)
 
+	-- Brief 11 step 3: the sprint mark beside the count (PC and pad; touch wears it over the thumbstick).
+	local sprintPill, sprintLabel = UI.pill(root, "» SPRINT", Theme.Colors.gold, Theme.Colors.bg, S(26), S(15))
+	sprintPill.AnchorPoint = Vector2.new(0, 0.5)
+	sprintPill.Position = UDim2.new(0, 0, 0, S(23))
+	sprintPill.Visible = false
+	sprintLabel.FontFace = Theme.Fonts.display
+	track(RunService.RenderStepped:Connect(function()
+		local on = ClientState.sprinting and not ClientState.isMobile
+		if sprintPill.Visible ~= on then
+			sprintPill.Visible = on
+			if on then
+				UI.punch(sprintPill, 1.12, 0.15)
+			end
+		end
+	end) :: any)
+
 	-- Camera lock chip, right-aligned just above the count.
 	local camRow = UI.frame({
 		Name = "CameraLock",

@@ -145,11 +145,38 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 	UI.corner(swap, S(12))
 	UI.stroke(swap, Theme.Colors.text, S(2))
 	swap.Activated:Connect(function()
+		ClientState.Juice:Fire("SprintCancel", { reason = "swap" })
 		Remotes.SwitchWeapon:FireServer()
 		UI.punch(swap, 0.9, 0.15)
 	end)
 	_track(ClientState.Changed:Connect(function(sync: any)
 		swap.Visible = sync and sync.offhand ~= nil
+	end))
+
+	-- Brief 11 step 3: the tap SPRINT button (settings: sprint = button), small, bottom-left under the thumbstick.
+	local sprintBtn = UI.button({
+		Name = "SprintButton",
+		BackgroundColor3 = Theme.Colors.panel,
+		BackgroundTransparency = 0.25,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, UI.S(16), 1, -UI.S(12)),
+		Size = UDim2.fromOffset(S(64), S(30)),
+		Text = "SPRINT",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(13),
+		Visible = false,
+		Parent = gui,
+	})
+	UI.corner(sprintBtn, S(4))
+	local sprintStroke = UI.stroke(sprintBtn, Theme.Colors.text, S(2))
+	sprintBtn.Activated:Connect(function()
+		ClientState.Juice:Fire("SprintTap", {})
+		UI.punch(sprintBtn, 0.9, 0.15)
+	end)
+	_track(game:GetService("RunService").RenderStepped:Connect(function()
+		sprintBtn.Visible = ClientState.inputSettings().sprintTouch == "button" and not ClientState.combatOff()
+		sprintStroke.Color = if ClientState.sprinting then Theme.Colors.gold else Theme.Colors.text
+		sprintBtn.TextColor3 = if ClientState.sprinting then Theme.Colors.gold else Theme.Colors.text
 	end))
 
 	component.fire = fire

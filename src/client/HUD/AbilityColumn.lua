@@ -77,6 +77,7 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			return
 		end
 		UI.punch(t.button, 0.9, 0.2)
+		ClientState.Juice:Fire("SprintCancel", { reason = "ability" }) -- brief 11: the ability fires, the sprint ends
 		-- What the cursor is on rides along: thrown abilities land there (up to ThrowMaxRange), and the camera ray's
 		-- origin and the hit part feed the server's aim assist.
 		local char = Players.LocalPlayer.Character

@@ -324,13 +324,18 @@ function Combat.init()
 			local state = PlayerState.get(player)
 			-- Downed players shoot the sidearm (Config.DownedCanShoot); bled-out spectators never fire; nobody
 			-- fires while the run is paused.
-			if
-				state.bledOut
-				or (state.downed and not Config.DownedCanShoot)
-				or Pause.active()
-				or (state :: any).sprinting
-			then
+			if state.bledOut or (state.downed and not Config.DownedCanShoot) or Pause.active() then
 				return
+			end
+			-- Brief 11: fire always wins. The client ends its sprint before the shot; if the shot lands first, the
+			-- sprint ends here instead of the shot being dropped.
+			if (state :: any).sprinting then
+				(state :: any).sprinting = false
+				local c = player.Character
+				if c then
+					c:SetAttribute("Sprinting", nil)
+				end
+				PlayerState.applyCharacterStats(state)
 			end
 			-- Brief 8: in the hub only the training range is live.
 			if Slot.isHub and not state.inRange then

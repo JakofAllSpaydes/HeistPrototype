@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local GamepadMap = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GamepadMap"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Sprint = require(script.Parent:WaitForChild("Sprint"))
 
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera :: Camera
@@ -548,7 +549,7 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	end
 	local adsZoom = if unlocked then Config.AdsZoomMultUnlocked else Config.AdsZoomMult
 	local fovMult = 1 + (adsFov - 1) * adsBlend
-	camera.FieldOfView = Config.CameraFov * fovMult + fovKick + stimFov + slowFov
+	camera.FieldOfView = Config.CameraFov * fovMult + fovKick + stimFov + slowFov + Sprint.fovAdd -- brief 11 step 3
 	local free = ClientState.isMouseFree()
 	local drag = dragging()
 	UserInputService.MouseBehavior = if not free
