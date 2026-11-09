@@ -1,8 +1,8 @@
 --!strict
--- The five classes and their three abilities (Q / E / Z), brief 5: INITIATE Frag / Adrenaline / Claymore,
--- ENGINEER Turret / Barricade / Overclock, DOC Stim Shot / Med Bag / Healing Turret, SHARPSHOOTER Eagle Vision /
--- Dead Eye / Flashbang, TORCH Molotov / Flame Turret / Oil Drum. All fifteen are live (Abilities.lua); every
--- number comes from Config so the designer tunes there.
+-- The six classes and their three abilities (Q / E / Z), brief 12: INITIATE Frag / Adrenaline / Turret, ENGINEER
+-- Sentry / Barricade / Overclock, DOC Stim Shot / Med Bag / Heal Drone, SHARPSHOOTER Eagle Vision / Dead Eye /
+-- Flashbang, PYRO (id TORCH) Molotov / Flame Turret / Inferno, SWARM Drone / Surge / Aegis. Claymore, Oil Drum and
+-- Healing Turret sit in Classes.Unassigned. Every number comes from Config so the designer tunes there.
 -- `vars` lists the upgradeable variables shown as current > next in the Classes tab; everything else is static.
 export type Var = { id: string, label: string, base: number, unit: string }
 export type Ability = {
@@ -269,6 +269,52 @@ Classes.List = {
 					var("InfernoSlowPct", "SLOW", Config.InfernoSlowPct, "%"),
 				},
 				icon = "INF",
+			}),
+		},
+	},
+	{
+		-- Brief 12: the sixth class. You never stop moving and your drones do the shooting.
+		id = "SWARM",
+		name = "Swarm",
+		displayName = "SWARM",
+		color = "6FE3D2",
+		glyph = "W",
+		abilities = {
+			ability({
+				id = "drone",
+				name = "Drone",
+				hotkey = "Q",
+				system = "drone",
+				price = 150,
+				description = "Another drone joins your swarm and shoots whatever it can see.",
+				vars = {
+					var("DroneSec", "TIME", Config.DroneSec, "s"),
+					var("DroneWeaponDamagePct", "GUN DMG", Config.DroneWeaponDamagePct, "%"),
+				},
+				icon = "DRN",
+			}),
+			ability({
+				id = "surge",
+				name = "Surge",
+				hotkey = "E",
+				system = "self",
+				price = 150,
+				description = "Your drones fire faster, bounce shots and fetch the loot.",
+				vars = {
+					var("SurgeFirePct", "FIRE RATE", (Config.SurgeFireMult - 1) * 100, "%"),
+					var("SurgeSec", "TIME", Config.SurgeSec, "s"),
+				},
+				icon = "SRG",
+			}),
+			ability({
+				id = "aegis",
+				name = "Aegis",
+				hotkey = "Z",
+				system = "drone",
+				price = 200,
+				description = "A shield drone bubbles you up, then blows when it breaks.",
+				vars = { var("AegisHp", "SHIELD", Config.AegisHp), var("AegisBurst", "BURST", Config.AegisBurst) },
+				icon = "AEG",
 			}),
 		},
 	},

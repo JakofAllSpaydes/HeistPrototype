@@ -822,4 +822,33 @@ function Bags.debugSpawn(player: Player, kind: string)
 	Remotes.Juice:FireClient(player, "Toast", { text = string.upper(kind) .. " BAG DROPPED" })
 end
 
+-- Brief 12 SURGE: the nearest bag nobody is filling within `range` of a point, ignoring any already within `minDist`.
+function Bags.nearestFree(point: Vector3, range: number, minDist: number): Bag?
+	local best: Bag? = nil
+	local bestD = range
+	for _, b in bags do
+		if not b.active or b.by ~= nil or b.vault then
+			continue
+		end
+		local d = (Vector3.new(b.position.X, point.Y, b.position.Z) - point).Magnitude
+		if d <= bestD and d > minDist then
+			bestD = d
+			best = b
+		end
+	end
+	return best
+end
+
+-- Brief 12 SURGE: a drone carries a bag to `to` (clear floor near it). Its beacon re-announces at the new spot.
+function Bags.moveTo(b: Bag, to: Vector3): Vector3
+	local from = b.position
+	local at = Ground.clearSpot(to, Config.LootClearRadius, 2, Config.LootClearSearch)
+	b.model:PivotTo(b.model:GetPivot() + (at - b.position))
+	b.position = at
+	b.idle = 0
+	World.fireRun("BagFizzled", { id = b.id, moved = true })
+	World.fireRun("BagSpawned", { id = b.id, kind = b.kind, position = b.position, value = b.value })
+	return from
+end
+
 return Bags

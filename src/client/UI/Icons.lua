@@ -477,7 +477,72 @@ end
 
 DRAW.DOC = cross -- a medical cross
 DRAW.SHARPSHOOTER = crosshair -- a crosshair
-DRAW.TORCH = bigFlame -- a flame
+DRAW.TORCH = bigFlame -- a flame (PYRO; the id stays TORCH)
+DRAW.SWARM = function(c: Ctx) -- brief 12: three drones in a triangle
+	local fg, dt = c.fg, c.dt
+	for _, p in { { 0.5, 0.28 }, { 0.27, 0.68 }, { 0.73, 0.68 } } do
+		circle(c, p[1], p[2], 0.26, 1, fg)
+		circle(c, p[1], p[2], 0.1, 2, dt)
+	end
+end
+
+-- Brief 12 ability pictograms.
+DRAW.STY = function(c: Ctx) -- sentry: a twin-barrel head on a tripod
+	local fg, dt = c.fg, c.dt
+	rect(c, 0.46, 0.38, 0.42, 0.26, 1, fg, 0.15)
+	bar(c, 0.6, 0.31, 0.92, 0.31, 0.07, 1, fg, "butt")
+	bar(c, 0.6, 0.43, 0.92, 0.43, 0.07, 1, fg, "butt")
+	bar(c, 0.46, 0.5, 0.46, 0.9, 0.08, 1, fg)
+	bar(c, 0.46, 0.55, 0.18, 0.9, 0.08, 1, fg)
+	bar(c, 0.46, 0.55, 0.74, 0.9, 0.08, 1, fg)
+	rect(c, 0.4, 0.38, 0.12, 0.08, 2, dt)
+end
+
+DRAW.HDR = function(c: Ctx) -- heal drone: a drone body with a cross, rotors either side
+	local fg, dt = c.fg, c.dt
+	rect(c, 0.5, 0.55, 0.42, 0.3, 1, fg, 0.3)
+	bar(c, 0.12, 0.34, 0.88, 0.34, 0.06, 1, fg, "butt")
+	rect(c, 0.16, 0.3, 0.22, 0.06, 1, fg, 0.5)
+	rect(c, 0.84, 0.3, 0.22, 0.06, 1, fg, 0.5)
+	rect(c, 0.5, 0.55, 0.2, 0.06, 2, dt)
+	rect(c, 0.5, 0.55, 0.06, 0.2, 2, dt)
+end
+
+DRAW.INF = function(c: Ctx) -- inferno: a ring of flames round a figure's feet
+	local fg, dt = c.fg, c.dt
+	ring(c, 0.5, 0.68, 0.78, 0.07, 1, fg)
+	for _, x in { 0.18, 0.36, 0.64, 0.82 } do
+		bar(c, x, 0.68, x, 0.42, 0.1, 1, fg, nil, 0.5)
+	end
+	circle(c, 0.5, 0.36, 0.2, 1, fg)
+	rect(c, 0.5, 0.36, 0.08, 0.08, 2, dt, 0.5)
+end
+
+DRAW.DRN = function(c: Ctx) -- drone: a small quad, four rotor rings
+	local fg, dt = c.fg, c.dt
+	bar(c, 0.24, 0.24, 0.76, 0.76, 0.08, 1, fg)
+	bar(c, 0.76, 0.24, 0.24, 0.76, 0.08, 1, fg)
+	for _, p in { { 0.22, 0.22 }, { 0.78, 0.22 }, { 0.22, 0.78 }, { 0.78, 0.78 } } do
+		ring(c, p[1], p[2], 0.3, 0.06, 1, fg)
+	end
+	circle(c, 0.5, 0.5, 0.26, 1, fg)
+	circle(c, 0.5, 0.5, 0.1, 2, dt)
+end
+
+DRAW.SRG = function(c: Ctx) -- surge: a lightning bolt
+	local fg = c.fg
+	bar(c, 0.62, 0.1, 0.36, 0.52, 0.13, 1, fg, "butt")
+	bar(c, 0.32, 0.5, 0.68, 0.5, 0.12, 1, fg, "butt")
+	bar(c, 0.64, 0.48, 0.38, 0.9, 0.13, 1, fg, "butt")
+end
+
+DRAW.AEG = function(c: Ctx) -- aegis: a shield bubble with its drone on top
+	local fg, dt = c.fg, c.dt
+	ring(c, 0.5, 0.56, 0.78, 0.09, 1, fg)
+	circle(c, 0.5, 0.18, 0.22, 1, fg)
+	circle(c, 0.5, 0.18, 0.08, 2, dt)
+	rect(c, 0.5, 0.6, 0.2, 0.28, 1, fg, 0.3)
+end
 
 -- Boosts (BoostDefs.lua `id`).
 DRAW.power = bolt -- a lightning bolt

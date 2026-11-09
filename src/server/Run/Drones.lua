@@ -51,6 +51,8 @@ Drones.hit = nil :: ((Player, Model, number, Vector3, boolean, any?) -> boolean)
 -- Per-kind tick hooks other modules add (SWARM's attack / aegis behaviour lives in Swarm.lua).
 Drones.tickers = {} :: { [string]: (Drone, number) -> () }
 Drones.onGone = {} :: { [string]: (Drone, string) -> () }
+-- SURGE windows by caster (Swarm.lua): server time it ends.
+Drones.surgeUntil = {} :: { [Player]: number }
 
 local function now(): number
 	return Workspace:GetServerTimeNow()
@@ -246,6 +248,22 @@ function Drones.summonHealer(owner: Player, hps: number, range: number, sec: num
 end
 
 ------------------------------------------------------------------ Lifecycle
+-- HIVE MIND (SWARM III): every live attack drone of `owner` gains `sec`, never past `cap` seconds remaining.
+function Drones.extendOwner(owner: Player, sec: number, cap: number): number
+	local t = now()
+	local n = 0
+	for _, d in drones do
+		if d.owner == owner and d.kind == "attack" then
+			local want = math.min(d.untilT + sec, t + cap)
+			if want > d.untilT then
+				d.untilT = want
+				n += 1
+			end
+		end
+	end
+	return n
+end
+
 function Drones.clearOwner(owner: Player, reason: string): number
 	local n = 0
 	for _, d in table.clone(drones) do
@@ -273,6 +291,9 @@ function Drones.init()
 		for _, d in drones do
 			d.untilT += dt
 			d.nextTick += dt
+		end
+		for p, u in Drones.surgeUntil do
+			Drones.surgeUntil[p] = u + dt
 		end
 	end)
 	RunService.Heartbeat:Connect(function()

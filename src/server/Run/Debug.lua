@@ -634,6 +634,37 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		state.cooldowns[id] = 0
 		toast(player, string.format("%s ON SLOT %d", string.upper(Classes.AbilityById[id].name), slot))
 	end,
+	SpawnDrones = function(player, _state, args)
+		local n = tonumber(args) or 10
+		Abilities.spawnDrones(player, n)
+		toast(player, string.format("+%d DRONES", n))
+	end,
+	-- Equip any class at once (owned for the test); a run in progress keeps its mastery snapshot.
+	ForceClass = function(player, state, args)
+		local id = string.upper(tostring(args or ""))
+		local c = Classes.ById[id]
+		if not c then
+			for _, cl in Classes.List do
+				if cl.displayName == id then
+					c = cl
+				end
+			end
+		end
+		local p = state.profile
+		if not c or not p then
+			toast(player, "NO CLASS " .. id)
+			return
+		end
+		p.classes.owned[c.id] = true
+		p.classes.equipped = c.id
+		state.cooldowns = {}
+		state.charges = {}
+		Profiles.markDirty(player)
+		PlayerState.registerPassives(state)
+		Hub.refreshTag(player)
+		Log.event("Class", "%s %s forced by %s", string.lower(c.id), c.displayName, player.Name)
+		toast(player, c.displayName .. " FORCED")
+	end,
 	SetArea = function(player, _state, args)
 		local n = tonumber(args) or 0
 		Stats.add(player, "debug:area", "area", n)

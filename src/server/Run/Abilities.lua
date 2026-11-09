@@ -30,6 +30,7 @@ local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
 local Slot = require(script.Parent.Slot)
 local Drones = require(script.Parent.Drones) -- brief 12
+local Swarm = require(script.Parent.Swarm) -- brief 12
 
 -- Brief 8: the players this run slot looks after (its party; the hub slot: everyone not in a run).
 local function mine(): { [Player]: PlayerState.State }
@@ -1727,6 +1728,40 @@ local function auraTick(a: Aura, t: number)
 	end
 end
 
+------------------------------------------------------------------ Explosions (brief 12)
+-- Every ability blast that isn't a bullet goes through here: damage x falloff-free to every enemy in the radius, the
+-- body thrown out of the blast. Step 5 adds knockback and the explosion feel. Returns how many it hit.
+function Abilities.explode(owner: Player, at: Vector3, radius: number, dmg: number, color: Color3): number
+	local victims = Enemy.within(at, radius)
+	World.fireRun("Blast", { position = at, radius = radius, color = color, shake = 0.3, pitch = 0.8 })
+	local kills = 0
+	for _, model in victims do
+		local ep = Enemy.rootPosition(model) or at
+		local away = ep - at
+		if
+			hitEnemy(owner, model, dmg, ep, false, {
+				dir = if away.Magnitude > 0.1 then away.Unit else nil,
+				blast = true,
+				blastT = 1 - math.clamp(away.Magnitude / radius, 0, 1),
+			})
+		then
+			kills += 1
+		end
+	end
+	if kills >= Config.CalloutMultiKill then
+		AllyCallout.send(owner, "multiKill", kills)
+	end
+	return #victims
+end
+
+-- Debug `Spawn drones <n>`.
+function Abilities.spawnDrones(player: Player, n: number)
+	local state = PlayerState.get(player)
+	for _ = 1, math.clamp(math.floor(n), 1, 60) do
+		Swarm.summon(player, state)
+	end
+end
+
 ------------------------------------------------------------------ Use
 -- (Cast: luau-lsp has no Roblox types here and cannot unify the handlers' inferred signatures.)
 local USE: { [string]: (Player, PlayerState.State, Model, Vector3?) -> () } = {
@@ -1749,6 +1784,15 @@ local USE: { [string]: (Player, PlayerState.State, Model, Vector3?) -> () } = {
 	sentry = placeSentry,
 	healdrone = summonHealDrone,
 	inferno = startInferno,
+	drone = function(player: Player, state: PlayerState.State, _char: Model)
+		Swarm.summon(player, state)
+	end,
+	surge = function(player: Player, state: PlayerState.State, _char: Model)
+		Swarm.surge(player, state)
+	end,
+	aegis = function(player: Player, state: PlayerState.State, _char: Model)
+		Swarm.aegis(player, state)
+	end,
 } :: any
 
 local TICK: { [string]: (Structure, number) -> () } = {
@@ -1904,7 +1948,9 @@ function Abilities.init()
 	end
 	Enemy.extraTargets = Abilities.targets
 	Drones.hit = hitEnemy -- brief 12: drones damage through the same credit path
+	Swarm.explode = Abilities.explode
 	Drones.init()
+	Swarm.init()
 	Enemy.onStructureHit = Abilities.damageStructure
 	Remotes.UseAbility.OnServerEvent:Connect(Abilities.use)
 

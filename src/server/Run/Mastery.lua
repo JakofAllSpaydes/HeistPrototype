@@ -20,6 +20,8 @@ local MasteryCopy = require(Shared.MasteryCopy)
 local PlayerState = require(script.Parent.Parent.PlayerState)
 local Profiles = require(script.Parent.Parent.Profiles)
 local UpgradeShop = require(script.Parent.UpgradeShop)
+local Drones = require(script.Parent.Drones) -- brief 12: HIVE MIND
+local Swarm = require(script.Parent.Swarm) -- brief 12: the wave-end swarm line
 local Elements = require(script.Parent.Elements)
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
@@ -179,6 +181,7 @@ end
 
 -- Wave end: class XP for everyone who played it.
 function Mastery.onWaveEnd(wave: number, players: { Player })
+	Swarm.logWave(players) -- brief 12
 	local xp = if World.isBossWave(wave) then Config.MasteryXpPerBossWave else Config.MasteryXpPerWave
 	for _, p in players do
 		local state = PlayerState.get(p)
@@ -201,6 +204,12 @@ function Mastery.onKill(model: Model, attacker: Player?)
 			state.buffUntil += addSec
 			state.dirty = true
 			Remotes.Juice:FireClient(attacker, "AbilityExtend", { id = "stim", sec = math.round(addSec * 10) / 10 })
+		end
+		-- HIVE MIND (SWARM III, brief 12): every kill the caster makes (their drones' included) keeps the swarm up.
+		if PlayerState.passive(state, "SWARM", 3) then
+			if Drones.extendOwner(attacker, Config.DroneKillExtendSec, Config.DroneKillExtendCap) > 0 then
+				Remotes.Juice:FireClient(attacker, "AbilityExtend", { id = "drone", sec = Config.DroneKillExtendSec })
+			end
 		end
 	end
 	if Elements.isBurning(model) then

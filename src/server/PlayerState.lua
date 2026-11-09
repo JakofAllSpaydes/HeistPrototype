@@ -374,6 +374,10 @@ function PlayerState.registerPassives(state: State)
 	if PlayerState.passive(state, "SHARPSHOOTER", 1) then
 		Stats.add(player, "passive:sharp1", "headshot", Config.SharpHeadshotAdd / Config.HeadshotMult * 100)
 	end
+	-- UPLINK (SWARM's class passive, every tier): drones inherit a share of the gun's damage.
+	if PlayerState.classOf(state) == "SWARM" then
+		Stats.add(player, "passive:uplink", "droneInherit", Config.DroneWeaponDamagePct)
+	end
 	if PlayerState.passive(state, "SHARPSHOOTER", 2) then
 		Stats.add(player, "passive:sharp2:sniper", "typeReload.Sniper", Config.MarksmanKitReloadPct * 100)
 		Stats.add(player, "passive:sharp2:pistol", "typeReload.Pistol", Config.MarksmanKitReloadPct * 100)
@@ -629,6 +633,7 @@ function PlayerState.armSkills(state: State, why: string)
 	local owned = p and p.skills and p.skills.owned
 	state.skillMods = Skills.modifiers(owned)
 	PlayerState.registerWeb(state, owned) -- brief 12: every node is a resolver source
+	PlayerState.registerPassives(state) -- brief 12: UPLINK in the range too (mastery tiers need a run)
 	if state.skillMods.nodes > 0 then
 		for _, n in Skills.List do
 			if owned and owned[n.id] then
@@ -666,6 +671,10 @@ function PlayerState.disarmSkills(state: State)
 	state.dirty = true
 end
 
+-- Brief 12: shields that take a hit before armor (SWARM's AEGIS): fn(player, amount, source) -> what is left.
+-- A list, since every run slot's Swarm adds its own.
+PlayerState.shieldHooks = {} :: { (Player, number, string?) -> number }
+
 -- Installed by Downed: what happens at 0 HP. Without it health just resets.
 PlayerState.onZeroHP = nil :: ((Player) -> ())?
 
@@ -680,6 +689,14 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 	-- Brief 9 TOUGHNESS: less damage taken, before armor soaks it.
 	-- Brief 12: damage-taken reduction stacks multiplicatively (resist), never 100%.
 	amount *= Stats.mult(player, "damageTaken")
+	if not Runs.slotOf(player).isHub then
+		for _, hook in PlayerState.shieldHooks do
+			amount = hook(player, amount, source)
+			if amount <= 0 then
+				return
+			end
+		end
+	end
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then
@@ -726,8 +743,17 @@ function PlayerState.inParty(state: State): boolean
 end
 
 -- An ability's base cooldown (Config.AbilityCooldown, or the brief 12 abilities' own keys).
+local COOLDOWN_KEYS: { [string]: string } = {
+	sentry = "SentryCooldown",
+	healdrone = "HealDroneCooldown",
+	inferno = "InfernoCooldown",
+	drone = "DroneCooldown",
+	surge = "SurgeCooldown",
+	aegis = "AegisCooldown",
+}
 function PlayerState.baseCooldown(abilityId: string): number
-	return (Config.AbilityCooldown :: any)[abilityId] or (Config.AbilityCooldownB12 :: any)[abilityId] or 10
+	local key = COOLDOWN_KEYS[abilityId]
+	return (Config.AbilityCooldown :: any)[abilityId] or (if key then (Config :: any)[key] else nil) or 10
 end
 
 -- An ability's cooldown for this player. Brief 12: every cooldown source (ABILITY COOLDOWN cards, COOLDOWN nodes,

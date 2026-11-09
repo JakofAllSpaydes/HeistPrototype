@@ -1988,8 +1988,10 @@ local Config = {
 	-- INITIATE: Frag / Adrenaline / Turret (the basic turret above: TurretHP, TurretDmg, TurretRange..., instant deploy).
 	-- ENGINEER: Sentry / Barricade / Overclock. DOC: Stim Shot / Med Bag / Heal Drone. PYRO (id TORCH): Molotov /
 	-- Flame Turret / Inferno. Claymore, Oil Drum and Healing Turret keep their code and keys above, unassigned.
-	-- Cooldowns of the brief 12 abilities (PlayerState.baseCooldown reads here after AbilityCooldown).
-	AbilityCooldownB12 = { sentry = 35, healdrone = 25, inferno = 30, drone = 15, surge = 20, aegis = 35 },
+	-- Cooldowns of the brief 12 abilities (PlayerState.baseCooldown reads these after AbilityCooldown).
+	SentryCooldown = 35,
+	HealDroneCooldown = 25,
+	InfernoCooldown = 30,
 	-- ENGINEER's Sentry: a heavy tripod. Twin barrels alternate at 2x the turret's rate; per-barrel damage makes the
 	-- total SentryDpsMult x the turret's DPS. Several can stand at once (cooldown / duration, nothing else).
 	SentryDeploySec = 1.5, -- legs unfold and the barrels spin up before the first shot
@@ -2026,6 +2028,49 @@ local Config = {
 	DroneHumVolumePer = 0.02,
 	DroneHumMaxVolume = 0.18,
 	DroneZapsPerSec = 8,
+
+	------------------------------------------------------------------ Brief 12: SWARM (Run/Swarm.lua)
+	-- Nothing is aimed: every ability adds to the swarm, buffs it or protects you with it. Drones are orbits round the
+	-- caster (DroneOrbit), never physics, never pathfinding, never in anyone's way, never targetable.
+	-- DRONE (Q): one attack drone that orbits you and shoots the nearest enemy it can see. No count cap: how many you
+	-- hold is duration / cooldown, so cooldown is the build.
+	DroneSec = 20,
+	DroneCooldown = 15,
+	DroneRange = 40, -- studs from the drone
+	DroneFireRate = 2, -- shots per second per drone
+	DroneRetargetSec = 0.25, -- a target pick (nearest living enemy with line of sight) this often
+	DroneColor = "6FE3D2", -- SWARM's class colour (tracers, glow)
+	-- UPLINK (passive): drones inherit this % of your equipped gun's resolved damage per shot (a capped stat, 100 max:
+	-- Armory, cards and the web on the gun scale the swarm). Switching guns re-reads the next shot.
+	DroneWeaponDamagePct = 60,
+	-- SURGE (E): every live drone fires SurgeFireMult x faster and each shot ricochets to SurgeRicochet more enemies
+	-- within SurgeRicochetRange of its target; drones also fetch bags within SurgeFetchRange of you to your feet (one
+	-- per drone per SurgeFetchEverySec).
+	SurgeSec = 8,
+	SurgeCooldown = 20,
+	SurgeFireMult = 1.5,
+	SurgeRicochet = 1,
+	SurgeRicochetRange = 12,
+	SurgeFetchRange = 20,
+	SurgeFetchEverySec = 2,
+	-- AEGIS (Z): a shield drone projects a bubble round you that moves with you: enemy hits on anyone inside are
+	-- absorbed (they deplete its HP), melee enemies touching it are body-blocked and take AegisContactDps; when HP
+	-- breaks or time ends it detonates (AegisBurst in AegisBurstRadius, x the area stat). Allies pass through it.
+	AegisSec = 8,
+	AegisCooldown = 35,
+	AegisRadius = 7,
+	AegisHp = 400, -- x ABILITY POWER
+	AegisContactDps = 15,
+	AegisBurst = 180, -- x ABILITY POWER
+	AegisBurstRadius = 10,
+	-- Mastery: I DroneSec + SwarmMasteryDroneSec; II SURGE ricochets SwarmMasteryRicochet times; III your kills add
+	-- DroneKillExtendSec to every live drone, never above DroneKillExtendCap seconds remaining.
+	SwarmMasteryDroneSec = 5,
+	SwarmMasteryRicochet = 2,
+	DroneKillExtendSec = 0.5,
+	DroneKillExtendCap = 20,
+	DroneHardCap = 40, -- per caster, an engine guard (the oldest is replaced, a WARN log), never surfaced as a rule
+	SwarmCalloutAt = { 5, 10, 20 }, -- the radio line fires as your live drone count reaches each of these
 }
 
 return Config

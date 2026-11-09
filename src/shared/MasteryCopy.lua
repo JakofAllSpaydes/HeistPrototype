@@ -119,6 +119,18 @@ local CLASS: { [string]: { () -> (string, string) } } = {
 			return "BACKDRAFT", "Burning kills recharge Molotov"
 		end,
 	},
+	-- Brief 12.
+	SWARM = {
+		function()
+			return "LONG RANGE", string.format("Drones last +%ds", Config.SwarmMasteryDroneSec)
+		end,
+		function()
+			return "CHAIN REACTION", string.format("Surge shots bounce %d times", Config.SwarmMasteryRicochet)
+		end,
+		function()
+			return "HIVE MIND", string.format("Your kills keep your drones up (+%gs each)", Config.DroneKillExtendSec)
+		end,
+	},
 }
 
 -- name, line for a class tier (1..3); "" when unknown.
