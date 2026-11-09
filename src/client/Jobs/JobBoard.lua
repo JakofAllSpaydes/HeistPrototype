@@ -1,11 +1,11 @@
 --!strict
 -- Brief 6: the JOBS board. Opens from the hub HUD JOBS button, F at MARLOW's corkboard in the yard, or a finished
 -- Job on the summary; the camera pushes onto the corkboard and the HUD hides.
---   header   JOBS · NEW JOBS IN (over the dailies) · BOUNTY RESETS IN (over the poster)
+--   header   JOBS · NEW JOBS IN and BOUNTY RESETS IN side by side, centred · the red X top-right
 --   dailies  three pinned paper cards filling the board, slightly rotated: DAILY JOB tag, title, MARLOW's line, the
 --            state area (progress / DONE + CLAIM / PAID + NEW JOB), the reward row along the bottom
 --   bounty   a WANTED poster: WEEKLY BOUNTY tag, MARLOW's portrait, title, line, progress or CLAIM, the reward row
---   footer   CLAIM ALL when more than one is done, BACK
+--   footer   CLAIM ALL when more than one is done (no BACK: the X, Esc and B close)
 -- States: in progress (a dark inset bar with the count), complete (a red DONE stamp slams on, the sheet glows, CLAIM
 -- pops), claimed (the sheet settles flat and greys, a blue PAID stamp, NEW JOB until the reset). Round 17d polish:
 -- dark ink on light paper, the shadow and glow sit behind the paper, cards cascade in on open. Also here: MARLOW's
@@ -26,6 +26,7 @@ local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local CloseButton = require(Client:WaitForChild("UI"):WaitForChild("CloseButton"))
 local HUD = require(Client:WaitForChild("HUD"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local Fx = require(Client:WaitForChild("Store"):WaitForChild("Fx"))
@@ -969,7 +970,8 @@ render = function()
 	-- Columns: the dailies left, the poster right; the countdowns sit over the column they count for.
 	local posterW = if mobile then 0.31 else 0.27
 	local colGap = S(28)
-	local headerH, footerH = S(56), S(54)
+	local closeSize = CloseButton.size()
+	local headerH, footerH = math.max(S(56), closeSize), S(54)
 	local boardTop, boardBottom = headerH + S(10), footerH + S(14)
 	local header = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, headerH), ZIndex = 5, Parent = b })
 	local title = UI.text({
@@ -983,15 +985,33 @@ render = function()
 		Parent = header,
 	})
 	UI.stroke(title, Color3.new(0, 0, 0), S(2), 0.2)
-	local daily = timerChip(
-		header,
-		"NEW JOBS IN",
-		Theme.Colors.gold,
-		Vector2.new(0.5, 0.5),
-		UDim2.new((1 - posterW) / 2, -colGap / 2, 0.5, 0) -- centered over the three dailies
+	-- The two countdowns side by side in one row, centred over the board (designer feedback: the bounty reset sits
+	-- next to the new-jobs timer).
+	local timers = UI.frame({
+		Name = "Timers",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(0, S(50)),
+		AutomaticSize = Enum.AutomaticSize.X,
+		ZIndex = 6,
+		Parent = header,
+	})
+	UI.list(
+		timers,
+		Enum.FillDirection.Horizontal,
+		S(14),
+		Enum.HorizontalAlignment.Center,
+		Enum.VerticalAlignment.Center
 	)
-	local weekly =
-		timerChip(header, "BOUNTY RESETS IN", STAMP, Vector2.new(0.5, 0.5), UDim2.new(1 - posterW / 2, -S(3), 0.5, 0))
+	local daily = timerChip(timers, "NEW JOBS IN", Theme.Colors.gold, Vector2.zero, UDim2.new())
+	local weekly = timerChip(timers, "BOUNTY RESETS IN", STAMP, Vector2.zero, UDim2.new())
+	local weeklyChip = weekly.Parent :: Frame
+	weeklyChip.LayoutOrder = 1 -- after NEW JOBS IN (0)
+	-- The shared red X, top-right of the board (vertically centred in the header). No BACK: the X, Esc and B close.
+	CloseButton.new(header, function()
+		JobBoard.close()
+	end, { margin = 0, top = (headerH - closeSize) // 2, z = 7 })
 	task.spawn(function()
 		while daily.Parent do
 			local t = ClientState.fakeNow()
@@ -1067,12 +1087,6 @@ render = function()
 		)
 		all.TextSize = S(20)
 	end
-	local back, _ = Fx.button(footer, "BACK", Theme.Colors.red, Theme.Colors.white, UDim2.fromOffset(S(160), S(50)), 6)
-	back.TextSize = S(20)
-	back.LayoutOrder = 2
-	back.Activated:Connect(function()
-		JobBoard.close()
-	end)
 	if entrance then
 		entrance = false
 		Fx.cascade(sheets, Config.JobBoardStaggerSec, 30)

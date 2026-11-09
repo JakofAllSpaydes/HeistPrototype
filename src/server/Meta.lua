@@ -396,7 +396,8 @@ function Meta.init()
 	-- lower the gun (GunAnim) and the shooter's FireShot is ignored while it is on.
 	Remotes.SetSprint.OnServerEvent:Connect(function(player: Player, on: any)
 		local state = PlayerState.get(player)
-		local want = on == true and Config.SprintEnabled and not state.downed
+		local hubBlocked = not Config.SprintInHub and Runs.slotOf(player).isHub and not state.inRange -- Round 29b
+		local want = on == true and Config.SprintEnabled and not state.downed and not hubBlocked
 		if (state :: any).sprinting == want then
 			return
 		end

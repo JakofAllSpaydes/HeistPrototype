@@ -9,7 +9,6 @@
 -- Stats, Combat, Abilities and Elements ask PlayerState.passive(state, classId, tier). This module also runs the
 -- passives that hang off kills (ADRENALINE JUNKIE, BACKDRAFT) and installs the TORCH burn-rate hook.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
@@ -189,7 +188,10 @@ function Mastery.onWaveEnd(wave: number, players: { Player })
 	end
 end
 
--- Any kill (Enemy.onDeath): ADRENALINE JUNKIE extends a running Adrenaline, BACKDRAFT trims the burner's Molotov.
+-- Any kill (Enemy.onDeath): ADRENALINE JUNKIE extends a running Adrenaline; BACKDRAFT (Round 29b) keeps a PYRO's
+-- running Inferno burning (installed by Abilities: extendInferno(player, sec) -> did it extend).
+Mastery.extendInferno = nil :: ((Player, number) -> boolean)?
+
 function Mastery.onKill(model: Model, attacker: Player?)
 	if attacker then
 		local state = PlayerState.get(attacker)
@@ -212,19 +214,20 @@ function Mastery.onKill(model: Model, attacker: Player?)
 			end
 		end
 	end
-	if Elements.isBurning(model) then
+	-- BACKDRAFT (PYRO III, Round 29b): every kill the PYRO makes, or a burning enemy of theirs dying, adds
+	-- InfernoKillExtendSec to their running Inferno, uncapped: keep killing and it keeps burning.
+	local pyro: Player? = nil
+	if attacker and PlayerState.passive(PlayerState.get(attacker), "TORCH", 3) then
+		pyro = attacker
+	elseif Elements.isBurning(model) then
 		local owner = Elements.burnOwnerOf(model)
-		if owner and owner.Parent then
-			local os_ = PlayerState.get(owner)
-			if PlayerState.passive(os_, "TORCH", 3) then
-				local cd = os_.cooldowns.molotov
-				if cd and cd > Workspace:GetServerTimeNow() then
-					os_.cooldowns.molotov = math.max(Workspace:GetServerTimeNow(), cd - Config.BackdraftCdr)
-					os_.dirty = true
-					Remotes.Juice:FireClient(owner, "CooldownTrim", { id = "molotov", sec = Config.BackdraftCdr })
-				end
-			end
+		if owner and owner.Parent and PlayerState.passive(PlayerState.get(owner), "TORCH", 3) then
+			pyro = owner
 		end
+	end
+	local extend = Mastery.extendInferno
+	if pyro and extend and extend(pyro, Config.InfernoKillExtendSec) then
+		Remotes.Juice:FireClient(pyro, "AbilityExtend", { id = "inferno", sec = Config.InfernoKillExtendSec })
 	end
 end
 

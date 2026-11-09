@@ -312,6 +312,20 @@ local Config = {
 	TouchCameraStartX = 0.4, -- Round 24: a touch that begins right of this share of the screen width turns the camera (left = thumbstick)
 	TouchHipSensitivityMult = 1.2, -- Round 28e: touch look out of ADS runs this much faster (ADS keeps AdsSensitivityMult)
 	MobileTopbarHidden = true, -- Round 28e: phones hide Roblox's top bar row (only the small Roblox menu button stays; chat goes with it)
+	-- Phone UI pass: the hub HUD's bottom-left column on touch, top to bottom INVITE · GOLD · LEVEL card (smallest to
+	-- biggest), one left edge, one gap. UI px at the basis through plain UI.S (no MobileButtonScale grow); `edge` is the
+	-- margin from the screen's left and bottom edges, on top of the device safe area (notch, rounded corners).
+	MobileHubCluster = {
+		edge = 16,
+		gap = 8,
+		inviteW = 76,
+		inviteH = 32,
+		goldW = 160,
+		goldH = 38,
+		cardW = 220,
+		cardH = 64,
+	},
+	MobileTextMin = 10, -- touch: a label fitted to its box (TextScaled) never draws smaller than this (px; a phone's px are points)
 	-- Round 24 aim assist (touch / gamepad). The enemy nearest the crosshair inside the cone pulls the camera to its
 	-- torso; hold the crosshair above AimAssistHeadBias of the way from torso to head (on screen) and it pulls to the head.
 	AimAssistEnabled = true,
@@ -455,6 +469,7 @@ local Config = {
 	HapticSprint = { motor = "Small", strength = 0.3, sec = 0.04 },
 	-- Round 24 mobile: every HUD button (combat + hub) is scaled by this on phones / tablets.
 	MobileButtonScale = 1.3,
+	MobilePovGap = 8, -- Round 29b: px between the POV button and the left edge of the equipped weapon card
 	MobileFireScale = 0.9, -- Round 28e: FIRE draws this share of its old size (same centre)
 	MobileStoreTextScale = 1.2, -- Round 24d: premium shop labels on mobile read this much bigger
 	MobileFireRight = 200, -- FIRE's right edge this far (UI px) from the screen's right edge (clear of jump)
@@ -469,7 +484,7 @@ local Config = {
 	SprintFovAdd = 6, -- degrees of FOV pushed while sprinting
 	SprintFovRate = 8, -- how fast the FOV eases in / out
 	SprintRaiseAnimSec = 0.12, -- the arms catch up this long after a cancel (the shot itself is instant)
-	SprintPushRadius = 1.3, -- touch: the stretch zone drawn out to this x the thumbstick ring
+	SprintPushRadius = 1.1, -- touch: the stretch zone drawn out to this x the thumbstick ring (Round 29b: was 1.3)
 	SprintPushAngle = 35, -- touch: the push must be within this many degrees of straight forward...
 	SprintPushHoldSec = 0.25, -- ...past the ring for this long to engage
 	SprintKeepThreshold = 0.6, -- touch: a push-through sprint holds while the thumb is at least this far forward
@@ -478,6 +493,10 @@ local Config = {
 	SprintReEngageCooldownSec = 0.5, -- after a fire cancel, no sprint for this long (no instant bounce)
 	SprintPressGraceSec = 0.35, -- a toggle press (L3, toggle Shift) waits this long for the stick to move, then lapses
 	SprintTouchRingPx = 60, -- touch: the thumbstick ring radius when Roblox's own frame cannot be read (UI px)
+	-- Round 29b: Roblox's dynamic thumbstick frame can report a much bigger image than the ring you see (the push felt
+	-- like half the screen): the measured ring never counts as more than this (UI px).
+	SprintTouchRingMaxPx = 60,
+	SprintInHub = false, -- Round 29b: no sprint in the hub (it already walks fast); the training range keeps it
 	CameraFov = 70,
 	CameraCenterRate = 8, -- Round 24aa: how fast the camera slides to centre when the cursor unlocks (and back)
 	FireFovKick = 2.5, -- degrees of FOV punch per shot
@@ -1194,7 +1213,7 @@ local Config = {
 	DeadEyeHeadshotCdr = 0.2, -- III: every headshot during Dead Eye puts a round back and trims this off its cooldown
 	-- TORCH
 	TorchBurnRateMult = 2, -- I: your burns (fire fields, INCENDIARY) tick this much faster
-	BackdraftCdr = 0.1, -- III: every burning enemy that dies trims this off your Molotov cooldown
+	InfernoKillExtendSec = 0.5, -- III BACKDRAFT (Round 29b): each kill (or burning kill of yours) adds this to a running Inferno, no cap
 
 	------------------------------------------------------------------ Dealer (brief 5; Dealer.lua, DealerUI.lua)
 	-- After every boss wave is cleared: a DealerSec break (no spawns, heat frozen) with a stall of per-player stands.
@@ -1538,7 +1557,7 @@ local Config = {
 	------------------------------------------------------------------ Skills (brief 9: the Skill Web; Skills.lua, SkillService.lua)
 	-- 90 one-time account perks bought with Gold in the hub (the SKILLS tile). Every value below is a sample.
 	SkillsEnabled = true, -- false hides the SKILLS tile and every node stops applying (modifiers are all zero)
-	SkillCostByRing = { 500, 1500, 4000, 10000, 25000 }, -- Gold per node by ring (1 = next to START), before the stat's weight
+	SkillCostByRing = { 500, 1500, 4000, 10000, 25000, 45000, 80000, 140000 }, -- Gold per node by ring (1 = next to START), before the stat's weight (Round 29b: 8 rings)
 	-- Round 26b: costs differ inside a ring so the choices aren't all equal. A node costs its ring's base x its stat's
 	-- weight here (1 when missing) x (1 + SkillCostRepeatStep per earlier node of the same stat in its branch), rounded
 	-- to a tidy number. A third field on a SkillNodes entry ({ stat, value, weight }) overrides the stat's weight.
@@ -1605,6 +1624,34 @@ local Config = {
 			{ { "damage", 0.03 }, { "elite", 0.05 }, { "ability", 0.05 } },
 			{ { "crit", 0.02 }, { "boss", 0.05 }, { "damage", 0.03 }, { "headshot", 0.05 } },
 			{ { "elite", 0.05 }, { "boss", 0.05 }, { "ability", 0.05 }, { "crit", 0.02 }, { "damage", 0.04 } },
+			-- Round 29b: rings 6-8 (every stat repeats so the web keeps growing).
+			{
+				{ "damage", 0.04 },
+				{ "crit", 0.02 },
+				{ "headshot", 0.06 },
+				{ "elite", 0.06 },
+				{ "ability", 0.06 },
+				{ "boss", 0.06 },
+			},
+			{
+				{ "crit", 0.03 },
+				{ "damage", 0.04 },
+				{ "elite", 0.06 },
+				{ "headshot", 0.06 },
+				{ "boss", 0.06 },
+				{ "ability", 0.06 },
+				{ "damage", 0.04 },
+			},
+			{
+				{ "damage", 0.05 },
+				{ "crit", 0.03 },
+				{ "headshot", 0.07 },
+				{ "elite", 0.07 },
+				{ "boss", 0.07 },
+				{ "ability", 0.07 },
+				{ "crit", 0.03 },
+				{ "damage", 0.05 },
+			},
 		},
 		SURVIVAL = {
 			{ { "maxHp", 0.08 } },
@@ -1612,6 +1659,34 @@ local Config = {
 			{ { "maxHp", 0.08 }, { "tough", 0.03 }, { "revive", 0.15 } },
 			{ { "armor", 10 }, { "armorRecovery", 0.15 }, { "regen", 0.5 }, { "lastStand", 5 } },
 			{ { "maxHp", 0.08 }, { "armor", 15 }, { "tough", 0.04 }, { "armorRecovery", 0.15 }, { "revive", 0.15 } },
+			-- Round 29b: rings 6-8 (every stat repeats so the web keeps growing).
+			{
+				{ "maxHp", 0.08 },
+				{ "armor", 15 },
+				{ "regen", 0.75 },
+				{ "tough", 0.04 },
+				{ "revive", 0.2 },
+				{ "armorRecovery", 0.2 },
+			},
+			{
+				{ "armor", 15 },
+				{ "maxHp", 0.1 },
+				{ "lastStand", 5 },
+				{ "regen", 0.75 },
+				{ "tough", 0.04 },
+				{ "armorRecovery", 0.2 },
+				{ "revive", 0.2 },
+			},
+			{
+				{ "maxHp", 0.1 },
+				{ "armor", 20 },
+				{ "tough", 0.05 },
+				{ "regen", 1 },
+				{ "lastStand", 5 },
+				{ "armorRecovery", 0.2 },
+				{ "revive", 0.2 },
+				{ "maxHp", 0.1 },
+			},
 		},
 		SPEED = {
 			{ { "move", 0.02 } },
@@ -1619,6 +1694,34 @@ local Config = {
 			{ { "move", 0.02 }, { "quickHands", 0.1 }, { "reload", 0.06 } },
 			{ { "cooldown", 0.04 }, { "quickHands", 0.1 }, { "move", 0.02 }, { "reload", 0.06 } },
 			{ { "cooldown", 0.04 }, { "quickHands", 0.1 }, { "move", 0.03 }, { "reload", 0.07 }, { "cooldown", 0.05 } },
+			-- Round 29b: rings 6-8 (every stat repeats so the web keeps growing).
+			{
+				{ "move", 0.03 },
+				{ "reload", 0.07 },
+				{ "cooldown", 0.05 },
+				{ "quickHands", 0.12 },
+				{ "move", 0.03 },
+				{ "reload", 0.07 },
+			},
+			{
+				{ "cooldown", 0.05 },
+				{ "reload", 0.08 },
+				{ "move", 0.03 },
+				{ "quickHands", 0.12 },
+				{ "cooldown", 0.05 },
+				{ "reload", 0.08 },
+				{ "move", 0.03 },
+			},
+			{
+				{ "move", 0.04 },
+				{ "cooldown", 0.06 },
+				{ "reload", 0.08 },
+				{ "quickHands", 0.15 },
+				{ "move", 0.04 },
+				{ "cooldown", 0.06 },
+				{ "reload", 0.09 },
+				{ "quickHands", 0.15 },
+			},
 		},
 		CASH = {
 			{ { "bagValue", 0.04 } },
@@ -1626,6 +1729,34 @@ local Config = {
 			{ { "fence", 0.04 }, { "seedMoney", 200 }, { "bagValue", 0.04 } },
 			{ { "haggle", 0.04 }, { "magnet", 0.15 }, { "fence", 0.04 }, { "fastHands", 0.15 } },
 			{ { "seedMoney", 300 }, { "haggle", 0.05 }, { "bagValue", 0.05 }, { "magnet", 0.2 }, { "fence", 0.05 } },
+			-- Round 29b: rings 6-8 (every stat repeats so the web keeps growing).
+			{
+				{ "bagValue", 0.05 },
+				{ "magnet", 0.2 },
+				{ "fastHands", 0.2 },
+				{ "fence", 0.05 },
+				{ "haggle", 0.05 },
+				{ "seedMoney", 300 },
+			},
+			{
+				{ "fence", 0.05 },
+				{ "bagValue", 0.05 },
+				{ "magnet", 0.2 },
+				{ "haggle", 0.05 },
+				{ "fastHands", 0.2 },
+				{ "seedMoney", 400 },
+				{ "bagValue", 0.05 },
+			},
+			{
+				{ "bagValue", 0.06 },
+				{ "fence", 0.06 },
+				{ "haggle", 0.06 },
+				{ "magnet", 0.25 },
+				{ "seedMoney", 500 },
+				{ "fastHands", 0.25 },
+				{ "fence", 0.06 },
+				{ "bagValue", 0.06 },
+			},
 		},
 		LUCK = {
 			{ { "cardLuck", 1 } },
@@ -1633,6 +1764,34 @@ local Config = {
 			{ { "cardLuck", 1 }, { "dealerLuck", 1 }, { "crateLuck", 1 } },
 			{ { "cardLuck", 1 }, { "dealerLuck", 1 }, { "crateLuck", 1 }, { "cardLuck", 1 } },
 			{ { "dealerLuck", 1 }, { "crateLuck", 1 }, { "cardLuck", 1 }, { "dealerLuck", 1 }, { "crateLuck", 1 } },
+			-- Round 29b: rings 6-8 (every stat repeats so the web keeps growing).
+			{
+				{ "cardLuck", 1 },
+				{ "dealerLuck", 1 },
+				{ "crateLuck", 1 },
+				{ "cardLuck", 1 },
+				{ "dealerLuck", 1 },
+				{ "crateLuck", 1 },
+			},
+			{
+				{ "cardLuck", 1 },
+				{ "dealerLuck", 1 },
+				{ "crateLuck", 1 },
+				{ "cardLuck", 1 },
+				{ "dealerLuck", 1 },
+				{ "crateLuck", 1 },
+				{ "cardLuck", 1 },
+			},
+			{
+				{ "cardLuck", 1 },
+				{ "dealerLuck", 1 },
+				{ "crateLuck", 1 },
+				{ "cardLuck", 1 },
+				{ "dealerLuck", 1 },
+				{ "crateLuck", 1 },
+				{ "cardLuck", 1 },
+				{ "dealerLuck", 1 },
+			},
 		},
 		ARSENAL = {
 			{ { "pistols", 0.04 } },
@@ -1644,6 +1803,34 @@ local Config = {
 				{ "shotgunShells", 1 },
 				{ "sniperMags", 1 },
 				{ "lmgBelts", 0.1 },
+				{ "explosiveAmmo", 1 },
+			},
+			-- Round 29b: rings 6-8 (every stat repeats so the web keeps growing).
+			{
+				{ "pistols", 0.05 },
+				{ "smgs", 0.05 },
+				{ "rifles", 0.05 },
+				{ "shotguns", 0.05 },
+				{ "snipers", 0.05 },
+				{ "lmgs", 0.05 },
+			},
+			{
+				{ "explosives", 0.05 },
+				{ "elemental", 0.05 },
+				{ "pistolMags", 0.1 },
+				{ "smgMags", 0.1 },
+				{ "rifleMags", 0.1 },
+				{ "lmgBelts", 0.1 },
+				{ "pistols", 0.05 },
+			},
+			{
+				{ "smgs", 0.06 },
+				{ "rifles", 0.06 },
+				{ "shotguns", 0.06 },
+				{ "snipers", 0.06 },
+				{ "lmgs", 0.06 },
+				{ "explosives", 0.06 },
+				{ "elemental", 0.06 },
 				{ "explosiveAmmo", 1 },
 			},
 		},
@@ -1922,6 +2109,11 @@ local Config = {
 	StreakSkipsPerDay = 0, -- skips a fake day; 0 = unlimited (Round 27d: the upsell is always there once today is claimed)
 	StreakPeekDays = 3, -- the card list runs to the end of this week plus this many days, then a MORE card
 	StreakClaimHoldSec = 0.9, -- the claimed tile's ding and burst play this long before the modal closes
+	-- The close control every window shares (client/UI/CloseButton.lua): a red square X, top-right. Size and margin
+	-- are px at the UI basis (UI.S); never smaller than CloseButtonMinPx real pixels (a thumb target on a phone).
+	CloseButtonSize = 44,
+	CloseButtonMargin = 16,
+	CloseButtonMinPx = 44,
 
 	-- The daily crate: one podium in the hub (the DailyCrate node), unlocked for the fake day by finishing any match
 	-- (a summary), one open a day. Its tier comes from the player's level only. The pool is every Direct-sale gun
@@ -2009,7 +2201,7 @@ local Config = {
 	HealDroneColor = "8FE3A1",
 	-- PYRO's Inferno: a ring of fire around the caster that moves with them; enemies in it burn (the burn status, so
 	-- PYRO's fire mastery applies) and walk slower. Never touches players or placeables.
-	InfernoRadius = 9, -- x the area stat
+	InfernoRadius = 24, -- x the area stat (Round 29b: Jack's pick, was 9)
 	InfernoSec = 10,
 	InfernoSlowPct = 30, -- stacks with Ice Ammo's slow multiplicatively (never a full stop)
 	InfernoBurnPerSec = 18, -- the burn it puts on (x ABILITY POWER, x ACCELERANT)
@@ -2058,7 +2250,7 @@ local Config = {
 	-- breaks or time ends it detonates (AegisBurst in AegisBurstRadius, x the area stat). Allies pass through it.
 	AegisSec = 8,
 	AegisCooldown = 35,
-	AegisRadius = 7,
+	AegisRadius = 4.7, -- Round 29b: a third smaller (was 7)
 	AegisHp = 400, -- x ABILITY POWER
 	AegisContactDps = 15,
 	AegisBurst = 180, -- x ABILITY POWER

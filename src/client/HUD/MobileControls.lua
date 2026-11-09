@@ -203,6 +203,22 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		ClientState.Juice:Fire("CameraCycle", {})
 		UI.punch(pov, 0.9, 0.15)
 	end)
+	-- Round 29b: POV sits directly left of the equipped weapon card, measured from the card itself (the bottom
+	-- centre panel grows on phones, so a fixed offset from the screen centre left it floating mid-screen).
+	local slot: GuiObject? = nil
+	_track(game:GetService("RunService").RenderStepped:Connect(function()
+		if not slot or not slot.Parent then
+			local found = gui:FindFirstChild("WeaponSlot", true)
+			slot = if found and found:IsA("GuiObject") then found else nil
+		end
+		local s = slot
+		if s and s.AbsoluteSize.X > 0 then
+			local origin = gui.AbsolutePosition
+			local x = s.AbsolutePosition.X - origin.X - UI.S(Config.MobilePovGap)
+			local y = s.AbsolutePosition.Y - origin.Y + s.AbsoluteSize.Y
+			pov.Position = UDim2.fromOffset(math.round(x), math.round(y))
+		end
+	end))
 
 	-- Brief 11 step 3: the tap SPRINT button (settings: sprint = button), small, bottom-left under the thumbstick.
 	local sprintBtn = UI.button({

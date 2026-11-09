@@ -308,6 +308,14 @@ local function detonate(d: any) -- a Drones.Drone (luau-lsp narrows it oddly thr
 end
 
 Drones.onGone.aegis = function(d: Drones.Drone, reason: string)
+	-- Round 29b: the Z tile's countdown stops when the bubble goes (broken early or out of time).
+	if d.owner.Parent then
+		local st = PlayerState.get(d.owner)
+		if (st.abilityActive.aegis or 0) <= d.untilT + 0.01 then
+			st.abilityActive.aegis = nil
+			st.dirty = true
+		end
+	end
 	local c = colliders[d.id]
 	if c then
 		c:Destroy()
@@ -351,6 +359,9 @@ function Swarm.aegis(owner: Player, state: PlayerState.State)
 	mod.Parent = c
 	c.Parent = Workspace:FindFirstChild("Effects") or Workspace
 	colliders[d.id] = c
+	-- Round 29b: the Z tile counts the bubble down like a buff (it detonates at 0).
+	state.abilityActive.aegis = d.untilT
+	state.dirty = true
 	Log.event("Swarm", "%s raised an aegis (%d HP, %ds)", owner.Name, math.round(hp), math.round(sec))
 end
 

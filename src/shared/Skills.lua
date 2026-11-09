@@ -281,7 +281,7 @@ do
 end
 Skills.Stats = STATS
 
-local ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII" }
+local ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII" }
 
 local function fmtValue(kind: string, v: number): string
 	if kind == "pct" then

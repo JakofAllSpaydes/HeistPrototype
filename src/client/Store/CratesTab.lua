@@ -211,17 +211,20 @@ function CratesTab.render(ctx: any)
 		ZIndex = 6,
 		Parent = root,
 	})
-	UI.text({
+	local blurb = UI.text({
 		Text = "Every item inside is crate-only. Results land in your Armory and Locker the moment they roll.",
 		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(0, S(30)),
-		Size = UDim2.new(1, 0, 0, S(16)),
+		Size = UDim2.new(1, 0, 0, if ctx.mobile then S(22) else S(16)),
 		ZIndex = 6,
 		Parent = root,
 	})
+	if ctx.mobile then
+		Card.fitText(blurb) -- phone pass: one line that fits the width instead of running off the page
+	end
 	local row = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, S(56)),
@@ -298,7 +301,7 @@ function CratesTab.render(ctx: any)
 			Parent = content,
 		})
 		local left = pityLeft(profile, crate.id)
-		UI.text({
+		local pity = UI.text({
 			Text = string.format("EPIC+ GUARANTEED IN %d", left),
 			FontFace = Theme.Fonts.display,
 			TextSize = S(14),
@@ -308,6 +311,9 @@ function CratesTab.render(ctx: any)
 			ZIndex = 10,
 			Parent = mid,
 		})
+		if ctx.mobile then
+			Card.fitText(pity)
+		end
 		local odds, _oh =
 			Fx.button(mid, "ODDS", Color3.fromHex("2E3135"), Theme.Colors.white, UDim2.fromOffset(S(72), S(28)), 10)
 		odds.AnchorPoint = Vector2.new(1, 0.5)
@@ -329,14 +335,16 @@ function CratesTab.render(ctx: any)
 			)
 			free.LayoutOrder = 3
 			free.TextSize = S(17)
+			-- (Phone: S(9) body read about 7 px; it gets a readable size and a box to match.)
 			UI.text({
 				Text = string.format("%d BANKED", have),
 				FontFace = Theme.Fonts.body,
-				TextSize = S(9),
+				TextSize = if ctx.mobile then S(13) else S(9),
 				TextColor3 = Theme.Colors.bg,
+				TextXAlignment = if ctx.mobile then Enum.TextXAlignment.Right else Enum.TextXAlignment.Center,
 				AnchorPoint = Vector2.new(1, 0.5),
 				Position = UDim2.new(1, -S(8), 0.5, 0),
-				Size = UDim2.fromOffset(S(70), S(12)),
+				Size = if ctx.mobile then UDim2.fromOffset(S(90), S(18)) else UDim2.fromOffset(S(70), S(12)),
 				ZIndex = 12,
 				Parent = free,
 			})

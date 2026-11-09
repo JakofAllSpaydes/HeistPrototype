@@ -32,6 +32,7 @@ local Slot = require(script.Parent.Slot)
 local Drones = require(script.Parent.Drones) -- brief 12
 local Swarm = require(script.Parent.Swarm) -- brief 12
 local Explosion = require(script.Parent.Explosion) -- brief 12: knockback and the explosion feel
+local Mastery = require(script.Parent.Mastery) -- Round 29b: BACKDRAFT extends the Inferno
 
 -- Brief 8: the players this run slot looks after (its party; the hub slot: everyone not in a run).
 local function mine(): { [Player]: PlayerState.State }
@@ -1663,6 +1664,20 @@ local function startInferno(player: Player, state: PlayerState.State, _char: Mod
 	)
 end
 
+-- BACKDRAFT (PYRO III, Round 29b): a kill adds `sec` to the caster's running Inferno, uncapped.
+local function extendInferno(player: Player, sec: number): boolean
+	local a = auras[player]
+	if not a or a.untilT <= now() then
+		return false
+	end
+	a.untilT += sec
+	local state = PlayerState.get(player)
+	state.abilityActive.inferno = a.untilT
+	state.dirty = true
+	World.fireRun("InfernoExtend", { owner = player.UserId, untilT = a.untilT })
+	return true
+end
+
 local function auraTick(a: Aura, t: number)
 	if t - a.lastTick < Config.FieldTickSec then
 		return
@@ -1905,6 +1920,7 @@ function Abilities.init()
 	Enemy.extraTargets = Abilities.targets
 	Drones.hit = hitEnemy -- brief 12: drones damage through the same credit path
 	Swarm.explode = Abilities.explode
+	Mastery.extendInferno = extendInferno -- Round 29b: BACKDRAFT
 	Drones.init()
 	Swarm.init()
 	Enemy.onStructureHit = Abilities.damageStructure

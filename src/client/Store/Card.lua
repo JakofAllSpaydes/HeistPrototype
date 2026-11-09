@@ -5,14 +5,31 @@
 -- owned shows a check and OWNED across the price. Epic+ art sparkles, Legendary art has rays.
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Rewards = require(Shared:WaitForChild("Rewards"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local ClientState = require(Client:WaitForChild("ClientState"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local ItemArt = require(script.Parent:WaitForChild("ItemArt"))
 
 local Card = {}
+
+-- Phone pass: the label's text shrinks to fit its box (wrapping if TextWrapped), never past Config.MobileTextMin.
+-- The TextSize it ends up with (the font factor, the store's MobileStoreTextScale) stays the ceiling, so nothing
+-- reads bigger or smaller than before unless it would overflow. The store tabs call it on touch only.
+function Card.fitText(label: TextLabel | TextButton)
+	local c = UI.new("UITextSizeConstraint", { Parent = label })
+	local function cap()
+		c.MaxTextSize = math.clamp(math.max(label.TextSize, Config.MobileTextMin), 1, 100)
+		c.MinTextSize = math.min(Config.MobileTextMin, c.MaxTextSize)
+	end
+	cap()
+	local l: any = label -- (no Roblox types for luau-lsp: the union has no methods)
+	l:GetPropertyChangedSignal("TextSize"):Connect(cap)
+	label.TextScaled = true
+end
 
 export type Spec = {
 	size: Vector2, -- px at the basis (UI.S applied)
@@ -113,8 +130,24 @@ function Card.new(parent: Instance, spec: Spec): Handle
 	})
 	UI.corner(bar, S(2))
 
+	-- Phone pass: the store's labels read MobileStoreTextScale bigger on touch, so the title and sub boxes grow by it
+	-- (their text then fits instead of spilling into the well and the price) and the well gives up the difference:
+	-- the content area the tabs fill keeps its height.
+	local mobile = ClientState.isMobile
+	local m = if mobile then Config.MobileStoreTextScale or 1 else 1
+	local titleH, subH = S(26), if spec.sub then S(34) else 0
+	local grow = 0
+	if mobile then
+		titleH = S(26 * m)
+		subH = if spec.sub then S(34 * m) else 0
+		grow = (titleH - S(26)) + (if spec.sub then subH - S(34) else 0)
+	end
+
 	-- Art well with a pedestal.
 	local wellH = math.floor(h * (spec.wellShare or 0.5))
+	if mobile then
+		wellH = math.max(S(30), wellH - grow)
+	end
 	local well = UI.frame({
 		Name = "Well",
 		BackgroundColor3 = Fx.shade(color, -0.75),
@@ -147,7 +180,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 
 	-- Title and sub line.
 	local textTop = S(10) + wellH + S(6)
-	UI.text({
+	local title = UI.text({
 		Name = "Title",
 		Text = spec.title,
 		FontFace = Theme.Fonts.display,
@@ -156,7 +189,7 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		TextWrapped = false, -- one line, truncated (Round 18: a wrapped title was cut in half by its box)
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Position = UDim2.fromOffset(S(10), textTop),
-		Size = UDim2.new(1, -S(20), 0, S(26)),
+		Size = UDim2.new(1, -S(20), 0, titleH),
 		ZIndex = z + 2,
 		Parent = body,
 	})
@@ -167,22 +200,30 @@ function Card.new(parent: Instance, spec: Spec): Handle
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.text,
 		TextWrapped = true,
-		Position = UDim2.fromOffset(S(12), textTop + S(28)),
-		Size = UDim2.new(1, -S(24), 0, if spec.sub then S(34) else 0),
+		Position = UDim2.fromOffset(S(12), textTop + (if mobile then titleH + S(2) else S(28))),
+		Size = UDim2.new(1, -S(24), 0, subH),
 		TextYAlignment = Enum.TextYAlignment.Top,
 		ZIndex = z + 2,
 		Parent = body,
 	})
+	if mobile then
+		Card.fitText(title)
+		if spec.sub then
+			Card.fitText(subLabel)
+		end
+	end
+	local contentTop = textTop
+		+ (
+			if not mobile
+				then (if spec.sub then S(68) else S(32))
+				elseif spec.sub then titleH + S(2) + subH + S(6)
+				else titleH + S(6)
+		)
 	local content = UI.frame({
 		Name = "Content",
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(8), textTop + (if spec.sub then S(68) else S(32))),
-		Size = UDim2.new(
-			1,
-			-S(16),
-			1,
-			-(textTop + (if spec.sub then S(68) else S(32))) - (if spec.price or spec.priceText then S(48) else S(10))
-		),
+		Position = UDim2.fromOffset(S(8), contentTop),
+		Size = UDim2.new(1, -S(16), 1, -contentTop - (if spec.price or spec.priceText then S(48) else S(10))),
 		ZIndex = z + 2,
 		Parent = body,
 	})

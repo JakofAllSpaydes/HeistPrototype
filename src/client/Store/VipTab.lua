@@ -12,6 +12,7 @@ local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local ItemArt = require(script.Parent:WaitForChild("ItemArt"))
+local Card = require(script.Parent:WaitForChild("Card"))
 
 local VipTab = {}
 
@@ -98,7 +99,7 @@ function VipTab.render(ctx: any)
 		Parent = card,
 	})
 	UI.stroke(title, Color3.new(0, 0, 0), S(2), 0.2)
-	UI.text({
+	local subLine = UI.text({
 		Text = if active
 			then string.format("VIP · RENEWS IN %s", Clock.span(renewsIn))
 			elseif ever then "Your mask and poses are still yours. Pick the perks back up any time."
@@ -113,6 +114,11 @@ function VipTab.render(ctx: any)
 		ZIndex = 8,
 		Parent = card,
 	})
+	-- Phone pass: the store's bigger text overflowed these boxes; they shrink to fit (never under MobileTextMin).
+	if ctx.mobile then
+		Card.fitText(title)
+		Card.fitText(subLine)
+	end
 	-- Perk rows.
 	local perks = UI.frame({
 		BackgroundTransparency = 1,
@@ -151,7 +157,7 @@ function VipTab.render(ctx: any)
 			ZIndex = 10,
 			Parent = badge,
 		})
-		UI.text({
+		local perkText = UI.text({
 			Text = perk[2],
 			FontFace = Theme.Fonts.body,
 			TextSize = S(12),
@@ -163,6 +169,9 @@ function VipTab.render(ctx: any)
 			ZIndex = 9,
 			Parent = row,
 		})
+		if ctx.mobile then
+			Card.fitText(perkText)
+		end
 		table.insert(rows, row)
 	end
 	if not ctx.quiet then
@@ -238,6 +247,9 @@ function VipTab.render(ctx: any)
 			9
 		)
 		sub.TextSize = S(20)
+		if ctx.mobile then
+			Card.fitText(sub) -- the long SUBSCRIBE line ran past the button on a phone
+		end
 		Fx.shine(sub)
 		sub.Activated:Connect(function()
 			ctx.buy("vip", {
@@ -265,6 +277,9 @@ function VipTab.render(ctx: any)
 			9
 		)
 		gh.setEnabled(gift == true)
+		if ctx.mobile then
+			Card.fitText(g)
+		end
 		g.Activated:Connect(function()
 			if not gift then
 				return

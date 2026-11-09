@@ -515,7 +515,7 @@ do
 		INITIATE = { "frag", "stim", "turret" },
 		ENGINEER = { "sentry", "barricade", "overclock" },
 		DOC = { "stimshot", "medbag", "healdrone" },
-		TORCH = { "molotov", "flameturret", "inferno" },
+		TORCH = { "molotov", "inferno", "flameturret" }, -- Round 29b: Inferno on F, Flame Turret on Z
 		SWARM = { "drone", "surge", "aegis" },
 	}
 	for classId, ids in expect do

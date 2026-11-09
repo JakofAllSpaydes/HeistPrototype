@@ -35,6 +35,7 @@ local ClientState = require(Client:WaitForChild("ClientState"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
+local CloseButton = require(Client:WaitForChild("UI"):WaitForChild("CloseButton"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local Store = Client:WaitForChild("Store")
 local Fx = require(Store:WaitForChild("Fx"))
@@ -707,7 +708,8 @@ local function build(): Ui
 	UI.tween(dim, { BackgroundTransparency = 0.45 }, 0.25)
 
 	local pad = S(if mobile then 10 else 18)
-	local headH = T(if mobile then 34 else 40)
+	local closeSize = CloseButton.size()
+	local headH = math.max(T(if mobile then 34 else 40), closeSize) -- the header row holds the shared X
 	local btnH = if mobile then math.max(48, S(56)) else S(52)
 	local vpad = S(10) -- room above and below the cards for the lifted ones and their glow
 	local maxW = vp.X - 32
@@ -782,7 +784,7 @@ local function build(): Ui
 		Name = "Right",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -(pad + headH + S(10)), 0, pad),
+		Position = UDim2.new(1, -(pad + closeSize + S(10)), 0, pad),
 		Size = UDim2.fromOffset(0, headH),
 		AutomaticSize = Enum.AutomaticSize.X,
 		ZIndex = 6,
@@ -848,25 +850,14 @@ local function build(): Ui
 		ZIndex = 7,
 		Parent = countBox,
 	})
-	local xBtn = UI.button({
-		Name = "Close",
-		Text = "",
-		BackgroundColor3 = DARK,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -pad, 0, pad),
-		Size = UDim2.fromOffset(headH, headH),
-		ZIndex = 6,
-		Parent = panel,
-	})
-	UI.corner(xBtn, S(4))
-	Icons.fit(xBtn, "close", 0.5, Theme.Colors.white).ZIndex = 7
-	Fx.interactive(xBtn)
-	xBtn.Activated:Connect(function()
+	-- The shared red X (CloseButton), top-right in the header row. The no-dismiss rule stands: with a day to claim it
+	-- claims (START OVER when lost), exactly like Esc / B; with nothing to claim it closes.
+	CloseButton.new(panel, function()
 		local f = claimFn
 		if f and not busy then
 			f()
 		end
-	end)
+	end, { margin = pad, top = pad + (headH - closeSize) // 2, z = 6 })
 
 	-- The row: a clipped window over a strip of cards we move ourselves (drag to scroll; no wheel).
 	local rowY = pad + headH + S(8)

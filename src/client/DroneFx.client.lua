@@ -337,7 +337,7 @@ local function endRing(userId: number)
 	end
 	rings[userId] = nil
 	for _, d in r.model:GetDescendants() do
-		if d:IsA("Fire") then
+		if d:IsA("ParticleEmitter") then
 			d.Enabled = false
 		elseif d:IsA("BasePart") then
 			TweenService:Create(d, TweenInfo.new(0.4), { Transparency = 1 }):Play()
@@ -357,14 +357,43 @@ local function startRing(data: any)
 	local fireColor = Color3.fromHex(Config.AllyFireColor)
 	local fire2 = Color3.fromHex(Config.AllyFireSecondary)
 	local anchors = {}
-	local n = math.max(6, math.round(14 * SCALE))
+	-- Round 29b: flames by circumference (about one every 6.5 studs) so a big ring stays a ring of fire.
+	local n = math.clamp(math.round(2 * math.pi * radius / 6.5 * SCALE), 6, 28)
 	for _ = 1, n do
 		local a = part({ Name = "Flame", Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, Parent = model })
-		local f = Instance.new("Fire")
-		f.Size = 3.2
-		f.Heat = 9
-		f.Color = fireColor
-		f.SecondaryColor = fire2
+		-- Round 29b: flames locked to their anchor (no trail left on the map when you move); they rise while you
+		-- stand and stay on the ring as it follows you.
+		local f = Instance.new("ParticleEmitter")
+		f.Name = "InfernoFlame"
+		f.Texture = "rbxasset://textures/particles/fire_main.dds"
+		f.LockedToPart = true
+		-- Sized and coloured like the molotov's Fire (Size 3.2, Heat 9, the ally blue): a blue body with a pale core,
+		-- tall flames, only now they ride their spot on the ring instead of trailing behind.
+		f.LightEmission = 0.6
+		f.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, fireColor:Lerp(fire2, 0.35)),
+			ColorSequenceKeypoint.new(0.3, fireColor),
+			ColorSequenceKeypoint.new(1, fireColor),
+		})
+		f.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1.8),
+			NumberSequenceKeypoint.new(0.4, 3.2),
+			NumberSequenceKeypoint.new(1, 0.8),
+		})
+		f.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.3),
+			NumberSequenceKeypoint.new(0.6, 0.5),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		f.Lifetime = NumberRange.new(0.6, 0.9)
+		f.Rate = 26
+		f.Speed = NumberRange.new(5, 8)
+		f.Acceleration = Vector3.new(0, 4, 0)
+		f.Drag = 1
+		f.SpreadAngle = Vector2.new(10, 10)
+		f.EmissionDirection = Enum.NormalId.Top
+		f.Rotation = NumberRange.new(0, 360)
+		f.RotSpeed = NumberRange.new(-90, 90)
 		f.Parent = a
 		table.insert(anchors, a)
 	end
@@ -427,9 +456,8 @@ RunService.RenderStepped:Connect(function(dt)
 		if not root then
 			continue
 		end
-		-- The ring trails the feet: its centre eases after the caster rather than snapping.
-		local feet = root.Position - Vector3.new(0, 2.9, 0)
-		local c = (r.center or feet):Lerp(feet, 1 - math.exp(-7 * dt))
+		-- Round 29b: the ring is bound to the caster's feet (it twists round them, never trails behind).
+		local c = root.Position - Vector3.new(0, 2.9, 0)
 		r.center = c
 		r.spin += dt * 0.6
 		for i, a in r.anchors do
@@ -461,6 +489,12 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		onAegisHp(data)
 	elseif name == "InfernoStart" then
 		startRing(data)
+	elseif name == "InfernoExtend" then
+		-- BACKDRAFT pushed the end out: the safety end-check follows the new time.
+		local r = rings[tonumber(data.owner) or 0]
+		if r then
+			r.untilT = tonumber(data.untilT) or r.untilT
+		end
 	elseif name == "InfernoEnd" then
 		endRing(tonumber(data.owner) or 0)
 	elseif name == "SentryReady" and typeof(data.position) == "Vector3" then

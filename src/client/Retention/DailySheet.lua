@@ -25,7 +25,7 @@ local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
-local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
+local CloseButton = require(Client:WaitForChild("UI"):WaitForChild("CloseButton"))
 local HUD = require(Client:WaitForChild("HUD"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local CameraShots = require(Client:WaitForChild("CameraShots"))
@@ -40,7 +40,6 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local GREEN = Color3.fromHex("2FB75A")
-local DARK = Color3.fromHex("2E3135")
 local PANEL = Color3.fromHex("1C1C22")
 local AMBER = Color3.fromHex("F2A93B")
 local CONTENTS = 6 -- item tiles shown
@@ -210,7 +209,8 @@ function DailySheet.open(state: string)
 	local w = if mobile then math.floor(vp.X * 0.42) else S(400)
 	local margin = S(14)
 	local pad = S(14)
-	local headH = T(30)
+	local closeSize = CloseButton.size()
+	local headH = math.max(T(30), closeSize) -- the header row holds the shared X
 	local wellSize = if mobile then math.floor(w * 0.24) else S(86)
 	local tileGap = S(6)
 	local tile = math.floor((w - pad * 2 - tileGap * (CONTENTS - 1)) / CONTENTS)
@@ -254,24 +254,13 @@ function DailySheet.open(state: string)
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -(pad + headH + S(8)), 0, pad),
+		Position = UDim2.new(1, -(pad + closeSize + S(8)), 0, pad),
 		Size = UDim2.fromOffset(S(90), headH),
 		ZIndex = 21,
 		Parent = s,
 	})
-	local x = UI.button({
-		Name = "Close",
-		Text = "",
-		BackgroundColor3 = DARK,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -pad, 0, pad),
-		Size = UDim2.fromOffset(headH, headH),
-		ZIndex = 21,
-		Parent = s,
-	})
-	UI.corner(x, S(3))
-	Icons.fit(x, "close", 0.55, Theme.Colors.white).ZIndex = 22
-	x.Activated:Connect(DailySheet.close)
+	-- The shared red X (CloseButton), top-right in the header row.
+	local x = CloseButton.new(s, DailySheet.close, { margin = pad, top = pad + (headH - closeSize) // 2, z = 21 })
 
 	-- The crate and its state.
 	local bodyY = pad + headH + S(8)

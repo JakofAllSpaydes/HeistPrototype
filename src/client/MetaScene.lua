@@ -1,6 +1,6 @@
 --!strict
 -- The customization scene, styled to the reference boards: a panel on the right ~58% of the screen with a
--- blue header bar (title, X), the Gold pill and a dock (LEAVE · WEAPONS · CLASSES · AVATAR as icon tiles
+-- blue header bar (title, the red X), the Gold pill and a dock (WEAPONS · CLASSES · AVATAR as icon tiles
 -- with labels) bottom-left that never hides, and a "customize" mode where the panel goes away and the
 -- camera centers on the gun (tabs draw their strips into a full-screen overlay). Movement is locked while
 -- the scene is open; selections preview live on the character; nothing is saved until a purchase or equip.
@@ -22,6 +22,7 @@ local GunModels = require(Shared:WaitForChild("GunModels"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local CloseButton = require(script.Parent:WaitForChild("UI"):WaitForChild("CloseButton"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local PurchaseSheet = require(script.Parent:WaitForChild("PurchaseSheet"))
 local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
@@ -766,7 +767,8 @@ local function build()
 	UI.corner(root, S(12))
 	UI.stroke(root, Theme.Colors.black, S(2), 0.3)
 	panelRoot = root
-	local headerH = S(60)
+	local closeSize = CloseButton.size()
+	local headerH = math.max(S(60), closeSize + S(12))
 	local header = UI.frame({
 		Name = "Header",
 		BackgroundColor3 = Theme.Colors.blue,
@@ -790,24 +792,10 @@ local function build()
 		ZIndex = 5,
 		Parent = header,
 	})
-	local closeBtn = UI.button({
-		Text = "X",
-		FontFace = Theme.Fonts.display,
-		TextSize = S(20),
-		TextColor3 = Theme.Colors.white,
-		BackgroundColor3 = Theme.Colors.red,
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -S(14), 0.5, 0),
-		Size = UDim2.fromOffset(S(40), S(40)),
-		ZIndex = 5,
-		Parent = header,
-	})
-	UI.corner(closeBtn, S(8))
-	UI.stroke(closeBtn, Theme.Colors.white, S(1.5), 0.3)
-	closeBtn.Activated:Connect(function()
-		UI.punch(closeBtn, 0.9, 0.15)
+	-- The shared red X (UI/CloseButton), vertically centred in the header bar.
+	CloseButton.new(header, function()
 		MetaScene.close()
-	end)
+	end, { margin = S(14), top = (headerH - closeSize) // 2, z = 5 })
 	panelFrame = UI.frame({
 		Name = "Content",
 		BackgroundTransparency = 1,
@@ -838,16 +826,12 @@ local function build()
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, S(20), 1, -S(16)),
-		Size = UDim2.fromOffset(tile * 4 + S(36), tile + S(18)),
+		Size = UDim2.fromOffset(tile * 3 + S(24), tile + S(18)),
 		ZIndex = 6,
 		Parent = g,
 	})
 	UI.list(dock, Enum.FillDirection.Horizontal, S(12))
-	local leave = dockTile(dock, 0, "Leave", "X", Theme.Colors.red, Theme.Colors.white, tile)
-	leave.Activated:Connect(function()
-		UI.punch(leave, 0.9, 0.15)
-		MetaScene.close()
-	end)
+	-- Round 29b: no LEAVE tile in the dock: the header's red X closes (one close control per window).
 	local glyphs = { WEAPONS = "gun", CLASSES = "CLS", AVATAR = "MSK" }
 	local colors = { WEAPONS = Theme.Colors.blue, CLASSES = Theme.Colors.grey, AVATAR = Theme.Colors.gold }
 	local labels = { WEAPONS = "Weapons", CLASSES = "Classes", AVATAR = "Avatar" }
