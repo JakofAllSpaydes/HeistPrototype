@@ -21,6 +21,8 @@ local Windows = require(script.Parent.Windows)
 local Alarms = require(script.Parent.Alarms) -- Round 19c
 local ZoneGas = require(script.Parent.ZoneGas) -- Round 19c
 local Offices = require(script.Parent.Offices) -- Round 19f
+local Breach = require(script.Parent.Breach) -- brief 13
+local HeistDebug = require(script.Parent.HeistDebug) -- brief 13
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
@@ -224,6 +226,8 @@ local function playRun()
 	World.runClockStart = 0
 	World.runClockPaused = 0
 	World.runClockEnd = 0
+	World.idleBeforeBreach = 0
+	World.phase = "run"
 
 	-- Run start: fresh run state for the party, then the drive-in sequence (IntroSec); WAVE 1 follows.
 	World.wave = 1
@@ -253,6 +257,14 @@ local function playRun()
 	)
 	RunStart.play()
 	BigCrate.onIntro()
+	-- Brief 13: a pre-heist map waits on the street for the breach (the door, a window, debug); the HEIST ON stamp
+	-- holds a beat, then wave 1. The arena starts on the clock as always.
+	if Breach.enabled() then
+		Breach.waitForBreach(setState)
+		if not World.runOver then
+			task.wait(Config.BreachWaveDelaySec)
+		end
+	end
 
 	runWaves()
 
@@ -348,6 +360,7 @@ local function backToHub(first: boolean)
 	setState("Hub")
 	Pause.reset()
 	clearArena()
+	Breach.resetRun()
 	Doors.resetRun()
 	Alarms.resetRun()
 	ZoneGas.resetRun()
@@ -439,6 +452,7 @@ function Main.start()
 	RunEnd.init()
 	Roster.init()
 	Debug.init()
+	HeistDebug.init()
 	Doors.init()
 	Windows.init()
 	Alarms.init()

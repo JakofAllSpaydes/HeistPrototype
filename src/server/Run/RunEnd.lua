@@ -428,6 +428,7 @@ function RunEnd.play(): string
 		wave = World.wave,
 		heat = World.heat,
 		survivedSec = math.floor(World.survivedSec()),
+		idleBeforeBreachSec = math.floor(World.idleBeforeBreach), -- brief 13
 		xpFillSec = Config.XpFillSec,
 		line = line,
 		beats = beats,

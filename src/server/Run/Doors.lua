@@ -69,6 +69,7 @@ local buildVaultRoom: (Folder) -> ()
 local guideTo: (string, Vector3) -> ()
 local groups: { [string]: GroupState } = {}
 local queue: { string } = {}
+local lineOverride: { [string]: string } = {} -- brief 13: MARLOW's card line for a door called by Doors.callNow
 local folder: Folder? = nil
 
 local function onBank(): boolean
@@ -647,7 +648,8 @@ end
 -- Open a group: the props break, and (unless `quiet`) the zone-open burst, the logs and the call's finish.
 -- `by` is the opener (nil for debug and the vault's own open).
 -- `mode`: nil (an objective done: burst, logs, shake), "load" (dressing doors: instant and silent) or "vault"
--- (D4 opened by the vault job: animated, logged, no zone burst: the vault has its own).
+-- (D4 opened by the vault job: animated, logged, no zone burst: the vault has its own). Brief 13: "breach" is an
+-- objective door blown from inside at the breach (burst, logs, shake; its call clears with no reward).
 function Doors.open(group: string, by: Player?, mode: string?)
 	local quiet = mode == "load"
 	local g = stateOf(group)
@@ -702,7 +704,10 @@ function Doors.open(group: string, by: Player?, mode: string?)
 		Doors.openedLog = Doors.openedLog or {}
 		table.insert(Doors.openedLog, { group = group, wave = World.wave, by = if by then by.Name else "debug" })
 	end
-	if wasCalled then
+	if wasCalled and mode == "breach" then
+		-- Brief 13: blown open from inside at the breach: nobody held it, so the call just goes (no reward).
+		CrewCall.clearDoor(group)
+	elseif wasCalled then
 		CrewCall.finishDoor(group, by)
 	end
 	Doors.sendState()
@@ -904,12 +909,14 @@ function Doors.pump()
 	end
 	local target = Ground.at(pick.cframe.Position - towardZone(pick) * 4)
 	g.target = target
+	local line = lineOverride[group]
+	lineOverride[group] = nil
 	CrewCall.triggerDoor({
 		group = group,
 		position = target,
 		name = door.pingText,
 		label = door.label,
-		line = Lines.door.lines[group] or Lines.door.lines.default,
+		line = line or Lines.door.lines[group] or Lines.door.lines.default,
 		extra = (Lines.door.extra :: any)[door.interact] or Lines.door.extraText,
 		hint = actionHint(door, pick),
 		cashReward = door.cashReward,
@@ -917,6 +924,23 @@ function Doors.pump()
 	})
 	guideTo(group, target)
 	Doors.sendState()
+end
+
+-- Brief 13: call a door now, ahead of the queue, whatever its TriggerWave (the pre-heist's front doors from the
+-- first second). `line` replaces MARLOW's door line on its card.
+function Doors.callNow(group: string, line: string?)
+	local g = stateOf(group)
+	if not onBank() or not MapLoader.doors[group] or g.state ~= "closed" then
+		return
+	end
+	g.state = "queued"
+	g.dueWave = World.wave
+	if line then
+		lineOverride[group] = line
+	end
+	table.insert(queue, 1, group)
+	Log.event("Door", "%s called now (pre-heist)", group)
+	Doors.pump()
 end
 
 -- Doors due by `wave` join the queue (by Priority) and the first one takes the slot when it is free.
@@ -1238,6 +1262,7 @@ end
 -- Run start / hub / debug Close all doors: every door closed (dressing doors open), nothing queued.
 function Doors.resetRun()
 	queue = {}
+	lineOverride = {}
 	Doors.openedLog = {}
 	for gid, door in MapLoader.doors do
 		local g = stateOf(gid)

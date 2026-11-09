@@ -842,6 +842,15 @@ function CrewCall.finishDoor(group: string, by: Player?)
 	end
 end
 
+-- Brief 13: the door's group opened without anyone doing the objective (blown from inside at the breach): the call
+-- goes quietly, no reward.
+function CrewCall.clearDoor(group: string)
+	local j = doorJob
+	if j and j.active and j.door and j.door.group == group then
+		CrewCall.finish(false, true, nil, j)
+	end
+end
+
 -- Testing: the vault job is forced at every VaultJobEveryWaves wave (when the vault can be drawn).
 local function vaultDue(wave: number): boolean
 	local every = Config.VaultJobEveryWaves

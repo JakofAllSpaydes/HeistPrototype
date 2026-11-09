@@ -20,6 +20,7 @@ local Haptics = require(script.Parent:WaitForChild("Haptics"))
 local GamepadMap = require(Shared:WaitForChild("GamepadMap"))
 local Sprint = require(script.Parent:WaitForChild("Sprint"))
 local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
+local HeistDebug = require(script.Parent:WaitForChild("HeistDebug")) -- brief 13
 
 local DebugPanel = {}
 
@@ -773,6 +774,8 @@ local function build()
 		b.TextSize = S(9)
 		b.TextColor3 = if NodeOverlay.shown[typeName] then Theme.Colors.gold else Theme.Colors.grey
 	end
+	-- Brief 13: the HEIST group (client/HeistDebug.lua).
+	HeistDebug.build(panel, { row = row, btn = btn, send = send, rh = rh })
 end
 
 local function refreshToggles()

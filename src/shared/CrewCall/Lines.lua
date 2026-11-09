@@ -283,6 +283,21 @@ local Lines = {
 			"Finish it or forget it. Your call.",
 		},
 	},
+	-- Brief 13: the pre-heist on THE BANK (Breach.lua, the wave bar's pill, the summary). [Copy: TBA]
+	preHeist = {
+		doorLine = "Front doors. Make some noise.", -- MARLOW's card with the front-door objective from the first second
+		nagLabel = "WHENEVER YOU'RE READY",
+		stamp = "HEIST ON", -- the centre stamp at the breach
+		pill = "BREACH WHEN READY", -- where the wave bar sits until the breach
+		pillHint = "BLOW THE DOORS OR GO IN THROUGH A WINDOW",
+		idleRow = "IDLE BEFORE BREACH %s", -- the summary's small line under the time row
+	},
+	-- MARLOW every Config.PreHeistNagSec of idling, cycling. [Copy: TBA]
+	preHeistNag = {
+		"Clock's ticking, in your head at least.",
+		"Whenever you're ready. No rush. Some rush.",
+		"The vault isn't coming out here.",
+	},
 }
 
 return Lines

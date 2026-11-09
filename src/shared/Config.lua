@@ -1955,6 +1955,17 @@ local Config = {
 	-- boxes and the street boss wall stand at x = their node's x times this, measured from the bank's centre line
 	-- (1 = where the nodes are drawn; 0.7 = 30% closer to the steps, so the mouths read from the bank's front).
 	StreetSpawnDistanceMult = 0.7,
+	-- Breach (step 2). A map in PreHeistMaps opens in the pre-heist (Breach.lua): no enemies, no heat, no wave timer,
+	-- a BREACH WHEN READY pill, the BreachDoorGroup objective live from the first second. The breach is that door
+	-- opening, or any member walking into the BreachZone volume while it is shut (through a shot-out window).
+	PreHeistMaps = { TheBank = true }, -- Maps rows read this as `preHeist`; the Arena keeps its clock start
+	PreHeistNagSec = 60, -- MARLOW's nag (Lines.preHeistNag, cycling) every this many seconds of idling; 0 = none
+	BreachDoorGroup = "D1", -- the door objective called at spawn; it blows open from inside on a window breach
+	BreachZone = "lobby", -- a member's root inside this zone while the door is shut = a window breach
+	BreachAlarmSec = 6, -- the building alarm and strobe on the breach
+	BreachWaveDelaySec = 1.4, -- the HEIST ON stamp holds this long before wave 1's bell
+	BreachIdleShowSec = 20, -- the summary shows IDLE BEFORE BREACH when the crew idled longer than this
+	MusicPreHeist = { "rbxassetid://9038506583" }, -- the pre-heist's cue (Diamond Heist (b)), looping under MusicDuck
 	-- Node colours for the node types added after NodeShowColor (debug Show nodes and Studio's edit mode).
 	NodeShowColorMore = {
 		Blockers = "8A2A2A",

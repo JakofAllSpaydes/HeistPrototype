@@ -1185,13 +1185,20 @@ function MapLoader.resetRun()
 	end
 end
 
+-- Brief 13: the breach restarts the zone clock (the street time before it is idle, not pacing).
+function MapLoader.markBreach()
+	MapLoader.zoneTime = {}
+	zoneSince = os.clock()
+end
+
 local function crewZoneLoop()
 	while true do
 		local dt = task.wait(Config.CrewZoneSyncSec)
 		if World.map ~= MapLoader.MAP_ID or not MapLoader.loaded or not World.inRunCycle() then
 			continue
 		end
-		if World.inRun() then
+		-- Brief 13: the [GHS Zone] pacing (and the zone clock) start at the breach, not on the street before it.
+		if World.inRun() and World.phase ~= "preheist" then
 			local z = MapLoader.pinnedZone or measureCrewZone()
 			if z then
 				setCrewZone(z)

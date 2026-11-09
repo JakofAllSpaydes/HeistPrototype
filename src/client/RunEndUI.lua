@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local Lines = require(Shared:WaitForChild("CrewCall"):WaitForChild("Lines")) -- brief 13
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -339,6 +340,23 @@ local function showSummary(d: any)
 	wavePill.ZIndex = 11
 	waveLabel.ZIndex = 12
 	waveLabel.FontFace = Theme.Fonts.display
+	-- Brief 13: how long the crew stood on the street before the breach, small under the time, when it was long.
+	local idle = tonumber(d.idleBeforeBreachSec) or 0
+	if idle > Config.BreachIdleShowSec then
+		UI.text({
+			Name = "IdleBeforeBreach",
+			Text = string.format(Lines.preHeist.idleRow, fmtClock(idle)),
+			FontFace = Theme.Fonts.display,
+			TextSize = S(12),
+			TextColor3 = Theme.Colors.grey,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -S(26), 0, S(70)),
+			Size = UDim2.fromOffset(S(260), S(14)),
+			ZIndex = 11,
+			Parent = panel,
+		})
+	end
 	-- Brief 7: the map and difficulty the run was on, small over the wave pill.
 	if typeof(d.mapName) == "string" then
 		UI.text({

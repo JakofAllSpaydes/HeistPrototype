@@ -79,7 +79,9 @@ local function switch(state: string, fresh: boolean?)
 		leftAt[old.SoundId] = os.clock()
 		fade(old, 0, true)
 	end
-	local list = (Config.MusicTracks :: any)[state] :: { string }?
+	local list = (
+		if state == "preheist" then Config.MusicPreHeist else (Config.MusicTracks :: any)[state]
+	) :: { string }?
 	if not list or #list == 0 then
 		return
 	end
@@ -126,6 +128,8 @@ local function wanted(): string
 		return "summary"
 	elseif sync.boss then
 		return "boss"
+	elseif ws == "PreHeist" then
+		return "preheist" -- brief 13: the intro cue, quiet, until the breach
 	end
 	return "run"
 end
@@ -163,7 +167,7 @@ function Music.init()
 	task.spawn(function()
 		while true do
 			switch(wanted())
-			setDuck(ClientState.musicDuck)
+			setDuck(ClientState.musicDuck or currentState == "preheist") -- brief 13: the pre-heist cue plays quietly
 			-- A track that played through moves on to another one in its state's list.
 			local s = current
 			if s and s.TimeLength > 0 and s.TimePosition >= s.TimeLength - Config.MusicFadeSec - 0.3 then

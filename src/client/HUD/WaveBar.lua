@@ -408,13 +408,82 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 
 	local component = {}
 
+	-- Brief 13: the pre-heist. Where WAVE N sits, a BREACH WHEN READY pill in the crew-call pill style (amber, no
+	-- timer) with how to go in under it; no stars, no skip, no pause until the breach.
+	local PILL_H = S(40)
+	local breachPill = UI.frame({
+		Name = "BreachPill",
+		BackgroundColor3 = Theme.Colors.panel,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, S(4)),
+		Size = UDim2.fromOffset(S(300), PILL_H),
+		Visible = false,
+		Parent = root,
+	})
+	UI.corner(breachPill, PILL_H / 2)
+	UI.stroke(breachPill, Theme.Colors.amber, S(2))
+	local breachIcon = UI.frame({
+		BackgroundColor3 = Theme.Colors.amber,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, S(8), 0.5, 0),
+		Size = UDim2.fromOffset(S(26), S(26)),
+		Parent = breachPill,
+	})
+	UI.corner(breachIcon, S(6))
+	UI.text({
+		Text = "!",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(20),
+		TextColor3 = Theme.Colors.bg,
+		Size = UDim2.fromScale(1, 1),
+		Parent = breachIcon,
+	})
+	UI.text({
+		Text = Lines.preHeist.pill,
+		FontFace = Theme.Fonts.display,
+		TextSize = S(22),
+		Position = UDim2.fromOffset(S(42), 0),
+		Size = UDim2.new(1, -S(54), 1, 0),
+		Parent = breachPill,
+	})
+	local breachHint = UI.text({
+		Name = "BreachHint",
+		Text = Lines.preHeist.pillHint,
+		FontFace = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.grey,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, S(4) + PILL_H + S(4)),
+		Size = UDim2.fromOffset(S(420), S(16)),
+		Visible = false,
+		Parent = root,
+	})
+	UI.stroke(breachHint, Theme.Colors.black, S(1), 0.5)
+	if ClientState.isMobile then
+		UI.mobileGrow(breachPill)
+	end
+	local breathe = 0
+	track(RunService.Heartbeat:Connect(function(dt)
+		if breachPill.Visible then
+			breathe += dt * 2.2
+			local stroke = breachPill:FindFirstChildOfClass("UIStroke")
+			if stroke then
+				stroke.Transparency = 0.15 + 0.35 * (0.5 + 0.5 * math.sin(breathe))
+			end
+		end
+	end))
+
 	-- Hub (the yard): the bar is hidden by the hub HUD; it reads HUB if ever shown. Run over: RUN OVER.
 	local function paintState()
 		local inRun = state == "Intro" or state == "Wave" or state == "Intermission" or state == "Dealer"
+		local pre = state == "PreHeist"
 		stars.Visible = inRun
 		autoSkip.Visible = inRun
 		votes.Visible = inRun
 		pause.Visible = inRun
+		wave.Visible = not pre
+		breachPill.Visible = pre
+		breachHint.Visible = pre
 		if not inRun then
 			left.Visible = false
 			lastLeft = -1
@@ -514,6 +583,20 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			-- CRACK THE VAULT is impossible to miss: the stamp in the wave-banner style with the job sting.
 			banner("VAULT JOB", Theme.Colors.amber, 76, Config.VaultStampSec, Theme.Sounds.call, 0.85)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.amber, alpha = 0.2 })
+		elseif name == "Breach" then
+			-- Brief 13: the crew went in. HEIST ON in the wave-banner style; wave 1's bell follows a beat later.
+			state = "Intro"
+			paintState()
+			banner(
+				tostring(data.stamp or Lines.preHeist.stamp),
+				Theme.Colors.red,
+				84,
+				Config.BreachWaveDelaySec + 0.2,
+				Theme.Sounds.legendary,
+				0.8
+			)
+			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.red, alpha = 0.3 })
+			ClientState.Juice:Fire("Shake", { amp = 0.4, dur = 0.35 })
 		elseif name == "RunResumed" then
 			banner("SECOND CHANCE", Theme.Colors.cash, 64, 1.2, Theme.Sounds.legendary, 1.1)
 			ClientState.Juice:Fire("RarityFlash", { color = Theme.Colors.cash, alpha = 0.3 })
