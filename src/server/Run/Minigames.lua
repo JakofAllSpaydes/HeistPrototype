@@ -25,7 +25,7 @@ type Session = {
 }
 
 export type OpenOpts = { position: Vector3?, onDone: ((Player) -> ())?, tier: number? }
-type Result = { sec: number, misses: number, outcome: string, tier: number }
+type Result = { sec: number, misses: number, outcome: string, tier: number, device: string }
 
 local Minigames = {}
 
@@ -34,18 +34,19 @@ local byPlayer: { [Player]: Session } = {}
 local stats: { [string]: { Result } } = {}
 local nextToken = 0
 
-local function record(s: Session, outcome: string, misses: number)
+local function record(s: Session, outcome: string, misses: number, device: string?)
 	local sec = os.clock() - s.startedAt
+	local dev = device or "?"
 	local list = stats[s.name]
 	if not list then
 		list = {}
 		stats[s.name] = list
 	end
-	table.insert(list, { sec = sec, misses = misses, outcome = outcome, tier = s.tier })
+	table.insert(list, { sec = sec, misses = misses, outcome = outcome, tier = s.tier, device = dev })
 	if outcome == "done" then
-		print(string.format("minigame %s tier %d done in %.1fs, %d fails", s.name, s.tier, sec, misses))
+		print(string.format("minigame %s tier %d done in %.1fs, %d fails (%s)", s.name, s.tier, sec, misses, dev))
 	else
-		print(string.format("minigame %s tier %d %s %.1fs %d misses", s.name, s.tier, outcome, sec, misses))
+		print(string.format("minigame %s tier %d %s %.1fs %d misses (%s)", s.name, s.tier, outcome, sec, misses, dev))
 	end
 end
 
@@ -54,13 +55,13 @@ local function busy(player: Player, label: string, on: boolean)
 	World.fireRun("PlayerBusy", { userId = player.UserId, name = player.Name, label = label, on = on })
 end
 
-local function close(s: Session, outcome: string, misses: number)
+local function close(s: Session, outcome: string, misses: number, device: string?)
 	sessions[s.token] = nil
 	if byPlayer[s.player] == s then
 		byPlayer[s.player] = nil
 		busy(s.player, string.upper(s.name), false)
 	end
-	record(s, outcome, misses)
+	record(s, outcome, misses, device)
 end
 
 -- Open `name` for a player at the session tier. An open game for that player is cancelled first.
@@ -102,7 +103,9 @@ function Minigames.open(player: Player, name: string, opts: OpenOpts?)
 	Log.event("Minigame", "%s opened %s at tier %d", player.Name, name, s.tier)
 end
 
-local function onResult(player: Player, token: any, outcome: any, misses: any)
+local DEVICES = { keyboard = true, touch = true, gamepad = true }
+
+local function onResult(player: Player, token: any, outcome: any, misses: any, device: any)
 	local s = if typeof(token) == "number" then sessions[token] else nil
 	if not s or s.player ~= player then
 		return
@@ -120,7 +123,7 @@ local function onResult(player: Player, token: any, outcome: any, misses: any)
 		)
 		out = "fail"
 	end
-	close(s, out, m)
+	close(s, out, m, if typeof(device) == "string" and DEVICES[device] then device else nil)
 	if out == "done" then
 		local state = PlayerState.get(player)
 		state.minigamesDone += 1
@@ -143,30 +146,40 @@ function Minigames.printStats()
 			continue
 		end
 		any = true
-		local done, fail, cancel, secSum, missSum = 0, 0, 0, 0, 0
+		-- Brief 11: one line per device, so pad times compare with mouse and touch.
+		local byDevice: { [string]: { Result } } = {}
 		for _, r in list do
-			if r.outcome == "done" then
-				done += 1
-				secSum += r.sec
-			elseif r.outcome == "fail" then
-				fail += 1
-			else
-				cancel += 1
-			end
-			missSum += r.misses
+			local d = r.device or "?"
+			byDevice[d] = byDevice[d] or {}
+			table.insert(byDevice[d], r)
 		end
-		print(
-			string.format(
-				"  %-9s plays %2d  done %2d  fail %2d  cancel %2d  avg done %.1fs  avg misses %.1f",
-				name,
-				#list,
-				done,
-				fail,
-				cancel,
-				if done > 0 then secSum / done else 0,
-				missSum / #list
+		for device, rows in byDevice do
+			local done, fail, cancel, secSum, missSum = 0, 0, 0, 0, 0
+			for _, r in rows do
+				if r.outcome == "done" then
+					done += 1
+					secSum += r.sec
+				elseif r.outcome == "fail" then
+					fail += 1
+				else
+					cancel += 1
+				end
+				missSum += r.misses
+			end
+			print(
+				string.format(
+					"  %-9s %-8s plays %2d  done %2d  fail %2d  cancel %2d  avg done %.1fs  avg misses %.1f",
+					name,
+					device,
+					#rows,
+					done,
+					fail,
+					cancel,
+					if done > 0 then secSum / done else 0,
+					missSum / #rows
+				)
 			)
-		)
+		end
 	end
 	if not any then
 		print("  (no plays yet)")

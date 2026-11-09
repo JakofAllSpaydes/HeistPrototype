@@ -16,6 +16,7 @@ local PINK = Color3.fromHex("FF7AB8")
 local Lockpick = {
 	title = "LOCKPICK",
 	hint = "TAP WHEN THE PIN IS IN THE GREEN · PINK IS WORTH 2",
+	padHint = "{ButtonA} WHEN THE PIN IS IN THE GREEN · PINK IS WORTH 2",
 	color = Theme.Colors.gold,
 	aspect = 1.0,
 }
@@ -144,7 +145,7 @@ function Lockpick.open(host: Frame.Host)
 		ZIndex = 8,
 		Parent = host.content,
 	})
-	Frame.press(host, { tapArea, host.zone }, function()
+	local function tap()
 		if os.clock() < stunUntil then
 			return
 		end
@@ -177,7 +178,19 @@ function Lockpick.open(host: Frame.Host)
 		zoneCenter = (angle + 100 + math.random() * 160) % 360
 		paintZone()
 		host.setHint(string.format("%d / %d · ZONE %d°", score, target, math.round(zone)), Theme.Colors.cash)
-	end)
+	end
+	Frame.press(host, { tapArea, host.zone }, tap)
+	-- Brief 11: A (or RT) is the tap; a soft rumble as the pin enters the zone.
+	host.pad = {
+		button = function(key: string, down: boolean): boolean?
+			if down and (key == "ButtonA" or key == "ButtonR2") then
+				tap()
+				return true
+			end
+			return false
+		end,
+	}
+	local wasIn = false
 
 	host.track(RunService.Heartbeat:Connect(function(dt)
 		if os.clock() < stunUntil then
@@ -185,6 +198,11 @@ function Lockpick.open(host: Frame.Host)
 		end
 		angle = (angle + speed * dt) % 360
 		pinHolder.Rotation = angle
+		local inZone = angDist(angle, zoneCenter) <= zone / 2
+		if inZone and not wasIn then
+			Frame.padHaptic(0.18, 0.04)
+		end
+		wasIn = inZone
 	end))
 end
 

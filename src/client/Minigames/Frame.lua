@@ -15,6 +15,9 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
+local Haptics = require(Client:WaitForChild("Haptics"))
+local InputGlyphs = require(Client:WaitForChild("InputGlyphs"))
+local Glyphs = require(Shared:WaitForChild("Glyphs"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 
@@ -36,6 +39,17 @@ export type Host = {
 	-- Round 24 (mobile only): an invisible band around the panel, clear of the screen's left / right edges, that
 	-- whole-area games pass to Frame.press / Frame.drag as an extra handle so a thumb need not land inside the box.
 	zone: GuiObject?,
+	-- Brief 11 step 5: the pad path, a third input into the same game state (set it in open).
+	pad: PadSpec?,
+}
+
+-- A pad button edge reaches the game here (ButtonA / B / X / Y, the D-pad, L1 / R1, and ButtonL2 / ButtonR2 past
+-- GamepadTriggerPress). Return true when the game used it; an unused B cancels the game (walking away). Sticks and
+-- trigger depth are polled with Frame.stick / Frame.trigger. navWalk hands the D-pad, left stick and A to
+-- GamepadNav so the pad walks the game's own buttons (Keypad, Charges).
+export type PadSpec = {
+	button: ((key: string, down: boolean) -> boolean?)?,
+	navWalk: boolean?,
 }
 
 export type GameSpec = {
@@ -44,6 +58,7 @@ export type GameSpec = {
 	color: Color3,
 	aspect: number, -- play area height / width
 	open: (Host) -> (),
+	padHint: string?, -- brief 11: the instruction line on a pad; {ButtonA}-style tokens become the glyph text
 }
 
 type Active = {
@@ -67,6 +82,7 @@ local Frame = {}
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local camera = Workspace.CurrentCamera :: Camera
 local active: Active? = nil
+local trigHeld: { [string]: boolean } = {} -- brief 11: the triggers past the press depth (pad edges)
 local DESIGN_WIDTH = 400
 
 local function supportsHaptics(inputType: Enum.UserInputType): boolean
@@ -223,7 +239,58 @@ function Frame.hit(point: Vector2, match: (GuiObject) -> boolean): GuiObject?
 end
 
 local function sendResult(a: Active, outcome: string)
-	Remotes.MinigameResult:FireServer(a.token, outcome, a.misses)
+	-- Brief 11: the device rides along so debug Stats can split the averages by it.
+	Remotes.MinigameResult:FireServer(a.token, outcome, a.misses, ClientState.inputDevice)
+end
+
+------------------------------------------------------------------ brief 11 step 5: the pad
+
+-- A stick (1 = left, 2 = right) as (x, y), y up; zero when no pad.
+function Frame.stick(n: number): Vector2
+	if not UserInputService.GamepadEnabled then
+		return Vector2.zero
+	end
+	local want = if n == 2 then Enum.KeyCode.Thumbstick2 else Enum.KeyCode.Thumbstick1
+	for _, s in UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) do
+		if s.KeyCode == want then
+			return Vector2.new(s.Position.X, s.Position.Y)
+		end
+	end
+	return Vector2.zero
+end
+
+-- A trigger's depth 0..1 ("ButtonR2" / "ButtonL2").
+function Frame.trigger(key: string): number
+	if not UserInputService.GamepadEnabled then
+		return 0
+	end
+	for _, s in UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) do
+		if s.KeyCode.Name == key then
+			return math.clamp(s.Position.Z, 0, 1)
+		end
+	end
+	return 0
+end
+
+function Frame.onPad(): boolean
+	return ClientState.inputDevice == "gamepad"
+end
+
+-- A rumble on the pad only (the zone ticks, tumblers, shocks), off with the vibration setting.
+function Frame.padHaptic(strength: number, sec: number?, motor: string?)
+	if ClientState.inputDevice ~= "gamepad" then
+		return
+	end
+	Haptics.pulse({ motor = motor or "Small", strength = strength, sec = sec or 0.05 })
+end
+
+-- "{ButtonA} ON THE MARK" -> "✕ ON THE MARK" in the current glyph style.
+function Frame.padText(template: string): string
+	return (
+		string.gsub(template, "{(%w+)}", function(button: string)
+			return Glyphs.padText(button, InputGlyphs.style())
+		end)
+	)
 end
 
 local function destroy(a: Active)
@@ -278,6 +345,7 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	if active then
 		Frame.close("cancel")
 	end
+	table.clear(trigHeld)
 	local vp = camera.ViewportSize
 	local short = math.min(vp.X, vp.Y)
 	local width = math.floor(short * Config.MinigamePanelPct)
@@ -367,6 +435,7 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	})
 	UI.corner(closeBtn, u(8))
 	UI.stroke(closeBtn, Theme.Colors.grey, u(1), 0.5)
+	closeBtn:SetAttribute("NavSkip", true) -- brief 11: B is the pad's way out
 	local content = UI.frame({
 		Name = "Content",
 		BackgroundTransparency = 1,
@@ -514,9 +583,91 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	end))
 	UI.sound(Theme.Sounds.call, 1.1, 0.4)
 	spec.open(host)
+	-- Brief 11: the pad's instruction line (and back to the mouse / touch one if the device changes mid-game).
+	local function padLine()
+		if a.closed or not spec.padHint then
+			return
+		end
+		local padText = Frame.padText(spec.padHint)
+		if Frame.onPad() and hint.Text == spec.hint then
+			hint.Text = padText
+		elseif not Frame.onPad() and hint.Text == padText then
+			hint.Text = spec.hint
+		end
+	end
+	padLine()
+	host.track(ClientState.DeviceChanged:Connect(padLine))
+	if host.pad and host.pad.navWalk then
+		gui:SetAttribute("NavWalk", true)
+	end
+end
+
+-- Brief 11: every pad input goes to the open game (above the combat map and GamepadNav), so a game never jumps,
+-- fires or walks the character; B cancels unless the game uses it.
+local WALK: { [string]: boolean } =
+	{ DPadUp = true, DPadDown = true, DPadLeft = true, DPadRight = true, ButtonA = true, Thumbstick1 = true }
+local function onPadInput(_name: string, state: Enum.UserInputState, input: InputObject): Enum.ContextActionResult
+	local a = active
+	if not a or a.closed or string.sub(input.UserInputType.Name, 1, 7) ~= "Gamepad" then
+		return Enum.ContextActionResult.Pass
+	end
+	local key = input.KeyCode.Name
+	local pad = a.host.pad
+	if pad and pad.navWalk and WALK[key] then
+		return Enum.ContextActionResult.Pass -- GamepadNav walks the game's buttons, Roblox's A presses them
+	end
+	if key == "Thumbstick1" or key == "Thumbstick2" then
+		return Enum.ContextActionResult.Sink -- polled by the game (Frame.stick); the character stays put
+	end
+	local down: boolean? = nil
+	if key == "ButtonL2" or key == "ButtonR2" then
+		local z = input.Position.Z
+		local pressed = if state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel
+			then false
+			elseif state == Enum.UserInputState.Begin and z == 0 then true
+			else z >= Config.GamepadTriggerPress
+		if pressed ~= (trigHeld[key] == true) then
+			trigHeld[key] = pressed
+			down = pressed
+		end
+	elseif state == Enum.UserInputState.Begin then
+		down = true
+	elseif state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then
+		down = false
+	end
+	if down ~= nil then
+		local used = pad and pad.button and pad.button(key, down)
+		if not used and key == "ButtonB" and down then
+			Frame.close("cancel")
+		end
+	end
+	return Enum.ContextActionResult.Sink
 end
 
 function Frame.init()
+	local ContextActionService = game:GetService("ContextActionService")
+	ContextActionService:BindActionAtPriority(
+		"GHSMinigame",
+		onPadInput,
+		false,
+		Enum.ContextActionPriority.High.Value + 40,
+		Enum.KeyCode.ButtonA,
+		Enum.KeyCode.ButtonB,
+		Enum.KeyCode.ButtonX,
+		Enum.KeyCode.ButtonY,
+		Enum.KeyCode.ButtonL1,
+		Enum.KeyCode.ButtonR1,
+		Enum.KeyCode.ButtonL2,
+		Enum.KeyCode.ButtonR2,
+		Enum.KeyCode.ButtonL3,
+		Enum.KeyCode.ButtonR3,
+		Enum.KeyCode.DPadUp,
+		Enum.KeyCode.DPadDown,
+		Enum.KeyCode.DPadLeft,
+		Enum.KeyCode.DPadRight,
+		Enum.KeyCode.Thumbstick1,
+		Enum.KeyCode.Thumbstick2
+	)
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 		if gameProcessed or not active then
 			return

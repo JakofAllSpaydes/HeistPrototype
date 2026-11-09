@@ -486,6 +486,35 @@ do
 	check("scroll: inside stays", NavMath.scrollInto(0, 300, 50, 100, 10) == 0)
 end
 
+------------------------------------------------------------------ 8. minigames on a pad (step 5)
+do
+	-- the Safe dial: a full circle of the right stick is a full turn of the dial, clockwise positive
+	local total, prev = 0, NavMath.stickAngle(0, 1)
+	for i = 1, 72 do
+		local r = math.rad(i * 5)
+		local a = NavMath.stickAngle(math.sin(r), math.cos(r))
+		total += NavMath.angleDelta(prev, a)
+		prev = a
+	end
+	check("Safe: a stick circle clockwise = one turn right", near(total, 360, 1e-6), tostring(total))
+	check("Safe: up to right is +90", near(NavMath.angleDelta(NavMath.stickAngle(0, 1), NavMath.stickAngle(1, 0)), 90))
+	check("Safe: across the top seam is short", near(NavMath.angleDelta(170, -170), 20))
+	check("Safe: pad mode is stick or dpad", Config.SafeDialPadMode == "stick" or Config.SafeDialPadMode == "dpad")
+	-- every game has a pad path and a pad line whose glyph tokens resolve
+	for _, name in { "Lockpick", "Hotwire", "Keypad", "Charges", "Safe", "Freq", "Cut" } do
+		local src = fs.readFile("src/client/Minigames/" .. name .. ".lua")
+		check(name .. " sets host.pad", string.find(src, "host.pad = ", 1, true) ~= nil)
+		local line = string.match(src, 'padHint = "([^"]+)"')
+		check(name .. " has a pad line", line ~= nil)
+		for token in string.gmatch(line or "", "{(%w+)}") do
+			check(
+				name .. " glyph " .. token,
+				Config.GlyphText.playstation[token] ~= nil and Config.GlyphText.xbox[token] ~= nil
+			)
+		end
+	end
+end
+
 print(string.format("input.spec: %d passed, %d failed", passed, failed))
 if failed > 0 then
 	process.exit(1)

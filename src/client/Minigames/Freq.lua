@@ -17,6 +17,7 @@ local SAMPLES = 64
 local Freq = {
 	title = "FREQUENCY JAM",
 	hint = "SLIDE UNTIL THE WAVES OVERLAP, THEN HOLD",
+	padHint = "{Thumbstick1} SLIDES · HOLD {ButtonR2} TO KEEP IT THERE",
 	color = Theme.Colors.red,
 	aspect = 0.85,
 }
@@ -197,9 +198,37 @@ function Freq.open(host: Frame.Host)
 		paintKnob()
 	end, function(_p: Vector2) end)
 
+	-- Brief 11: the pad. The left stick's position is the needle's (left edge to right edge); RT holds it where it
+	-- is so the stick can rest. After a lock the stick must come back to centre before it drives again.
+	local padHold = false
+	local padWait = false
+	local buzzAt = 0
+	host.pad = {
+		button = function(key: string, down: boolean): boolean?
+			if key == "ButtonR2" then
+				padHold = down
+				if down then
+					UI.punch(knob, 1.2, 0.15)
+				end
+				return true
+			end
+			return false
+		end,
+	}
 	host.track(RunService.Heartbeat:Connect(function()
 		if done or merging then
 			return
+		end
+		if Frame.onPad() then
+			local s = Frame.stick(1)
+			local deflected = math.abs(s.X) > 0.12 or math.abs(s.Y) > 0.35
+			if padWait and not deflected then
+				padWait = false
+			end
+			if deflected and not padHold and not padWait then
+				t = math.clamp(0.5 + s.X * 0.5, 0, 1)
+				paintKnob()
+			end
 		end
 		local f = freqAt(t)
 		local off = math.abs(f - baseFreq) / baseFreq
@@ -211,6 +240,12 @@ function Freq.open(host: Frame.Host)
 		end
 		knob.BackgroundColor3 = color
 		local aligned = off <= tol
+		-- A soft rumble that steadies as it tunes: far = sparse ticks, aligned = a steady hum.
+		if Frame.onPad() and os.clock() >= buzzAt then
+			local every = if aligned then 0.09 else 0.4 - 0.28 * closeness
+			buzzAt = os.clock() + every
+			Frame.padHaptic(0.08 + 0.2 * closeness, if aligned then 0.1 else 0.04)
+		end
 		if aligned then
 			if alignedSince < 0 then
 				alignedSince = os.clock()
@@ -226,6 +261,7 @@ function Freq.open(host: Frame.Host)
 				merging = true
 				-- Drop the hold: the next frequency needs a fresh press, so a held slider can't drift onto it.
 				releaseDrag()
+				padWait = true
 				pips[locks].BackgroundColor3 = Theme.Colors.cash
 				UI.punch(pips[locks], 1.5, 0.3)
 				host.haptic(1)

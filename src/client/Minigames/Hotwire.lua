@@ -47,6 +47,7 @@ end
 local Hotwire = {
 	title = "HOTWIRE",
 	hint = "DRAG EACH WIRE TO THE SOCKET OF ITS COLOR",
+	padHint = "{DPadUp} PICK · {ButtonA} GRAB · {DPadDown} SOCKET · {ButtonA} DROP · {ButtonY} COLORBLIND",
 	color = Theme.Colors.blue,
 	aspect = 0.95,
 }
@@ -75,6 +76,7 @@ function Hotwire.open(host: Frame.Host)
 
 	local wires: { Wire } = {}
 	local sockets: { [GuiObject]: number } = {} -- socket frame -> color index
+	local socketRows: { Frame } = {} -- brief 11: the sockets top to bottom (the pad walks them)
 	local locked = 0
 	local wireLayer =
 		UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Parent = host.content })
@@ -149,6 +151,7 @@ function Hotwire.open(host: Frame.Host)
 		})
 		UI.corner(well, u(5))
 		sockets[socket] = order[i]
+		socketRows[i] = socket
 		local wire: Wire = { index = i, stub = stub, socket = socket, line = nil, locked = false }
 		wires[i] = wire
 		local socketIndex = order[i]
@@ -212,6 +215,43 @@ function Hotwire.open(host: Frame.Host)
 		paintSymbols()
 	end))
 
+	-- Where a carried wire lands: the right socket locks it in, a wrong one shocks (and springs back), none springs
+	-- back. The drag and the pad both end here.
+	local function settle(w: Wire, line: Frame, from: Vector2, socket: GuiObject?)
+		if socket and sockets[socket] == w.index then
+			-- Right socket: the wire locks in and the socket lights.
+			w.locked = true
+			locked += 1
+			Frame.setLine(line, from, Frame.centerOf(host, socket) - Vector2.new(stubW / 2, 0), u(6))
+			socket.BackgroundColor3 = col(w.index)
+			UI.punch(socket, 1.25, 0.3)
+			w.stub.BackgroundTransparency = 0.5
+			host.haptic(0.6)
+			UI.sound(Theme.Sounds.take, 1 + locked * 0.12, 0.5)
+			host.setHint(string.format("%d / %d WIRED", locked, n), Theme.Colors.cash)
+			if locked >= n then
+				host.finish("done")
+			end
+			return
+		end
+		-- Wrong socket (or nowhere): red flash and spring back.
+		if socket then
+			host.miss()
+			Frame.padHaptic(0.9, 0.12, "Large") -- brief 11: the shock, sharp
+			line.BackgroundColor3 = Theme.Colors.red
+			socket.BackgroundColor3 = Theme.Colors.red
+			UI.tween(socket, { BackgroundColor3 = Theme.Colors.panel2 }, 0.3)
+			UI.shake(socket, u(3), 0.2)
+		end
+		local tween =
+			UI.tween(line, { Size = UDim2.fromOffset(1, u(6)), Position = UDim2.fromOffset(from.X, from.Y) }, 0.2)
+		tween.Completed:Once(function()
+			if line.Parent then
+				line:Destroy()
+			end
+		end)
+		w.line = nil
+	end
 	for _, w in wires do
 		local start = Vector2.zero
 		local from = Vector2.zero
@@ -254,40 +294,165 @@ function Hotwire.open(host: Frame.Host)
 					end
 				end
 			end
-			if socket and sockets[socket] == w.index then
-				-- Right socket: the wire locks in and the socket lights.
-				w.locked = true
-				locked += 1
-				Frame.setLine(line, from, Frame.centerOf(host, socket) - Vector2.new(stubW / 2, 0), u(6))
-				socket.BackgroundColor3 = col(w.index)
-				UI.punch(socket, 1.25, 0.3)
-				w.stub.BackgroundTransparency = 0.5
-				host.haptic(0.6)
-				UI.sound(Theme.Sounds.take, 1 + locked * 0.12, 0.5)
-				host.setHint(string.format("%d / %d WIRED", locked, n), Theme.Colors.cash)
-				if locked >= n then
-					host.finish("done")
-				end
-				return
-			end
-			-- Wrong socket (or nowhere): red flash and spring back.
-			if socket then
-				host.miss()
-				line.BackgroundColor3 = Theme.Colors.red
-				socket.BackgroundColor3 = Theme.Colors.red
-				UI.tween(socket, { BackgroundColor3 = Theme.Colors.panel2 }, 0.3)
-				UI.shake(socket, u(3), 0.2)
-			end
-			local tween =
-				UI.tween(line, { Size = UDim2.fromOffset(1, u(6)), Position = UDim2.fromOffset(from.X, from.Y) }, 0.2)
-			tween.Completed:Once(function()
-				if line.Parent then
-					line:Destroy()
-				end
-			end)
-			w.line = nil
+			settle(w, line, from, socket)
 		end)
 	end
+	-- Brief 11: the pad. Up / down (D-pad or left stick) pick a wire, A grabs it, up / down carry its end along
+	-- the sockets, A drops it there (B puts it back; B with nothing in hand leaves the game).
+	local unlocked: { Wire } = {}
+	local pick = 1 -- index into the unlocked wires
+	local carry: Wire? = nil
+	local carryFrom = Vector2.zero
+	local socketAt = 1
+	local cursor = UI.frame({
+		Name = "PadCursor",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Visible = false,
+		ZIndex = 9,
+		Parent = host.content,
+	})
+	UI.corner(cursor, u(10))
+	UI.new("UIStroke", { Color = Theme.Colors.gold, Thickness = u(3), Parent = cursor })
+	local function refreshUnlocked()
+		unlocked = {}
+		for _, w in wires do
+			if not w.locked then
+				table.insert(unlocked, w)
+			end
+		end
+		pick = math.clamp(pick, 1, math.max(1, #unlocked))
+	end
+	local function ring(target: GuiObject)
+		local c = Frame.centerOf(host, target)
+		cursor.Position = UDim2.fromOffset(c.X, c.Y)
+		cursor.Size = UDim2.fromOffset(stubW + u(12), stubH + u(12))
+	end
+	local function paintCursor()
+		cursor.Visible = Frame.onPad() and host.alive()
+		if not cursor.Visible then
+			return
+		end
+		local w = carry
+		if w then
+			local socket = socketRows[socketAt]
+			ring(socket)
+			local line = w.line
+			if line then
+				Frame.setLine(line, carryFrom, Frame.centerOf(host, socket) - Vector2.new(stubW / 2, 0), u(6))
+			end
+		else
+			local target = unlocked[pick]
+			if target then
+				ring(target.stub)
+			else
+				cursor.Visible = false
+			end
+		end
+	end
+	local function step(dir: number)
+		if carry then
+			socketAt = math.clamp(socketAt + dir, 1, #socketRows)
+		else
+			refreshUnlocked()
+			if #unlocked > 0 then
+				pick = (pick - 1 + dir) % #unlocked + 1
+			end
+		end
+		UI.sound(Theme.Sounds.reelTick, 1.4, 0.2)
+		paintCursor()
+	end
+	local function grab()
+		refreshUnlocked()
+		local w = unlocked[pick]
+		if not w then
+			return
+		end
+		carry = w
+		carryFrom = Frame.centerOf(host, w.stub) + Vector2.new(stubW / 2, 0)
+		socketAt = w.index -- start level with the stub
+		if w.line then
+			w.line:Destroy()
+		end
+		w.line = Frame.line(wireLayer, carryFrom, carryFrom, u(6), col(w.index), 3)
+		UI.punch(w.stub, 1.1, 0.15)
+		Frame.padHaptic(0.25, 0.04)
+		paintCursor()
+	end
+	local function drop()
+		local w = carry
+		if not w then
+			return
+		end
+		carry = nil
+		local line = w.line
+		if line then
+			settle(w, line, carryFrom, socketRows[socketAt])
+		end
+		refreshUnlocked()
+		paintCursor()
+	end
+	refreshUnlocked()
+	local held = 0 -- the stick's held direction (-1 up, 1 down) and its repeat clock
+	local heldSince, heldLast = 0, 0
+	host.pad = {
+		button = function(key: string, down: boolean): boolean?
+			if not down then
+				return key ~= "ButtonB"
+			end
+			if key == "DPadUp" then
+				step(-1)
+			elseif key == "DPadDown" then
+				step(1)
+			elseif key == "ButtonA" then
+				if carry then
+					drop()
+				else
+					grab()
+				end
+			elseif key == "ButtonY" then
+				-- the COLORBLIND toggle
+				local on = not symbolsOn()
+				symbolsOverride = on
+				Remotes.SetOption:FireServer("hotwireSymbols", on)
+				UI.sound(Theme.Sounds.cardFlip, 1.2, 0.4)
+				UI.punch(toggle, 1.08, 0.15)
+				paintSymbols()
+			elseif key == "ButtonB" then
+				local w = carry
+				if not w then
+					return false -- nothing in hand: leave the game
+				end
+				carry = nil
+				if w.line then
+					w.line:Destroy()
+					w.line = nil
+				end
+				paintCursor()
+			end
+			return true
+		end,
+	}
+	host.track(game:GetService("RunService").Heartbeat:Connect(function()
+		if not host.alive() then
+			cursor.Visible = false
+			return
+		end
+		local s = Frame.stick(1)
+		local dir = if s.Y > 0.6 then -1 elseif s.Y < -0.6 then 1 else 0
+		local now = os.clock()
+		if dir ~= held then
+			held = dir
+			heldSince, heldLast = now, now
+			if dir ~= 0 then
+				step(dir)
+			end
+		elseif dir ~= 0 and now - heldSince >= Config.NavRepeatDelaySec and now - heldLast >= Config.NavRepeatSec then
+			heldLast = now
+			step(dir)
+		end
+		paintCursor()
+	end))
 end
 
 return Hotwire

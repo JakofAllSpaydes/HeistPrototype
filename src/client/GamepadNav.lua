@@ -65,7 +65,15 @@ local SCREENS: { [string]: Spec } = {
 	debug = { gui = { "DebugPanel" } },
 	pause = { gui = { "PauseOverlay" }, quiet = true },
 	spectate = { gui = { "Spectate" }, quiet = true },
-	minigame = { gui = { "Minigame_*" }, quiet = true },
+	-- the pad plays each game its own way (Minigames/Frame); only games that ask (NavWalk) have their buttons walked
+	minigame = {
+		gui = { "Minigame_*" },
+		quiet = true,
+		filter = function(g: GuiObject): boolean
+			local sg = g:FindFirstAncestorWhichIsA("ScreenGui")
+			return sg ~= nil and sg:GetAttribute("NavWalk") == true
+		end,
+	},
 	jobsAnnounce = { gui = { "JobsAnnounce" }, quiet = true },
 }
 

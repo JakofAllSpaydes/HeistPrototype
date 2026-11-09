@@ -12,6 +12,7 @@ local Frame = require(script.Parent.Frame)
 local Keypad = {
 	title = "KEYPAD",
 	hint = "MEMORISE THE CODE, THEN TYPE IT · TYPE EARLY TO HIDE IT",
+	padHint = "MEMORISE THE CODE · {DPadUp} MOVE · {ButtonA} PRESS · {ButtonB} BACK",
 	color = Theme.Colors.cash,
 	aspect = 1.15,
 }
@@ -193,7 +194,30 @@ function Keypad.open(host: Frame.Host)
 			UI.punch(key, 0.9, 0.12)
 			press(digit)
 		end)
+		-- Brief 11: the pad walks the keys (GamepadNav) and A presses the selected one.
+		host.track(key.Activated:Connect(function(input: InputObject?)
+			if input and string.sub(input.UserInputType.Name, 1, 7) == "Gamepad" and host.alive() then
+				UI.punch(key, 0.9, 0.12)
+				press(digit)
+			end
+		end))
+		if digit == 5 then
+			key:SetAttribute("NavDefault", true)
+		end
 	end
+	-- B takes back the last digit; with nothing typed it leaves the game.
+	host.pad = {
+		navWalk = true,
+		button = function(k: string, down: boolean): boolean?
+			if k == "ButtonB" and down and entered > 0 and not done then
+				entered -= 1
+				paintDots()
+				UI.sound(Theme.Sounds.reelTick, 0.8, 0.3)
+				return true
+			end
+			return false
+		end,
+	}
 
 	showCode(Config.KeypadShowSec)
 end

@@ -19,6 +19,7 @@ local STEEL_DARK = Color3.fromHex("5A5E66")
 local Cut = {
 	title = "BOLT CUTTER",
 	hint = "HOLD TO SQUEEZE · LET GO IN THE GREEN",
+	padHint = "SQUEEZE {ButtonR2} · LET GO IN THE GREEN",
 	color = Theme.Colors.amber,
 	aspect = 0.8,
 }
@@ -227,11 +228,58 @@ function Cut.open(host: Frame.Host)
 		end
 	end))
 
+	-- Brief 11: on a pad RT is the squeeze, its depth is the pressure (the needle follows the trigger); letting go
+	-- cuts at the pressure held a moment before (the trigger passes back through lower values as it lifts). A holds
+	-- the timed squeeze as before. An over-squeeze (the trigger bottomed out) slips.
+	local padSqueeze = false
+	local history: { { t: number, d: number } } = {}
+	host.pad = {
+		button = function(key: string, down: boolean): boolean?
+			if key == "ButtonR2" then
+				if down and os.clock() >= stunUntil and not done then
+					padSqueeze = true
+					holding = true
+					table.clear(history)
+				elseif not down and padSqueeze then
+					padSqueeze = false
+					local now = os.clock()
+					local peak = fill
+					for _, h in history do
+						if now - h.t <= 0.15 then
+							peak = math.max(peak, h.d)
+						end
+					end
+					fill = peak
+					release()
+				end
+				return true
+			elseif key == "ButtonA" then
+				if down and os.clock() >= stunUntil and not done then
+					holding = true
+				elseif not down then
+					release()
+				end
+				return true
+			end
+			return false
+		end,
+	}
 	host.track(RunService.Heartbeat:Connect(function(dt)
 		if done then
 			return
 		end
-		if holding then
+		if padSqueeze and holding then
+			local d = Frame.trigger("ButtonR2")
+			table.insert(history, { t = os.clock(), d = d })
+			while #history > 0 and os.clock() - history[1].t > 0.3 do
+				table.remove(history, 1)
+			end
+			fill = d
+			if d >= 0.99 then
+				padSqueeze = false
+				slip()
+			end
+		elseif holding then
 			fill += dt / math.max(fillSec, 0.1)
 			if fill >= 1 then
 				slip()

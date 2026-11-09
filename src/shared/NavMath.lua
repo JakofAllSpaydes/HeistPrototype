@@ -87,6 +87,16 @@ function NavMath.repeatStep(heldSince: number, lastMove: number?, now: number, d
 	return now - lastMove >= (if lastMove - heldSince < delay then 0 else every)
 end
 
+-- A stick as a dial angle: degrees clockwise from straight up (the Safe dial's pad path).
+function NavMath.stickAngle(x: number, y: number): number
+	return math.deg(math.atan2(x, y))
+end
+
+-- The signed turn from angle a to angle b, the short way round (-180..180).
+function NavMath.angleDelta(a: number, b: number): number
+	return (b - a + 540) % 360 - 180
+end
+
 -- A ScrollingFrame's new canvas Y so the rect [top, bottom] (canvas space) is in a window of `height` at `canvasY`.
 function NavMath.scrollInto(canvasY: number, height: number, top: number, bottom: number, margin: number): number
 	if top - margin < canvasY then

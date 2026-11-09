@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local NavMath = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("NavMath"))
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
@@ -18,6 +19,7 @@ local RING_TICKS = 60
 local Safe = {
 	title = "SAFE DIAL",
 	hint = "DRAG AROUND THE DIAL · TURN RIGHT FIRST",
+	padHint = "{Thumbstick2} TURNS THE DIAL · {ButtonA} LOCKS · TURN RIGHT FIRST",
 	color = Theme.Colors.text,
 	aspect = 1.05,
 }
@@ -221,6 +223,11 @@ function Safe.open(host: Frame.Host)
 	-- Round 24: on mobile the band around the panel takes the drag too, and the dial turns SafeTouchGain per
 	-- degree the finger turns (a small dial under a thumb was far too twitchy one to one).
 	local gain = if host.zone then Config.SafeTouchGain else 1
+	-- One turn path for the drag and the pad (defined below the drag, which only forwards to it).
+	local turnImpl: (number) -> () = function() end
+	local function turn(delta: number)
+		turnImpl(delta)
+	end
 	Frame.drag(host, { dragArea, host.zone }, function(p: Vector2)
 		lastAngle = pointerAngle(p)
 	end, function(p: Vector2)
@@ -230,6 +237,9 @@ function Safe.open(host: Frame.Host)
 		local a = pointerAngle(p)
 		local delta = ((a - lastAngle + 540) % 360 - 180) * gain
 		lastAngle = a
+		turn(delta)
+	end, function(_p: Vector2) end)
+	turnImpl = function(delta: number)
 		rot += delta
 		dial.Rotation = rot
 		local v = value()
@@ -246,12 +256,52 @@ function Safe.open(host: Frame.Host)
 		else
 			wrongWay = math.max(0, wrongWay - math.abs(delta) * 2)
 		end
-	end, function(_p: Vector2) end)
+	end
 
+	-- Brief 11: the pad. SafeDialPadMode "stick": the right stick's angle is the dial's (a full circle of the stick
+	-- is a full turn; the asked direction still counts). "dpad": left / right turn a number per press (held: a run).
+	-- A locks the number when it is hot (a miss when it is not); holding in the hot range still locks too.
+	local padAngle: number? = nil
+	local dpadDir = 0
+	local dpadNext = 0
+	local lockRequest = false
+	host.pad = {
+		button = function(key: string, down: boolean): boolean?
+			if key == "ButtonA" and down then
+				lockRequest = true
+				return true
+			elseif Config.SafeDialPadMode == "dpad" and (key == "DPadLeft" or key == "DPadRight") then
+				if down then
+					dpadDir = if key == "DPadRight" then 1 else -1
+					turn(3.6 * dpadDir)
+					dpadNext = os.clock() + Config.NavRepeatDelaySec
+				elseif (key == "DPadRight") == (dpadDir > 0) then
+					dpadDir = 0
+				end
+				return true
+			end
+			return false
+		end,
+	}
 	local shakePhase = 0
 	host.track(RunService.Heartbeat:Connect(function(dt)
 		if done then
 			return
+		end
+		if Frame.onPad() and Config.SafeDialPadMode ~= "dpad" then
+			local s = Frame.stick(2)
+			if s.Magnitude >= 0.5 then
+				local a = NavMath.stickAngle(s.X, s.Y) -- clockwise from up, like the dial
+				if padAngle then
+					turn(NavMath.angleDelta(padAngle, a))
+				end
+				padAngle = a
+			else
+				padAngle = nil
+			end
+		elseif dpadDir ~= 0 and os.clock() >= dpadNext then
+			turn(3.6 * dpadDir)
+			dpadNext = os.clock() + 0.07
 		end
 		local v = value()
 		readout.Text = tostring(math.floor(v + 0.5) % 100)
@@ -267,6 +317,7 @@ function Safe.open(host: Frame.Host)
 		if whole ~= lastTick then
 			lastTick = whole
 			if isWarm then
+				Frame.padHaptic(0.1 + 0.35 * closeness, 0.03) -- brief 11: the tumbler ticks in the hands
 				UI.sound(
 					Theme.Sounds.reelTick,
 					Config.SafeTickPitch[1] + (Config.SafeTickPitch[2] - Config.SafeTickPitch[1]) * closeness,
@@ -310,12 +361,17 @@ function Safe.open(host: Frame.Host)
 		end
 
 		-- Hold in the hot range to lock; a wobble out of it shorter than SafeHotGraceSec keeps the hold going.
+		local wantLock = lockRequest
+		lockRequest = false
+		if wantLock and not isHot then
+			host.miss()
+		end
 		if isHot then
 			coldSince = -1
-			if hotSince < 0 then
+			if hotSince < 0 and not wantLock then
 				hotSince = os.clock()
 				UI.sound(Theme.Sounds.reelLand, 0.7, Config.SafeTickVolume[2])
-			elseif os.clock() - hotSince >= Config.SafeLockSec then
+			elseif wantLock or os.clock() - hotSince >= Config.SafeLockSec then
 				locked += 1
 				pips[locked].BackgroundColor3 = Theme.Colors.cash
 				UI.punch(pips[locked], 1.5, 0.3)

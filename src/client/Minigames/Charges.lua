@@ -12,6 +12,7 @@ local Frame = require(script.Parent.Frame)
 local Charges = {
 	title = "ARM CHARGES",
 	hint = "PRESS THE CAPS IN ORDER, 1 FIRST",
+	padHint = "{DPadUp} TO A CAP · {ButtonA} PRESS · IN ORDER, 1 FIRST",
 	color = Theme.Colors.amber,
 	aspect = 0.9,
 }
@@ -111,8 +112,11 @@ function Charges.open(host: Frame.Host)
 		end)
 	end
 
+	-- Brief 11: the pad's cursor snaps cap to cap by direction (GamepadNav), A presses; cap 1 first.
+	host.pad = { navWalk = true }
+	caps[1].button:SetAttribute("NavDefault", true)
 	for _, cap in caps do
-		Frame.press(host, cap.button, function()
+		local function hit()
 			if done then
 				return
 			end
@@ -158,7 +162,15 @@ function Charges.open(host: Frame.Host)
 			table.insert(wires, wire)
 			nextCap.stroke.Color = Theme.Colors.amber
 			UI.punch(nextCap.button, 1.1, 0.2)
+		end
+		Frame.press(host, cap.button, function()
+			hit()
 		end)
+		host.track(cap.button.Activated:Connect(function(input: InputObject?)
+			if input and string.sub(input.UserInputType.Name, 1, 7) == "Gamepad" and host.alive() then
+				hit()
+			end
+		end))
 	end
 end
 

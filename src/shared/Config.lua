@@ -1659,6 +1659,7 @@ local Config = {
 	MinigameTouchEdgePct = 0.24,
 	MinigameTouchTopPct = 0.1,
 	SafeTouchGain = 0.55, -- mobile: the dial turns this much per degree your finger turns round it (1 = one to one)
+	SafeDialPadMode = "stick", -- brief 11: "stick" (the right stick's angle turns the dial) or "dpad" (left / right)
 	-- A result that comes back faster than this is logged as a fail (a client cannot skip the game).
 	-- A result faster than this (server clock, from the open) is treated as a script, not a player, and fails. Round 20u:
 	-- halved or less (a fast tier 1 Keypad measured 1.48 s against the old 1.5 floor and was failed).
