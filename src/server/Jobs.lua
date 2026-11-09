@@ -25,6 +25,10 @@ local Lines = require(Shared.CrewCall.Lines)
 
 local Jobs = {}
 
+-- Brief 10: while this says the player has an unclaimed streak modal up, MARLOW's announce waits (Streak.lua calls
+-- Jobs.announce again once the day is claimed).
+Jobs.hold = nil :: ((Player) -> boolean)?
+
 type Entry = { id: string, progress: number, claimed: boolean }
 
 -- Per run: entry key -> progress at the run's start (the summary ticks).
@@ -372,6 +376,10 @@ function Jobs.announce(player: Player)
 	Jobs.normalize(player)
 	local day = Clock.day(now(profile))
 	if profile.jobs.announcedDay == day then
+		return
+	end
+	local hold = Jobs.hold
+	if hold and hold(player) then
 		return
 	end
 	profile.jobs.announcedDay = day

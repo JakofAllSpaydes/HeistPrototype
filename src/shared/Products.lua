@@ -2,7 +2,8 @@
 -- Brief 6: the catalog. Every Robux-priced thing in the game is one row here (built from the data files), with
 -- id, kind, price and what it grants. This is the table real DevProduct / gamepass ids map onto later.
 -- kinds: crate · boost · gold · bundle · vip · pass · pass_skip · tokens · cash_pack · dealer_restock · robux_topup ·
--- item (FEATURED's daily single items) · job_refresh (a new Job in a claimed slot)
+-- item (FEATURED's daily single items) · job_refresh (a new Job in a claimed slot) · streak_restore (brief 10: RESTORE
+-- a lost login streak) · dailycrate_reroll (brief 10: ROLL AGAIN at the claimed daily crate podium)
 local Config = require(script.Parent.Config)
 local Rewards = require(script.Parent.Rewards)
 local Crates = require(script.Parent.Crates)
@@ -193,6 +194,24 @@ for _, board in { "daily", "bounty" } do
 		jobBoard = board,
 	})
 end
+
+-- Brief 10: retention.
+add({
+	id = "streak_restore",
+	kind = "streak_restore",
+	name = "RESTORE STREAK",
+	price = Config.StreakRestorePrice,
+	icon = { kind = "restock", amount = 1 },
+	sub = "Keep your day on the streak track",
+})
+add({
+	id = "dailycrate_reroll",
+	kind = "dailycrate_reroll",
+	name = "DAILY CRATE · ROLL AGAIN",
+	price = Config.DailyCrateRerollPrice,
+	icon = { kind = "crate", id = "arms", amount = 1 },
+	sub = "One more roll from today's crate",
+})
 
 add({
 	id = "dealer_restock",

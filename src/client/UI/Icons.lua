@@ -719,6 +719,19 @@ DRAW.close = function(c: Ctx) -- an X
 	bar(c, 0.74, 0.26, 0.26, 0.74, 0.15, 1, c.fg)
 end
 
+DRAW.check = function(c: Ctx) -- brief 10: a tick (claimed streak days)
+	bar(c, 0.2, 0.52, 0.42, 0.74, 0.16, 1, c.fg)
+	bar(c, 0.42, 0.74, 0.82, 0.28, 0.16, 1, c.fg)
+end
+
+DRAW.chain = function(c: Ctx) -- brief 10: two links (the locked daily crate)
+	local fg = c.fg
+	rect(c, 0.36, 0.5, 0.42, 0.24, 1, fg, 0.5)
+	rect(c, 0.36, 0.5, 0.26, 0.09, 2, c.dt, 0.5)
+	rect(c, 0.64, 0.5, 0.42, 0.24, 3, fg, 0.5)
+	rect(c, 0.64, 0.5, 0.26, 0.09, 4, c.dt, 0.5)
+end
+
 DRAW.plus = function(c: Ctx) -- a plus
 	bar(c, 0.22, 0.5, 0.78, 0.5, 0.15, 1, c.fg)
 	bar(c, 0.5, 0.22, 0.5, 0.78, 0.15, 1, c.fg)

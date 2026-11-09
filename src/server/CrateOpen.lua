@@ -52,8 +52,9 @@ export type Roll = {
 	pityLeft: number, -- opens until the guarantee after this one
 }
 
--- Rolls and grants `count` opens of a crate. Returns the results in order.
-function CrateOpen.open(player: Player, crateId: string, count: number, source: string): { Roll }
+-- Rolls and grants `count` opens of a crate. Returns the results in order. Brief 10: `floor` is a lowest rarity
+-- (the streak's RARE+ / EPIC+ crates); pity still lifts it to Epic.
+function CrateOpen.open(player: Player, crateId: string, count: number, source: string, floor: number?): { Roll }
 	local crate = Crates.ById[crateId]
 	local profile = Profiles.get(player)
 	local out: { Roll } = {}
@@ -72,9 +73,9 @@ function CrateOpen.open(player: Player, crateId: string, count: number, source: 
 				rarity = pick(Crates.odds(crate, 1))
 			end
 		elseif pity then
-			rarity = pick(Crates.odds(crate, Rarity.Epic))
+			rarity = pick(Crates.odds(crate, math.max(Rarity.Epic, floor or 1)))
 		else
-			rarity = pick(Crates.odds(crate, 1))
+			rarity = pick(Crates.odds(crate, floor or 1))
 		end
 		local pool = Crates.itemsAt(crate, rarity)
 		local id = pool[math.random(1, #pool)]

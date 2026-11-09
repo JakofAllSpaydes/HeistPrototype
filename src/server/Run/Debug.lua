@@ -53,6 +53,7 @@ local EnemyPath = require(script.Parent.EnemyPath)
 local Runs = require(script.Parent.Parent.Runs)
 local HubMap = require(script.Parent.Parent.HubMap)
 local SkillService = require(script.Parent.Parent.SkillService)
+local Streak = require(script.Parent.Parent.Streak)
 
 local Debug = {}
 
@@ -251,7 +252,17 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	AdvanceDay = function(player, _state, args)
 		Pass.advanceDay(player, math.max(1, math.floor(tonumber(args) or 1)))
 		Jobs.normalize(player)
+		Streak.offer(player) -- brief 10: the new day's streak modal
 		toast(player, "FAKE CLOCK +" .. math.max(1, math.floor(tonumber(args) or 1)) .. " DAY")
+	end,
+	------------------------------------------------------------------ Brief 10 (retention)
+	SetStreakDay = function(player, _state, args)
+		Streak.debugSetDay(player, tonumber(args) or 1)
+		toast(player, "STREAK · NEXT CLAIM DAY " .. math.clamp(math.floor(tonumber(args) or 1), 1, 28))
+	end,
+	BreakStreak = function(player, _state, _args)
+		Streak.debugBreak(player)
+		toast(player, "STREAK BROKEN")
 	end,
 	AddPassXp = function(player, _state, args)
 		Pass.addXp(player, tonumber(args) or 1000, "debug")
@@ -421,6 +432,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		Economy.printStats()
 		MapLoader.printStats(Doors.openedLog, Spawner.contactRun, EnemyPath.history)
 		SkillService.printStats(player) -- brief 9: owned per branch and the modifier table
+		Streak.printStats(player) -- brief 10
 	end,
 	-- Brief 7 MAP: pin the crew zone (spawns, bursts, the boss wall and the dealer follow it); "auto" unpins.
 	SetCrewZone = function(player, _state, args)

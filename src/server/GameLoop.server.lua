@@ -21,6 +21,7 @@ local Vip = require(script.Parent.Vip)
 local Pass = require(script.Parent.Pass)
 local Jobs = require(script.Parent.Jobs)
 local SkillService = require(script.Parent.SkillService)
+local Streak = require(script.Parent.Streak)
 
 Profiles.init()
 PlayerState.init()
@@ -50,6 +51,7 @@ Vip.init()
 Pass.init()
 Jobs.init()
 SkillService.init() -- brief 9: the Skill Web
+Streak.init() -- brief 10: the login streak
 
 -- The run slots: the hub's first (it builds the room the hub reads), then one per map.
 Runs.start()

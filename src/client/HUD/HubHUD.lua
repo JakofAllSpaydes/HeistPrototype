@@ -302,10 +302,15 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		skillsBadge.Visible = count > 0 -- (one UIScale per object: the badge breathes in pulseTop, no punch)
 		skillsCount.Text = if count > 99 then "99+" else tostring(count)
 		-- First time: a profile with only START gets one pulse on the first hub entry (the pass's first-time pulse).
+		-- Brief 10: it waits behind the streak modal (the stamp clears so the next paint checks again).
 		if n == 0 and profile and not skillsFirstPulse and Config.SkillsEnabled then
-			skillsFirstPulse = true
-			skillsPulseUntil = os.clock() + 2.4
-			UI.punch(skills, 1.15, 0.5)
+			if ClientState.streakOpen then
+				skillsStamp = ""
+			else
+				skillsFirstPulse = true
+				skillsPulseUntil = os.clock() + 2.4
+				UI.punch(skills, 1.15, 0.5)
+			end
 		end
 	end
 	local skillsStroke = skills:FindFirstChildOfClass("UIStroke")

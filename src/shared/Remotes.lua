@@ -43,6 +43,9 @@ local DEFS: { [string]: string } = {
 	-- Brief 9: the Skill Web
 	SkillBuy = "RemoteFunction", -- client -> server: node id; returns { ok, reason?, owned = { ids }, gold } (SkillService.lua)
 	SkillSeen = "RemoteEvent", -- client -> server: { ids }: affordable nodes the player has now seen (they pulse once, then not)
+	-- Brief 10: retention
+	StreakClaim = "RemoteFunction", -- client -> server: "claim" | "over" | "vip"; returns { ok, reason?, day, results, crates } (Streak.lua; a paid RESTORE goes through Purchase "streak_restore")
+	DailyCrateOpen = "RemoteFunction", -- client -> server: none; returns { ok, reason?, crateId, results } (DailyCrate.lua; ROLL AGAIN goes through Purchase "dailycrate_reroll")
 }
 
 local folder: Instance

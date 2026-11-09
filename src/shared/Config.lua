@@ -1708,6 +1708,75 @@ local Config = {
 	ModelIconLockedShade = "5A5C64", -- a locked icon is drawn this dark (multiply, hex)
 	ModelIconWrapGun = "AK-47", -- the gun a wrap icon is shown on
 	ModelIconWellTint = 0.22, -- dark icon wells (held-gun slot, crate reel cells) lean this far toward the rarity colour
+
+	------------------------------------------------------------------ Brief 10: retention
+	-- The login streak: a 28-day track in four 7-day sets, one claim per fake day (the brief 6 fake clock), the
+	-- modal on the first hub entry of the day. After day 28 the track wraps to day 22 so week 4 keeps paying.
+	-- Each day is a list of rewards (Rewards.lua shape). A crate reward opens in the crate room on claim (nothing is
+	-- banked); `floor` is its lowest rarity (3 = Rare: Common and Uncommon removed). Boosts are timed like the
+	-- store's (there is no per-run boost): `sec` of real time from the claim. Days 7 / 14 / 21 / 28 are the big ones.
+	StreakEnabled = true, -- false: no modal (the profile keeps its streak)
+	StreakRewards = {
+		-- Week 1
+		{ { kind = "gold", amount = 300 } },
+		{ { kind = "gold", amount = 400 } },
+		{ { kind = "crate", id = "arms", amount = 1 } },
+		{ { kind = "gold", amount = 500 } },
+		{ { kind = "boost", id = "cash", sec = 1800 } },
+		{ { kind = "gold", amount = 600 } },
+		{ { kind = "crate", id = "arms", amount = 1, floor = 3 } }, -- day 7: a RARE+ Arms crate
+		-- Week 2
+		{ { kind = "gold", amount = 500 } },
+		{ { kind = "gold", amount = 600 } },
+		{ { kind = "crate", id = "mask", amount = 1 } },
+		{ { kind = "gold", amount = 800 } },
+		{ { kind = "boost", id = "cash", sec = 1800 } },
+		{ { kind = "gold", amount = 900 } },
+		{ { kind = "passxp", amount = 1000 } }, -- day 14
+		-- Week 3
+		{ { kind = "gold", amount = 800 } },
+		{ { kind = "gold", amount = 900 } },
+		{ { kind = "crate", id = "arms", amount = 2 } },
+		{ { kind = "gold", amount = 1200 } },
+		{ { kind = "boost", id = "cash", sec = 1800 } },
+		{ { kind = "gold", amount = 1400 } },
+		{ { kind = "crate", id = "arms", amount = 1, floor = 4 } }, -- day 21: an EPIC+ Arms crate
+		-- Week 4 (loops)
+		{ { kind = "gold", amount = 1000 } },
+		{ { kind = "gold", amount = 1200 } },
+		{ { kind = "crate", id = "mask", amount = 2 } },
+		{ { kind = "gold", amount = 1500 } },
+		{ { kind = "boost", id = "cash", sec = 1800 } },
+		{ { kind = "gold", amount = 1800 } },
+		{ { kind = "crate", id = "arms", amount = 1, floor = 4 }, { kind = "gold", amount = 1500 } }, -- day 28
+	},
+	StreakLoopFrom = 22, -- after day 28 the next claim is this day (week 4 repeats)
+	StreakRestorePrice = 49, -- fake R$: RESTORE on a lost streak keeps the day (product streak_restore)
+	VipStreakRestores = 1, -- free restores per VipStreakRestoreDays fake days while VIP
+	VipStreakRestoreDays = 30,
+	StreakOpenDelaySec = 1.2, -- after the profile loads / the party lands in the hub, before the modal opens
+	StreakClaimHoldSec = 0.9, -- the claimed tile's ding and burst play this long before the modal closes
+
+	-- The daily crate: one podium in the hub (the DailyCrate node), unlocked for the fake day by finishing any match
+	-- (a summary), one open a day. Its tier comes from the player's level only. The pool is every Direct-sale gun
+	-- and mask (Catalog.dailyPool: no crate / event / bundle / VIP / pass items, none of the always-owned defaults).
+	DailyCrateEnabled = true, -- false: no podium state, no PLAY line, nothing unlocks
+	DailyCrateTierByLevel = { { 1, "basic" }, { 11, "gold" }, { 26, "diamond" }, { 51, "elite" } }, -- from-level, tier
+	-- Per tier: rarity weights Common / Uncommon / Rare / Epic / Legendary, the crate's colours (hex) and its word.
+	DailyCrateTierOdds = {
+		basic = { weights = { 50, 30, 14, 5, 1 }, color = "3A3F48", trim = "B9C2CC", name = "BASIC" },
+		gold = { weights = { 35, 32, 21, 9, 3 }, color = "4A3A1C", trim = "E8B64C", name = "GOLD" },
+		diamond = { weights = { 20, 30, 28, 16, 6 }, color = "1C3A4A", trim = "6FD8F2", name = "DIAMOND" },
+		elite = { weights = { 8, 22, 34, 25, 11 }, color = "3A1C46", trim = "E86FF2", name = "ELITE" },
+	},
+	DailyCrateFirstIsGun = true, -- the first daily crate a profile ever opens rolls from the guns only
+	DailyCrateRerollEnabled = true, -- the claimed podium offers ROLL AGAIN for fake R$
+	DailyCrateRerollPrice = 79, -- product dailycrate_reroll
+	DailyCrateRerollMaxPerDay = 0, -- 0 = unlimited
+	DailyCrateIdleRange = 40, -- studs: the ready crate's quiet loot swell plays inside this range
+	DailyCratePodiumScale = 1, -- the generated podium's scale (fits the gap beside the range door at 1)
+	DailyCrateBeamHeight = 60, -- studs: the ready crate's beacon column
+	DailyCratePromptDistance = 9, -- studs: the podium's E prompt
 }
 
 return Config

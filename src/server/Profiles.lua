@@ -86,6 +86,12 @@ export type Profile = {
 	-- Brief 9 (v5): the Skill Web. owned = node ids bought (Round 26c: START too, it unlocks the web); seen = affordable nodes
 	-- the player has seen on the web (a node that became affordable since pulses once on open). A respec is a wipe.
 	skills: { owned: { [string]: boolean }, seen: { [string]: boolean } },
+	-- Brief 10 (v6): the login streak (day = position 1..28 on the track, lastClaimDay = fake day of the last claim;
+	-- VIP's free restores count inside a window of VipStreakRestoreDays fake days starting at vipRestoreDay) and the
+	-- daily crate (unlockedDay / claimedDay = fake days; everOpened drives the first-one's-a-gun rule; ROLL AGAIN
+	-- counts per rerollDay).
+	streak: { day: number, lastClaimDay: number, vipRestoreDay: number, vipRestoresUsed: number },
+	dailyCrate: { unlockedDay: number, claimedDay: number, everOpened: boolean, rerollsToday: number, rerollDay: number },
 	version: number,
 }
 
@@ -110,7 +116,9 @@ local STORE_NAME = "GHS_Profiles_v1"
 -- 4 (brief 7): records are keyed <mapId>:<difficulty>. Every run before brief 7 was on the arena (whose id was
 -- the placeholder "TheBank"), so TheBank:* moves to Arena:* once; a run on the real Bank then writes TheBank:*.
 -- 5 (brief 9): the Skill Web's owned / seen sets, empty on migration.
-local VERSION = 5
+-- 6 (brief 10): the login streak and the daily crate; a v5 profile starts the streak at day 1 today and has the
+-- crate locked today with everOpened false.
+local VERSION = 6
 local RETRY_BACKOFF = { 1, 2, 4 }
 
 local Profiles = {}
@@ -208,6 +216,8 @@ function Profiles.fresh(): Profile
 		clockOffset = 0,
 		dailyReroll = { day = 0, count = 0 },
 		skills = { owned = {}, seen = {} },
+		streak = { day = 0, lastClaimDay = 0, vipRestoreDay = 0, vipRestoresUsed = 0 },
+		dailyCrate = { unlockedDay = 0, claimedDay = 0, everOpened = false, rerollsToday = 0, rerollDay = 0 },
 		version = VERSION,
 	}
 end
@@ -491,6 +501,22 @@ local function migrate(raw: any): Profile
 			p.skills.owned[Skills.START] = true
 		end
 	end
+	-- Brief 10 (v6).
+	if typeof(raw.streak) == "table" then
+		local rs = raw.streak
+		p.streak.day = math.clamp(math.floor(num(rs.day, 0)), 0, 28)
+		p.streak.lastClaimDay = math.floor(num(rs.lastClaimDay, 0))
+		p.streak.vipRestoreDay = math.floor(num(rs.vipRestoreDay, 0))
+		p.streak.vipRestoresUsed = math.max(0, math.floor(num(rs.vipRestoresUsed, 0)))
+	end
+	if typeof(raw.dailyCrate) == "table" then
+		local rd = raw.dailyCrate
+		p.dailyCrate.unlockedDay = math.floor(num(rd.unlockedDay, 0))
+		p.dailyCrate.claimedDay = math.floor(num(rd.claimedDay, 0))
+		p.dailyCrate.everOpened = rd.everOpened == true
+		p.dailyCrate.rerollsToday = math.max(0, math.floor(num(rd.rerollsToday, 0)))
+		p.dailyCrate.rerollDay = math.floor(num(rd.rerollDay, 0))
+	end
 	local fromVersion = tonumber(raw.version) or 1
 	if raw ~= nil and fromVersion < 4 then
 		local moved = 0
@@ -517,6 +543,9 @@ local function migrate(raw: any): Profile
 	end
 	if raw ~= nil and fromVersion < 5 then
 		Log.event("Profile", "v%d -> v5", fromVersion)
+	end
+	if raw ~= nil and fromVersion < 6 then
+		Log.event("Profile", "v%d -> v6", fromVersion)
 	end
 	if raw ~= nil and fromVersion < 3 then
 		Log.event(

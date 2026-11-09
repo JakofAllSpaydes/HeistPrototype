@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
+local Clock = require(Shared.Clock)
 local LevelRewards = require(Shared.LevelRewards)
 local Masks = require(Shared.Masks)
 local Profiles = require(script.Parent.Profiles)
@@ -32,8 +33,15 @@ function Progression.xpToLevel(level: number): number
 	return LevelRewards.xpToLevel(level)
 end
 
-function Progression.today(): number
-	return math.floor(os.time() / 86400)
+-- Brief 10: the player's fake day (the brief 6 clock), so `+1 fake day` resets FIRST HEIST OF THE DAY together with
+-- the daily crate and the PLAY line.
+function Progression.today(profile: any?): number
+	return Clock.day(Clock.fake(os.time(), profile))
+end
+
+-- The day's first run is still to come (the x2 XP and the daily crate's gate share it).
+function Progression.firstRunPending(profile: any?): boolean
+	return profile ~= nil and profile.lastHeistDay ~= Progression.today(profile)
 end
 
 function Progression.level(player: Player): number
@@ -77,7 +85,7 @@ function Progression.award(player: Player, input: RunInput): Award?
 	for _, p in parts do
 		base += p.xp
 	end
-	local today = Progression.today()
+	local today = Progression.today(profile)
 	local first = profile.lastHeistDay ~= today
 	profile.lastHeistDay = today
 	local mult = if first then Config.XpFirstHeistMult else 1
