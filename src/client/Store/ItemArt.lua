@@ -187,7 +187,15 @@ local function crateArt(root: Frame, crateId: string, z: number, size: number)
 	block(root, lighten(body, 0.15), 0.5, 0.33, 0.8, 0.14, z + 1, 0.15)
 	block(root, trim, 0.5, 0.42, 0.76, 0.04, z + 2)
 	block(root, trim, 0.5, 0.54, 0.14, 0.16, z + 2, 0.2)
-	glyph(root, if c and c.kind == "mask" then "MSK" else "ARM", Theme.Colors.white, size, z + 3, 0.72, 0.16)
+	glyph(
+		root,
+		if c and c.kind == "mask" then "MSK" elseif c and c.kind == "mixed" then "DLY" else "ARM",
+		Theme.Colors.white,
+		size,
+		z + 3,
+		0.72,
+		0.16
+	)
 end
 
 local function boostArt(root: Frame, boostId: string, z: number, size: number)

@@ -111,6 +111,8 @@ require(script.Parent:WaitForChild("Pass"):WaitForChild("PassScene")).init()
 require(script.Parent:WaitForChild("Jobs"):WaitForChild("JobBoard")).init()
 require(script.Parent:WaitForChild("Skills"):WaitForChild("SkillScene")).init() -- brief 9: the Skill Web
 require(script.Parent:WaitForChild("Retention"):WaitForChild("StreakModal")).init() -- brief 10: the login streak
+require(script.Parent:WaitForChild("Retention"):WaitForChild("DailyPodium")).init() -- brief 10: the daily crate
+require(script.Parent:WaitForChild("Retention"):WaitForChild("DailySheet")).init()
 require(script.Parent:WaitForChild("DebugPanel")).init()
 
 -- Ctrl toggles the camera lock (mouse free / locked). Hold Left Alt to free it temporarily.

@@ -2,13 +2,14 @@
 -- Brief 6: the two paid crates. The odds panel renders from the same weight table the server rolls with, so the
 -- two can never disagree. Pool items are the Crate-saleType weapons (Weapons.lua) and masks (Masks.lua), each
 -- sitting at its own rarity; the roll picks a rarity by weight (pity forces Epic+), then an item uniformly inside it.
+local Config = require(script.Parent.Config)
 local Weapons = require(script.Parent.Weapons)
 local Masks = require(script.Parent.Masks)
 
 export type Crate = {
-	id: string, -- arms | mask
+	id: string, -- arms | mask (brief 10: daily_<tier>, lookup only)
 	name: string,
-	kind: string, -- weapon | mask (the pool's reward kind)
+	kind: string, -- weapon | mask (the pool's reward kind) | mixed (brief 10: the daily crate, guns and masks)
 	color: string, -- the crate body
 	trim: string,
 	weights: { number }, -- Common / Uncommon / Rare / Epic / Legendary
@@ -49,6 +50,28 @@ Crates.List = {
 Crates.ById = {} :: { [string]: Crate }
 for _, c in Crates.List do
 	Crates.ById[c.id] = c
+end
+
+-- Brief 10: the daily crate's tiers (Config.DailyCrateTierOdds) are looked up by id like the paid crates, so the
+-- crate scene, the crate model and the art draw them unchanged. They are never in Crates.List (not sold, not on the
+-- CRATES tab, no products); their pool is Catalog.dailyPool and the server rolls them (DailyCrate.lua).
+Crates.DAILY_PREFIX = "daily_"
+for tierId, t in Config.DailyCrateTierOdds :: { [string]: any } do
+	Crates.ById[Crates.DAILY_PREFIX .. tierId] = {
+		id = Crates.DAILY_PREFIX .. tierId,
+		name = string.upper(t.name) .. " DAILY CRATE",
+		kind = "mixed",
+		color = t.color,
+		trim = t.trim,
+		weights = t.weights,
+		pool = {},
+		prices = {},
+		tagline = "GUNS + MASKS",
+	}
+end
+
+function Crates.dailyId(tierId: string): string
+	return Crates.DAILY_PREFIX .. tierId
 end
 
 function Crates.itemRarity(crate: Crate, id: string): number

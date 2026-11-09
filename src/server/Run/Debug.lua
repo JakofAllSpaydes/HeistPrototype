@@ -54,6 +54,7 @@ local Runs = require(script.Parent.Parent.Runs)
 local HubMap = require(script.Parent.Parent.HubMap)
 local SkillService = require(script.Parent.Parent.SkillService)
 local Streak = require(script.Parent.Parent.Streak)
+local DailyCrate = require(script.Parent.Parent.DailyCrate)
 
 local Debug = {}
 
@@ -264,6 +265,18 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		Streak.debugBreak(player)
 		toast(player, "STREAK BROKEN")
 	end,
+	UnlockDailyCrate = function(player, _state, _args)
+		DailyCrate.debugUnlock(player)
+		toast(player, "DAILY CRATE UNLOCKED")
+	end,
+	ResetDailyCrate = function(player, _state, _args)
+		DailyCrate.debugReset(player)
+		toast(player, "DAILY CRATE RESET · NEVER OPENED")
+	end,
+	ForceDailyTier = function(player, _state, args)
+		DailyCrate.debugForceTier(player, tostring(args))
+		toast(player, "DAILY TIER · " .. string.upper(tostring(args)))
+	end,
 	AddPassXp = function(player, _state, args)
 		Pass.addXp(player, tonumber(args) or 1000, "debug")
 	end,
@@ -433,6 +446,7 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		MapLoader.printStats(Doors.openedLog, Spawner.contactRun, EnemyPath.history)
 		SkillService.printStats(player) -- brief 9: owned per branch and the modifier table
 		Streak.printStats(player) -- brief 10
+		DailyCrate.printStats(player)
 	end,
 	-- Brief 7 MAP: pin the crew zone (spawns, bursts, the boss wall and the dealer follow it); "auto" unpins.
 	SetCrewZone = function(player, _state, args)

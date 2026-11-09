@@ -22,6 +22,7 @@ local Pass = require(script.Parent.Pass)
 local Jobs = require(script.Parent.Jobs)
 local SkillService = require(script.Parent.SkillService)
 local Streak = require(script.Parent.Streak)
+local DailyCrate = require(script.Parent.DailyCrate)
 
 Profiles.init()
 PlayerState.init()
@@ -52,6 +53,7 @@ Pass.init()
 Jobs.init()
 SkillService.init() -- brief 9: the Skill Web
 Streak.init() -- brief 10: the login streak
+DailyCrate.init() -- brief 10: the daily crate podium
 
 -- The run slots: the hub's first (it builds the room the hub reads), then one per map.
 Runs.start()

@@ -25,6 +25,7 @@ local Mastery = require(script.Parent.Mastery)
 local Pass = require(script.Parent.Parent.Pass)
 local Jobs = require(script.Parent.Parent.Jobs)
 local RunEvents = require(script.Parent.Parent.RunEvents)
+local DailyCrate = require(script.Parent.Parent.DailyCrate)
 
 local RunEnd = {}
 
@@ -314,6 +315,8 @@ function RunEnd.play(): string
 			bossKills = World.bossKills,
 			survivedSec = World.survivedSec(),
 		})
+		-- Brief 10: reaching the summary unlocks today's daily crate (any map, any wave, carried or not).
+		DailyCrate.unlock(p)
 		rows[i] = {
 			userId = p.UserId,
 			name = p.Name,
