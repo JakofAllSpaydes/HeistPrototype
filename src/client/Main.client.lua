@@ -109,6 +109,7 @@ require(script.Parent:WaitForChild("MetaScene")).init()
 require(script.Parent:WaitForChild("Store"):WaitForChild("StoreScene")).init()
 require(script.Parent:WaitForChild("Pass"):WaitForChild("PassScene")).init()
 require(script.Parent:WaitForChild("Jobs"):WaitForChild("JobBoard")).init()
+require(script.Parent:WaitForChild("Skills"):WaitForChild("SkillScene")).init() -- brief 9: the Skill Web
 require(script.Parent:WaitForChild("DebugPanel")).init()
 
 -- Ctrl toggles the camera lock (mouse free / locked). Hold Left Alt to free it temporarily.

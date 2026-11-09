@@ -122,8 +122,8 @@ end
 
 -- Show or hide HUD pieces for a mode (downed, spectating, the run start / end sequences).
 -- Brief 8: in the training range the hub layout keeps PLAY, SHOP, Gold and the level card; the dock, the boost chips
--- and PASS / JOBS go (they sat on the gun HUD).
-local RANGE_HIDES_HUB = { "Dock", "Boosts", "TopButtons" }
+-- and PASS / JOBS go (they sat on the gun HUD). Brief 9: SKILLS is hub-only too.
+local RANGE_HIDES_HUB = { "Dock", "Boosts", "TopButtons", "Skills" }
 
 function HUD.setMode(mode: string)
 	HUD.mode = mode
@@ -132,7 +132,7 @@ function HUD.setMode(mode: string)
 		for _, name in RANGE_HIDES_HUB do
 			local piece = hubFrame:FindFirstChild(name)
 			if piece and piece:IsA("GuiObject") then
-				piece.Visible = mode ~= "range"
+				piece.Visible = mode ~= "range" and (name ~= "Skills" or Config.SkillsEnabled)
 			end
 		end
 	end

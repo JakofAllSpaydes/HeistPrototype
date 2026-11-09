@@ -241,6 +241,26 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end)
 
+	-- Brief 9: SKILLS directly under SHOP, the same tile (size, icon style, label); opens the Skill Web scene.
+	local skillsHolder = UI.frame({
+		Name = "Skills",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0, S(20), 0.5, math.floor((shopSize + S(16)) / 2) + S(12)),
+		Size = UDim2.fromOffset(shopSize, shopSize + S(16)),
+		Visible = Config.SkillsEnabled,
+		Parent = root,
+	})
+	local skills = iconTile(skillsHolder, 1, "Skills", "skills", Theme.Colors.blue, Theme.Colors.bg, shopSize)
+	skills.Selectable = true
+	skills.Activated:Connect(function()
+		UI.punch(skills, 0.92, 0.15)
+		UI.sound(Theme.Sounds.toast, 1.3, 0.4)
+		ClientState.Juice:Fire("OpenSkills", {})
+	end)
+	component.skillsTile = skills
+	component.skillsHolder = skillsHolder
+
 	-- Gold pill with + and INVITE FRIENDS, bottom-left; the level card sits above them.
 	local goldW = if mobile then S(170) else S(230)
 	local levelCard = LevelCard.build(root, goldW, true) -- the same width as the Gold pill and INVITE under it

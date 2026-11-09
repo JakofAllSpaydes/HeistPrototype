@@ -776,6 +776,100 @@ DRAW.gift = function(c: Ctx) -- a gift box with a bow
 	rect(c, 0.5, 0.605, 0.1, 0.53, 2, dt)
 end
 
+-- Brief 9: the Skill Web (branch pictograms, node icons, the SKILLS tile).
+-- A flat-top hexagon of radius r (corner to centre) at (x, y): three r x r*sqrt(3) bars turned 0 / 60 / 120.
+local function hexagon(c: Ctx, x: number, y: number, r: number, layer: number, color: Color3)
+	for _, rot in { 0, 60, 120 } do
+		rect(c, x, y, r, r * math.sqrt(3), layer, color, 0, rot)
+	end
+end
+
+DRAW.skills = function(c: Ctx) -- the hex web: a centre hex ringed by six
+	local fg, dt = c.fg, c.dt
+	hexagon(c, 0.5, 0.5, 0.15, 2, fg)
+	for k = 0, 5 do
+		local a = math.rad(30 + 60 * k)
+		hexagon(c, 0.5 + 0.3 * math.cos(a), 0.5 + 0.3 * math.sin(a), 0.12, 1, fg)
+	end
+	hexagon(c, 0.5, 0.5, 0.07, 3, dt)
+end
+
+DRAW.star = function(c: Ctx) -- a five-point star (START)
+	local fg = c.fg
+	for k = 0, 4 do
+		local a = math.rad(-90 + 72 * k)
+		bar(c, 0.5, 0.54, 0.5 + 0.42 * math.cos(a), 0.54 + 0.42 * math.sin(a), 0.2, 1, fg, "butt", 0.5)
+	end
+	circle(c, 0.5, 0.54, 0.4, 1, fg)
+	circle(c, 0.5, 0.54, 0.14, 2, c.dt)
+end
+
+DRAW.die = function(c: Ctx) -- a die showing five (LUCK)
+	local dt = c.dt
+	rect(c, 0.5, 0.5, 0.78, 0.78, 1, c.fg, 0.18)
+	for _, p in { { 0.32, 0.32 }, { 0.68, 0.32 }, { 0.5, 0.5 }, { 0.32, 0.68 }, { 0.68, 0.68 } } do
+		circle(c, p[1], p[2], 0.15, 2, dt)
+	end
+end
+
+DRAW.arsenal = function(c: Ctx) -- two rifles crossed (ARSENAL)
+	local fg, dt = c.fg, c.dt
+	for _, m in { 1, -1 } do
+		local x0, x1 = 0.5 - 0.36 * m, 0.5 + 0.36 * m
+		bar(c, x0, 0.86, x1, 0.14, 0.11, 1, fg, "butt", 0.2)
+		local gx, gy = 0.5 - 0.17 * m, 0.66
+		bar(c, gx, gy, gx - 0.12 * m, gy + 0.04, 0.12, 1, fg, "butt", 0.3)
+		bar(c, x0, 0.86, x0 + 0.1 * m, 0.72, 0.17, 1, fg, "butt", 0.2)
+	end
+	circle(c, 0.5, 0.5, 0.1, 2, dt)
+end
+
+DRAW.crown = DRAW.vip -- ELITE DAMAGE
+
+DRAW.boss = function(c: Ctx) -- a horned skull (BOSS DAMAGE)
+	local fg = c.fg
+	bar(c, 0.26, 0.34, 0.1, 0.08, 0.12, 1, fg)
+	bar(c, 0.74, 0.34, 0.9, 0.08, 0.12, 1, fg)
+	DRAW.Damage(sub(c, 0.1, 0.16, 0.8, 1))
+end
+
+DRAW.hand = function(c: Ctx) -- an open hand (QUICK HANDS, FAST HANDS)
+	local fg = c.fg
+	rect(c, 0.52, 0.66, 0.5, 0.44, 1, fg, 0.3)
+	for i, x in { 0.33, 0.46, 0.59, 0.72 } do
+		local tip = if i == 2 or i == 3 then 0.14 else 0.22
+		bar(c, x, 0.56, x, tip, 0.12, 1, fg)
+	end
+	bar(c, 0.32, 0.7, 0.14, 0.48, 0.13, 1, fg)
+end
+
+DRAW.moneybag = function(c: Ctx) -- a tied sack (BAG VALUE)
+	local fg, dt = c.fg, c.dt
+	circle(c, 0.5, 0.62, 0.66, 1, fg)
+	rect(c, 0.5, 0.3, 0.24, 0.16, 1, fg, 0.2)
+	rect(c, 0.4, 0.17, 0.16, 0.16, 1, fg, 0.2, 45)
+	rect(c, 0.6, 0.17, 0.16, 0.16, 1, fg, 0.2, 45)
+	rect(c, 0.5, 0.34, 0.32, 0.05, 2, dt, 0.5)
+	ring(c, 0.5, 0.64, 0.28, 0.06, 2, dt)
+end
+
+DRAW.magnet = function(c: Ctx) -- a horseshoe magnet (MAGNET)
+	local fg, dt = c.fg, c.dt
+	arc(c, 0.5, 0.5, 0.25, 0, 180, 0.18, 1, fg)
+	bar(c, 0.25, 0.5, 0.25, 0.16, 0.18, 1, fg, "butt")
+	bar(c, 0.75, 0.5, 0.75, 0.16, 0.18, 1, fg, "butt")
+	rect(c, 0.25, 0.2, 0.18, 0.09, 2, dt)
+	rect(c, 0.75, 0.2, 0.18, 0.09, 2, dt)
+end
+
+DRAW.goldbar = function(c: Ctx) -- two stacked gold bars (FENCE)
+	local fg, dt = c.fg, c.dt
+	rect(c, 0.5, 0.7, 0.84, 0.26, 1, fg, 0.12)
+	rect(c, 0.5, 0.42, 0.6, 0.24, 1, fg, 0.12)
+	rect(c, 0.5, 0.56, 0.7, 0.04, 2, dt)
+	rect(c, 0.5, 0.42, 0.36, 0.05, 2, dt, 0.5)
+end
+
 ------------------------------------------------------------------ API
 function Icons.has(id: string?): boolean
 	return id ~= nil and DRAW[id] ~= nil
