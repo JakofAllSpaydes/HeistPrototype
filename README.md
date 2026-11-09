@@ -2831,3 +2831,198 @@ ExplosionFx (the explosion feel). Classes.lua carries `displayName`, `Classes.Un
   fly to hand, deliberate drop for teammates). Parked for now.
 - Barricades may die fast to large crowds; stuck detection is coarse; the top-right stack is 320px wide and may
   cramp long dialogue lines.
+
+## Brief 13: the heist (Round 30)
+
+Brief 13 is the run-flow half of the gameplay phase, all on THE BANK: the run starts when the crew breaches instead
+of on a clock, markers get a hierarchy so side jobs are found and bags stop shouting, the street escalates with the
+waves, and the Bank's gun crates can drop one of four ultra-rare relic masks. Built one commit per step (7 commits,
+`0227e7e..` on `brief13-heist`), checked with `stylua`, `luau-lsp analyze` and `rojo build`, **not yet played in
+Studio**. Brief 12 (classes and stats) was built in parallel on its own branch and claimed Round 29, so this is Round
+30; the brief stayed out of Brief 12's files (Abilities, Classes, Stats, Combat, Movement, UpgradeShop, Dealer, the
+Armory, Weapons, ExplosionFx, GamepadMap, tests/input.spec.luau). Config, Lines and this README were only appended
+to. The Arena is untouched: clock start, no street, no relics.
+
+**Run it.** `default.project.json` gains `Workspace.Bank.Dressing` (`src/map/Bank.dressing.rbxmx`): restart
+`rojo serve` once. Two tools: `lune run tools/genbanknodes.luau brief13` writes the brief 13 nodes into
+`Bank.nodes.model.json` by name and keeps every other node as dragged (re-running it puts these nodes back where the
+script says, so a drag of one of them is lost; export drags with `exportnodes.luau` as before), and
+`lune run tools/genbankdressing.luau` wrote the dressing templates once (`force` rewrites them over Studio edits). New
+node types `Blockers`, `Dressing`, `HeliPath` are registered in exportnodes, nodestyle and the Show nodes toggles.
+
+### What is in it
+
+**Street and spawn (step 1).** The van stops at the curb on the bank's side of the road facing east (`Van` node,
+`LineupFromNode`, `DriveOff forward`), the crew steps out onto the pavement and lines up on the `Lineup` node facing
+the front doors, then the van drives on. The grass plaza across the road is a `Blocker` node (an invisible wall nobody
+walks or paths into, shots pass) edged with copies of the asset's own crowd barriers on the road side and both ends.
+The `street` zone is trimmed to road, pavements and steps (z -230..-100 in bank coordinates). The fence ends are
+`Fences` nodes with `Mesh = "barrier"` (barrier copies plus a 12-stud invisible collider: players stop, enemies pass);
+they, the `street_west` / `street_east` boxes and the street boss wall carry `StreetScale`, and MapLoader stands them at
+`x × StreetSpawnDistanceMult` (0.7) from the bank's centre line at runtime, so the nodes show the 1.0 street and the
+key tunes live. The asset's original barriers are hidden at load. SILENCE THE ALARM has its own spot, `alarm_panel`
+(Pool `alarm`) on the lobby face of the teller counter: an alarm uses it whenever it is open, no other job draws it.
+`street_road` stays. The grass dealer spot moved onto the pavement.
+
+**The pre-heist (step 2).** THE BANK (`PreHeistMaps`, read by Maps rows as `preHeist`) opens in the `PreHeist` state
+after the drive-in (`World.phase = "preheist"`): no spawning, heat, wave timer or dealer; the pre-heist music cue
+loops quietly (`MusicPreHeist` under `MusicDuck`); the intro crate drops at the line; every hub-safe verb works
+(swap, crate, abilities, placeables, which persist into wave 1); nothing can hurt anyone. The wave bar shows a
+breathing amber `BREACH WHEN READY` pill with `E AT THE DOORS · OR IN THROUGH A WINDOW` under it (the glyph follows
+the device; phones read `BLOW THE DOORS OR GO IN THROUGH A WINDOW`); stars, AUTO SKIP, votes and PAUSE stay hidden.
+D1 is called from the first second (`Doors.callNow`): MARLOW's `Front doors. Make some noise.`, the beacon, the
+chevrons. `Breach.lua` fires on D1 opening (its Charges done), a member's root entering the `lobby` zone while D1 is
+shut (a shot-out window) or debug Breach now: `Alarms.pulse("breach", BreachAlarmSec)`, D1 blown open from inside if
+still shut (break, shake, zone burst; its call cleared with no reward), the red `HEIST ON` centre stamp, and after
+`BreachWaveDelaySec` wave 1 (the bell, the clock, the heat, SILENCE THE ALARM on its panel inside). MARLOW nags every
+`PreHeistNagSec` (`Lines.preHeistNag`, cycling). The summary shows `IDLE BEFORE BREACH 0:42` under the time when the
+idle passed `BreachIdleShowSec`; `[GHS Zone]` pacing starts at the breach. Log: `[GHS Breach] <name> via door|window
+t=<idle sec>`.
+
+**Markers (step 3).** Three tiers. *Objective* (Markers.lua: doors, the vault job and open vault, offices, the hatch)
+keeps the full beacon, arrow guide and chevrons, capped at `ObjectiveMarkerCap` (1) by urgency (vault 1, called
+door 2, office 3, hatch 4, a closed door's sign 5) then distance. *Job* (TierMarkers.lua, side jobs): the prop (the
+beacon's terminal, or the capture ring, found by the beacon's `JobId`) outlined in the job blue through walls
+(`JobHighlightFill` 0.1), a pill over it with the name and a live `42m` beyond `JobNearRange`; inside it the distance
+goes, the pulse stops and the hint line (InputGlyphs) shows; a soft guide of one chevron pulse along the floor toward
+the prop every `JobPulseSec`; the pill fades when it sits within `MarkerCrosshairClearPx` of the screen centre.
+*Loot* (bags, gun crates, floor guns): bags are small `$` / `◆` icons whose `CASH BAG` / `GOLD BAG` shows only while
+looked at (`LootLookAngle`, held `LootLookLabelSec`); through walls only within `BagWallRange` (the whole map in an
+intermission), gone beyond `BagMarkerRange`; 3+ bags within `LootClusterRadius` become one `×N` chip; the nearest
+`LootMarkerCap` show. The GUN CRATE tag keeps its countdown at `GunCrateTagScale`; crate and floor-gun tags register
+with the Loot tier. Phones: the Job pill ×1.15, loot icons ×0.85, both on a ×1.5 world base (`MarkerMobileWorldScale`,
+as the crate tag). Logs: `[GHS Markers] job <id> seen <sec>` (client) and `loot shown <n> hidden <n>` once per wave.
+
+**Exterior escalation (step 4).** `Dressing.lua` clones each `Dressing` node's `Mesh` template onto the street once
+the run reaches its `Stage` (`DressingStageWaves` 5 / 10 / 15), recomputed at each intermission start for the coming
+wave (and at wave start when AUTO SKIP skipped the intermission); `Boss` nodes show for boss waves. A piece never
+appears inside a player (it waits until clear), puffs dust for members on the street, and collides with nothing.
+Stage 1: tape across both fence ends, two cruisers nosed in at each end, cones. Stage 2: barricades, the SWAT van east,
+two searchlights across the grass sweeping the facade. Stage 3: sawhorses, more cruisers, the helicopter. Boss: an
+ambulance and extra cruisers. Templates are brick placeholders in `Workspace.Bank.Dressing.Templates` (moved to
+ServerStorage at load; clones go to `Workspace.Bank.DressingLive`). `DressingFx.client.lua` strobes light bars,
+sweeps the searchlights, flies the helicopter round the `HeliPath` loop at `HeliAltitude` on the server clock
+(rotors spinning, the rotor loop, its spotlight on the member the server names every `HeliSpotSwitchSec`, dust under
+it on boss waves) and plays the siren bed per stage (`DressingAmbience`, louder on boss waves, ducked during a wave,
+rolled off so it is faint in the lobby). Log: `[GHS Dressing] stage <n> wave N`.
+
+**Relics (steps 5 and 6).** `Relics.lua`: THE BANK's `bank_teller` (the starter), `bank_guard`, `bank_manager`,
+`bank_vault`, appended to `Masks.List` as ordinary masks with `saleType "Relic"` (the catalog's source tag: the shop,
+the daily crate, the pass and bundles never carry them; Meta refuses to sell them) and `Rarity.Relic` (6, `RelicColor`)
+above Legendary. `RelicService.lua`, after a gun crate's last reel: the opener's first-ever gun crate (any map) forces
+`StarterRelic` for the party and sets the flag; otherwise one roll per crate at `RelicDropChance` (0.10, testing) among
+the map's relics some member lacks (none left = no roll), with no pity and no luck source. Guarantees are a list
+(`Relics.guarantees`: the built-in `first_crate` = `StarterRelic` on any map, plus `RelicGuarantees` entries
+`{ id, relic, map }`); a profile records each id it has had, so a guarantee added later still reaches existing
+players on their next qualifying crate (one per crate, the opener's profile, a party-wide drop; never reuse an id). A hit unlocks for every
+member at once (saved now); owners get `RelicDupeGold`. `RelicShow.lua`: the mask rises out of the open crate on a
+beam visible through walls, hangs `RelicHangSec` spinning with rays while the sting plays for everyone, flies to the
+camera, and the mastery-style `RELIC FOUND` card drops (the mask spinning, `THE TELLER · THE BANK`, `UNLOCKED` or
+`ALREADY OWNED · +500 G`, `FIRST CRATE` on the starter) for `RelicPopupSec`; a pad beat. The summary gains
+`RELIC FOUND · THE TELLER`; MARLOW's card and a toast get one line. The Avatar booth's MASKS tab has a `THE BANK RELICS`
+shelf (owned in colour, equippable, a RELIC badge; the rest `???` silhouettes that say DROPS FROM GUN CRATES). The
+Create Match card gets a side rail while THE BANK is highlighted (`THE BANK · RELICS 1/4`, the four masks, owned in
+colour, the rest shadow silhouettes, FIRST CRATE on the starter; tap for the name or DROPS FROM GUN CRATES); the card
+keeps its size; phones get a `RELICS 1/4` chip on the tile that opens a sheet; RB hops card ↔ rail. Profile v7:
+`relics = { owned, guarantees }` (`[GHS Profile] v6 -> v7`; a v6 profile has had no guarantee, so an existing
+account's next gun crate drops the teller: no wipe needed to test). Logs: `[GHS Relic] roll <crate> hit|miss <id>`,
+`unlock <name> <id>`, `dupe <name> <id>`.
+
+**Debug (HEIST group, under MAP).** Breach now · Marker debug (each marker's tier, distance and decision: SHOW, CAP,
+FAR, CLUSTER, WALL) · dressing Stage 0 / 1 / 2 / 3 / BOSS · Heli on / off · Force relic drop · Force first crate ·
+Relic: <id> + Grant relic · Reset relics (also re-arms the guarantees) · Re-arm guarantees. Server side: `Run/HeistDebug.lua` registers them through `Debug.add`.
+
+**Config, the Brief 13 group** (end of Config.lua): `StreetSpawnDistanceMult`, `NodeShowColorMore`, `PreHeistMaps`,
+`PreHeistNagSec`, `BreachDoorGroup`, `BreachZone`, `BreachAlarmSec`, `BreachWaveDelaySec`, `BreachIdleShowSec`,
+`MusicPreHeist`, `ObjectiveMarkerCap`, `JobNearRange`, `JobPulseSec`, `JobPulseLength`, `JobHighlightFill`,
+`JobHighlightColor`, `JobPillMobileScale`, `MarkerMobileWorldScale`, `BagWallRange`, `BagMarkerRange`,
+`LootMarkerCap`, `LootClusterRadius`, `LootClusterMin`, `LootIconMobileScale`, `LootLookAngle`, `LootLookLabelSec`,
+`GunCrateTagScale`, `MarkerCrosshairClearPx`, `DressingStageWaves`, `DressingClearance`, `DressingFlashHz`,
+`SearchlightSweepDeg`, `SearchlightSweepSec`, `HeliEnabled`, `HeliAltitude`, `HeliSpeed`, `HeliSpotSwitchSec`,
+`HeliRotorSound`, `HeliRotorVolume`, `DressingAmbience`, `DressingAmbienceVolume`, `DressingAmbienceBossMult`,
+`DressingAmbienceCombatDuck`, `DressingAmbienceRollOff`, `RelicsEnabled`, `RelicsPerMap`, `RelicDropChance`,
+`StarterRelic`, `RelicGuarantees`, `RelicDupeGold`, `RelicHangSec`, `RelicPopupSec`, `RelicRiseSec`, `RelicColor`, `RelicSting`,
+`RelicStingVolume`, `HapticRelic`. Audio picks are verified ProSoundEffects / APM ids with alternatives listed beside
+them.
+
+### Brief 13 verify list
+
+Not yet played. Restart `rojo serve` first (new tree entry). A 2-player Local Server on THE BANK for the done-line;
+the rest works solo. Watch the output for `[GHS Breach]`, `[GHS Markers]`, `[GHS Dressing]`, `[GHS Relic]`,
+`[GHS Profile]`.
+
+1. Join with an old profile → `[GHS Profile] v6 -> v7` once; rejoin → no line.
+2. Create Match: THE BANK highlighted → the relic rail right of the card (`THE BANK · RELICS 0/4`, four silhouettes,
+   FIRST CRATE on the top one); tap one → DROPS FROM GUN CRATES; pick ARENA → the rail goes; the card's height never
+   changes. Pad: RB into the rail, RB back. Phone (emulator): no rail, a `RELICS 0/4` chip on THE BANK's tile opens a
+   sheet; X / tap outside / B close it.
+3. Start THE BANK: the van drives along the road and stops at the curb, the crew lines up on the pavement facing the
+   doors, the van drives on east; the intro crate lands in front of the line. Try to walk onto the grass across the
+   road → blocked at the barriers; the fence ends stand closer to the steps than before (0.7).
+4. Pre-heist: the BREACH WHEN READY pill where the wave sits (E / □ in its hint), no stars / skip / pause, quiet music,
+   MARLOW's front-doors card, the D1 beacon and chevrons. Open the crate, swap, cast: nothing spawns. Wait 60 s →
+   MARLOW's nag card; 60 s more → the next line.
+5. Breach through a window: shoot out a ground-floor lobby window, climb in, step into the lobby → the alarm and red
+   strobe, the front doors blow open from inside (no cash), HEIST ON, then the WAVE 1 bell; `[GHS Breach] <you> via
+   window t=..`; the first job is SILENCE THE ALARM on the panel by the teller counter inside the lobby. Next run,
+   breach by the door instead (the Charges at D1) → `via door`, D1 pays as a door. Debug Breach now also works.
+6. Summary after a run that idled > 20 s: `IDLE BEFORE BREACH m:ss` under the WAVE pill. Arena run: the clock start
+   as always, no pill, no idle line.
+7. Markers: a side job → its prop outlined blue through walls from across the lobby, the pill with the name and a
+   counting `42m`; a blue chevron pulse every 3 s; within 25 studs the distance and pulse stop and the key hint shows;
+   aim at the pill → it fades off the crosshair. Bags: small icons, the name only while you look at one; a bag behind a
+   counter within 30 shows through it, one across the map does not; three bags together → one `×3`. More than six
+   loot items → the nearest six. Intermission → bag icons through walls everywhere. A called door with the vault job up
+   → only the vault's marker (cap 1). Marker debug labels every decision. One `[GHS Markers] loot shown .. hidden ..`
+   per wave; `[GHS Markers] job N seen x.x` once per job.
+8. Dressing: debug Stage 1 / 2 / 3 / BOSS (or play to waves 5 / 10 / 15) → tape, cruisers with strobing bars and
+   cones at both fence ends; barricades, the SWAT van and two sweeping searchlights; sawhorses, more cruisers and the
+   helicopter circling with a spotlight that moves between crew members; BOSS adds the ambulance, extra cruisers, a
+   louder siren and dust under the helicopter. Standing where a piece goes → it waits until you step off.
+   `[GHS Dressing] stage N wave N`. Heli on / off toggles it.
+9. Relics: open the first gun crate on your existing account (a v6 profile has had no guarantee; or Re-arm
+   guarantees) → after the guns, the teller mask rises
+   on a beam (visible through walls), hangs spinning with rays and the sting, flies at the camera, RELIC FOUND ·
+   THE TELLER · THE BANK · UNLOCKED for both players; the summary has `RELIC FOUND · THE TELLER`. Force relic drop →
+   the next crate drops another; a member who owns it reads ALREADY OWNED · +500 G and gains 500 Gold. Avatar booth →
+   THE BANK RELICS shelf: the owned ones equip with a RELIC badge; the store, daily crate and pass never show them.
+   Reset relics clears them and re-arms the first crate.
+10. Done-line: 2 players, idle on the street, one breaks a window and walks in; the alarm, the doors, wave 1, ALARM
+    inside; the next side job found by its outline from across the lobby; cruisers by wave 5, the helicopter by wave
+    15; a gun crate's relic seen rising by both and unlocked for both.
+
+### Round 30 changelog
+
+- **Round 30 (9 Nov 2026, the brief 13 build, unplayed).** Street and spawn (curb van, pavement lineup, grass
+  Blocker, barrier fence ends, StreetScale, the alarm panel inside), the pre-heist and the breach, the marker
+  hierarchy (Objective cap, Job outline / pill / pulse, Loot icons / range / clusters / cap), exterior escalation
+  (staged dressing, the helicopter, siren beds), relics (profile v7, the roll and guarantee, the show, the summary
+  row, the booth shelf, the Create Match rail and phone sheet), the HEIST debug group.
+
+### Brief 13 open notes (deviations and assumptions)
+
+- **Round number.** Brief 12 claimed Round 29 on its branch first, so this is Round 30. Whichever merges second
+  re-reads the other's README section; both appended to the end of Config.lua, so that merge is a "keep both" at the
+  closing brace. Both briefs bumped nothing else in common that I know of; Brief 12's profile changes (if any) need a
+  version reconcile with v7.
+- **StreetSpawnDistanceMult is applied at runtime.** The fence-end Fence nodes, the street boxes, the street boss wall
+  and the fence-end Dressing nodes are drawn at the 1.0 street and stand at `x × mult` in play, so the key tunes live.
+  A drag of one of those nodes therefore lands at 0.7 of where you dropped it (the Show nodes overlay draws the node,
+  not the scaled spot).
+- **Dressing models.** Placeholders are templates in a dressing file (`Workspace.Bank.Dressing.Templates`, editable in
+  edit mode); Dressing nodes name one by `Mesh`. The brief's optional `Light` / `Sound` node attributes are not read:
+  light bars and the siren beds are driven by part names and Config instead. Nothing of the dressing collides.
+- **Kill feed.** The build has none, so the relic's one line goes to MARLOW's card and a toast.
+- **HEIST ON** is the centre stamp in the wave-banner style rather than a small toast (it reads as the run starting).
+- **Guarantees** follow the member who pressed OPEN (the first one their profile has not had); every member then
+  unlocks (owners take the dupe Gold). The brief's single first-crate flag became a list of guarantee ids (Jack, Round
+  30) so guarantees added later reach existing profiles; a guarantee for a relic the opener already owns still drops
+  (a dupe for them). A second member's first open later in the run drops the starter again.
+- **The window breach** counts once a member's root is inside the `lobby` zone volume; the window bays in front of
+  the facade are outside it, so it fires as you step from a bay into the lobby proper.
+- **Objective cap of one** means D3's three shutter parts show one beacon (the nearest), and the hatch beacon hides
+  while the open vault's marker is up.
+- **Dealer crates** are not in the Loot tier: the dealer's stands are their own panels during the break.
+- **Pause** is unavailable in the pre-heist (nothing to pause); AUTO SKIP and votes appear from wave 1.
+- `street_road` (the street's capture spot) stays per the brief's assumption; with D1 open from wave 1 the existing
+  "no street jobs once inside" rule keeps jobs off it.

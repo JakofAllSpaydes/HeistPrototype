@@ -66,6 +66,7 @@ export type MapView = {
 	bossWalls: { BossWall },
 	van: CFrame?, -- where the van parks on run start (its floor point and facing)
 	driveIn: number?, -- brief 8: studs the van drives from behind its node (nil: Config.VanDriveInStuds)
+	driveOff: string?, -- brief 13: "forward" = after the drop the van drives on ahead (nil / "back": backs out)
 	lineup: CFrame?, -- the crew's line on run start, facing along LookVector (nil: the arena spawn)
 	runEndLine: CFrame?, -- the run end line (nil: where the crew stands, as on the arena)
 	hub: any?, -- brief 8: Room.forMap("Hub") only: the hub's view (HubMap.View: spawn, pads, booths, board, van, range)

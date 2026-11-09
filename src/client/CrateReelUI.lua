@@ -23,6 +23,7 @@ local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local ModelIcon = require(script.Parent:WaitForChild("UI"):WaitForChild("ModelIcon"))
 local Juice = require(script.Parent:WaitForChild("Juice"))
+local TierMarkers = require(script.Parent:WaitForChild("TierMarkers")) -- brief 13
 
 local CrateReelUI = {}
 
@@ -31,6 +32,7 @@ local player = Players.LocalPlayer
 
 type CrateTag = { gui: BillboardGui, label: TextLabel, timer: TextLabel }
 local tags: { [Model]: CrateTag } = {}
+local crateSerial = 0 -- brief 13: ids for the Loot tier registry
 
 -- Phones render UI.S at about half scale: world billboards are sized up there so they read across the arena.
 local function SS(n: number): number
@@ -87,7 +89,8 @@ local function refreshTag(model: Model, tag: CrateTag)
 	local landed = model:GetAttribute("Landed") == true
 	local rolls = tonumber(model:GetAttribute("RollsLeft")) or 0
 	-- The reel takes the space over the crate while it plays.
-	tag.gui.Enabled = landed and not busy and rolls > 0
+	-- Brief 13: the Loot tier may hold it back (range, the on-screen cap).
+	tag.gui.Enabled = landed and not busy and rolls > 0 and not TierMarkers.hidden(tag.gui)
 end
 
 local function addTag(model: Instance)
@@ -98,7 +101,10 @@ local function addTag(model: Instance)
 	if not body then
 		return
 	end
-	local S = SS
+	-- Brief 13: the tag at Loot size.
+	local function S(n: number): number
+		return SS(n * Config.GunCrateTagScale)
+	end
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "CrateTag"
 	gui.Adornee = body
@@ -138,6 +144,12 @@ local function addTag(model: Instance)
 	})
 	local tag: CrateTag = { gui = gui, label = label, timer = timer }
 	tags[model] = tag
+	crateSerial += 1
+	TierMarkers.loot("crate" .. crateSerial, gui, body, "crate", function()
+		if tags[model] then
+			refreshTag(model, tag)
+		end
+	end)
 	refreshTag(model, tag)
 	model.AttributeChanged:Connect(function()
 		if tags[model] then

@@ -28,6 +28,9 @@ local SHORT = {
 	VaultRoom = "VAULT",
 	Fences = "FENCE",
 	Offices = "OFFICE", -- Round 19f
+	Blockers = "BLOCK", -- brief 13
+	Dressing = "DRESS",
+	HeliPath = "HELI",
 	-- Brief 8: the hub.
 	Spawn = "SPAWN",
 	QueuePads = "PAD",
@@ -56,6 +59,9 @@ local KEYS = {
 	VaultRoom = { "Door" },
 	Fences = {},
 	Offices = { "Zone" },
+	Blockers = {},
+	Dressing = { "Stage", "Mesh" },
+	HeliPath = { "Index" },
 	Spawn = {},
 	QueuePads = { "Index" },
 	Stations = { "Tab" },
@@ -84,7 +90,7 @@ end
 
 -- Dress a node (a model.json table: name, properties, attributes) of `typeName` in place and return it.
 return function(typeName: string, node: any): any
-	local hex = (Config.NodeShowColor :: any)[typeName] or "FFFFFF"
+	local hex = (Config.NodeShowColor :: any)[typeName] or (Config.NodeShowColorMore :: any)[typeName] or "FFFFFF"
 	local color = hexColor(hex)
 	local zone = typeName == "Zones" or typeName == "Range" -- volumes: Locked so clicks reach what is inside
 	local props = node.properties

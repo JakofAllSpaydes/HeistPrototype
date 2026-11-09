@@ -54,6 +54,11 @@ for _, m in Maps.List do
 	Maps.ById[m.id] = m
 end
 
+-- Brief 13: `preHeist` (a map opts in to the pre-heist start, Breach.lua) comes from Config.PreHeistMaps.
+for _, m in Maps.List do
+	(m :: any).preHeist = (Config.PreHeistMaps :: any)[m.id] == true
+end
+
 -- The row for an id; unknown ids fall back to Config.DefaultMap, then the first row.
 function Maps.get(id: string?): Map
 	return (id and Maps.ById[id]) or Maps.ById[Config.DefaultMap] or Maps.List[1]

@@ -20,6 +20,12 @@ Rarity.Colors = {
 	Color3.fromHex("F2A33C"),
 }
 
+-- Brief 13: relics sit above Legendary with their own colour. Never rolled (every roll stays in 1..5).
+Rarity.Relic = 6
+Rarity.Names[6] = "Relic"
+Rarity.Letters[6] = "X"
+Rarity.Colors[6] = Color3.fromHex(Config.RelicColor)
+
 function Rarity.bracketIndex(wave: number): number
 	for i, bracket in Config.RarityOddsByWaveBracket do
 		if wave <= bracket.maxWave then

@@ -20,6 +20,7 @@ local Haptics = require(script.Parent:WaitForChild("Haptics"))
 local GamepadMap = require(Shared:WaitForChild("GamepadMap"))
 local Sprint = require(script.Parent:WaitForChild("Sprint"))
 local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
+local HeistDebug = require(script.Parent:WaitForChild("HeistDebug")) -- brief 13
 
 local DebugPanel = {}
 
@@ -813,6 +814,8 @@ local function build()
 	btn(rB3, "Spawn drones", 0.25, function()
 		send("SpawnDrones", tonumber(droneBox.Text) or 10)
 	end)
+	-- Brief 13: the HEIST group (client/HeistDebug.lua), under CLASSES & STATS.
+	HeistDebug.build(panel, { row = row, btn = btn, send = send, rh = rh })
 end
 
 local function refreshToggles()

@@ -60,6 +60,9 @@ local World = {
 	-- Brief 6: party members with the purchase sheet up (userId -> true). Inside the SECOND CHANCE window the
 	-- revive window stands still while any of them is open; everywhere else the game runs on behind it.
 	sheetOpen = {} :: { [number]: boolean },
+	-- Brief 13: "preheist" while the crew is on the street before the breach (state PreHeist), else "run".
+	phase = "run",
+	idleBeforeBreach = 0, -- seconds the crew idled before the breach this run (the summary's IDLE BEFORE BREACH)
 }
 
 function World.survivedSec(): number
@@ -72,7 +75,11 @@ end
 
 -- True while a run is on: waves can spawn, downs count, cash is Match Cash.
 function World.inRun(): boolean
-	return World.state == "Intro" or World.state == "Wave" or World.state == "Intermission" or World.state == "Dealer" -- the dealer break (brief 5)
+	return World.state == "Intro"
+		or World.state == "PreHeist" -- brief 13: on the street before the breach
+		or World.state == "Wave"
+		or World.state == "Intermission"
+		or World.state == "Dealer" -- the dealer break (brief 5)
 end
 
 -- Anything but the hub: a party is in the arena (run, run over, run end or summary).

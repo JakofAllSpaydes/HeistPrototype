@@ -13,6 +13,7 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
+local TierMarkers = require(script.Parent:WaitForChild("TierMarkers")) -- brief 13
 
 type Tag = {
 	gui: BillboardGui,
@@ -28,6 +29,7 @@ local GroundLoot = {}
 
 local lootFolder = Workspace:WaitForChild("GroundLoot")
 local tags: { [BasePart]: Tag } = {}
+local gunSerial = 0 -- brief 13: ids for the Loot tier registry
 
 -- Two rows against the held gun: damage per shot ("33x8" for pellets) and fire rate, each with its own
 -- arrow, so a slow heavy gun and a fast light one read as a trade instead of one number.
@@ -143,6 +145,11 @@ local function addTag(gun: BasePart)
 	tags[gun] = tag
 	refreshTag(gun, tag)
 	UI.punch(frame, 1.35, 0.4)
+	-- Brief 13: floor guns are the Loot tier (through walls only when close, the nearest few on screen).
+	gunSerial += 1
+	TierMarkers.loot("gun" .. gunSerial, gui, gun, "gun", function()
+		gui.Enabled = not TierMarkers.hidden(gui)
+	end)
 	gun.AttributeChanged:Connect(function()
 		if tags[gun] then
 			refreshTag(gun, tag)

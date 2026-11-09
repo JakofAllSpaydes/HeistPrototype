@@ -384,16 +384,43 @@ end
 -- system on THE BANK), the spot's pool taking `kind` when one is forced, biased JobOtherZoneMult toward spots
 -- outside the crew zone.
 CrewCall.spotOpen = nil :: ((Room.JobSpot) -> boolean)?
+
+-- Brief 13: a spot whose Pool is only `alarm` is SILENCE THE ALARM's own panel: the alarm stands there whenever one
+-- is open, and no other kind ever draws it.
+local function alarmOnly(s: Room.JobSpot): boolean
+	local pool = s.pool
+	if not pool or #pool == 0 then
+		return false
+	end
+	for _, k in pool do
+		if string.lower(k) ~= "alarm" then
+			return false
+		end
+	end
+	return true
+end
+
 function CrewCall.pickSpot(kind: string?): Room.JobSpot?
 	local open = CrewCall.spotOpen
 	local spots = {}
 	local weights = {}
 	local total = 0
+	local wantPanel = false
+	if kind == "alarm" then
+		for _, s in Room.current().jobSpots do
+			if alarmOnly(s) and (not open or open(s)) then
+				wantPanel = true
+			end
+		end
+	end
 	for _, s in Room.current().jobSpots do
 		if open and not open(s) then
 			continue
 		end
 		if kind and not inPool(s.pool, kind) then
+			continue
+		end
+		if alarmOnly(s) ~= wantPanel then
 			continue
 		end
 		local w = if s.zone ~= World.crewZone then Config.JobOtherZoneMult else 1
@@ -568,6 +595,10 @@ function CrewCall.trigger(forceKind: string?, forceGame: string?)
 				end
 			end
 		)
+	end
+	-- Brief 13: the client finds the job's prop by this to outline it (the Job marker tier).
+	if beacon then
+		beacon:SetAttribute("JobId", nextId)
 	end
 	thisJob = {
 		id = nextId,
@@ -812,6 +843,15 @@ function CrewCall.finishDoor(group: string, by: Player?)
 	local j = doorJob
 	if j and j.active and j.door and j.door.group == group then
 		CrewCall.finish(true, nil, if by then { by } else nil, j)
+	end
+end
+
+-- Brief 13: the door's group opened without anyone doing the objective (blown from inside at the breach): the call
+-- goes quietly, no reward.
+function CrewCall.clearDoor(group: string)
+	local j = doorJob
+	if j and j.active and j.door and j.door.group == group then
+		CrewCall.finish(false, true, nil, j)
 	end
 end
 

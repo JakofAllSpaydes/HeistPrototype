@@ -677,6 +677,12 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	end,
 }
 
+-- Brief 13: later systems add their own commands here (HeistDebug.lua) instead of growing this table.
+function Debug.add(command: string, handler: (Player, PlayerState.State, any) -> ())
+	handlers[command] = handler
+end
+Debug.toast = toast
+
 function Debug.init()
 	-- Path debug: twice a second, the routes of the 30 pathing enemies nearest each watching player.
 	task.spawn(function()

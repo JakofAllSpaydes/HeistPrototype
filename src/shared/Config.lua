@@ -2093,6 +2093,94 @@ local Config = {
 	ExplosionPunchRef = 12,
 	ExplosionOthersShake = 0.15, -- everyone else in range gets this much, fading over ExplosionShakeRange
 	ExplosionShakeRange = 60,
+
+	------------------------------------------------------------------ Brief 13: the heist (THE BANK run flow)
+	-- Street (step 1). The street's fence ends (Fence nodes with StreetScale), the street_west / street_east spawn
+	-- boxes and the street boss wall stand at x = their node's x times this, measured from the bank's centre line
+	-- (1 = where the nodes are drawn; 0.7 = 30% closer to the steps, so the mouths read from the bank's front).
+	StreetSpawnDistanceMult = 0.7,
+	-- Breach (step 2). A map in PreHeistMaps opens in the pre-heist (Breach.lua): no enemies, no heat, no wave timer,
+	-- a BREACH WHEN READY pill, the BreachDoorGroup objective live from the first second. The breach is that door
+	-- opening, or any member walking into the BreachZone volume while it is shut (through a shot-out window).
+	PreHeistMaps = { TheBank = true }, -- Maps rows read this as `preHeist`; the Arena keeps its clock start
+	PreHeistNagSec = 60, -- MARLOW's nag (Lines.preHeistNag, cycling) every this many seconds of idling; 0 = none
+	BreachDoorGroup = "D1", -- the door objective called at spawn; it blows open from inside on a window breach
+	BreachZone = "lobby", -- a member's root inside this zone while the door is shut = a window breach
+	BreachAlarmSec = 6, -- the building alarm and strobe on the breach
+	BreachWaveDelaySec = 1.4, -- the HEIST ON stamp holds this long before wave 1's bell
+	BreachIdleShowSec = 20, -- the summary shows IDLE BEFORE BREACH when the crew idled longer than this
+	MusicPreHeist = { "rbxassetid://9038506583" }, -- the pre-heist's cue (Diamond Heist (b)), looping under MusicDuck
+	-- Markers (step 3): three tiers (Markers.lua, TierMarkers.lua). Objective (doors, the vault, offices, the hatch)
+	-- keeps the full beacon, arrow guide and chevrons; at most ObjectiveMarkerCap at once (the most urgent, then the
+	-- nearest). Job (side jobs): the prop outlined through walls, a pill with the name and a live distance beyond
+	-- JobNearRange, a soft floor chevron pulse every JobPulseSec. Loot (bags, gun crates, floor guns): small, through
+	-- walls only within BagWallRange (the whole map during an intermission), gone beyond BagMarkerRange, 3+ bags
+	-- within LootClusterRadius as one ×N, the nearest LootMarkerCap shown.
+	ObjectiveMarkerCap = 1,
+	JobNearRange = 25, -- studs: inside it the Job pill drops its distance and the pulse stops
+	JobPulseSec = 3, -- seconds between the Job tier's floor chevron pulses
+	JobPulseLength = 18, -- studs of floor the pulse runs ahead of you toward the job
+	JobHighlightFill = 0.1, -- the outline's fill opacity (0 = outline only); never a solid block
+	JobHighlightColor = "4D9FE8", -- the job blue
+	JobPillMobileScale = 1.15, -- phones: the Job pill this much bigger
+	MarkerMobileWorldScale = 1.5, -- phones draw UI.S about half size: world markers start this much bigger there (as the gun crate tag does)
+	BagWallRange = 30, -- studs: loot markers show through walls only this close
+	BagMarkerRange = 60, -- studs: loot markers fade out beyond this
+	LootMarkerCap = 6, -- loot markers on screen at once (the nearest)
+	LootClusterRadius = 10, -- studs: 3+ bags this close together collapse into one ×N marker
+	LootClusterMin = 3,
+	LootIconMobileScale = 0.85, -- phones: loot icons this size
+	LootLookAngle = 7, -- degrees off the screen centre that count as looking at a loot marker (its label shows)
+	LootLookLabelSec = 1, -- the looked-at label holds this long
+	GunCrateTagScale = 0.8, -- the GUN CRATE tag at Loot size
+	MarkerCrosshairClearPx = 70, -- a Job pill this close to the screen centre fades so it never covers the crosshair
+	-- Dressing (step 4): the street tells the wave count (Dressing.lua, DressingFx.client.lua). Dressing nodes carry
+	-- their Stage; templates live in src/map/Bank.dressing.rbxmx (Workspace.Bank.Dressing.Templates).
+	DressingStageWaves = { 5, 10, 15 }, -- the wave each stage arrives for (dressed in the intermission before it)
+	DressingClearance = 3, -- studs: a piece waits while a member stands this close inside where it goes
+	DressingFlashHz = 2.5, -- light bars alternate this many times a second
+	SearchlightSweepDeg = 35, -- the searchlights sweep the facade this far either side
+	SearchlightSweepSec = 7, -- one sweep across and back
+	HeliEnabled = true, -- false = no helicopter at stage 3 (performance)
+	HeliAltitude = 90, -- studs above the bank's ground: the loop's height, over the roofline
+	HeliSpeed = 24, -- studs a second round the HeliPath loop
+	HeliSpotSwitchSec = 8, -- the spotlight moves to another crew member this often
+	HeliRotorSound = "rbxassetid://9113417360", -- Bell Huey Helicopter Hover Hovering Fly By 1 (ProSoundEffects).
+	-- Alternatives (ProSoundEffects, verified): 9113417561 Hover Hovering Fly By 3, 9113454674 Blades Helicopters
+	-- Overhead Fly Bys 3, 9125389900 Huey Fly Bys Low End Blade.
+	HeliRotorVolume = 0.5,
+	-- Siren bed per stage (looped at the street, ducked during a wave, faint inside the bank). Picks (ProSoundEffects):
+	-- 1 Police Siren Slow Vehicle Away 1, 2 Accident Scene 4, 3 Siren Composite 2. Alternatives: 9117810961 Police Siren
+	-- Slow Vehicle Away 2, 9117810647 Police Siren Old Hand Crank Style 1, 9112759347 City Night Ambience 1.
+	DressingAmbience = { "rbxassetid://9117810852", "rbxassetid://9112736857", "rbxassetid://9112871933" },
+	DressingAmbienceVolume = 0.35,
+	DressingAmbienceBossMult = 1.7, -- the siren bed this much louder on a boss wave
+	DressingAmbienceCombatDuck = 0.6, -- ... and this much quieter while a wave is being fought
+	DressingAmbienceRollOff = { 60, 420 }, -- studs: full volume within the first, silent past the second (it carries in)
+	-- Relics (step 5): a map's ultra-rare masks (Relics.lua), dropped only by its gun crates (RelicService.lua).
+	RelicsEnabled = true, -- false = no roll, no first-crate drop, no Create Match rail
+	RelicsPerMap = 4, -- set size per map
+	RelicDropChance = 0.10, -- TESTING value (the real one is far lower): one roll per opened gun crate, no luck of any kind
+	StarterRelic = "bank_teller", -- the first gun crate a profile ever opens drops this for the whole party
+	-- More guaranteed drops, each once per profile on its next qualifying gun crate: { id = "<stable, never reused>",
+	-- relic = "<relic id>", map = "<map id, or "" for any>" }. Profiles record ids, so one added later reaches
+	-- existing players too. Example: { id = "vault_launch", relic = "bank_vault", map = "TheBank" }.
+	RelicGuarantees = {},
+	RelicDupeGold = 500, -- Gold to a member who already owns the relic that dropped
+	RelicHangSec = 2.5, -- the relic hangs over the crate this long (spinning, rays, the sting) before it flies off
+	RelicPopupSec = 4, -- the RELIC FOUND popup's hold
+	RelicRiseSec = 0.9, -- the rise out of the crate on its beam
+	RelicColor = "FF3D7F", -- the relic rarity's colour (above Legendary's orange)
+	RelicSting = "rbxassetid://1842854092", -- Choir Of Glass - Sting (APMOfficial). Alternatives: 1842437759 Neon
+	-- Choir (sting), 1835495594 Holy Pop.
+	RelicStingVolume = 0.8,
+	HapticRelic = { motor = "Large", strength = 0.6, sec = 0.12, pulses = 2, gap = 0.18 }, -- the beat on a pad
+	-- Node colours for the node types added after NodeShowColor (debug Show nodes and Studio's edit mode).
+	NodeShowColorMore = {
+		Blockers = "8A2A2A",
+		Dressing = "E86FF2",
+		HeliPath = "6FD8F2",
+	},
 }
 
 return Config

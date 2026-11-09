@@ -283,6 +283,39 @@ local Lines = {
 			"Finish it or forget it. Your call.",
 		},
 	},
+	-- Brief 13: the pre-heist on THE BANK (Breach.lua, the wave bar's pill, the summary). [Copy: TBA]
+	preHeist = {
+		doorLine = "Front doors. Make some noise.", -- MARLOW's card with the front-door objective from the first second
+		nagLabel = "WHENEVER YOU'RE READY",
+		stamp = "HEIST ON", -- the centre stamp at the breach
+		pill = "BREACH WHEN READY", -- where the wave bar sits until the breach
+		pillHint = "BLOW THE DOORS OR GO IN THROUGH A WINDOW", -- phones
+		pillKeyHint = "{key} AT THE DOORS · OR IN THROUGH A WINDOW", -- PC / pad: {key} is the interact glyph
+		idleRow = "IDLE BEFORE BREACH %s", -- the summary's small line under the time row
+	},
+	-- Brief 13: relics (RelicService, the RELIC FOUND popup, the Create Match rail, the booth). [Copy: TBA]
+	relicFound = "%s. Somebody in this crew has taste.", -- MARLOW once a relic has dropped
+	relic = {
+		typeLabel = "RELIC",
+		toast = "RELIC FOUND · %s",
+		stamp = "RELIC FOUND",
+		unlocked = "UNLOCKED",
+		dupe = "ALREADY OWNED · +%d G",
+		summaryRow = "RELIC FOUND · %s",
+		railHeader = "%s · RELICS %d/%d",
+		chip = "RELICS %d/%d",
+		unknown = "???",
+		dropsFrom = "DROPS FROM GUN CRATES",
+		firstCrate = "FIRST CRATE",
+		tag = "RELIC",
+		shelf = "%s RELICS",
+	},
+	-- MARLOW every Config.PreHeistNagSec of idling, cycling. [Copy: TBA]
+	preHeistNag = {
+		"Clock's ticking, in your head at least.",
+		"Whenever you're ready. No rush. Some rush.",
+		"The vault isn't coming out here.",
+	},
 }
 
 return Lines

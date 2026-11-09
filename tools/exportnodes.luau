@@ -38,6 +38,9 @@ local MAPS: { [string]: MapDef } = {
 			"VaultRoom",
 			"Fences",
 			"Offices",
+			"Blockers", -- brief 13
+			"Dressing",
+			"HeliPath",
 		},
 		tags = {
 			Zones = "GHS_Zone",
@@ -53,6 +56,9 @@ local MAPS: { [string]: MapDef } = {
 			VaultRoom = "GHS_VaultRoom",
 			Fences = "GHS_Fence",
 			Offices = "GHS_Office", -- Round 19f
+			Blockers = "GHS_Blocker", -- brief 13
+			Dressing = "GHS_Dressing",
+			HeliPath = "GHS_HeliPath",
 		},
 	},
 	hub = {

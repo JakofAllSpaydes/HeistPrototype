@@ -21,6 +21,10 @@ local Windows = require(script.Parent.Windows)
 local Alarms = require(script.Parent.Alarms) -- Round 19c
 local ZoneGas = require(script.Parent.ZoneGas) -- Round 19c
 local Offices = require(script.Parent.Offices) -- Round 19f
+local Breach = require(script.Parent.Breach) -- brief 13
+local HeistDebug = require(script.Parent.HeistDebug) -- brief 13
+local Dressing = require(script.Parent.Dressing) -- brief 13
+local RelicService = require(script.Parent.RelicService) -- brief 13
 
 local World = require(script.Parent.World)
 local Log = require(script.Parent.Parent.Log)
@@ -147,6 +151,7 @@ local function runWaves()
 		CrewCall.onWaveStart(wave)
 		Bags.onWaveStart(wave)
 		ZoneGas.onWaveStart(wave) -- Round 19c: every few waves the crew's zone is gassed
+		Dressing.onWaveStart(wave) -- brief 13: only when no intermission dressed the street for it (AUTO SKIP)
 
 		local advanced = Spawner.runWave(wave)
 		if World.runOver then
@@ -197,6 +202,7 @@ local function runWaves()
 		setState("Intermission")
 		World.fireRun("Intermission", { wave = wave, endsAt = World.intermissionEndsAt })
 		Doors.onIntermission(wave + 1) -- brief 7: doors due next wave are called now
+		Dressing.onIntermission(wave + 1) -- brief 13: the street dresses up for the coming wave
 		waitIntermission()
 		-- Debug "Open dealer now" during the intermission: the break runs, then the next wave.
 		if Dealer.requested and not World.runOver and not World.pendingWave then
@@ -224,6 +230,8 @@ local function playRun()
 	World.runClockStart = 0
 	World.runClockPaused = 0
 	World.runClockEnd = 0
+	World.idleBeforeBreach = 0
+	World.phase = "run"
 
 	-- Run start: fresh run state for the party, then the drive-in sequence (IntroSec); WAVE 1 follows.
 	World.wave = 1
@@ -236,6 +244,8 @@ local function playRun()
 	Alarms.resetRun()
 	ZoneGas.resetRun()
 	Offices.resetRun()
+	Dressing.resetRun()
+	RelicService.resetRun()
 	Hub.beginRun(World.partyPlayers())
 	Economy.resetRun(World.partyPlayers())
 	Mastery.beginRun(World.partyPlayers())
@@ -253,6 +263,14 @@ local function playRun()
 	)
 	RunStart.play()
 	BigCrate.onIntro()
+	-- Brief 13: a pre-heist map waits on the street for the breach (the door, a window, debug); the HEIST ON stamp
+	-- holds a beat, then wave 1. The arena starts on the clock as always.
+	if Breach.enabled() then
+		Breach.waitForBreach(setState)
+		if not World.runOver then
+			task.wait(Config.BreachWaveDelaySec)
+		end
+	end
 
 	runWaves()
 
@@ -348,6 +366,8 @@ local function backToHub(first: boolean)
 	setState("Hub")
 	Pause.reset()
 	clearArena()
+	Breach.resetRun()
+	Dressing.resetRun()
 	Doors.resetRun()
 	Alarms.resetRun()
 	ZoneGas.resetRun()
@@ -439,11 +459,13 @@ function Main.start()
 	RunEnd.init()
 	Roster.init()
 	Debug.init()
+	HeistDebug.init()
 	Doors.init()
 	Windows.init()
 	Alarms.init()
 	ZoneGas.init()
 	Offices.init()
+	Dressing.init() -- brief 13
 	Range.init() -- brief 8: the hub slot only
 
 	if Slot.isHub then
