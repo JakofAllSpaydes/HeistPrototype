@@ -313,7 +313,7 @@ local Config = {
 	AimAssistEnabled = true,
 	-- Brief 11: the assist per device (share of the pull and the stickiness; 0 = off). Mouse keeps the faint Round
 	-- 24aa value, touch the full one, the gamepad sits between (felt, never aiming for you).
-	AimAssistScale = { touch = 1.0, gamepad = 0.6, mouse = 0.15 },
+	AimAssistScale = { touch = 1.0, gamepad = 0.75, mouse = 0.15 }, -- gamepad 0.6 -> 0.75 (Jack, checkpoint 1)
 	AimAssistMouseCone = 0.6, -- the mouse's cone is this share of the full one
 	AimAssistGamepadStickOnly = true, -- gamepad: the pull works only while the right stick moves or you fire (no drift onto targets)
 	AimAssistConeDeg = 11, -- hip fire: enemies within this many degrees of the crosshair pull
@@ -341,22 +341,23 @@ local Config = {
 			ButtonA = "jump", -- Roblox's own jump; A buys at an open dealer panel
 			ButtonL1 = "ability1",
 			ButtonR1 = "ability2",
-			ButtonR3 = "ability3",
+			ButtonB = "ability3", -- checkpoint 1: off R3 (B does nothing else in a run; screens block combat)
+			ButtonR3 = "cameraCycle", -- normal -> fully out over the shoulder -> first person -> normal
 			ButtonL3 = "sprint",
-			DPadUp = "dealerTeleport", -- at the dealer break (nothing otherwise)
+			DPadUp = "upgrade", -- buys the upgrade pick (the 2 key); at the dealer break it teleports instead
 			DPadDown = "voteSkip", -- the dealer break or an intermission
 			DPadLeft = "dealerPrev", -- walk the stands
 			DPadRight = "dealerNext",
-			ButtonSelect = "scoreboard", -- hold (a tap opens settings)
+			ButtonSelect = "scoreboard", -- Create: a tap opens / closes it, a hold peeks (closes on release)
 		},
 		hub = {
 			ButtonX = "interact", -- the prompt (board, shelf, props); Roblox's prompt takes it
 			ButtonA = "jump",
 			ButtonL3 = "sprint",
-			ButtonSelect = "settings",
+			-- Create is left to Roblox in the hub (its own UI selection mode) until GamepadNav has a HUD toggle
 		},
 	},
-	GamepadTapMaxSec = 0.3, -- ButtonSelect: shorter than this is a tap (settings), longer a hold (scoreboard)
+	GamepadTapMaxSec = 0.3, -- Create: shorter than this is a tap (the scoreboard stays open), longer a peek
 	GamepadTriggerPress = 0.25, -- LT / RT count as pressed past this depth (analog Position.Z)
 	DeviceSwitchHoldSec = 0.75, -- glyph flip debounce: after a device switch, another needs this long
 	-- The right stick look: a radial dead zone, a response curve (exponent: small pushes stay fine, the edge is fast),

@@ -54,6 +54,7 @@ local ClientState = {
 	padFire = false, -- RT held (Gun.client reads it beside touchFire)
 	padInteract = false, -- X held as the prompt (DownedUI's revive hold reads it)
 	dealerActive = false, -- the dealer break is on (DealerUI)
+	scoreboardOpen = false, -- the in-run scoreboard is up (Scoreboard.setOpen)
 	promptVisible = false, -- a ProximityPrompt is showing (Input.lua: X is the prompt, not a reload)
 	-- The right stick this frame and what the camera made of it (the Input monitor reads it).
 	padLook = { x = 0, y = 0, amount = 0, yawRate = 0, pitchRate = 0, edgeSec = 0 },

@@ -53,6 +53,13 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			tile.onPress()
 		end
 	end))
+	-- Brief 11: D-pad up on a pad (Input.lua).
+	track(ClientState.Juice:Connect(function(name: string)
+		local tile = tiles.upgrade
+		if name == "PadUpgrade" and not ClientState.inHub() and tile.enabled and tile.onPress then
+			tile.onPress()
+		end
+	end))
 
 	local component = {}
 	component.frame = root

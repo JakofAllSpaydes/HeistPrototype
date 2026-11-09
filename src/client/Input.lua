@@ -144,6 +144,8 @@ local function dispatch(action: string, phase: string)
 		ClientState.Juice:Fire("PadSprint", { on = on })
 	elseif action == "dealerTeleport" or action == "dealerPrev" or action == "dealerNext" or action == "dealerBuy" then
 		ClientState.Juice:Fire("PadDealer", { action = action })
+	elseif action == "upgrade" then
+		ClientState.Juice:Fire("PadUpgrade")
 	elseif action == "voteSkip" then
 		if ClientState.dealerActive then
 			ClientState.Juice:Fire("PadDealer", { action = action })
@@ -152,8 +154,8 @@ local function dispatch(action: string, phase: string)
 		end
 	elseif action == "scoreboard" then
 		ClientState.Juice:Fire("ScoreboardHold", { on = on })
-	elseif action == "settings" then
-		ClientState.Juice:Fire("OpenSettings")
+	elseif action == "cameraCycle" then
+		ClientState.Juice:Fire("CameraCycle")
 	end
 end
 
@@ -168,6 +170,7 @@ local function ctx(): GamepadMap.Ctx
 		dealerPanel = ClientState.dealerActive and ClientState.dealerFocus,
 		intermission = sync ~= nil and sync.waveState == "Intermission",
 		adsToggle = s.adsToggle,
+		scoreboardOpen = ClientState.scoreboardOpen,
 		blocked = ClientState.blocked(),
 	}
 end
@@ -247,7 +250,7 @@ UserInputService.InputBegan:Connect(function(input: InputObject)
 		return
 	end
 	if GamepadMap.resolve(ctx().context, key) == nil then
-		record(key .. " begin", if key == "ButtonB" then "back (screens)" else "-")
+		record(key .. " begin", "-")
 	end
 end)
 
@@ -276,7 +279,7 @@ RunService.Heartbeat:Connect(function()
 	end
 	local out = router:tick(ctx(), now)
 	if #out > 0 then
-		record("ButtonSelect held", run(out))
+		record("(held)", run(out))
 	end
 end)
 

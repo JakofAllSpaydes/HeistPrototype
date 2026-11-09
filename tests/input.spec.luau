@@ -1,6 +1,6 @@
 -- Brief 11 self-test: `lune run tests/input.spec.luau` (the git pre-commit hook runs it too).
 -- Feeds synthetic gamepad InputObjects through GamepadMap's router (the same code Input.lua runs) and checks every
--- binding resolves to its action, the X prompt rule, the Select tap / hold, the dealer D-pad, sprint, and the look
+-- binding resolves to its action, the X prompt rule, the Create tap / hold, the dealer D-pad, sprint, and the look
 -- math (dead zone, curve, acceleration, ADS) as pure functions against expected numbers.
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -111,9 +111,10 @@ local EXPECT_RUN = {
 	ButtonA = "jump",
 	ButtonL1 = "ability1",
 	ButtonR1 = "ability2",
-	ButtonR3 = "ability3",
+	ButtonB = "ability3",
+	ButtonR3 = "cameraCycle",
 	ButtonL3 = "sprint",
-	DPadUp = "dealerTeleport",
+	DPadUp = "upgrade",
 	DPadDown = "voteSkip",
 	DPadLeft = "dealerPrev",
 	DPadRight = "dealerNext",
@@ -122,7 +123,9 @@ local EXPECT_RUN = {
 for key, action in EXPECT_RUN do
 	check("brief table run." .. key .. " = " .. action, GamepadMap.resolve("run", key) == action)
 end
-check("ButtonB unbound in a run", GamepadMap.resolve("run", "ButtonB") == nil)
+check("ButtonB unbound in the hub (screens' back)", GamepadMap.resolve("hub", "ButtonB") == nil)
+check("teleport glyph rides D-pad up", GamepadMap.buttonFor("run", "dealerTeleport") == "DPadUp")
+check("interact glyph rides X", GamepadMap.buttonFor("run", "interact") == "ButtonX")
 
 ------------------------------------------------------------------ 2. combat through the router
 do
@@ -160,10 +163,15 @@ do
 	release(r, "ButtonY")
 	check("LB ability 1", press(r, "ButtonL1") == "ability1:tap")
 	check("RB ability 2", press(r, "ButtonR1") == "ability2:tap")
-	check("R3 ability 3", press(r, "ButtonR3") == "ability3:tap")
+	check("Circle ability 3", press(r, "ButtonB") == "ability3:tap")
+	check("R3 camera view cycle", press(r, "ButtonR3") == "cameraCycle:tap")
 	release(r, "ButtonL1")
 	release(r, "ButtonR1")
+	release(r, "ButtonB")
 	release(r, "ButtonR3")
+	local _, bSink = r:input(inp("ButtonB", "Begin"), { context = "run", blocked = true }, 0)
+	check("Circle passes to the screen when one is open", bSink == false)
+	release(r, "ButtonB")
 
 	check("A jumps (no action, Roblox keeps it)", press(r, "ButtonA") == "")
 	release(r, "ButtonA")
@@ -179,7 +187,7 @@ do
 	for _, k in { "DPadUp", "DPadDown", "DPadLeft", "DPadRight" } do
 		release(r, k, dealer)
 	end
-	check("D-pad up does nothing outside the dealer", press(r, "DPadUp") == "")
+	check("D-pad up buys the upgrade pick outside the dealer", press(r, "DPadUp") == "upgrade:tap")
 	release(r, "DPadUp")
 	check(
 		"D-pad down votes skip in an intermission",
@@ -190,14 +198,25 @@ do
 	check("L3 sprint begin", press(r, "ButtonL3") == "sprint:begin")
 	check("L3 sprint end", release(r, "ButtonL3") == "sprint:end")
 
-	-- ButtonSelect: a tap opens settings, a hold is the scoreboard
-	press(r, "ButtonSelect", RUN, 10)
-	check("Select tap -> settings", release(r, "ButtonSelect", RUN, 10.1) == "settings:tap")
-	press(r, "ButtonSelect", RUN, 20)
-	check("Select under the hold time: nothing yet", actions(r:tick(RUN, 20.1)) == "")
-	check("Select held -> scoreboard", actions(r:tick(RUN, 20 + Config.GamepadTapMaxSec + 0.01)) == "scoreboard:begin")
-	check("Select held: only once", actions(r:tick(RUN, 21)) == "")
-	check("Select release closes the scoreboard", release(r, "ButtonSelect", RUN, 21.2) == "scoreboard:end")
+	-- Create (ButtonSelect): the scoreboard. A tap opens it and leaves it open, the next tap closes it; a hold peeks.
+	local SB_OPEN = { context = "run", scoreboardOpen = true }
+	check("Create tap opens the scoreboard", press(r, "ButtonSelect", RUN, 10) == "scoreboard:begin")
+	check("Create tap release leaves it open", release(r, "ButtonSelect", RUN, 10.1) == "")
+	check("Create tap again closes it", press(r, "ButtonSelect", SB_OPEN, 12) == "scoreboard:end")
+	check("Create release after closing: nothing", release(r, "ButtonSelect", RUN, 12.1) == "")
+	check("Create hold opens at once", press(r, "ButtonSelect", RUN, 20) == "scoreboard:begin")
+	check("Create no timed action", actions(r:tick(RUN, 21)) == "")
+	check(
+		"Create hold release closes (peek)",
+		release(r, "ButtonSelect", SB_OPEN, 20 + Config.GamepadTapMaxSec + 0.05) == "scoreboard:end"
+	)
+	-- the camera view cycle: normal -> fully out -> first person -> normal
+	local z1 = GamepadMap.nextZoom(Config.CameraZoomDefault)
+	check("cycle: normal -> fully out", z1 == Config.CameraZoomMax)
+	local z2 = GamepadMap.nextZoom(z1)
+	check("cycle: out -> first person", z2 == 0)
+	check("cycle: first person -> normal", GamepadMap.nextZoom(z2) == Config.CameraZoomDefault)
+	check("cycle: a wheel zoom goes out first", GamepadMap.nextZoom(5) == Config.CameraZoomMax)
 
 	-- a screen owns the pad: combat presses do nothing, releases still pass
 	local blocked = { context = "run", blocked = true }
@@ -214,13 +233,14 @@ do
 	check("reset ends ads", string.find(let, "ads:end", 1, true) ~= nil, let)
 end
 
-do -- the hub: X is the prompt, Select settings
+do -- the hub: X is the prompt, Create is Roblox's
 	local r = GamepadMap.newRouter()
 	local HUB = { context = "hub" }
 	check("hub X = interact", press(r, "ButtonX", HUB) == "interact:begin")
 	check("hub X release", release(r, "ButtonX", HUB) == "interact:end")
 	check("hub RT does nothing", press(r, "ButtonR2", HUB) == "")
-	check("hub Select = settings", press(r, "ButtonSelect", HUB) == "settings:tap")
+	local out, sink = r:input(inp("ButtonSelect", "Begin"), HUB, 0)
+	check("hub Create passes to Roblox", actions(out) == "" and sink == false)
 end
 
 ------------------------------------------------------------------ 3. look math

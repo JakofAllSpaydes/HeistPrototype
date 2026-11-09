@@ -210,6 +210,11 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		end)
 	elseif name == "RunResumed" then
 		slowFov = 0
+	elseif name == "CameraCycle" then
+		-- Brief 11: the pad's camera view button: normal -> fully out over the shoulder -> first person -> normal.
+		if not ClientState.blocked() and ClientState.cameraMode == "gameplay" then
+			targetZoom = GamepadMap.nextZoom(targetZoom)
+		end
 	elseif name == "CameraZoomReset" then
 		-- A scene is taking the camera: back to the default third-person distance so the character is not
 		-- left hidden by a first-person zoom.

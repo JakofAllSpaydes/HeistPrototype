@@ -30,6 +30,7 @@ export type Ctx = {
 	dealerPanel: boolean?, -- a dealer stand's panel is open and focused: A buys it
 	intermission: boolean?, -- between waves: D-pad down votes to skip
 	adsToggle: boolean?, -- settings: LT toggles ADS instead of holding
+	scoreboardOpen: boolean?, -- the scoreboard is up (Create closes it)
 	blocked: boolean?, -- a screen is open (GamepadNav owns the pad): combat actions do nothing
 }
 
@@ -45,11 +46,13 @@ local COMBAT: { [string]: boolean } = {
 	ability2 = true,
 	ability3 = true,
 	sprint = true,
+	upgrade = true,
 	dealerTeleport = true,
 	voteSkip = true,
 	dealerPrev = true,
 	dealerNext = true,
 	scoreboard = true,
+	cameraCycle = true,
 }
 GamepadMap.COMBAT = COMBAT
 
@@ -57,6 +60,13 @@ function GamepadMap.resolve(context: string, keyName: string): string?
 	local map = (cfg("GamepadMap") :: any)[context]
 	return if map then map[keyName] else nil
 end
+
+-- Actions that ride another action's button (the router decides which one a press means).
+local SHARES: { [string]: string } = {
+	dealerTeleport = "upgrade", -- D-pad up: the upgrade pick, or the teleport at the dealer break
+	interact = "reload", -- X: the reload tap, or the prompt while one is up
+	dealerBuy = "jump", -- A: jump, or buy at an open dealer panel
+}
 
 -- The button an action is bound to in a context (glyphs, the settings list), or nil.
 function GamepadMap.buttonFor(context: string, action: string): string?
@@ -69,7 +79,8 @@ function GamepadMap.buttonFor(context: string, action: string): string?
 			return key
 		end
 	end
-	return nil
+	local host = SHARES[action]
+	return if host then GamepadMap.buttonFor(context, host) else nil
 end
 
 local function nameOf(v: any): string
@@ -86,13 +97,13 @@ local TRIGGERS: { [string]: boolean } = { ButtonL2 = true, ButtonR2 = true }
 
 -- One router per client. It turns raw pad inputs into actions: holds (fire, ADS, interact, sprint) begin and end,
 -- taps fire once. The X rule: pressed while a prompt (or a downed teammate) is up it is the prompt for the whole
--- hold, never a reload. ButtonSelect in a run is a tap (settings) or a hold (scoreboard), decided by tick().
+-- hold, never a reload. Create (ButtonSelect) in a run is the scoreboard: a tap opens it and the next tap closes it,
+-- a hold past GamepadTapMaxSec is a peek that closes on release.
 export type Router = {
 	held: { [string]: boolean },
 	xMode: string?,
 	adsOn: boolean,
 	selectAt: number?,
-	selectHold: boolean,
 	input: (Router, obj: any, ctx: Ctx, now: number) -> ({ Emit }, boolean),
 	tick: (Router, ctx: Ctx, now: number) -> { Emit },
 	reset: (Router) -> { Emit },
@@ -107,7 +118,6 @@ function GamepadMap.newRouter(): Router
 		xMode = nil,
 		adsOn = false,
 		selectAt = nil,
-		selectHold = false,
 	}, Router)
 	return (r :: any) :: Router
 end
@@ -206,6 +216,11 @@ function Router.input(self: Router, obj: any, ctx: Ctx, now: number): ({ Emit },
 			emit("dealerBuy", "tap")
 			sink = true
 		end
+	elseif action == "upgrade" then
+		if pressed then
+			emit(if ctx.dealerActive then "dealerTeleport" else "upgrade", "tap")
+		end
+		sink = true
 	elseif action == "dealerTeleport" or action == "dealerPrev" or action == "dealerNext" then
 		if pressed and ctx.dealerActive then
 			emit(action, "tap")
@@ -218,20 +233,23 @@ function Router.input(self: Router, obj: any, ctx: Ctx, now: number): ({ Emit },
 		sink = true
 	elseif action == "scoreboard" then
 		if pressed then
-			self.selectAt = now
-			self.selectHold = false
-		else
-			if self.selectHold then
+			if ctx.scoreboardOpen then
 				emit("scoreboard", "end")
-			elseif self.selectAt then
-				emit("settings", "tap")
+				self.selectAt = nil
+			else
+				emit("scoreboard", "begin")
+				self.selectAt = now
+			end
+		else
+			local at = self.selectAt
+			if at and now - at >= cfg("GamepadTapMaxSec") then
+				emit("scoreboard", "end") -- it was a peek
 			end
 			self.selectAt = nil
-			self.selectHold = false
 		end
 		sink = true
 	else
-		-- swap, ability1..3, settings: one tap on the press.
+		-- swap, ability1..3, cameraCycle: one tap on the press.
 		if pressed then
 			emit(action, "tap")
 		end
@@ -240,15 +258,10 @@ function Router.input(self: Router, obj: any, ctx: Ctx, now: number): ({ Emit },
 	return out, sink
 end
 
--- Holds that turn into something with time (ButtonSelect: past GamepadTapMaxSec it is the scoreboard).
-function Router.tick(self: Router, _ctx: Ctx, now: number): { Emit }
-	local out: { Emit } = {}
-	local at = self.selectAt
-	if at and not self.selectHold and now - at >= cfg("GamepadTapMaxSec") then
-		self.selectHold = true
-		table.insert(out, { action = "scoreboard", phase = "begin" })
-	end
-	return out
+-- Holds that turn into something with time. None right now (the scoreboard opens on the press); kept so a timed
+-- hold has one place to live.
+function Router.tick(_self: Router, _ctx: Ctx, _now: number): { Emit }
+	return {}
 end
 
 -- Everything held lets go (the pad disconnected, the character died, a screen opened mid-hold).
@@ -269,15 +282,26 @@ function Router.reset(self: Router): { Emit }
 	if self.xMode == "interact" then
 		table.insert(out, { action = "interact", phase = "end" })
 	end
-	if self.selectHold then
-		table.insert(out, { action = "scoreboard", phase = "end" })
-	end
+
 	self.held = {}
 	self.xMode = nil
 	self.adsOn = false
 	self.selectAt = nil
-	self.selectHold = false
 	return out
+end
+
+------------------------------------------------------------------ camera view cycle
+
+-- The pad's camera view button: normal -> fully out over the shoulder -> first person -> normal. From any other
+-- zoom (the scroll wheel, a pinch) it goes out first. Returns the next target zoom (0 = first person).
+function GamepadMap.nextZoom(current: number): number
+	local normal, far = cfg("CameraZoomDefault"), cfg("CameraZoomMax")
+	if current <= 0 then
+		return normal
+	elseif current >= far - 0.01 then
+		return 0
+	end
+	return far
 end
 
 ------------------------------------------------------------------ look

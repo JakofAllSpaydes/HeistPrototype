@@ -652,6 +652,7 @@ function Scoreboard.setOpen(on: boolean)
 		return
 	end
 	open = on
+	ClientState.scoreboardOpen = on -- brief 11: Create toggles it on a pad (Input.lua)
 	local g = gui
 	if not g then
 		return
@@ -715,7 +716,7 @@ function Scoreboard.init()
 		if name == "ToggleScoreboard" then
 			Scoreboard.setOpen(not open)
 		elseif name == "ScoreboardHold" then
-			-- Brief 11: the pad's View / Create held (Input.lua); a run only.
+			-- Brief 11: the pad's Create (Input.lua): a tap toggles, a hold peeks; a run only.
 			local on = typeof(data) == "table" and data.on == true
 			Scoreboard.setOpen(on and not ClientState.inHub())
 		elseif name == "HubEnter" or name == "RunEndBegin" then
