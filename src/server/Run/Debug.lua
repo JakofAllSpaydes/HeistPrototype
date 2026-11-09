@@ -568,9 +568,12 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 			toast(player, "SET LEVEL: enter a number")
 		end
 	end,
+	-- Round 27g: the whole first-run-of-the-day state: the x2 XP flag (and with it the PLAY bar) and the daily crate
+	-- (locked, never opened), so the first run of the day can be tested end to end.
 	ResetDaily = function(player, _state, _args)
 		Progression.resetDaily(player)
-		toast(player, "DAILY FLAG RESET")
+		DailyCrate.debugReset(player)
+		toast(player, "DAILY RESET · X2 XP + CRATE")
 	end,
 	SetHeat = function(player, _state, args)
 		local n = tonumber(args)

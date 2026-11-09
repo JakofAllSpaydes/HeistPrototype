@@ -27,7 +27,7 @@ Brief 9 adds the Skill Web: a hex web of 90 one-time account perks bought with G
 (six branches, five rings around START), small account-wide stats that stack on the Armory and apply in every run
 and the range.
 Brief 10 adds retention: a 28-day login streak claimed from a modal on the first hub entry of each fake day (a lost
-streak can be restored for fake Robux), one daily crate on a podium beside the range door that a finished match
+streak can be restored for fake Robux), one daily crate on a glowing podium on the hall's west side that a finished match
 unlocks (its tier from your level, guns and masks from the normal pool, the first one a gun), and the PLAY line that
 surfaces the first run of the day (the daily crate and the existing ×2 XP).
 
@@ -85,7 +85,11 @@ Round 26 (8 Nov: the brief 9 build, the Skill Web; one commit per step, built un
 rounds 26b (a compact sheet, branch-coloured hexes, the web growing as you buy, varied costs, centring, plain effect
 lines) and 26c (START bought first, UNLOCK SKILLS, the unlock sequence), then
 Round 27 (8 Nov: the brief 10 build, retention: the login streak, the daily crate podium, the PLAY line; one commit per
-step, built unplayed).
+step, built unplayed) and Jack's feedback rounds 27b–27i (seen in Studio): the streak modal every session in the house
+look with one centred row, one action and the paid skip, streak crates as weekly-tier daily crates; the podium moved
+into view where the drums stood, glowing, with an overhead CTA, its sheet in every state with BUY 1; the summary
+unlock card, the hub guide and MARLOW's nudge; the glowing first-run bar under PLAY; a wider daily pool; the crate
+scene's HUD and lighting fixes and the eased camera out of the podium view.
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list", the "Brief 8 verify list", the
 "Brief 9 verify list" and the "Brief 10 verify list" are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -111,7 +115,7 @@ The hub (brief 8) is `src/map/Hub.rbxm` (`lune run tools/importhub.luau <place>`
 `lune run tools/genhubnodes.luau`). After moving hub nodes, save `Workspace.Hub.Nodes` as `.rbxmx` and run
 `lune run tools/exportnodes.luau Nodes.rbxmx hub` (a whole `.rbxlx` place exports both maps).
 Brief 10: `lune run tools/importhub.luau drop` re-applies `Config.HubImportDropAt` (models dropped by name and position)
-to the baked `Hub.rbxm` (it dropped the boxed shelving by the range door), and `lune run tools/genhubnodes.luau append`
+to the baked `Hub.rbxm` (it dropped the two drums in front of the loading platform), and `lune run tools/genhubnodes.luau append`
 adds node types the hub nodes file lacks without touching the dragged ones (it added `DailyCrate`).
 
 You spawn in the **hub** (the warehouse, baked at `HubOrigin` (0, 0, 1000)) on the floor star facing the four yellow
@@ -1024,39 +1028,68 @@ retention pieces that do not overlap: something to collect on arrival (the login
 playing (the daily crate), plus the PLAY line that surfaces the first run of the day. Both run on the brief 6 fake
 clock (`Clock.day(Clock.fake(os.time(), profile))`), never real time, so the debug `+1 day` tests everything; the
 FIRST HEIST OF THE DAY ×2 XP (`profile.lastHeistDay`, Progression) moved onto the same fake day.
-- **The login streak.** A 28-day track in four 7-day sets (`Config.StreakRewards`, a list of rewards per day); day
-  7 / 14 / 21 / 28 are the big ones (a RARE+ Arms crate, 1,000 pass XP, an EPIC+ Arms crate, an EPIC+ Arms crate +
+- **The login streak.** A 28-day track in four 7-day sets (`Config.StreakRewards`, a list of rewards per day); Round
+  27d: day 1 is a crate and a crate comes every 2-3 days, and every crate is the daily crate (guns + masks from
+  `Catalog.dailyPool`, the same crate scene) at the week's tier, rising like the level bands
+  (`StreakCrateTierByWeek`: week 1 BASIC, 2 GOLD, 3 DIAMOND, 4 ELITE; `DailyCrate.rollStreak`); day 7 / 14 / 21 / 28
+  are the big ones (a RARE+ daily crate, 1,000 pass XP + 1,000 Gold, an EPIC+ daily crate, an EPIC+ daily crate +
   1,500 Gold); after day 28 the next claim is `StreakLoopFrom` (22), so week 4 keeps paying. `streak.day` is the
   track position, `streak.lastClaimDay` the fake day of the last claim: claimed today → nothing; claimed yesterday →
   the next day; never → day 1; older → lost. The modal (`StreakModal.lua`) opens on the first hub entry of a fake day
-  (on join, back from a run, or when the fake day turns while you stand in the hub) before anything else: MARLOW's
-  announce waits on the server (`Jobs.hold`) and plays once the day is claimed, the SKILLS first-time pulse waits
-  on the client. `DAILY STREAK · DAY 12`, the four weeks as rows of seven: this week's row expanded (reward art and
-  amount per day, claimed days ticked and faded, today lit with a pulsing gold edge, future days dim, the big days in
-  gold frames), the other weeks collapsed to dots ending on their big reward; `TODAY · <reward>`; CLAIM. The dim
-  takes every tap and movement is locked until the day is claimed; the X, Esc and B claim too. A claim dings, ticks
-  today's tile with a burst, and closes; a crate reward rolls on the server (`CrateOpen.open` with the reward's
-  `floor`) and opens in the crate room inside the claim, then the modal closes (nothing is banked). Gold, pass XP and
-  the CASH boost land on the profile (the Gold pill and the boost chips show them). Lost: `STREAK LOST · YOU WERE ON
-  DAY 12` (12 = the day today's claim would have been), the track dimmed at it, `RESTORE · R$ 49`
-  (`StreakRestorePrice`, product `streak_restore` through the purchase sheet and its log; keeps the day and claims it)
-  and START OVER (claims day 1); VIP: `RESTORE · FREE (1 LEFT THIS MONTH)` (`VipStreakRestores` per
-  `VipStreakRestoreDays` fake days), then the price. Once claimed nothing about the streak shows until the next fake
-  day. Logs: `[GHS Streak] <name> day N claim` / `lost at N` / `restore paid` / `restore vip` / `reset`.
-  `StreakEnabled` false: no modal.
-- **The daily crate podium.** Where the boxed steel shelving stood, between the range door and pad 1 against the north
-  wall (the shelving and its boxes are dropped by `Config.HubImportDropAt`; the range volume and door are unchanged):
-  the `DailyCrate` node (the pedestal's volume, movable like any hub node) and a stand `Hub.lua` builds from it
+  (on join, back from a run, or when the fake day turns while you stand in the hub) before anything else, and (Round
+  27b) once at the start of every session even with nothing to claim (`StreakOpenEverySession`): MARLOW's announce
+  waits on the server (`Jobs.hold`) and plays once the day is claimed, the SKILLS first-time pulse waits on the
+  client. Round 27c look: the house's premium window (near-black panel, sharp corners, condensed caps, a gold edge)
+  in the reference's format: DAILY STREAK with a small IN A ROW counter (`streak.count`) in the header, then one wide
+  row of reward cards (`DAY N`, the reward's art big, the amount: `300`, `×2`, `RARE+`, `30M`); claimed days dimmed
+  under a green tick; today with a gold edge, a soft breathing glow and a TODAY tab; the big days gold-tinted with a
+  gold edge; day 28's Gold as a chip. The current day (tomorrow, once today is claimed) is always in the centre. The
+  row runs from the start of this week to its end plus `StreakPeekDays` (3, fogged), then a MORE card (no infinite
+  list); drag it sideways with the mouse or a finger (the wheel does nothing; a soft give at the ends); after a claim
+  or a skip it glides to centre the new day. CLAIM under the row. An unclaimed day cannot be dismissed (the X, Esc and B
+  claim; movement is locked and the dim takes every tap). A claim dings and ticks today's card with a burst; a crate
+  reward rolls on the server (`CrateOpen.open` with the reward's `floor`) and opens in the crate room inside the
+  claim (nothing is banked); then the row re-renders on the claimed view: today ticked and tomorrow's card lit green
+  with its countdown on the top edge (`21H 06M 12S`) and GET IT NOW · R$ 29 (`StreakSkipPrice`, product
+  `streak_skip`, `StreakSkipsPerDay`, 0 = always offered): it claims tomorrow's reward now and steps the track and the count on (today
+  stays claimed, so tomorrow's claim is the day after). With no skip left the button is the countdown; the X
+  closes. Gold, pass XP and the CASH boost land on the profile (the Gold pill and the boost chips show them). Lost:
+  STREAK LOST on a darker panel, today's card red with a RESTORE tag (the day today's claim would have been),
+  `RESTORE · R$ 49` (`StreakRestorePrice`, product `streak_restore`; keeps the day and the count and claims it) and
+  START OVER (Round 27g: resets the streak; the row rolls back to day 1, waiting for CLAIM); VIP: `RESTORE · FREE` (`VipStreakRestores` per `VipStreakRestoreDays` fake days), then
+  the price. Nothing about the streak sits on the HUD. Logs: `[GHS Streak] <name> day N claim, M in a row` / `lost at
+  N` / `restore paid` / `restore vip` / `reset` / `skip paid day N`. `StreakEnabled` false: no modal.
+- **The daily crate podium.** Round 27b: in plain view from the star, on the hall floor in front of the loading
+  platform on the west side (where the red and blue drums stood; `Config.HubImportDropAt` drops them; the shelving
+  by the range door is back): the `DailyCrate` node, facing the star, (the pedestal's volume, movable like any hub node) and a stand `Hub.lua` builds from it
   (pedestal, gold trim, a spot lamp, a slanted plaque, the E prompt; `DailyCratePodiumScale`). The crate on it is
   drawn by each client for its own state (`DailyPodium.lua`; the server publishes the player attributes
-  `DailyCrate` / `DailyCrateTier` / `DailyCrateFirst`): the store's crate model in the tier's colours. **Locked**: lid
-  shut, a chain across the front with a padlock, dim spot and trim, plaque `PLAY A MATCH TO UNLOCK`, prompt PLAY A
+  `DailyCrate` / `DailyCrateTier` / `DailyCrateFirst`): the store's crate model in the tier's colours. Round 27b: it is
+  lit in every state (the spot, the neon trim, the seams breathing, a neon glow on the floor, sparkles round the crate)
+  and wears a header + CTA overhead, a constant size on screen and drawn over everything within 160 studs: the tier
+  colour's DAILY CRATE, the tier word, a state pill and a bobbing chevron (hidden under the podium's own camera
+  shot). **Locked**: lid shut, a chain across the front with a padlock, the pill amber `PLAY A MATCH TO UNLOCK`, plaque `PLAY A MATCH TO UNLOCK`, prompt PLAY A
   MATCH (E toasts the same line). **Ready**: no chain, the lid half open, a glow from inside, a tall beacon column in
   the tier colour seen through walls (`DailyCrateBeamHeight`), the lootbox chimes idling quietly within
-  `DailyCrateIdleRange`, plaque `DAILY CRATE · READY`, prompt OPEN. **Claimed**: lid shut, the spot warm, plaque
+  `DailyCrateIdleRange`, sparkles thick, the pill green and breathing `OPEN NOW!`, plaque `DAILY CRATE · READY`, prompt
+  OPEN. **Claimed**: lid shut, the spot warm, the glow low, the pill `NEW CRATE IN 6H 12M` (no chevron), plaque
   `BACK TOMORROW`, prompt `ROLL AGAIN · R$ 79`. Any run that reaches a summary (any map, any wave, solo, carried)
   sets `dailyCrate.unlockedDay` for every member; back on the star the chain snaps off with a clink and the beam
   lights. The state resets to locked at the fake-day boundary; an unopened crate is gone (`expired unopened`).
+- **The sheet in every state (Round 27c).** E at the podium (VIEW, or OPEN when ready) opens the sheet whatever the
+  state: DAILY CRATE in the tier's colour, the crate beside its state (amber PLAY A MATCH TO UNLOCK, green READY, or a
+  ticking `NEW CRATE IN 21H 06M 12S`), the pool line, the six best items of your band framed in their rarity, the odds
+  row; then OPEN, BUY 1 · R$ 99 while locked (`DailyCrateBuyPrice`, product `dailycrate_buy`: one roll from your band,
+  first-gun rule included, the day's free crate untouched) or ROLL AGAIN · R$ 79 once claimed. No tier word over the
+  crate or on the plaque; the plaque and the CTA count down instead of BACK TOMORROW; the CTA is about half its first
+  size.
+- **Can't miss it (Round 27c).** The summary: when the run unlocked the crate, a card slides in on the left a beat
+  after the panel (the crate in its tier colours, DAILY CRATE / UNLOCKED, TAP TO OPEN); tapping it is TO LOBBY and the
+  podium sheet opens by itself `DailyCrateArrivalOpenSec` after you land. In the hub, while the crate is ready: a
+  trail of glowing gold chevrons flows along the floor from you to the podium (`DailyCrateGuideSpacing`, stopping
+  `DailyCrateGuideNear` short), a gold arrow sits on the screen edge whenever the podium is off screen, and
+  MARLOW's card says `DailyCrateMarlowLine` (titled MARLOW · DAILY CRATE) `DailyCrateNudgeSec` after you land, once a
+  fake day a session (not after a tap on the summary card). All of it goes the moment the crate is opened.
 - **Opening.** E at the ready podium → the camera pushes onto the podium (`CameraShots.daily`, the JOBS board's 0.6 s
   push) and the compact sheet docks right (`DailySheet.lua`, the Skill Web's card; bottom-right at 40% on a phone):
   the tier tag and LV, the crate art, `GOLD DAILY CRATE`, `GUNS + MASKS · YOUR LEVEL BAND`, `FIRST ONE'S A GUN`
@@ -1065,16 +1098,17 @@ FIRST HEIST OF THE DAY ×2 XP (`profile.lastHeistDay`, Progression) moved onto t
   drop, the rattle, the lid, the reveal) → the camera comes back to the podium, now claimed, and lets go. The tier
   comes only from the level (`DailyCrateTierByLevel`: 1–10 BASIC, 11–25 GOLD, 26–50 DIAMOND, 51+ ELITE), each a
   rarity-weight row in `DailyCrateTierOdds` with its colours and word. The pool is `Catalog.dailyPool()`: every gun
-  and mask whose `saleType` is Direct (no Crate / Event / Bundle / VIP / Pass item) minus the always-owned defaults
-  (30 items now: 25 guns, 5 masks); rarities the pool lacks weigh nothing. The first daily crate a profile ever opens
+  and mask whose `saleType` is Direct (no Crate / Event / Bundle / VIP / Pass item) minus the plain mask
+  (Round 27d: the default gun of each category is in too, so Common is 7 wide; 36 items: 31 guns, 5 masks); rarities the pool lacks weigh nothing. The first daily crate a profile ever opens
   rolls from the guns only (`DailyCrateFirstIsGun`); every later open, a first-day reroll included, from the mix.
   ROLL AGAIN at the claimed podium (`DailyCrateRerollEnabled`, `DailyCrateRerollPrice`, product
   `dailycrate_reroll`, `DailyCrateRerollMaxPerDay` 0 = unlimited) goes through the purchase sheet, plays the scene
   again from the same tier and the mixed pool, and leaves the podium claimed. Logs: `[GHS Daily] <name> unlocked day
   N` / `opened <tier> level N -> <item> <rarity>` / `reroll paid` / `expired unopened`.
-- **First run of the day.** While today's first run has not reached its summary, a thin amber ribbon across PLAY's
-  top edge reads `PLAY A MATCH · DAILY CRATE · ×2 XP` (phone: `DAILY CRATE · ×2 XP`; `PlayRibbon.lua`) and the
-  Create Match card carries the same line under its map row (`MatchCardLine.lua`). Each player reads their own
+- **First run of the day.** While today's first run has not reached its summary, (Round 27e) an urgent glowing bar
+  under PLAY (a bright amber gradient with the crate pictogram, a pulsing glow, a light sweep and a slow breath; the
+  party card steps down under it) reads `PLAY A MATCH · DAILY CRATE · ×2 XP` (phone: `DAILY CRATE · ×2 XP`; `PlayRibbon.lua`) and the
+  Create Match card carries the same glowing bar under its map row (`MatchCardLine.lua`). Each player reads their own
   profile, so in a party only the member who has not run today sees it. The summary is unchanged (`FIRST HEIST OF THE
   DAY ×2`). `DailyCrateEnabled` false: no podium state, no PLAY line.
 - **Debug** (MONETIZATION group, under `+1 day`): Set streak day (the next claim lands on it, the modal opens),
@@ -1523,29 +1557,37 @@ AGAIN works; all of it on a phone in landscape. Rojo serve: no tree change (the 
 nodes file), a running serve picks everything up.
 
 1. Rejoin an existing profile → `[GHS Profile] v5 -> v6` once. About a second after the hub loads the streak modal
-   opens before anything else: `DAILY STREAK · DAY 1`, week 1 expanded (300 / 400 / ×1 / 500 / 30M / 600 / RARE+),
-   weeks 2–4 as dot rows ending on their big reward, `TODAY · 300 GOLD`, CLAIM; you can't walk, nothing behind it
-   takes a tap. CLAIM → a ding, a tick and a burst on day 1, the modal closes, Gold +300; MARLOW's card follows a
-   moment later; `[GHS Streak] <you> day 1 claim`. Rejoin the same day: nothing opens.
-2. Debug `+1 day` → within a few seconds the modal opens on DAY 2. Claim days 2–5 the same way (the X and Esc claim
-   too). Day 3 is an Arms open: CLAIM → the modal hides, the crate room plays one open, CONFIRM → back in the hub.
-   Day 5: the CASH boost chip appears in BOOSTS.
-3. `+1 day` twice (or Break streak) → `STREAK LOST` / `YOU WERE ON DAY 6`, the track dimmed at day 6, `RESTORE ·
-   R$ 49` and START OVER; `[GHS Streak] <you> lost at 6`. RESTORE → the purchase sheet → buy → day 6 is claimed
-   (`[GHS Purchase] purchase streak_restore R$49 …`, `[GHS Streak] <you> restore paid`, `day 6 claim (restore)`).
-   Break again and START OVER → day 1 (`reset`). With VIP (store, fake): the button reads `RESTORE · FREE (1 LEFT
-   THIS MONTH)`, it claims without a sheet, and the next break shows the price.
-4. Set streak day 7 → RARE+ Arms open in the crate room (Rare or better). Set streak day 28 → an EPIC+ open and
-   1,500 Gold; `+1 day` → DAY 22 (week 4 again).
-5. The podium: from the star, look left of pad 1: where the boxed shelving stood there is a low pedestal with a crate,
-   chained, dim, plaque `PLAY A MATCH TO UNLOCK`; the range door and its threshold are clear. E reads PLAY A MATCH and
-   toasts it.
+   opens before anything else: the dark panel, DAILY STREAK with 0 IN A ROW, the card row DAY 1–10 then MORE
+   (8–10 fading), DAY 1 lifted with TODAY and a breathing glow, CLAIM; you can't walk, nothing behind it takes a tap.
+   CLAIM → a ding, a burst, DAY 1 ticks, the IN A ROW counter punches to 1, the row glides to DAY 2 (green, its countdown on top) and the
+   button becomes GET IT NOW · R$ 29; Gold +300; `[GHS Streak] <you> day 1 claim, 1 in a row`. X closes; MARLOW's
+   card follows. Rejoin the same day: the modal opens again on the claimed view (X closes it).
+2. GET IT NOW → the purchase sheet → buy → DAY 2's reward lands, the calendar reads 2, DAY 3 lights with the
+   countdown and the button reads `NEXT IN …` (one skip a day); `[GHS Streak] <you> skip paid day 2`. Debug `+1 day`
+   → within a few seconds the modal re-renders on DAY 3 to claim (day 3 is a BASIC daily crate: CLAIM → the crate room plays it →
+   back on the modal's claimed view). Claim days 4–5 the same way (the X and Esc claim too); day 5 puts the CASH chip
+   in BOOSTS.
+3. `+1 day` twice (or Break streak) → STREAK LOST on the darker panel, DAY 6 red with RESTORE, `RESTORE · R$ 49` and
+   START OVER; `[GHS Streak] <you> lost at 6`. RESTORE → the purchase sheet → buy → day 6 claimed, the calendar
+   keeps counting (`restore paid`, `day 6 claim (restore), 6 in a row`). Break again and START OVER → day 1, the
+   calendar at 1 (`reset`). With VIP (store, fake): `RESTORE · FREE`, it claims without a sheet, the next break shows
+   the price.
+4. Set streak day 7 → the gold DAY 7 card with rays, a RARE+ BASIC daily crate (Rare or better). Set streak day 28 → an EPIC+
+   open and the +1,500 chip; `+1 day` → DAY 22 (week 4 again; the row shows 22–28 then three more and MORE).
+5. The podium: from the star, look left past the WEAPONS wall toward the loading platform: where the two drums stood
+   there is a lit pedestal with a sparkling, chained crate, a glow on the floor and DAILY CRATE / BASIC / an amber
+   `PLAY A MATCH TO UNLOCK` pill with a bobbing chevron overhead; the shelving by the range door is back. E reads PLAY A
+   MATCH and toasts it.
 6. Fresh profile (Reset profile): PLAY wears the amber `PLAY A MATCH · DAILY CRATE · ×2 XP` ribbon; the Create Match
    card shows the same line under the maps. Play any match to the summary (debug Skip to run end is fine):
    `FIRST HEIST OF THE DAY ×2` on the summary, `[GHS Daily] <you> unlocked day N`. TO LOBBY → on the star the chain
    snaps off with a clink, the lid opens halfway, the glow and the beacon column come on (the column shows through
    walls), the ribbon and the card line are gone.
-7. Walk up: the quiet chimes start inside ~40 studs. E (OPEN) → the camera pushes onto the podium, the sheet docks
+7. (Round 27c: the summary also slides in DAILY CRATE / UNLOCKED on the left; tap it → the hub, then the sheet opens
+   by itself. Not tapped: gold chevrons flow from you to the podium, an edge arrow when it is off screen, MARLOW's
+   DAILY CRATE card after a few seconds; all gone once opened. E at a locked or claimed podium opens the sheet too:
+   contents, odds, BUY 1 · R$ 99 / ROLL AGAIN and a ticking countdown.) Walk up: the quiet chimes start inside ~40
+   studs. E (OPEN) → the camera pushes onto the podium, the sheet docks
    right: BASIC tag, LV 1, the crate, `GUNS + MASKS · YOUR LEVEL BAND`, `FIRST ONE'S A GUN`, the odds chips, OPEN.
    OPEN → the crate scene → a gun → CONFIRM → the camera is back on the podium (now claimed, `BACK TOMORROW`) and lets
    go; `[GHS Daily] <you> opened basic level 1 -> <gun> <rarity> (first: gun)`.
@@ -1609,7 +1651,7 @@ Card, ItemArt, Sets, Models, Reveal, FeaturedTab, CratesTab, BoostsTab, VipTab, 
 `src/client/Pass/` (PassScene, PassSummary), `src/client/Jobs/` (JobBoard, JobSummary), HUD/BoostChips. Brief 7:
 NodeOverlay (debug Show nodes and Path debug), DoorUI (the door hold bar and the open beat). Round 19d: Music (the
 soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothMannequins. Brief 9: `src/client/Skills/SkillScene.lua`. Brief 10: `src/client/Retention/` (StreakModal, DailyPodium, DailySheet,
-PlayRibbon, MatchCardLine) and CameraShots (named camera frames on hub objects). Tools: `genmap.luau`,
+PlayRibbon, MatchCardLine, Round 27c's DailyGuide and SummaryCrateCard) and CameraShots (named camera frames on hub objects). Tools: `genmap.luau`,
 `importbank.luau`, `genbanknodes.luau`, `importhub.luau`, `genhubnodes.luau`, `exportnodes.luau`, `nodestyle.luau`,
 `rbxl-uncompress.js` (node).
 
@@ -2220,6 +2262,46 @@ PlayRibbon, MatchCardLine) and CameraShots (named camera frames on hub objects).
   ding each while that branch's legend row appears, then the next ? ring fades in. `START` is now stored in
   `skills.owned`; a profile that already owned nodes gets START on load (no version bump). Debug Unlock all / Grant
   open the web too.
+- **Round 27i (8 Nov) — leaving the podium view.** Unplayed. Leaving the daily crate's zoomed-in view eases the camera back to the gameplay camera over 0.45 s (`CameraShots.release`) instead of snapping; the snap read as the hub's lights going off for half a second while the engine re-lit after the camera jump. The podium sheet loses its BACK button (the X, Esc / B and a tap off it close it).
+- **Round 27h (8 Nov) — the PLAY bar.** Unplayed. The first-run bar under PLAY is as wide as PLAY (its icon and words shrink about the centre to fit, `PlayRibbon.build` fit scale), and a tap on it is a tap on PLAY (onto the nearest open pad and into Create Party).
+- **Round 27g (8 Nov) — START OVER, the camera after a crate, the bar, Reset daily.** Unplayed. START OVER on a lost streak no longer pays out day 1: it resets the streak (day, count, last claim) and the modal rolls its row back to day 1 waiting for CLAIM. After a daily crate opens, control comes back under the crate scene's black (it held the podium shot for about 2 s). The first-run bar's light sweep sat in the bar's list layout as a block on the left; the icon and words now have their own centred row. Debug Reset daily (x2 + crate) resets the x2 XP flag and the daily crate together (locked, never opened), so the first run of the day can be tested end to end.
+- **Round 27f (8 Nov) — podium fixes.** Unplayed. The spot over the daily crate podium no longer shows its lamp housing (a dark block floating in mid-air; the light stays). The podium prompt waits for the prompt to replicate and re-applies its words every second, so a claimed crate reads VIEW instead of the server default OPEN.
+- **Round 27e (8 Nov) — one streak action, the HUD under crate scenes, the first-run bar.** Unplayed. The streak
+  window has one action button at the bottom centre (CLAIM when today is claimable, GET DAY N NOW · R$ 29 when not;
+  a lost streak keeps RESTORE and START OVER) and the free countdown moved into the header beside IN A ROW. Every
+  crate scene hides the HUD while it plays and puts it back after (the streak's crates opened over the hub HUD). The
+  first-run line is a glowing amber bar under PLAY (no longer over its top edge) and the same bar on the Create Match
+  card: amber gradient, crate pictogram, pulsing glow, light sweep, slow breath.
+- **Round 27d (8 Nov) — the daily pool, streak crates, a richer streak window.** Unplayed. The daily pool takes the
+  default gun of each category (Common goes from 3 items to 7, so no one Common keeps coming back); the 27c
+  unowned-first / no-repeat logic is gone (a plain uniform pick inside the rarity). The streak track gives a crate on
+  day 1 and every 2-3 days, and every streak crate is the daily crate at the week's tier (`StreakCrateTierByWeek`:
+  BASIC, GOLD, DIAMOND, ELITE), not the paid Arms / Mask crates. The streak window: a graded panel with a warm glow
+  under the header and a gift mark; cards tinted by what they hold (the daily crate in its tier's colour, Gold amber,
+  the CASH boost green, pass XP orange) with a halo behind the art and the amount in that colour; a solid band across
+  each card's top (gold TODAY, green with tomorrow's countdown, DAY N otherwise) instead of the small tab; the row
+  never scrolls past its ends (no gap on the left early in a week); once today is claimed the bottom reads FREE IN
+  <countdown> beside GET DAY N NOW · R$ 29, offered every time (`StreakSkipsPerDay` 0).
+- **Round 27c (8 Nov) — streak look, the sheet everywhere, can't-miss-it, fair rolls.** Unplayed. The streak modal
+  goes back to the house look (dark panel, gold edge, condensed caps) keeping the format: a small IN A ROW counter in
+  the header instead of the big calendar, a wider row with the current day always centred, drag to scroll (no wheel),
+  a glide to the new day after a claim or skip, bare countdowns. The podium sheet opens in every state (contents strip,
+  odds, a ticking countdown, BUY 1 · R$ 99 while locked: product `dailycrate_buy`); E reads VIEW / OPEN. The floating
+  CTA is about half the size with no tier word; plaque and CTA count down instead of BACK TOMORROW. The run summary
+  shows a DAILY CRATE UNLOCKED card on the left (tap: to the lobby, the sheet opens on landing); the hub adds a
+  flowing floor chevron trail, an edge arrow and MARLOW's nudge while the crate is ready. (Round 27d: the
+  same-rarity unowned-first / no-repeat rule was taken back out.) The crate scene's exit holds its black
+  `CrateExitHoldSec` (0.7 s) after the world's lighting comes back, so the hub no longer shows with its lights "off"
+  for a second (the scene swaps the lighting to daytime and the engine re-lights the hub on the way back).
+- **Round 27b (8 Nov) — streak modal redesign, the podium moved.** Unplayed. The streak modal opens once every
+  session even with nothing to claim (`StreakOpenEverySession`) and sells GET IT NOW · R$ 29 (product `streak_skip`,
+  `StreakSkipPrice`, `StreakSkipsPerDay`: tomorrow's reward now); it is redrawn in the reference's layout: gradient
+  panel, big DAILY STREAK, a calendar with the days in a row (new `streak.count`), one sideways row of big reward
+  cards to the end of the week plus `StreakPeekDays` and a MORE card (the week 2–4 rows, the reward line and most words
+  are gone); after a claim it stays up on the claimed view (tomorrow's countdown and the skip). The shelving by the
+  range door is back; the podium stands where the red and blue drums were (`HubImportDropAt` now drops the drums;
+  the `DailyCrate` node moved and faces the star), lit in every state with sparkles, a floor glow and an overhead
+  DAILY CRATE header with a state pill (PLAY A MATCH TO UNLOCK / OPEN NOW! / NEW CRATE IN …) and a bobbing chevron.
 - **Round 27 (8 Nov) — the brief 10 build: retention.** Built unplayed, one commit per step. Step 1: profile v6,
   `Streak.lua` (the fake-clock day math, CLAIM / START OVER / the VIP restore, the paid RESTORE as product
   `streak_restore`), `StreakTrack.lua`, `Config.StreakRewards`, the modal (`client/Retention/StreakModal.lua`),
@@ -2247,12 +2329,13 @@ PlayRibbon, MatchCardLine) and CameraShots (named camera frames on hub objects).
   `vipRestoresUsed`, an extra field so `VipStreakRestores` above 1 works). There is no pass first-time pulse to queue;
   the SKILLS first-time pulse waits instead. MARLOW's card plays 1.5 s after the claim (8 s when the claim opened a
   crate). The catalog already tags every item's source as `saleType`, so the pool filters on it (no new `source`
-  field): Direct guns and masks minus the always-owned defaults. Only five Direct masks exist (one Epic), so masks are
+  field): Direct guns and masks, the default guns included (Round 27d), minus the plain mask. Only five Direct masks exist (one Epic), so masks are
   a small share of the mix. The podium's stand is built at run time by `Hub.lua` from the node, as the brief says, not
   a `Hub.dressing.rbxmx` prop: move the `DailyCrate` node in Studio (and `DailyCratePodiumScale`) to place it. The
-  shelving model is an unnamed `Model` of plain parts, so `HubImportDrop` (name matching) could not find it: a
+  builder's props are unnamed `Model`s of plain parts, so `HubImportDrop` (name matching) cannot find them: a
   positional twin, `HubImportDropAt`, does, and was applied to the baked `Hub.rbxm` (the builder's place is not in the
-  repo). "Through walls" is an AlwaysOnTop `Highlight` on the beacon column; the idle swell is the lootbox wind
+  repo); Round 27b points it at the two drums instead of the shelving. Round 27b: a paid skip counts as a day in a
+  row (the calendar), and the overhead CTA is a BillboardGui drawn over walls at a constant screen size. "Through walls" is an AlwaysOnTop `Highlight` on the beacon column; the idle swell is the lootbox wind
   chimes looped quietly as a 3D sound. CameraShots is a new client module (there was none). The debug rows sit in the
   MONETIZATION group (there is no META group). None of this was seen on a screen: expect size, colour and placement
   passes.

@@ -118,18 +118,20 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	})
 	UI.corner(play, S(10))
 	UI.stroke(play, Theme.Colors.black, S(2), 0.4)
-	play.Activated:Connect(function()
+	local function pressPlay()
 		UI.punch(play, 0.92, 0.2)
 		UI.sound(Theme.Sounds.toast, 1.3, 0.5)
 		Remotes.QueueAction:FireServer("play")
-	end)
+	end
+	play.Activated:Connect(pressPlay)
 	play.MouseEnter:Connect(function()
 		if not mobile then
 			UI.punch(play, 1.04, 0.15)
 		end
 	end)
-	-- Brief 10: the amber PLAY A MATCH · DAILY CRATE · ×2 XP ribbon until today's first run reaches its summary.
-	PlayRibbon.attach(play)
+	-- Brief 10 / Round 27e: the glowing PLAY A MATCH · DAILY CRATE · ×2 XP bar under PLAY until today's first run
+	-- reaches its summary.
+	local dailyBar = PlayRibbon.attach(play, pressPlay) -- Round 27h: a tap on the bar is a tap on PLAY
 
 	-- Slot for the compact queue card, under PLAY.
 	local queueSlot = UI.frame({
@@ -142,6 +144,13 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Parent = root,
 	})
 	UI.list(queueSlot, Enum.FillDirection.Vertical, S(6), Enum.HorizontalAlignment.Center)
+	-- Round 27e: the party card steps down under the first-run bar while it shows.
+	local function placeQueueSlot()
+		local below = if dailyBar.Visible then dailyBar.Size.Y.Offset + S(18) else 0
+		queueSlot.Position = UDim2.new(0.5, 0, 0, S(if mobile then 12 else 22) + playH + S(10) + below)
+	end
+	dailyBar:GetPropertyChangedSignal("Visible"):Connect(placeQueueSlot)
+	placeQueueSlot()
 	if mobile then
 		UI.new("UIScale", { Scale = 0.8, Parent = queueSlot })
 	end

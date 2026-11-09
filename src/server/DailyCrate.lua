@@ -94,6 +94,8 @@ function DailyCrate.unlock(player: Player)
 		Profiles.markDirty(player)
 		PlayerState.get(player).dirty = true
 		Log.event("Daily", "%s unlocked day %d", player.Name, d)
+		-- Round 27c: the summary's side card (tap it: to the lobby, the podium opens on arrival).
+		Remotes.Juice:FireClient(player, "DailyUnlocked", { tier = DailyCrate.tierOf(player, profile) })
 	end
 	DailyCrate.refresh(player)
 end
@@ -118,12 +120,13 @@ local function pickRarity(weights: { number }): number
 end
 
 -- One item from the tier's weights over the pool (guns only when gunOnly); rarities the pool lacks weigh nothing.
-local function rollItem(player: Player, tierId: string, gunOnly: boolean): Catalog.Item?
+-- `floor`: the lowest rarity (Round 27d: the streak's RARE+ / EPIC+ days roll the daily crate above it).
+local function rollItem(player: Player, tierId: string, gunOnly: boolean, floor: number?): Catalog.Item?
 	local tier = (Config.DailyCrateTierOdds :: any)[tierId] or (Config.DailyCrateTierOdds :: any).basic
 	local kind = if gunOnly then "weapon" else nil
 	local weights = {}
 	for r = 1, 5 do
-		weights[r] = if #Catalog.dailyItems(kind, r) > 0 then (tier.weights[r] or 0) else 0
+		weights[r] = if #Catalog.dailyItems(kind, r) > 0 and r >= (floor or 1) then (tier.weights[r] or 0) else 0
 	end
 	local rarity = pickRarity(weights)
 	local forced = CrateOpen.forced[player] -- the debug panel's Force rarity lands here too
@@ -142,9 +145,16 @@ local function rollItem(player: Player, tierId: string, gunOnly: boolean): Catal
 end
 
 -- Rolls, grants and logs one open. Returns the crate scene's rows.
-local function openOne(player: Player, profile: Profiles.Profile, gunOnly: boolean, source: string): any
-	local tierId = DailyCrate.tierOf(player, profile)
-	local item = rollItem(player, tierId, gunOnly)
+local function openOne(
+	player: Player,
+	profile: Profiles.Profile,
+	gunOnly: boolean,
+	source: string,
+	tierOverride: string?,
+	floor: number?
+): any
+	local tierId = tierOverride or DailyCrate.tierOf(player, profile)
+	local item = rollItem(player, tierId, gunOnly, floor)
 	if not item then
 		return nil
 	end
@@ -182,6 +192,29 @@ local function openOne(player: Player, profile: Profiles.Profile, gunOnly: boole
 			},
 		},
 	}
+end
+
+-- Round 27d: the login streak's crates are daily crates at the week's tier (Config.StreakCrateTierByWeek), `count`
+-- rolls, above `floor` on the big days; the first-gun rule applies to a profile's first ever. The podium's own state
+-- is untouched. Returns { crateId, results } for the crate scene.
+function DailyCrate.rollStreak(player: Player, tierId: string, count: number, floor: number?, source: string): any
+	local profile = Profiles.get(player)
+	local out = { crateId = Crates.dailyId(tierId), results = {} }
+	if not profile then
+		return out
+	end
+	for _ = 1, math.max(1, count) do
+		local gunOnly = Config.DailyCrateFirstIsGun and not profile.dailyCrate.everOpened
+		local data = openOne(player, profile, gunOnly, source, tierId, floor)
+		if data then
+			profile.dailyCrate.everOpened = true
+			table.insert(out.results, data.results[1])
+		end
+	end
+	Profiles.markDirty(player)
+	PlayerState.get(player).dirty = true
+	DailyCrate.refresh(player)
+	return out
 end
 
 function DailyCrate.open(player: Player): any
@@ -225,6 +258,31 @@ local function rerollsLeft(profile: Profiles.Profile): number
 	return math.max(0, Config.DailyCrateRerollMaxPerDay - used)
 end
 
+-- Round 27c: BUY 1 at any podium state (the sheet offers it while locked): one open from your tier, the first-gun
+-- rule included; the day's free crate is untouched.
+Purchases.register("dailycrate_buy", {
+	check = function(player, _profile)
+		if not Config.DailyCrateEnabled then
+			return "The daily crate is off"
+		end
+		if Runs.inRunCycle(player) then
+			return "Not during a run"
+		end
+		return nil
+	end,
+	grant = function(player, profile)
+		local gunOnly = Config.DailyCrateFirstIsGun and not profile.dailyCrate.everOpened
+		Log.event("Daily", "%s buy paid", player.Name)
+		local data = openOne(player, profile, gunOnly, if gunOnly then "bought, first: gun" else "bought")
+		if not data then
+			return nil, "Nothing to roll"
+		end
+		profile.dailyCrate.everOpened = true
+		DailyCrate.refresh(player)
+		return data, nil
+	end,
+})
+
 Purchases.register("dailycrate_reroll", {
 	check = function(player, profile)
 		if not Config.DailyCrateRerollEnabled then
@@ -264,17 +322,10 @@ local function onPrompt(player: Player)
 	if not profile then
 		return
 	end
+	-- Round 27c: every state opens the podium sheet (contents, odds, what it takes, BUY 1 / ROLL AGAIN).
 	local state = DailyCrate.state(profile)
-	if state == "locked" then
-		Remotes.Juice:FireClient(player, "Toast", { text = "PLAY A MATCH TO UNLOCK" })
-	elseif state == "ready" then
-		Remotes.Juice:FireClient(player, "DailySheet", { state = "ready" })
-	elseif state == "claimed" then
-		if Config.DailyCrateRerollEnabled then
-			Remotes.Juice:FireClient(player, "DailySheet", { state = "claimed" })
-		else
-			Remotes.Juice:FireClient(player, "Toast", { text = "BACK TOMORROW" })
-		end
+	if state ~= "off" then
+		Remotes.Juice:FireClient(player, "DailySheet", { state = state })
 	end
 end
 

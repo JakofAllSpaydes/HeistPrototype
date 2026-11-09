@@ -335,7 +335,7 @@ local function build()
 	btn(r12b, "Set", 0.15, function()
 		send("SetLevel", tonumber(levelBox.Text))
 	end)
-	btn(r12b, "Reset daily", 0.3, function()
+	btn(r12b, "Reset daily (x2 + crate)", 0.3, function()
 		send("ResetDaily")
 	end, Theme.Colors.malus)
 	-- Brief 5: +100 mastery on the held gun and the equipped class (tier-ups pop and apply at once).

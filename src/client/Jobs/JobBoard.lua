@@ -1208,7 +1208,7 @@ function JobBoard.close()
 end
 
 ------------------------------------------------------------------ MARLOW's hub announcement, the beacon, the JOB toasts
-local function announce(line: string)
+local function announce(line: string, title: string?)
 	local S = UI.S
 	local g = UI.new(
 		"ScreenGui",
@@ -1235,7 +1235,7 @@ local function announce(line: string)
 	})
 	portrait(slot, 3, 1)
 	UI.text({
-		Text = "MARLOW · JOBS",
+		Text = title or "MARLOW · JOBS", -- Round 27c: the daily crate nudge reuses the card
 		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.gold,
@@ -1296,7 +1296,10 @@ function JobBoard.init()
 			ClientState.lockMovement("jobs", true)
 			savedMode = "gameplay"
 		elseif name == "JobsAnnounce" then
-			announce(tostring(data and data.line or Config.JobAnnounceLine))
+			announce(
+				tostring(data and data.line or Config.JobAnnounceLine),
+				if typeof(data) == "table" and typeof(data.title) == "string" then data.title else nil
+			)
 		elseif name == "JobToast" and typeof(data) == "table" then
 			-- In a run: a small JOB toast at each quarter.
 			local t = HUD.get("toast")

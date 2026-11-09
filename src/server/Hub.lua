@@ -392,7 +392,7 @@ local function buildJobBoard()
 end
 
 ------------------------------------------------------------------ The daily crate podium (brief 10)
--- Built from the DailyCrate node (the pedestal's volume, facing the room) where the boxed shelving stood: a low
+-- Built from the DailyCrate node (the pedestal's volume, facing the star; Round 27b: where the drums stood): a low
 -- pedestal with a trimmed top, a spot above it, a slanted plaque in front and the E prompt. Everything that changes
 -- per player (the crate model and its lid, the chain, the glow and beacon, the plaque's words, the prompt's words) is
 -- drawn by each client for its own state (client/Retention/DailyPodium.lua); the server only builds the stand and
@@ -460,7 +460,8 @@ local function buildDailyPodium()
 	local spot =
 		part("CrateSpot", Vector3.new(1, 1, 1), base * CFrame.new(0, topY + 0.12 * k, 0), GOLD, Enum.Material.Plastic)
 	spot.Transparency = 1
-	-- The spot: a lamp housing high above with a downward cone.
+	-- The spot: a downward cone from high above. Round 27f: the emitter is invisible (a housing floating in mid-air
+	-- read as a stray brick; nothing in the hall to hang it from).
 	local lamp = part(
 		"Spot",
 		Vector3.new(1.2, 0.5, 1.2) * k,
@@ -468,6 +469,7 @@ local function buildDailyPodium()
 		Color3.fromRGB(24, 24, 28),
 		Enum.Material.Metal
 	)
+	lamp.Transparency = 1
 	local light = Instance.new("SpotLight")
 	light.Name = "SpotLight"
 	light.Face = Enum.NormalId.Bottom

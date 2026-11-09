@@ -205,6 +205,22 @@ add({
 	sub = "Keep your day on the streak track",
 })
 add({
+	id = "streak_skip",
+	kind = "streak_skip",
+	name = "NEXT STREAK DAY NOW",
+	price = Config.StreakSkipPrice,
+	icon = { kind = "passskip", amount = 1 },
+	sub = "Claim tomorrow's streak reward today",
+})
+add({
+	id = "dailycrate_buy",
+	kind = "dailycrate_buy",
+	name = "DAILY CRATE · BUY 1",
+	price = Config.DailyCrateBuyPrice,
+	icon = { kind = "crate", id = "arms", amount = 1 },
+	sub = "One crate from your level band now",
+})
+add({
 	id = "dailycrate_reroll",
 	kind = "dailycrate_reroll",
 	name = "DAILY CRATE · ROLL AGAIN",

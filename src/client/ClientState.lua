@@ -42,6 +42,7 @@ local ClientState = {
 	requestCameraYaw = nil :: number?, -- a sequence hands the gameplay camera back facing this yaw
 	musicDuck = false, -- Round 19d: a big moment (the boss cutscene) holds the soundtrack down (Music.lua)
 	streakOpen = false, -- brief 10: the streak modal is up (first-time pulses wait behind it)
+	dailyOpenOnArrival = false, -- Round 27c: the summary's crate card was tapped: the podium opens once you land
 }
 
 -- Round 25: how squarely the player is looking at a world point, for choosing between interactables in reach

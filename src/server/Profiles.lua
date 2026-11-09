@@ -90,8 +90,23 @@ export type Profile = {
 	-- VIP's free restores count inside a window of VipStreakRestoreDays fake days starting at vipRestoreDay) and the
 	-- daily crate (unlockedDay / claimedDay = fake days; everOpened drives the first-one's-a-gun rule; ROLL AGAIN
 	-- counts per rerollDay).
-	streak: { day: number, lastClaimDay: number, vipRestoreDay: number, vipRestoresUsed: number },
-	dailyCrate: { unlockedDay: number, claimedDay: number, everOpened: boolean, rerollsToday: number, rerollDay: number },
+	-- Round 27b: count = days in a row (the calendar's number); skipDay / skipsToday = paid skips on that fake day.
+	streak: {
+		day: number,
+		lastClaimDay: number,
+		vipRestoreDay: number,
+		vipRestoresUsed: number,
+		count: number,
+		skipDay: number,
+		skipsToday: number,
+	},
+	dailyCrate: {
+		unlockedDay: number,
+		claimedDay: number,
+		everOpened: boolean,
+		rerollsToday: number,
+		rerollDay: number,
+	},
 	version: number,
 }
 
@@ -216,8 +231,22 @@ function Profiles.fresh(): Profile
 		clockOffset = 0,
 		dailyReroll = { day = 0, count = 0 },
 		skills = { owned = {}, seen = {} },
-		streak = { day = 0, lastClaimDay = 0, vipRestoreDay = 0, vipRestoresUsed = 0 },
-		dailyCrate = { unlockedDay = 0, claimedDay = 0, everOpened = false, rerollsToday = 0, rerollDay = 0 },
+		streak = {
+			day = 0,
+			lastClaimDay = 0,
+			vipRestoreDay = 0,
+			vipRestoresUsed = 0,
+			count = 0,
+			skipDay = 0,
+			skipsToday = 0,
+		},
+		dailyCrate = {
+			unlockedDay = 0,
+			claimedDay = 0,
+			everOpened = false,
+			rerollsToday = 0,
+			rerollDay = 0,
+		},
 		version = VERSION,
 	}
 end
@@ -508,6 +537,9 @@ local function migrate(raw: any): Profile
 		p.streak.lastClaimDay = math.floor(num(rs.lastClaimDay, 0))
 		p.streak.vipRestoreDay = math.floor(num(rs.vipRestoreDay, 0))
 		p.streak.vipRestoresUsed = math.max(0, math.floor(num(rs.vipRestoresUsed, 0)))
+		p.streak.count = math.max(0, math.floor(num(rs.count, p.streak.day)))
+		p.streak.skipDay = math.floor(num(rs.skipDay, 0))
+		p.streak.skipsToday = math.max(0, math.floor(num(rs.skipsToday, 0)))
 	end
 	if typeof(raw.dailyCrate) == "table" then
 		local rd = raw.dailyCrate

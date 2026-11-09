@@ -29,6 +29,7 @@ local Sets = require(script.Parent:WaitForChild("Sets"))
 local Models = require(script.Parent:WaitForChild("Models"))
 local ItemArt = require(script.Parent:WaitForChild("ItemArt"))
 local StoreScene = require(script.Parent:WaitForChild("StoreScene"))
+local HUD = require(Client:WaitForChild("HUD"))
 
 local CrateScene = {}
 
@@ -55,6 +56,7 @@ local token = 0
 -- The scene's own camera and the world dim, held across OPEN AGAIN.
 local sceneUp = false
 local savedMode = "gameplay"
+local savedHud = "hub" -- Round 27e: the HUD hides under every crate scene (the streak's opened over the hub HUD)
 local camFrom: CFrame? = nil
 local camTo: CFrame? = nil
 local camT0, camSec = 0, 0.8
@@ -69,6 +71,8 @@ local function sceneOn()
 	end
 	sceneUp = true
 	StoreScene.setHidden(true)
+	savedHud = HUD.mode
+	HUD.setMode("meta")
 	Sets.dimWorld(true)
 	savedMode = ClientState.cameraMode
 	ClientState.cameraMode = "crate"
@@ -99,6 +103,7 @@ local function sceneOff()
 	ClientState.cameraMode = if savedMode == "crate" then "gameplay" else savedMode
 	Sets.dimWorld(false)
 	StoreScene.setHidden(false)
+	HUD.setMode(savedHud)
 end
 
 -- A quick dip to black around a cut.
@@ -313,10 +318,29 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		running = false
 		token += 1
 		clearAll()
-		task.spawn(dip, fade, function()
+		-- Round 27c: the world's own lighting comes back under the black and gets CrateExitHoldSec to settle (the hub's
+		-- lights read as switched off for a second when it was shown at once), then the black fades off it.
+		task.spawn(function()
+			for _, c in gui:GetChildren() do
+				if c ~= fade and c:IsA("GuiObject") then
+					UI.tween(c, { BackgroundTransparency = 1 }, 0.12)
+				end
+			end
+			fade.Visible = true
+			fade.BackgroundTransparency = 1
+			UI.tween(fade, { BackgroundTransparency = 0 }, 0.12)
+			task.wait(0.13)
+			for _, c in gui:GetChildren() do
+				if c ~= fade and c:IsA("GuiObject") then
+					c.Visible = false
+				end
+			end
 			sceneOff()
 			StoreScene.refreshTab("CRATES")
 			StoreScene.scrollTo("CRATES", true)
+			task.wait(Config.CrateExitHoldSec)
+			UI.tween(fade, { BackgroundTransparency = 1 }, 0.35)
+			task.wait(0.36)
 			gui:Destroy()
 		end)
 		if onDone then

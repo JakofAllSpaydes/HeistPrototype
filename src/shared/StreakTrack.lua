@@ -27,6 +27,12 @@ function StreakTrack.rewards(day: number): { Entry }
 	return if typeof(list) == "table" then list :: { Entry } else {}
 end
 
+-- Round 27d: the daily crate tier a streak day's crates roll at (rising by week, Config.StreakCrateTierByWeek).
+function StreakTrack.crateTier(day: number): string
+	local list = Config.StreakCrateTierByWeek :: { string }
+	return list[StreakTrack.week(day)] or list[#list] or "basic"
+end
+
 function StreakTrack.isBig(day: number): boolean
 	return day % StreakTrack.WEEK == 0
 end
@@ -67,7 +73,10 @@ function StreakTrack.short(r: Entry): string
 		elseif floor >= 2 then
 			return "UNCOMMON+"
 		end
-		return "×" .. Rewards.int(math.max(1, n))
+		-- Round 27d: name the crate (the daily crate: CRATE; its tier shows in its colours), the count only when more
+		-- than one.
+		local word = if r.id == "daily" then "CRATE" elseif r.id == "mask" then "MASK" else "ARMS"
+		return if n > 1 then string.format("%s ×%d", word, n) else word
 	elseif k == "boost" then
 		return Rewards.duration(r.sec or 0)
 	end
@@ -77,7 +86,7 @@ end
 -- Full copy ("ARMS CRATE · EPIC+", "1,000 PASS XP", "CASH BOOST · 30M").
 function StreakTrack.name(r: Entry): string
 	if r.kind == "crate" then
-		local base = if r.id == "mask" then "MASK CRATE" else "ARMS CRATE"
+		local base = if r.id == "daily" then "DAILY CRATE" elseif r.id == "mask" then "MASK CRATE" else "ARMS CRATE"
 		local floor = r.floor or 1
 		if floor > 1 then
 			return base .. " · " .. StreakTrack.short(r)

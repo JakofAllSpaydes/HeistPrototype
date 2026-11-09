@@ -63,7 +63,11 @@ function CameraShots.isActive(): boolean
 	return active
 end
 
-function CameraShots.release()
+-- Round 27i: the camera eases back to the gameplay camera over `blendSec` (default 0.45 s) instead of snapping. A
+-- snap read as the hub's lights going off for half a second (the engine re-lights after a sudden camera jump); the
+-- push in was always eased. The gameplay camera (Camera.client, at Camera priority) computes its frame as usual and
+-- this step, after it, blends from where the shot left off toward that frame.
+function CameraShots.release(blendSec: number?)
 	if not active then
 		return
 	end
@@ -71,11 +75,30 @@ function CameraShots.release()
 	pcall(function()
 		RunService:UnbindFromRenderStep("GHSShotCamera")
 	end)
+	local from = camera.CFrame
 	camFrom, camTo = nil, nil
-	camera.CameraType = Enum.CameraType.Custom
 	if ClientState.cameraMode == "shot" then
 		ClientState.cameraMode = "gameplay"
 	end
+	local sec = blendSec or 0.45
+	pcall(function()
+		RunService:UnbindFromRenderStep("GHSShotBlend")
+	end)
+	if sec <= 0 then
+		return
+	end
+	local t0 = os.clock()
+	RunService:BindToRenderStep("GHSShotBlend", Enum.RenderPriority.Camera.Value + 6, function()
+		local s = math.clamp((os.clock() - t0) / sec, 0, 1)
+		if s >= 1 or active or ClientState.cameraMode ~= "gameplay" then
+			pcall(function()
+				RunService:UnbindFromRenderStep("GHSShotBlend")
+			end)
+			return
+		end
+		local k = 1 - (1 - s) ^ 3
+		camera.CFrame = from:Lerp(camera.CFrame, k)
+	end)
 end
 
 return CameraShots

@@ -1168,10 +1168,10 @@ local Config = {
 	HubImportDrop = { "Helicopter" }, -- models tools/importhub.luau drops (matched against the part names inside)
 	-- Brief 10: models dropped by where they stand (the builder's unnamed ones): every model directly under the place
 	-- whose name is in `models` and whose centre lies within `radius` studs (x / z from the floor star) of `at`.
-	-- The boxed steel shelving between the range door and pad 1 (a `Model` of Parts and Wedges plus the `Box` models
-	-- on its shelves) makes room for the daily crate podium.
+	-- Round 27b: the red and blue drums on the hall floor in front of the loading platform (west side, south of its
+	-- steps; two unnamed `Model`s of MeshParts) make room for the daily crate podium, in view from the star.
 	HubImportDropAt = {
-		{ name = "BoxShelving", models = { "Model", "Box" }, at = { -45.7, -59.3 }, radius = 4.5 },
+		{ name = "Barrels", models = { "Model" }, at = { -31.8, -14.6 }, radius = 3.5 },
 	},
 	-- Round 25: the booth keepers are three R15 NPCs (server-built from these avatars' HumanoidDescriptions, a
 	-- plain body-coloured R15 if the fetch fails), named on a small tag that shows only right by the stall
@@ -1650,6 +1650,7 @@ local Config = {
 	BundleRevealStagger = 0.3, -- the stacked reveal cards each item in this far apart
 	-- Crates (Crates.lua): pity, dupes, the opening scene.
 	CratePity = 10, -- Epic or better is guaranteed on this open if the last CratePity - 1 were below Epic
+	CrateExitHoldSec = 0.7, -- Round 27c: the black holds this long after a crate scene while the world's lighting settles
 	CrateAutoNextSec = 2.5, -- xN: the next crate opens by itself this long after a reveal (NEXT skips the wait)
 	CrateOpenSec = 1.4, -- rattle, seams glowing in the rolled rarity, then the lid
 	CrateLegendarySlowSec = 0.5, -- Legendary: the reveal runs in slow motion this long
@@ -1724,45 +1725,55 @@ local Config = {
 	-- banked); `floor` is its lowest rarity (3 = Rare: Common and Uncommon removed). Boosts are timed like the
 	-- store's (there is no per-run boost): `sec` of real time from the claim. Days 7 / 14 / 21 / 28 are the big ones.
 	StreakEnabled = true, -- false: no modal (the profile keeps its streak)
+	-- Round 27d: day 1 is a crate and a crate comes every 2-3 days (1, 3, 6, 7, 9, 11, 13, 16, 18, 20, 21, 23, 25, 27, 28).
 	StreakRewards = {
 		-- Week 1
-		{ { kind = "gold", amount = 300 } },
+		{ { kind = "crate", id = "daily", amount = 1 } },
 		{ { kind = "gold", amount = 400 } },
-		{ { kind = "crate", id = "arms", amount = 1 } },
-		{ { kind = "gold", amount = 500 } },
-		{ { kind = "boost", id = "cash", sec = 1800 } },
+		{ { kind = "crate", id = "daily", amount = 1 } },
 		{ { kind = "gold", amount = 600 } },
-		{ { kind = "crate", id = "arms", amount = 1, floor = 3 } }, -- day 7: a RARE+ Arms crate
+		{ { kind = "boost", id = "cash", sec = 1800 } },
+		{ { kind = "crate", id = "daily", amount = 1 } },
+		{ { kind = "crate", id = "daily", amount = 1, floor = 3 } }, -- day 7: RARE+
 		-- Week 2
-		{ { kind = "gold", amount = 500 } },
 		{ { kind = "gold", amount = 600 } },
-		{ { kind = "crate", id = "mask", amount = 1 } },
+		{ { kind = "crate", id = "daily", amount = 1 } },
 		{ { kind = "gold", amount = 800 } },
+		{ { kind = "crate", id = "daily", amount = 1 } },
 		{ { kind = "boost", id = "cash", sec = 1800 } },
-		{ { kind = "gold", amount = 900 } },
-		{ { kind = "passxp", amount = 1000 } }, -- day 14
+		{ { kind = "crate", id = "daily", amount = 1 } },
+		{ { kind = "passxp", amount = 1000 }, { kind = "gold", amount = 1000 } }, -- day 14
 		-- Week 3
 		{ { kind = "gold", amount = 800 } },
-		{ { kind = "gold", amount = 900 } },
-		{ { kind = "crate", id = "arms", amount = 2 } },
-		{ { kind = "gold", amount = 1200 } },
+		{ { kind = "crate", id = "daily", amount = 1 } },
+		{ { kind = "gold", amount = 1000 } },
+		{ { kind = "crate", id = "daily", amount = 2 } },
 		{ { kind = "boost", id = "cash", sec = 1800 } },
-		{ { kind = "gold", amount = 1400 } },
-		{ { kind = "crate", id = "arms", amount = 1, floor = 4 } }, -- day 21: an EPIC+ Arms crate
+		{ { kind = "crate", id = "daily", amount = 1 } },
+		{ { kind = "crate", id = "daily", amount = 1, floor = 4 } }, -- day 21: EPIC+
 		-- Week 4 (loops)
 		{ { kind = "gold", amount = 1000 } },
+		{ { kind = "crate", id = "daily", amount = 1 } },
 		{ { kind = "gold", amount = 1200 } },
-		{ { kind = "crate", id = "mask", amount = 2 } },
-		{ { kind = "gold", amount = 1500 } },
+		{ { kind = "crate", id = "daily", amount = 2 } },
 		{ { kind = "boost", id = "cash", sec = 1800 } },
-		{ { kind = "gold", amount = 1800 } },
-		{ { kind = "crate", id = "arms", amount = 1, floor = 4 }, { kind = "gold", amount = 1500 } }, -- day 28
+		{ { kind = "crate", id = "daily", amount = 2 } },
+		{ { kind = "crate", id = "daily", amount = 1, floor = 4 }, { kind = "gold", amount = 1500 } }, -- day 28
 	},
+	-- Round 27d: the streak's crates are the daily crate (guns + masks, Catalog.dailyPool), its tier rising by week the
+	-- way the level bands do (week 4 loops, so it stays ELITE). `floor` lifts the big days above a rarity.
+	StreakCrateTierByWeek = { "basic", "gold", "diamond", "elite" },
 	StreakLoopFrom = 22, -- after day 28 the next claim is this day (week 4 repeats)
 	StreakRestorePrice = 49, -- fake R$: RESTORE on a lost streak keeps the day (product streak_restore)
 	VipStreakRestores = 1, -- free restores per VipStreakRestoreDays fake days while VIP
 	VipStreakRestoreDays = 30,
 	StreakOpenDelaySec = 1.2, -- after the profile loads / the party lands in the hub, before the modal opens
+	-- Round 27b: the modal also opens once at the start of every session with nothing to claim (today ticked, the next
+	-- reward's countdown and the skip offer); X closes that one.
+	StreakOpenEverySession = true,
+	StreakSkipPrice = 29, -- fake R$: GET IT NOW claims the next day's reward today (product streak_skip)
+	StreakSkipsPerDay = 0, -- skips a fake day; 0 = unlimited (Round 27d: the upsell is always there once today is claimed)
+	StreakPeekDays = 3, -- the card list runs to the end of this week plus this many days, then a MORE card
 	StreakClaimHoldSec = 0.9, -- the claimed tile's ding and burst play this long before the modal closes
 
 	-- The daily crate: one podium in the hub (the DailyCrate node), unlocked for the fake day by finishing any match
@@ -1781,6 +1792,12 @@ local Config = {
 	DailyCrateRerollEnabled = true, -- the claimed podium offers ROLL AGAIN for fake R$
 	DailyCrateRerollPrice = 79, -- product dailycrate_reroll
 	DailyCrateRerollMaxPerDay = 0, -- 0 = unlimited
+	DailyCrateBuyPrice = 99, -- Round 27c: BUY 1 at a locked podium (product dailycrate_buy; the free one still unlocks by playing)
+	DailyCrateGuideSpacing = 3.5, -- studs between the floor chevrons leading to a ready crate
+	DailyCrateGuideNear = 9, -- the chevrons stop this close to the podium
+	DailyCrateArrivalOpenSec = 2.6, -- tapping the summary's crate card opens the podium this long after you land
+	DailyCrateNudgeSec = 5, -- in the hub with a ready crate, MARLOW's card nudges you this long after you land
+	DailyCrateMarlowLine = "Your crate's unlocked. It's by the loading dock. Go crack it open.",
 	DailyCrateIdleRange = 40, -- studs: the ready crate's quiet loot swell plays inside this range
 	DailyCratePodiumScale = 1, -- the generated podium's scale (fits the gap beside the range door at 1)
 	DailyCrateBeamHeight = 60, -- studs: the ready crate's beacon column

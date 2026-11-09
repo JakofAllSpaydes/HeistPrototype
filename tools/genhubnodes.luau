@@ -144,9 +144,10 @@ end
 local tierPad = { node("tier", { -110, 1.1, -23.3 }, { 10, 0.4, 4 }, 0, {}) }
 
 ------------------------------------------------------------------ Brief 10: the daily crate podium
--- Where the boxed steel shelving stood (dropped by Config.HubImportDropAt): against the north wall between the range
--- door and pad 1, under the catwalk, in view from the star. The node is the pedestal's volume, facing the room.
-local dailyCrate = { node("daily", { -45.7, 1.75, -59.3 }, { 6, 1.5, 4.4 }, 180, {}) }
+-- Round 27b: where the red and blue drums stood (dropped by Config.HubImportDropAt), on the hall floor in front of the
+-- loading platform's east wall, south of its steps, in plain view from the star. The node is the pedestal's volume,
+-- facing the star (yaw -115.5: +X, 25 degrees toward +Z).
+local dailyCrate = { node("daily", { -30.4, 1.75, -15 }, { 6, 1.5, 4.4 }, -115.5, {}) }
 
 local out = {
 	className = "Folder",
