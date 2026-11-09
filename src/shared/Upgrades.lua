@@ -217,7 +217,9 @@ Upgrades.Stats = {
 		unit = "%",
 		category = "synergy",
 		noMalus = true,
-		requires = { class = "ENGINEER" },
+		-- Brief 12: INITIATE's turret and ENGINEER's sentry both take it.
+		requires = { anyOf = { { class = "ENGINEER" } :: Requires, { class = "INITIATE" } :: Requires } },
+		tag = "TURRET",
 	},
 	{
 		id = "HealPower",
@@ -323,9 +325,9 @@ Upgrades.Magnitude = {
 	Shatter = { 15, 22, 30, 40, 55 }, -- % more bullet damage to chilled enemies (frozen: x Config.ShatterFrozenMult)
 	Aftershock = { 30, 45, 60, 80, 100 }, -- % of gun damage a stagger sends to enemies around the target
 	ElementalPower = { 10, 15, 20, 28, 36 }, -- % more power on every held element and more Elemental gun damage
-	Accelerant = { 15, 22, 30, 40, 55 }, -- % more Molotov, Flame Turret and Oil Drum damage
-	TurretDamage = { 15, 22, 30, 40, 55 }, -- % more Turret damage per shot
-	HealPower = { 15, 22, 30, 40, 55 }, -- % more Stim Shot, Med Bag and Healing Turret healing
+	Accelerant = { 15, 22, 30, 40, 55 }, -- % more Molotov, Flame Turret and Inferno damage (brief 12)
+	TurretDamage = { 15, 22, 30, 40, 55 }, -- % more Turret and Sentry damage per shot (brief 12)
+	HealPower = { 15, 22, 30, 40, 55 }, -- % more Stim Shot, Med Bag and Heal Drone healing (brief 12)
 	DeadEyeTime = { 15, 22, 30, 40, 55 }, -- % longer Dead Eye
 	BlastRadius = { 10, 15, 20, 28, 36 }, -- % wider Frag, Claymore, Explosive gun and Splash blasts
 	Demolition = { 12, 18, 25, 33, 45 }, -- % more Frag, Claymore, Explosive gun and Splash damage

@@ -17,6 +17,12 @@ Callouts.Lines = {
 	masteryUp = { "%s MASTERY %s. Getting good with this.", "Just hit %s MASTERY %s." }, -- %s: gun / class, %s: tier
 }
 
+-- Brief 12 [Copy: TBA]: the new deployables (Abilities.abilityCallout, once per AbilityCalloutCooldownSec).
+Callouts.Lines.sentryUp = { "Sentry's up. Pull them through it.", "Big gun down. Watch it work." }
+Callouts.Lines.healDroneUp = { "Drone's out. Stay close if you're hurt.", "Heal drone up. On me." }
+Callouts.Lines.infernoUp = { "Lighting it up. Don't follow too close.", "Ring of fire, coming through." }
+Callouts.Lines.swarmUp = { "%d drones up. Let them work.", "Swarm's at %d. Keep moving." } -- %d: live drones
+
 -- Frame color per event: red for the crew in trouble, gold for the big moments.
 Callouts.Gold = { reviveAll = true, bossKill = true, legendary = true, multiKill = true, masteryUp = true }
 -- Sent to the speaker too (everything else goes to teammates only).

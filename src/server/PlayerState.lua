@@ -58,6 +58,7 @@ export type State = {
 	buffUntil: number, -- server time the self buff ends, 0 = inactive
 	abilityActive: { [string]: number }, -- non-buff abilities with a running window (overclock, eagleeye): server time it ends
 	overclockGunMult: number, -- Round 28e: the caster's own gun rate / reload multiplier while their Overclock runs
+	grants: { [number]: string }, -- brief 12: debug `Grant ability <id>`: slot -> ability id laid over the class kit
 	-- Mastery (brief 5): the class and its tier at run start (the passives), and the per-run passive counters.
 	masteryClass: string?,
 	masteryTier: number,
@@ -135,6 +136,7 @@ local function freshState(player: Player, joinIndex: number): State
 		buffUntil = 0,
 		abilityActive = {},
 		overclockGunMult = 1,
+		grants = {},
 		masteryClass = nil,
 		masteryTier = 0,
 		stimExtended = 0,
@@ -593,12 +595,14 @@ function PlayerState.reset(state: State, cash: number?)
 	-- passives register at the run start).
 	Stats.clear(state.player)
 	local st: any = state -- the next computed() re-registers the gun and any window
+	local grants = state.grants -- debug grants survive a reset (they are for testing a kit across runs)
 	st.statGunUid = nil
 	st.statBuffKey = nil
 	Boosts.sync(state.player)
 	for k, v in fresh do
 		(state :: any)[k] = v
 	end
+	state.grants = grants
 	state.profile = Profiles.get(state.player)
 	state.cash = cash or Config.StartingCash
 	state.held = PlayerState.starterHeld(state)
@@ -751,10 +755,15 @@ function PlayerState.chargesLeft(state: State, abilityId: string): number
 	return if c == nil then PlayerState.maxCharges(state, abilityId) else c
 end
 
+-- Brief 12: the three ability ids this player fires, by slot (the class kit plus debug grants).
+function PlayerState.kitOf(state: State): { string }
+	return Classes.kit(PlayerState.classOf(state), state.grants)
+end
+
 local function abilityView(state: State): { [string]: Types.Ability }
 	local out: { [string]: Types.Ability } = {}
-	local class = Classes.ById[PlayerState.classOf(state)] or Classes.ById[Classes.Default]
-	for _, a in class.abilities do
+	for _, id in PlayerState.kitOf(state) do
+		local a = Classes.AbilityById[id]
 		local charges = PlayerState.chargesLeft(state, a.id)
 		local max = PlayerState.maxCharges(state, a.id)
 		out[a.id] = {
@@ -917,6 +926,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		noCooldowns = state.noCooldowns,
 		abilities = abilityView(state),
 		classId = PlayerState.classOf(state),
+		kit = PlayerState.kitOf(state), -- brief 12: ability ids by slot (grants included)
 		profile = state.profile,
 		spawnsPaused = World.spawnsPaused,
 		debugEnabled = Config.DebugEnabled or RunService:IsStudio(),

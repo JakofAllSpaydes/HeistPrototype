@@ -29,6 +29,7 @@ local Log = require(script.Parent.Parent.Log)
 local AllyCallout = require(script.Parent.AllyCallout)
 local World = require(script.Parent.World)
 local Slot = require(script.Parent.Slot)
+local Drones = require(script.Parent.Drones) -- brief 12
 
 -- Brief 8: the players this run slot looks after (its party; the hub slot: everyone not in a run).
 local function mine(): { [Player]: PlayerState.State }
@@ -78,6 +79,7 @@ type Structure = {
 	range: number, -- healing turret reach (DOC I: WIDE NET); claymore blast radius (BLAST RADIUS synergy)
 	repair: boolean, -- ENGINEER II: FIELD REPAIR
 	triage: boolean, -- healing turret of a DOC II: downed allies in range stand up on their own
+	extra: { [string]: any }?, -- brief 12: kind-specific parts (the sentry's barrels and laser)
 }
 
 -- A circle on the floor that acts on whoever stands in it every FieldTickSec.
@@ -439,7 +441,19 @@ local function newStructure(kind: string, owner: Player, model: Model, hit: Base
 		range = 0,
 		repair = false,
 		triage = false,
+		extra = nil,
 	}
+end
+
+-- Brief 12: one ally radio line per player per AbilityCalloutCooldownSec for the new deployables ([Copy: TBA]).
+local lastCallout: { [Player]: number } = setmetatable({} :: any, { __mode = "k" })
+local function abilityCallout(player: Player, event: string)
+	local t = os.clock()
+	if t - (lastCallout[player] or -math.huge) < Config.AbilityCalloutCooldownSec then
+		return
+	end
+	lastCallout[player] = t
+	AllyCallout.send(player, event)
 end
 
 -- Every placeable goes through here: the owner's ENGINEER passives, then the registry and the juice.
@@ -516,6 +530,7 @@ local function placeTurret(player: Player, state: PlayerState.State, char: Model
 	s.maxHP = s.hp
 	-- TURRET DAMAGE (ENGINEER synergy card).
 	s.dmg = grown("turret", "Damage", Config.TurretDmg, lv) * pw * PlayerState.computed(state).turretDmgMult
+	s.range = Config.TurretRange * Stats.mult(player, "turretRange") -- brief 12: a softcap stat
 	s.head = head
 	s.fill = hpBar(base, COLOR.gold)
 	placed(s, COLOR.gold)
@@ -1278,7 +1293,7 @@ local function turretTick(s: Structure, t: number)
 	if not head then
 		return
 	end
-	local target = Enemy.nearest(head.Position, Config.TurretRange, nil)
+	local target = Enemy.nearest(head.Position, if s.range > 0 then s.range else Config.TurretRange, nil)
 	if not target then
 		return
 	end
@@ -1418,7 +1433,302 @@ local function eagleEye(player: Player, state: PlayerState.State, char: Model)
 	)
 end
 
+------------------------------------------------------------------ ENGINEER: Sentry (brief 12)
+-- A heavy tripod: SentryScale x the turret, SentryDeploySec of leg unfold and barrel spin-up before the first shot,
+-- twin barrels alternating at 2x the turret's rate (per-barrel damage keeps the total at SentryDpsMult x the
+-- turret's DPS), SentryHp, SentrySec, SentryRangeMult x the turret's reach and a tracking laser on its target.
+-- Overclock and ENGINEER's placeable passives apply; TURRET DAMAGE raises it. No upgrade or repair interaction.
+local function buildSentry(cf: CFrame): (Model, BasePart, BasePart, { BasePart }, { BasePart }, Beam)
+	local k = Config.SentryScale
+	local model = Instance.new("Model")
+	model.Name = "Sentry"
+	local hub = part({
+		Name = "Hub",
+		Size = Vector3.new(1.5, 0.9, 1.5) * k,
+		CFrame = cf * CFrame.new(0, 1.0 * k, 0),
+		Color = Color3.fromRGB(58, 60, 68),
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
+	local legs = {}
+	for i = 0, 2 do
+		local yaw = math.rad(i * 120)
+		local leg = part({
+			Name = "Leg",
+			Size = Vector3.new(0.28, 1.6, 0.28) * k,
+			-- Folded: straight down under the hub. The deploy tween swings each one out.
+			CFrame = cf * CFrame.Angles(0, yaw, 0) * CFrame.new(0, 0.8 * k, 0),
+			CanCollide = false,
+			Color = Color3.fromRGB(40, 40, 46),
+			Material = Enum.Material.Metal,
+			Parent = model,
+		})
+		leg:SetAttribute("Yaw", yaw)
+		table.insert(legs, leg)
+	end
+	local head = part({
+		Name = "Head",
+		Size = Vector3.new(1.5, 1.0, 1.7) * k,
+		CFrame = cf * CFrame.new(0, 1.0 * k, 0), -- rises to 2.0k on deploy
+		CanCollide = false,
+		Color = Color3.fromRGB(78, 80, 90),
+		Material = Enum.Material.Metal,
+		Parent = model,
+	})
+	part({
+		Name = "Stripe",
+		Size = Vector3.new(1.52, 0.18, 1.72) * k,
+		CFrame = head.CFrame * CFrame.new(0, 0.3 * k, 0),
+		CanCollide = false,
+		CanQuery = false,
+		Color = Color3.fromHex("D9822B"),
+		Material = Enum.Material.Neon,
+		Parent = model,
+	})
+	local barrels = {}
+	for _, x in { -0.38, 0.38 } do
+		local b = part({
+			Name = "Barrel",
+			Size = Vector3.new(0.3, 0.3, 2.2) * k,
+			CFrame = head.CFrame * CFrame.new(x * k, -0.05 * k, -1.6 * k),
+			CanCollide = false,
+			Color = Color3.fromRGB(30, 30, 34),
+			Material = Enum.Material.Metal,
+			Parent = model,
+		})
+		table.insert(barrels, b)
+	end
+	for _, p in model:GetChildren() do
+		if p ~= head and p ~= hub and p.Name ~= "Leg" and p:IsA("BasePart") then
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = head
+			w.Part1 = p
+			w.Parent = p
+		end
+	end
+	local a0 = Instance.new("Attachment")
+	a0.Name = "LaserFrom"
+	a0.Position = Vector3.new(0, 0.1 * k, -0.9 * k)
+	a0.Parent = head
+	local laser = Instance.new("Beam")
+	laser.Name = "Laser"
+	laser.Attachment0 = a0
+	laser.Color = ColorSequence.new(Color3.fromHex(Config.SentryLaserColor))
+	laser.LightEmission = 1
+	laser.Width0 = 0.06
+	laser.Width1 = 0.06
+	laser.FaceCamera = true
+	laser.Transparency = NumberSequence.new(0.25)
+	laser.Enabled = false
+	laser.Parent = head
+	model.PrimaryPart = hub
+	model.Parent = folder
+	return model, hub, head, legs, barrels, laser
+end
+
+local laserTargets: { [Model]: Attachment } = setmetatable({} :: any, { __mode = "k" })
+local function laserAttachment(target: Model): Attachment?
+	local a = laserTargets[target]
+	if a and a.Parent then
+		return a
+	end
+	local d = Enemy.data(target)
+	if not d then
+		return nil
+	end
+	local att = Instance.new("Attachment")
+	att.Name = "SentryLaserAt"
+	att.Parent = d.root
+	laserTargets[target] = att
+	return att
+end
+
+local function placeSentry(player: Player, state: PlayerState.State, char: Model)
+	local cf = placementCFrame(char, Config.StructurePlaceDistance)
+	local model, hub, head, legs, barrels, laser = buildSentry(cf)
+	local lv = level(state, "sentry")
+	local s = newStructure("sentry", player, model, hub, Config.SentrySec * PlayerState.abilityDurationAmp(state))
+	s.attackable = true
+	local pw = PlayerState.abilityPower(state)
+	s.hp = math.round(grown("sentry", "SentryHp", Config.SentryHp, lv) * pw)
+	s.maxHP = s.hp
+	s.dmg = grown("sentry", "SentryDamage", Config.TurretDmg * Config.SentryDpsMult / 2, lv)
+		* pw
+		* PlayerState.computed(state).turretDmgMult -- TURRET DAMAGE (ENGINEER / INITIATE synergy card)
+	s.range = Config.TurretRange * Config.SentryRangeMult * Stats.mult(player, "turretRange")
+	s.armedAt = now() + Config.SentryDeploySec
+	s.head = head
+	s.extra = { barrels = barrels, laser = laser, flip = false }
+	s.fill = hpBar(hub, Color3.fromHex("D9822B"))
+	placed(s, Color3.fromHex("D9822B"))
+	-- The deploy: legs swing out, the head rises, then a beep (SentryReady) and it starts tracking.
+	local k = Config.SentryScale
+	local info = TweenInfo.new(Config.SentryDeploySec * 0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	for _, leg in legs do
+		local yaw = leg:GetAttribute("Yaw") :: number
+		TweenService:Create(leg, info, {
+			CFrame = cf
+				* CFrame.Angles(0, yaw, 0)
+				* CFrame.new(0, 0.62 * k, -0.55 * k)
+				* CFrame.Angles(math.rad(35), 0, 0),
+		}):Play()
+	end
+	task.delay(Config.SentryDeploySec * 0.35, function()
+		if structures[hub] then
+			TweenService:Create(head, TweenInfo.new(Config.SentryDeploySec * 0.45, Enum.EasingStyle.Quad), {
+				CFrame = cf * CFrame.new(0, 2.0 * k, 0),
+			}):Play()
+		end
+	end)
+	task.delay(Config.SentryDeploySec, function()
+		if structures[hub] then
+			World.fireRun("SentryReady", { position = head.Position })
+		end
+	end)
+	abilityCallout(player, "sentryUp")
+	Log.event(
+		"Ability",
+		"%s deployed a sentry (LV %d: %d HP, %d dmg x2 barrels, r%d, %ds)",
+		player.Name,
+		lv,
+		s.hp,
+		math.round(s.dmg),
+		math.round(s.range),
+		math.round(Config.SentrySec)
+	)
+end
+
+local function sentryTick(s: Structure, t: number)
+	local x = s.extra :: any
+	local laser: Beam? = x and x.laser
+	if t < s.armedAt then
+		return
+	end
+	if t - s.lastTick < 1 / (Config.TurretFireRate * 2 * rateMult() * s.rate) then
+		return
+	end
+	local head = s.head
+	if not head then
+		return
+	end
+	local target = Enemy.nearest(head.Position, s.range, nil)
+	local tp = target and Enemy.rootPosition(target)
+	if not target or not tp then
+		if laser then
+			laser.Enabled = false
+		end
+		return
+	end
+	s.lastTick = t
+	aimHead(head, tp)
+	if laser then
+		local att = laserAttachment(target)
+		laser.Attachment1 = att
+		laser.Enabled = att ~= nil
+	end
+	-- Twin barrels: alternate muzzles.
+	x.flip = not x.flip
+	local barrel: BasePart = x.barrels[if x.flip then 1 else 2]
+	local muzzle = (barrel.CFrame * CFrame.new(0, 0, -barrel.Size.Z / 2)).Position
+	World.fireRun("TurretShot", { from = muzzle, to = tp, sentry = true })
+	local travel = tp - head.Position
+	hitEnemy(s.owner, target, s.dmg, tp, true, {
+		dir = if travel.Magnitude > 0.1 then travel.Unit else nil,
+		force = Config.RagdollTickForce,
+		tick = true,
+	})
+end
+
+------------------------------------------------------------------ DOC: Heal Drone (brief 12)
+local function summonHealDrone(player: Player, state: PlayerState.State, _char: Model)
+	local lv = level(state, "healdrone")
+	local hps = grown("healdrone", "HealDroneHps", Config.HealDroneHps, lv)
+		* PlayerState.abilityPower(state)
+		* PlayerState.computed(state).healMult -- HEALING (DOC synergy card)
+	local range = Config.HealDroneRange * (if PlayerState.passive(state, "DOC", 1) then 1 + Config.DocReachPct else 1)
+	Drones.summonHealer(player, hps, range, Config.HealDroneSec * PlayerState.abilityDurationAmp(state))
+	abilityCallout(player, "healDroneUp")
+end
+
+------------------------------------------------------------------ PYRO: Inferno (brief 12)
+-- A ring of fire round the caster that moves with them: every FieldTickSec, enemies inside burn (the burn status,
+-- so PYRO's fire mastery applies) and walk InfernoSlowPct slower (stacking with Ice Ammo's slow, never a stop).
+-- Players and placeables are never touched. Recasting while one burns refreshes it.
+type Aura = {
+	owner: Player,
+	radius: number,
+	untilT: number,
+	lastTick: number,
+	burn: number,
+	slowMult: number,
+}
+local auras: { [Player]: Aura } = {}
+
+local function endInferno(a: Aura, reason: string)
+	if auras[a.owner] ~= a then
+		return
+	end
+	auras[a.owner] = nil
+	World.fireRun("InfernoEnd", { owner = a.owner.UserId })
+	Log.event("Ability", "%s's inferno %s", a.owner.Name, reason)
+end
+
+local function startInferno(player: Player, state: PlayerState.State, _char: Model)
+	local lv = level(state, "inferno")
+	local burn = grown("inferno", "InfernoBurnPerSec", Config.InfernoBurnPerSec, lv)
+		* PlayerState.abilityPower(state)
+		* PlayerState.computed(state).fireAbilityMult -- ACCELERANT (PYRO synergy card)
+	local slowPct = math.min(90, grown("inferno", "InfernoSlowPct", Config.InfernoSlowPct, lv))
+	local radius = Config.InfernoRadius * Stats.mult(player, "area")
+	local sec = Config.InfernoSec * PlayerState.abilityDurationAmp(state)
+	local a: Aura = {
+		owner = player,
+		radius = radius,
+		untilT = now() + sec,
+		lastTick = 0,
+		burn = burn,
+		slowMult = 1 - slowPct / 100,
+	}
+	auras[player] = a
+	state.abilityActive.inferno = a.untilT
+	state.dirty = true
+	World.fireRun("InfernoStart", { owner = player.UserId, radius = radius, untilT = a.untilT })
+	abilityCallout(player, "infernoUp")
+	Log.event(
+		"Ability",
+		"%s lit an inferno (LV %d: r%.1f, %d burn/s, %d%% slow, %ds)",
+		player.Name,
+		lv,
+		radius,
+		math.round(burn),
+		math.round(slowPct),
+		math.round(sec)
+	)
+end
+
+local function auraTick(a: Aura, t: number)
+	if t - a.lastTick < Config.FieldTickSec then
+		return
+	end
+	a.lastTick = t
+	local char = a.owner.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	local center = root.Position
+	for _, model in Enemy.within(center, a.radius + 2) do
+		local ep = Enemy.rootPosition(model)
+		if not ep or flatDistance(ep, center) > a.radius or math.abs(ep.Y - center.Y) > Config.InfernoHeight then
+			continue
+		end
+		Elements.burnAt(model, a.owner, a.burn, Config.InfernoBurnSec)
+		Enemy.slowSource(model, "inferno", a.slowMult, Config.FieldTickSec + 0.3)
+	end
+end
+
 ------------------------------------------------------------------ Use
+-- (Cast: luau-lsp has no Roblox types here and cannot unify the handlers' inferred signatures.)
 local USE: { [string]: (Player, PlayerState.State, Model, Vector3?) -> () } = {
 	frag = throwFrag,
 	overclock = startOverclock,
@@ -1435,13 +1745,18 @@ local USE: { [string]: (Player, PlayerState.State, Model, Vector3?) -> () } = {
 	molotov = throwMolotov,
 	flameturret = placeFlameTurret,
 	oildrum = placeOilDrum,
-}
+	-- Brief 12
+	sentry = placeSentry,
+	healdrone = summonHealDrone,
+	inferno = startInferno,
+} :: any
 
 local TICK: { [string]: (Structure, number) -> () } = {
 	turret = turretTick,
 	healturret = healTurretTick,
 	flameturret = flameTurretTick,
 	claymore = claymoreTick,
+	sentry = sentryTick, -- brief 12
 }
 
 -- Charges: every ability holds one; DOUBLE DOWN (INITIATE II) gives Frag and Claymore MasteryExtraCharges more.
@@ -1545,10 +1860,18 @@ function Abilities.use(player: Player, id: any, aim: any, origin: any, hit: any)
 	then
 		return
 	end
-	-- Only the equipped class's abilities can fire.
+	-- Only the player's kit can fire (brief 12: the class's three plus any debug grant); the unassigned pool needs a
+	-- grant or Config.UnassignedAbilitiesEnabled.
 	local ability = Classes.AbilityById[id]
 	local handler = USE[id]
-	if not ability or not handler or Classes.ClassOfAbility[id] ~= PlayerState.classOf(state) then
+	if not ability or not handler or not table.find(PlayerState.kitOf(state), id) then
+		return
+	end
+	if
+		Classes.isUnassigned(id)
+		and not Config.UnassignedAbilitiesEnabled
+		and not table.find(state.grants :: { string }, id)
+	then
 		return
 	end
 	if onCooldown(state, id) then
@@ -1580,6 +1903,8 @@ function Abilities.init()
 		folder.Parent = Workspace
 	end
 	Enemy.extraTargets = Abilities.targets
+	Drones.hit = hitEnemy -- brief 12: drones damage through the same credit path
+	Drones.init()
 	Enemy.onStructureHit = Abilities.damageStructure
 	Remotes.UseAbility.OnServerEvent:Connect(Abilities.use)
 
@@ -1590,6 +1915,9 @@ function Abilities.init()
 		end
 		for _, f in fields do
 			f.expiresAt += dt
+		end
+		for _, a in auras do
+			a.untilT += dt
 		end
 		if overclock.untilT > 0 then
 			overclock.untilT += dt
@@ -1644,6 +1972,13 @@ function Abilities.init()
 			end
 		end
 		triageTick(dt)
+		for _, a in table.clone(auras) do
+			if t >= a.untilT or not a.owner.Parent or PlayerState.get(a.owner).downed then
+				endInferno(a, if t >= a.untilT then "burned out" else "dropped")
+			else
+				auraTick(a, t)
+			end
+		end
 		for _, f in table.clone(fields) do
 			if t >= f.expiresAt then
 				removeField(f, "burned out")
@@ -1702,6 +2037,11 @@ function Abilities.clearOwner(player: Player): number
 			n += 1
 		end
 	end
+	local a = auras[player]
+	if a then
+		endInferno(a, "left the range")
+	end
+	n += Drones.clearOwner(player, "left the range")
 	return n
 end
 
@@ -1715,6 +2055,10 @@ function Abilities.clearAll()
 	for _, f in table.clone(fields) do
 		removeField(f, "cleared")
 	end
+	for _, a in table.clone(auras) do
+		endInferno(a, "cleared")
+	end
+	Drones.clearAll()
 end
 
 return Abilities

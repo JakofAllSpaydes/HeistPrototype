@@ -140,6 +140,28 @@ function Elements.burn(model: Model, owner: Player?, dps: number, seconds: numbe
 	model:SetAttribute("Burning", true)
 end
 
+-- Brief 12: a burn at a set strength (Inferno's ring): no stacking; keeps the stronger of this and what's there.
+function Elements.burnAt(model: Model, owner: Player?, dps: number, seconds: number)
+	if not Enemy.data(model) then
+		return
+	end
+	local s = statusOf(model)
+	local now = os.clock()
+	if s.burnUntil <= now then
+		s.burnStacks = 1
+		s.burnDps = 0
+		s.burnRate = 1
+		s.burnOwner = owner
+		s.nextBurn = now + burnInterval(s)
+	end
+	if dps >= s.burnDps then
+		s.burnDps = dps
+		s.burnOwner = owner
+	end
+	s.burnUntil = math.max(s.burnUntil, now + seconds)
+	model:SetAttribute("Burning", true)
+end
+
 -- Damage on a player's behalf from an element (a burn tick, an AFTERSHOCK): kill cash with their CASH GAIN, the
 -- Hit juice to them. `dmg` is final (boosts already in).
 local function ownedHit(owner: Player?, model: Model, dmg: number, pos: Vector3)

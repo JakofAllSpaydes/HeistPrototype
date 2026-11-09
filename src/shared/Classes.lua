@@ -75,14 +75,14 @@ Classes.List = {
 				icon = "ADR",
 			}),
 			ability({
-				id = "claymore",
-				name = "Claymore",
+				id = "turret",
+				name = "Turret",
 				hotkey = "Z",
-				system = "trigger",
-				price = 150,
-				description = "Plant it. Wait for the boom.",
-				vars = { var("ClaymoreDamage", "DMG", Config.ClaymoreDamage) },
-				icon = "CLM",
+				system = "B",
+				price = 250,
+				description = "Hired muscle. Shoots anything that gets close.",
+				vars = { var("Damage", "DMG", Config.TurretDmg), var("Hp", "HP", Config.TurretHP) },
+				icon = "TRT",
 			}),
 		},
 	},
@@ -93,14 +93,17 @@ Classes.List = {
 		glyph = "E",
 		abilities = {
 			ability({
-				id = "turret",
-				name = "Turret",
+				id = "sentry", -- brief 12: replaces the turret on ENGINEER (the turret went to INITIATE)
+				name = "Sentry",
 				hotkey = "Q",
 				system = "B",
-				price = 250,
-				description = "Hired muscle. Shoots anything that gets close.",
-				vars = { var("Damage", "DMG", Config.TurretDmg), var("Hp", "HP", Config.TurretHP) },
-				icon = "TRT",
+				price = 300,
+				description = "A heavy tripod gun. Takes a second to set up, then shreds.",
+				vars = {
+					var("SentryDamage", "DMG", Config.TurretDmg * Config.SentryDpsMult / 2),
+					var("SentryHp", "HP", Config.SentryHp),
+				},
+				icon = "STY",
 			}),
 			ability({
 				id = "barricade",
@@ -158,14 +161,14 @@ Classes.List = {
 				icon = "BAG",
 			}),
 			ability({
-				id = "healturret",
-				name = "Healing Turret",
+				id = "healdrone", -- brief 12: replaces the healing turret
+				name = "Heal Drone",
 				hotkey = "Z",
-				system = "B",
+				system = "drone",
 				price = 250,
-				description = "Beams the lowest teammate back to health.",
-				vars = { var("BeamHeal", "BEAM HEAL", Config.HealTurretBeamHeal), var("Hp", "HP", Config.HealTurretHP) },
-				icon = "HTR",
+				description = "Follows you around and patches up whoever's hurting most.",
+				vars = { var("HealDroneHps", "HEAL / S", Config.HealDroneHps) },
+				icon = "HDR",
 			}),
 		},
 	},
@@ -247,21 +250,59 @@ Classes.List = {
 				icon = "FTR",
 			}),
 			ability({
-				id = "oildrum",
-				name = "Oil Drum",
+				id = "inferno", -- brief 12: replaces the oil drum
+				name = "Inferno",
 				hotkey = "Z",
-				system = "A",
-				price = 150,
-				description = "Blocks like a barricade. Burns when it breaks.",
+				system = "self",
+				price = 200,
+				description = "A ring of fire that moves with you. Burns and slows whatever crosses it.",
 				vars = {
-					var("DrumBurnPerSec", "BURN / S", Config.OilDrumBurnPerSec),
-					var("DrumMoveSlowPct", "SLOW", Config.OilDrumMoveSlowPct, "%"),
+					var("InfernoBurnPerSec", "BURN / S", Config.InfernoBurnPerSec),
+					var("InfernoSlowPct", "SLOW", Config.InfernoSlowPct, "%"),
 				},
-				icon = "OIL",
+				icon = "INF",
 			}),
 		},
 	},
 } :: { Class }
+
+-- Brief 12: the unassigned pool. Claymore, Oil Drum and Healing Turret keep their code, Config and assets; they fire
+-- only with Config.UnassignedAbilitiesEnabled or a debug `Grant ability <id>` (any slot), candidates for later classes.
+Classes.Unassigned = {
+	ability({
+		id = "claymore",
+		name = "Claymore",
+		hotkey = "Z",
+		system = "trigger",
+		price = 150,
+		description = "Plant it. Wait for the boom.",
+		vars = { var("ClaymoreDamage", "DMG", Config.ClaymoreDamage) },
+		icon = "CLM",
+	}),
+	ability({
+		id = "oildrum",
+		name = "Oil Drum",
+		hotkey = "Z",
+		system = "A",
+		price = 150,
+		description = "Blocks like a barricade. Burns when it breaks.",
+		vars = {
+			var("DrumBurnPerSec", "BURN / S", Config.OilDrumBurnPerSec),
+			var("DrumMoveSlowPct", "SLOW", Config.OilDrumMoveSlowPct, "%"),
+		},
+		icon = "OIL",
+	}),
+	ability({
+		id = "healturret",
+		name = "Healing Turret",
+		hotkey = "Z",
+		system = "B",
+		price = 250,
+		description = "Beams the lowest teammate back to health.",
+		vars = { var("BeamHeal", "BEAM HEAL", Config.HealTurretBeamHeal), var("Hp", "HP", Config.HealTurretHP) },
+		icon = "HTR",
+	}),
+} :: { Ability }
 
 Classes.ById = {} :: { [string]: Class }
 Classes.AbilityById = {} :: { [string]: Ability }
@@ -273,6 +314,10 @@ for _, c in Classes.List do
 		Classes.ClassOfAbility[a.id] = c.id
 	end
 end
+-- Unassigned abilities resolve by id (saved levels stay valid) but belong to no class.
+for _, a in Classes.Unassigned do
+	Classes.AbilityById[a.id] = a
+end
 
 -- Round 25: the hotkey chips follow Config.AbilityKeys by slot (the per-ability `hotkey` fields are overwritten).
 for _, c in Classes.List do
@@ -282,6 +327,22 @@ for _, c in Classes.List do
 end
 
 Classes.Default = "INITIATE"
+
+-- Brief 12: a player's three ability ids by slot: the class's kit with any debug grants (`grants[slot] = id`,
+-- the unassigned pool included) laid over it.
+function Classes.kit(classId: string, grants: { [number]: string }?): { string }
+	local c = Classes.ById[classId] or Classes.ById[Classes.Default]
+	local out = {}
+	for i, a in c.abilities do
+		local g = grants and grants[i]
+		out[i] = if g and Classes.AbilityById[g] then g else a.id
+	end
+	return out
+end
+
+function Classes.isUnassigned(abilityId: string): boolean
+	return Classes.AbilityById[abilityId] ~= nil and Classes.ClassOfAbility[abilityId] == nil
+end
 
 -- Hotkey slot (1..3) of an ability in its class.
 function Classes.slotOf(abilityId: string): number

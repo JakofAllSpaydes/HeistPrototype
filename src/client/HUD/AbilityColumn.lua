@@ -89,7 +89,9 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end
 
-	local function rebuild(newClassId: string)
+	local kitKey = ""
+	-- Brief 12: tiles follow the kit by slot (the class's abilities plus any debug grant), not the class list.
+	local function rebuild(newClassId: string, kit: { string }?)
 		classId = newClassId
 		for _, t in tiles do
 			t.button:Destroy()
@@ -100,10 +102,14 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		local class = Classes.ById[classId] or Classes.ById[Classes.Default]
 		header.Text = string.upper(class.name)
 		header.TextColor3 = Color3.fromHex(class.color)
+		local list = {}
 		for i, a in class.abilities do
+			list[i] = (kit and Classes.AbilityById[kit[i]]) or a
+		end
+		for i, a in list do
 			local t = Tile.build(root, {
 				name = string.upper(a.name),
-				hotkey = a.hotkey,
+				hotkey = class.abilities[i].hotkey, -- the slot's key (a granted ability takes the slot)
 				action = "ability" .. i,
 				order = i,
 				iconKind = a.icon,
@@ -334,8 +340,11 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	component.frame = root
 
 	function component.update(sync: any)
-		if typeof(sync.classId) == "string" and sync.classId ~= classId then
-			rebuild(sync.classId)
+		local kit = if typeof(sync.kit) == "table" then sync.kit else nil
+		local key = if kit then table.concat(kit, ",") else ""
+		if typeof(sync.classId) == "string" and (sync.classId ~= classId or key ~= kitKey) then
+			kitKey = key
+			rebuild(sync.classId, kit)
 		end
 		abilities = sync.abilities or {}
 	end

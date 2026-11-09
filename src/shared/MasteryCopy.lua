@@ -65,8 +65,7 @@ local CLASS: { [string]: { () -> (string, string) } } = {
 			return "PATCHED UP", string.format("Stim heals %s HP", pct(Config.StimMasteryHealPct))
 		end,
 		function()
-			return "DOUBLE DOWN",
-				string.format("+%d Frag, +%d Claymore charge", Config.MasteryExtraCharges, Config.MasteryExtraCharges)
+			return "DOUBLE DOWN", string.format("+%d Frag charge", Config.MasteryExtraCharges) -- brief 12: the claymore is unassigned
 		end,
 		function()
 			return "ADRENALINE JUNKIE", "Kills during Stim extend it"
@@ -85,7 +84,7 @@ local CLASS: { [string]: { () -> (string, string) } } = {
 	},
 	DOC = {
 		function()
-			return "WIDE NET", string.format("Med Bag and Healing Turret reach +%s", pct(Config.DocReachPct))
+			return "WIDE NET", string.format("Med Bag and Heal Drone reach +%s", pct(Config.DocReachPct))
 		end,
 		function()
 			return "TRIAGE", "Your heals revive downed allies"

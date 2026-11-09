@@ -8,6 +8,7 @@ local Config = require(Shared.Config)
 local Remotes = require(script.Parent.SlotRemotes)
 local Rarity = require(Shared.Rarity)
 local Enemies = require(Shared.Enemies)
+local Classes = require(Shared.Classes)
 local Room = require(script.Parent.Room)
 local PlayerState = require(script.Parent.Parent.PlayerState)
 local Stats = require(script.Parent.Parent.Stats)
@@ -613,6 +614,25 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		end
 		PlayerState.applyCharacterStats(state)
 		toast(player, string.format("HASTE OVERRIDE %+d", n))
+	end,
+	-- "claymore 3" puts Claymore on slot 3 (any ability, the unassigned pool included); "clear" drops every grant.
+	GrantAbility = function(player, state, args)
+		local text = string.lower(tostring(args or ""))
+		local id, slotText = string.match(text, "^%s*(%S+)%s*(%d?)")
+		if not id or id == "clear" then
+			table.clear(state.grants)
+			toast(player, "GRANTS CLEARED")
+			return
+		end
+		if not Classes.AbilityById[id] then
+			toast(player, "NO ABILITY " .. string.upper(id))
+			return
+		end
+		local slot = math.clamp(tonumber(slotText) or 3, 1, 3)
+		state.grants[slot] = id
+		state.charges[id] = nil
+		state.cooldowns[id] = 0
+		toast(player, string.format("%s ON SLOT %d", string.upper(Classes.AbilityById[id].name), slot))
 	end,
 	SetArea = function(player, _state, args)
 		local n = tonumber(args) or 0

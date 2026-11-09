@@ -581,6 +581,34 @@ function Enemy.slow(model: Model, mult: number, seconds: number)
 	d.slowUntil = math.max(d.slowUntil, untilT)
 end
 
+-- Brief 12: named slows on top of the main one, multiplied together (Inferno x Ice Ammo: resist-style, never a
+-- full stop). A key refreshes its own entry.
+function Enemy.slowSource(model: Model, key: string, mult: number, seconds: number)
+	local d = active[model]
+	if not d or d.dead then
+		return
+	end
+	local t = (d :: any).slowSources or {};
+	(d :: any).slowSources = t
+	t[key] = { mult = math.clamp(mult, 0.05, 1), untilT = os.clock() + seconds }
+end
+
+local function extraSlow(d: Data): number
+	local t = (d :: any).slowSources
+	if not t then
+		return 1
+	end
+	local m, nowc = 1, os.clock()
+	for k, s in t do
+		if s.untilT <= nowc then
+			t[k] = nil
+		else
+			m *= s.mult
+		end
+	end
+	return m
+end
+
 -- Eagle Eye: marked through walls (the client draws the red Highlight off MarkedUntil). Round 16: the mark is
 -- vision only; the slow that goes with it is an Enemy.slow from Abilities. A second mark keeps the longer end.
 function Enemy.mark(model: Model, seconds: number)
@@ -1051,7 +1079,7 @@ function Enemy.init()
 				d.slowUntil = 0
 				d.slowMult = 1
 			end
-			local speed = if stunned then 0 else d.speed * d.slowMult
+			local speed = if stunned then 0 else d.speed * d.slowMult * extraSlow(d)
 			if d.humanoid.WalkSpeed ~= speed then
 				d.humanoid.WalkSpeed = speed
 			end

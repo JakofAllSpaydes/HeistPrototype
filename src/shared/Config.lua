@@ -1983,6 +1983,49 @@ local Config = {
 	MoveSpeedK = 1000,
 	StatMultFloor = 0.2, -- no pile of maluses takes a multiplier (or a haste factor) below this
 	StatsLogEnabled = false, -- `[GHS Stats] <name> <stat> <resolved> <- <n> sources` on every change (debug: Stats log)
+
+	------------------------------------------------------------------ Brief 12: kit changes
+	-- INITIATE: Frag / Adrenaline / Turret (the basic turret above: TurretHP, TurretDmg, TurretRange..., instant deploy).
+	-- ENGINEER: Sentry / Barricade / Overclock. DOC: Stim Shot / Med Bag / Heal Drone. PYRO (id TORCH): Molotov /
+	-- Flame Turret / Inferno. Claymore, Oil Drum and Healing Turret keep their code and keys above, unassigned.
+	-- Cooldowns of the brief 12 abilities (PlayerState.baseCooldown reads here after AbilityCooldown).
+	AbilityCooldownB12 = { sentry = 35, healdrone = 25, inferno = 30, drone = 15, surge = 20, aegis = 35 },
+	-- ENGINEER's Sentry: a heavy tripod. Twin barrels alternate at 2x the turret's rate; per-barrel damage makes the
+	-- total SentryDpsMult x the turret's DPS. Several can stand at once (cooldown / duration, nothing else).
+	SentryDeploySec = 1.5, -- legs unfold and the barrels spin up before the first shot
+	SentryDpsMult = 2.5,
+	SentryHp = 300,
+	SentrySec = 50, -- then it folds away
+	SentryRangeMult = 1.5, -- x TurretRange (both scale with the turretRange stat)
+	SentryScale = 1.6, -- x the turret's size, so apprentice and master read side by side
+	SentryLaserColor = "FF3B30",
+	-- DOC's Heal Drone: hovers at the caster's shoulder (an orbit, no pathfinding), heals the lowest-HP ally in range
+	-- every FieldTickSec (an ally reviving a downed teammate first, ties to the caster). No HP, can't be hit.
+	HealDroneRange = 18,
+	HealDroneHps = 6, -- HP per second (x ABILITY POWER, x HEALING)
+	HealDroneSec = 20,
+	HealDroneColor = "8FE3A1",
+	-- PYRO's Inferno: a ring of fire around the caster that moves with them; enemies in it burn (the burn status, so
+	-- PYRO's fire mastery applies) and walk slower. Never touches players or placeables.
+	InfernoRadius = 9, -- x the area stat
+	InfernoSec = 10,
+	InfernoSlowPct = 30, -- stacks with Ice Ammo's slow multiplicatively (never a full stop)
+	InfernoBurnPerSec = 18, -- the burn it puts on (x ABILITY POWER, x ACCELERANT)
+	InfernoBurnSec = 2, -- the burn outlasts the ring by this
+	InfernoHeight = 7, -- studs above / below the caster's feet the ring still reaches
+	UnassignedAbilitiesEnabled = false, -- true: Claymore / Oil Drum / Healing Turret can fire without a debug grant
+	-- Ally radio lines when someone puts down a sentry, a drone or an Inferno (Callouts.Lines, [Copy: TBA]); one per
+	-- player per this many seconds so a swarm build doesn't spam the radio.
+	AbilityCalloutCooldownSec = 40,
+	-- Every brief 12 effect (drones, rings, explosions) runs at this share of its particles / parts on a phone.
+	MobileFxScale = 0.5,
+	-- Drone sound (client DroneFx): one looped hum per caster, gain per live drone up to a cap; the shot zap plays at
+	-- most DroneZapsPerSec times a second per client. DroneHumSoundId "" = no hum (no verified loop picked yet: audition
+	-- a ProSoundEffects drone / servo loop and paste its rbxassetid here).
+	DroneHumSoundId = "",
+	DroneHumVolumePer = 0.02,
+	DroneHumMaxVolume = 0.18,
+	DroneZapsPerSec = 8,
 }
 
 return Config
