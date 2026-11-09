@@ -494,6 +494,150 @@ local out = {
 		folder("Offices", "GHS_Office", offices), -- Round 19f
 	},
 }
+------------------------------------------------------------------ Brief 13: `lune run tools/genbanknodes.luau brief13`
+-- The file is maintained in Studio, so this mode edits only the brief 13 nodes in place (by name) and keeps every
+-- other node as dragged. Re-running it puts these nodes back where this script says (a drag of one of them is lost).
+--   step 1: the van at the curb facing along the road (LineupFromNode: the crew lines up on the Lineup node on the
+--           pavement facing the doors, DriveOff forward), the grass Blocker with the asset's barriers along its edge,
+--           the street zone trimmed to road / pavements / steps, the fence ends and the street spawn boxes / boss wall
+--           marked StreetScale (MapLoader moves them in by Config.StreetSpawnDistanceMult), the ALARM panel inside the
+--           lobby, the grass dealer spot moved onto the pavement.
+local process = require("@lune/process")
+if process.args[1] == "brief13" then
+	local existing = serde.decode("json", fs.readFile("src/map/Bank.nodes.model.json"))
+	local tags = {
+		Blockers = "GHS_Blocker",
+		Dressing = "GHS_Dressing",
+		HeliPath = "GHS_HeliPath",
+	}
+	local function folderOf(name: string): any
+		for _, f in existing.children do
+			if f.name == name then
+				return f
+			end
+		end
+		local f = { name = name, className = "Folder", children = {} }
+		table.insert(existing.children, f)
+		return f
+	end
+	local function tagOf(folderName: string): string
+		if tags[folderName] then
+			return tags[folderName]
+		end
+		local f = folderOf(folderName)
+		local c = f.children[1]
+		return c and c.properties.Tags and c.properties.Tags[1] or ("GHS_" .. folderName)
+	end
+	-- Put `n` into folder `folderName`, replacing a node of the same name (and position match, when given).
+	local function put(folderName: string, n: any, match: ((any) -> boolean)?)
+		local f = folderOf(folderName)
+		n.properties.Tags = { tagOf(folderName) }
+		style(folderName, n)
+		for i, c in f.children do
+			if (match and match(c)) or (not match and c.name == n.name) then
+				f.children[i] = n
+				print("[genbanknodes] brief13 replace " .. folderName .. "/" .. n.name)
+				return
+			end
+		end
+		table.insert(f.children, n)
+		print("[genbanknodes] brief13 add " .. folderName .. "/" .. n.name)
+	end
+	-- Set attributes on an existing node (keeps its position).
+	local function mark(folderName: string, name: string, attrs: { [string]: any })
+		for _, c in folderOf(folderName).children do
+			if c.name == name then
+				c.attributes = c.attributes or {}
+				for k, v in attrs do
+					c.attributes[k] = v
+				end
+				style(folderName, c)
+				print("[genbanknodes] brief13 mark " .. folderName .. "/" .. name)
+				return
+			end
+		end
+		print("[genbanknodes] brief13 WARNING no " .. folderName .. "/" .. name)
+	end
+	local function near(c: any, x: number, z: number): boolean
+		local p = c.properties.CFrame.CFrame.position
+		return math.abs(p[1] - (x + OX)) < 1 and math.abs(p[3] - (z + OZ)) < 1
+	end
+
+	-- The van stops at the curb on the bank's side of the road, facing east (+X) along it; the crew steps out onto
+	-- the pavement and lines up on the Lineup node facing the front doors (z -100). The van drives on east after.
+	put(
+		"Van",
+		node("van", { -6, 3.5, -160 }, { 8, 6, 14 }, -90, {
+			LineupOffset = 12,
+			LineupFromNode = true,
+			DriveOff = "forward",
+		})
+	)
+	put("Lineup", node("lineup", { 0, 1.5, -134 }, { 20, 2, 4 }, 180, {}))
+	-- The street zone's front part: the road, both pavements and the bank steps (the grass behind is fenced off).
+	-- 300 wide so the street spawn boxes at either fence end stand inside it at any StreetSpawnDistanceMult.
+	put(
+		"Zones",
+		node("street", { 0, 19, -165 }, { 300, 42, 130 }, 0, {
+			Depth = 1,
+			Label = "STREET",
+			Links = LINKS.street,
+		}),
+		function(c)
+			return c.name == "street" and near(c, 0, -212) or (c.name == "street" and near(c, 0, -165))
+		end
+	)
+	-- The grass plaza across the road (x -140..140, z -299..-230): a solid blocker nobody walks or paths into,
+	-- edged on the road side and both ends with the asset's own crowd barriers.
+	put(
+		"Blockers",
+		node(
+			"grass",
+			{ 0, 6, -264.5 },
+			{ 280, 12, 69 },
+			180,
+			{ FenceMesh = "barrier", FenceEdges = "front,left,right" }
+		)
+	)
+	-- The fence ends across the road: the asset's barriers (players stop, enemies climb through), a tall invisible
+	-- collider so nobody hops them, moved in toward the bank by StreetSpawnDistanceMult at runtime.
+	put(
+		"Fences",
+		node("street_fence_w", { -142, 6, -183 }, { 68, 12, 1 }, 90, {
+			Mesh = "barrier",
+			EnemyPass = true,
+			StreetScale = true,
+		})
+	)
+	put(
+		"Fences",
+		node("street_fence_e", { 142, 6, -183 }, { 68, 12, 1 }, -90, {
+			Mesh = "barrier",
+			EnemyPass = true,
+			StreetScale = true,
+		})
+	)
+	mark("SpawnBoxes", "street_west", { StreetScale = true })
+	mark("SpawnBoxes", "street_east", { StreetScale = true })
+	mark("BossWalls", "street_fence_w", { StreetScale = true })
+	-- SILENCE THE ALARM's panel: on the lobby face of the teller counter (the outside panel is retired). Pool
+	-- `alarm` makes it the alarm's own spot: no other job draws here.
+	put(
+		"JobSpots",
+		node("alarm_panel", { -12, 6.5, -6 }, { 2, 2, 2 }, 0, {
+			Zone = "lobby",
+			Pool = "alarm",
+			Label = "ALARM PANEL",
+		})
+	)
+	-- The grass dealer spot moves onto the pavement in front of the bank.
+	put("DealerSpots", node("dealer_grass", { -60, 1.5, -138 }, { 4, 2, 4 }, 180, { Zone = "street" }))
+
+	fs.writeFile("src/map/Bank.nodes.model.json", serde.encode("json", existing, true))
+	print("[genbanknodes] brief13 -> src/map/Bank.nodes.model.json")
+	return
+end
+
 fs.writeFile("src/map/Bank.nodes.model.json", serde.encode("json", out, true))
 local n = 0
 for _, f in out.children do

@@ -1949,6 +1949,18 @@ local Config = {
 	DailyCratePodiumScale = 1, -- the generated podium's scale (fits the gap beside the range door at 1)
 	DailyCrateBeamHeight = 60, -- studs: the ready crate's beacon column
 	DailyCratePromptDistance = 9, -- studs: the podium's E prompt
+
+	------------------------------------------------------------------ Brief 13: the heist (THE BANK run flow)
+	-- Street (step 1). The street's fence ends (Fence nodes with StreetScale), the street_west / street_east spawn
+	-- boxes and the street boss wall stand at x = their node's x times this, measured from the bank's centre line
+	-- (1 = where the nodes are drawn; 0.7 = 30% closer to the steps, so the mouths read from the bank's front).
+	StreetSpawnDistanceMult = 0.7,
+	-- Node colours for the node types added after NodeShowColor (debug Show nodes and Studio's edit mode).
+	NodeShowColorMore = {
+		Blockers = "8A2A2A",
+		Dressing = "E86FF2",
+		HeliPath = "6FD8F2",
+	},
 }
 
 return Config

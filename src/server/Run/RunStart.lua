@@ -164,8 +164,9 @@ local function exitVan(from: CFrame)
 	if not van then
 		return
 	end
-	-- Back out the way it came (it faces the building it parked at).
-	local away = CFrame.new(0, 0, driveIn())
+	-- Back out the way it came (it faces the building it parked at). Brief 13: a curb stop drives on ahead.
+	local forward = Room.current().driveOff == "forward"
+	local away = CFrame.new(0, 0, if forward then -driveIn() else driveIn())
 	driveVan(from, from * away, Config.VanExitSec, "in")
 	van.Parent = nil
 end

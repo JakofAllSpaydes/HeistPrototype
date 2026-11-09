@@ -1428,7 +1428,7 @@
                 "position": [
                   0,
                   19,
-                  -1212
+                  -1165
                 ]
               }
             },
@@ -1446,7 +1446,7 @@
             "Size": [
               300,
               42,
-              224
+              130
             ],
             "Tags": [
               "GHS_Zone"
@@ -2199,13 +2199,13 @@
             "CashReward": 400,
             "DoorStyle": "chain",
             "Group": "D2",
+            "Interact": "Cut",
             "InteractTime": 3,
             "Label": "STAIR CHAINS",
             "Opens": "upper",
             "PingText": "CUT THE CHAINS",
             "Priority": 3,
-            "TriggerWave": 8,
-            "Interact": "Cut"
+            "TriggerWave": 8
           },
           "children": [
             {
@@ -2327,13 +2327,13 @@
             "CashReward": 400,
             "DoorStyle": "chain",
             "Group": "D2",
+            "Interact": "Cut",
             "InteractTime": 3,
             "Label": "STAIR CHAINS",
             "Opens": "upper",
             "PingText": "CUT THE CHAINS",
             "Priority": 3,
-            "TriggerWave": 8,
-            "Interact": "Cut"
+            "TriggerWave": 8
           },
           "children": [
             {
@@ -3216,14 +3216,14 @@
             "CashReward": 400,
             "DoorStyle": "chain",
             "Group": "D5",
+            "Interact": "Cut",
             "InteractTime": 3,
             "Label": "STAIRWELL CHAINS",
             "Opens": "stairs",
             "PingText": "OPEN THE STAIRWELL",
             "Priority": 4,
-            "TriggerWave": 9,
-            "Interact": "Cut",
-            "SideDepth": 39
+            "SideDepth": 39,
+            "TriggerWave": 9
           },
           "children": [
             {
@@ -3345,14 +3345,14 @@
             "CashReward": 400,
             "DoorStyle": "chain",
             "Group": "D5",
+            "Interact": "Cut",
             "InteractTime": 3,
             "Label": "STAIRWELL CHAINS",
             "Opens": "stairs",
             "PingText": "OPEN THE STAIRWELL",
             "Priority": 4,
-            "TriggerWave": 9,
-            "Interact": "Cut",
-            "SideDepth": 39
+            "SideDepth": 39,
+            "TriggerWave": 9
           },
           "children": [
             {
@@ -4834,6 +4834,7 @@
             "AllowedTypes": "all",
             "MouthName": "east fence",
             "RequiresDoor": "",
+            "StreetScale": true,
             "Weight": 1,
             "Zone": "street"
           },
@@ -4957,6 +4958,7 @@
             "AllowedTypes": "all",
             "MouthName": "west fence",
             "RequiresDoor": "",
+            "StreetScale": true,
             "Weight": 1,
             "Zone": "street"
           },
@@ -9786,6 +9788,127 @@
             ],
             "Transparency": 0.55
           }
+        },
+        {
+          "attributes": {
+            "Label": "ALARM PANEL",
+            "Pool": "alarm",
+            "Zone": "lobby"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "JOB · alarm_panel",
+                    "TextColor3": [
+                      0.435,
+                      0.722,
+                      1
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "alarm_panel",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -12,
+                  6.5,
+                  -1006
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.435,
+              0.722,
+              1
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              2,
+              2,
+              2
+            ],
+            "Tags": [
+              "GHS_JobSpot"
+            ],
+            "Transparency": 0.55
+          }
         }
       ],
       "className": "Folder",
@@ -10152,6 +10275,7 @@
         },
         {
           "attributes": {
+            "StreetScale": true,
             "Zone": "street"
           },
           "children": [
@@ -10604,9 +10728,9 @@
                   ]
                 ],
                 "position": [
-                  0,
+                  -60,
                   1.5,
-                  -1270
+                  -1138
                 ]
               }
             },
@@ -10878,6 +11002,8 @@
       "children": [
         {
           "attributes": {
+            "DriveOff": "forward",
+            "LineupFromNode": true,
             "LineupOffset": 12
           },
           "children": [
@@ -10951,9 +11077,9 @@
               "CFrame": {
                 "orientation": [
                   [
-                    -1,
                     0,
-                    0
+                    0,
+                    -1
                   ],
                   [
                     0,
@@ -10961,15 +11087,15 @@
                     0
                   ],
                   [
+                    1,
                     0,
-                    0,
-                    -1
+                    0
                   ]
                 ],
                 "position": [
-                  0,
+                  -6,
                   3.5,
-                  -1262
+                  -1160
                 ]
               }
             },
@@ -11092,7 +11218,7 @@
                 "position": [
                   0,
                   1.5,
-                  -1238
+                  -1134
                 ]
               }
             },
@@ -11389,8 +11515,6 @@
       "name": "VaultRoom"
     },
     {
-      "name": "Fences",
-      "className": "Folder",
       "children": [
         {
           "attributes": {},
@@ -11463,11 +11587,6 @@
             "Anchored": true,
             "CFrame": {
               "CFrame": {
-                "position": [
-                  122.5,
-                  5,
-                  -910
-                ],
                 "orientation": [
                   [
                     1,
@@ -11484,6 +11603,11 @@
                     0,
                     1
                   ]
+                ],
+                "position": [
+                  122.5,
+                  5,
+                  -910
                 ]
               }
             },
@@ -11580,11 +11704,6 @@
             "Anchored": true,
             "CFrame": {
               "CFrame": {
-                "position": [
-                  -122.5,
-                  5,
-                  -910
-                ],
                 "orientation": [
                   [
                     1,
@@ -11601,6 +11720,11 @@
                     0,
                     1
                   ]
+                ],
+                "position": [
+                  -122.5,
+                  5,
+                  -910
                 ]
               }
             },
@@ -11625,12 +11749,254 @@
             ],
             "Transparency": 0.55
           }
+        },
+        {
+          "attributes": {
+            "EnemyPass": true,
+            "Mesh": "barrier",
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "FENCE · street_fence_w",
+                    "TextColor3": [
+                      0.788,
+                      0.769,
+                      0.722
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  7,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "street_fence_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  -142,
+                  6,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.788,
+              0.769,
+              0.722
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              68,
+              12,
+              1
+            ],
+            "Tags": [
+              "GHS_Fence"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "EnemyPass": true,
+            "Mesh": "barrier",
+            "StreetScale": true
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "FENCE · street_fence_e",
+                    "TextColor3": [
+                      0.788,
+                      0.769,
+                      0.722
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  7,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "street_fence_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    0,
+                    0,
+                    -1
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    1,
+                    0,
+                    0
+                  ]
+                ],
+                "position": [
+                  142,
+                  6,
+                  -1183
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.788,
+              0.769,
+              0.722
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              68,
+              12,
+              1
+            ],
+            "Tags": [
+              "GHS_Fence"
+            ],
+            "Transparency": 0.55
+          }
         }
-      ]
+      ],
+      "className": "Folder",
+      "name": "Fences"
     },
     {
-      "className": "Folder",
-      "name": "Offices",
       "children": [
         {
           "attributes": {
@@ -12580,7 +12946,135 @@
             "Transparency": 0.55
           }
         }
-      ]
+      ],
+      "className": "Folder",
+      "name": "Offices"
+    },
+    {
+      "children": [
+        {
+          "attributes": {
+            "FenceEdges": "front,left,right",
+            "FenceMesh": "barrier"
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "BLOCK · grass",
+                    "TextColor3": [
+                      0.541,
+                      0.165,
+                      0.165
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  7,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  6,
+                  -1264.5
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.541,
+              0.165,
+              0.165
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              280,
+              12,
+              69
+            ],
+            "Tags": [
+              "GHS_Blocker"
+            ],
+            "Transparency": 0.55
+          }
+        }
+      ],
+      "className": "Folder",
+      "name": "Blockers"
     }
   ],
   "className": "Folder"

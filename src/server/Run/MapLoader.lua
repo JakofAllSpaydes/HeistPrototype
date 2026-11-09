@@ -81,6 +81,8 @@ MapLoader.bossWalls = {} :: { Room.BossWall }
 MapLoader.dealerSpots = {} :: { Room.DealerSpot }
 MapLoader.van = nil :: CFrame?
 MapLoader.vanLineupOffset = 12
+MapLoader.vanLineupFromNode = false -- brief 13: the run start line is the Lineup node (a curb stop)
+MapLoader.vanDriveOff = "back" -- brief 13: "forward" = the van drives on after the drop
 MapLoader.lineup = nil :: CFrame?
 MapLoader.hatch = nil :: Hatch?
 MapLoader.vaultRoom = nil :: (Volume & { door: string })?
@@ -90,7 +92,7 @@ export type Office = { id: string, label: string, zone: string, room: Volume, do
 MapLoader.offices = {} :: { Office }
 
 -- Job kinds a JobSpot's Pool may name (the minigame props by their lower-case names).
-local POOL_KINDS = { hack = true, capture = true }
+local POOL_KINDS = { hack = true, capture = true, alarm = true } -- brief 13: `alarm` = SILENCE THE ALARM's own spot
 for _, name in Room.PropNames do
 	POOL_KINDS[string.lower(name)] = true
 end
@@ -123,6 +125,18 @@ local function list(s: string): { string }
 		end
 	end
 	return out
+end
+
+-- Brief 13: a node marked StreetScale (the street's fence ends, its spawn boxes and boss wall) stands at its x times
+-- Config.StreetSpawnDistanceMult from the bank's centre line, so the street's mouths move in without a drag.
+local function streetScaled(p: Instance, cf: CFrame): CFrame
+	if p:GetAttribute("StreetScale") ~= true then
+		return cf
+	end
+	local cx = Config.BankOrigin.X
+	local pos = cf.Position
+	local x = cx + (pos.X - cx) * Config.StreetSpawnDistanceMult
+	return cf.Rotation + Vector3.new(x, pos.Y, pos.Z)
 end
 
 local function partsIn(folder: Instance?, name: string): { BasePart }
@@ -202,6 +216,8 @@ function MapLoader.meshParts(cframe: CFrame, size: Vector3, prefix: string, marg
 	end
 	return out
 end
+
+local assetTemplate: (string) -> BasePart?
 
 local function canonicalArchetype(name: string): string?
 	local low = string.lower(name)
@@ -483,10 +499,11 @@ local function readBoxes(nodes: Instance)
 			end
 			allowed = set
 		end
+		local cframe = streetScaled(p, p.CFrame)
 		local b: Box = {
 			name = p.Name,
 			zone = zid,
-			cframe = p.CFrame,
+			cframe = cframe,
 			size = p.Size,
 			weight = num(p, "Weight", 1),
 			allowed = allowed,
@@ -494,7 +511,7 @@ local function readBoxes(nodes: Instance)
 			mouth = str(p, "MouthName", p.Name),
 			whileVault = bool(p, "WhileVault"),
 			doorEver = bool(p, "DoorEver"),
-			standsIn = MapLoader.zoneAt(p.Position),
+			standsIn = MapLoader.zoneAt(cframe.Position),
 		}
 		table.insert(MapLoader.boxes, b)
 		Log.event(
@@ -539,7 +556,10 @@ local function readSpots(nodes: Instance)
 	for _, p in partsIn(nodes, "BossWalls") do
 		local zid = str(p, "Zone", "")
 		zoneKnown(p.Name, zid, "Zone")
-		table.insert(MapLoader.bossWalls, { name = p.Name, cframe = p.CFrame, size = p.Size, zone = zid })
+		table.insert(
+			MapLoader.bossWalls,
+			{ name = p.Name, cframe = streetScaled(p, p.CFrame), size = p.Size, zone = zid }
+		)
 		Log.event("Map", "BossWall %s zone %s", p.Name, zid)
 	end
 	for _, p in partsIn(nodes, "DealerSpots") do
@@ -555,6 +575,10 @@ local function readSingles(nodes: Instance)
 	if van then
 		MapLoader.van = van.CFrame
 		MapLoader.vanLineupOffset = num(van, "LineupOffset", 12)
+		-- Brief 13: a curb stop. The crew lines up on the Lineup node (not in front of the van's nose) and the van
+		-- drives on forward after the drop instead of backing out.
+		MapLoader.vanLineupFromNode = bool(van, "LineupFromNode")
+		MapLoader.vanDriveOff = str(van, "DriveOff", "back")
 		Log.event("Map", "Van %s zone %s", van.Name, MapLoader.zoneAt(van.Position) or "-")
 	else
 		fail("Van", "no Van node: the run starts at the arena fallback")
@@ -637,6 +661,42 @@ local function readOffices(nodes: Instance)
 	end
 end
 
+-- Brief 13: a clean copy of the first geometry part named `mesh` (cached), for fences built from the asset's own
+-- pieces. Every original of that name is retired (invisible, not solid, not hit) so only the node-placed rows stand.
+local templates: { [string]: BasePart } = {}
+function assetTemplate(mesh: string): BasePart?
+	local cached = templates[mesh]
+	if cached then
+		return cached
+	end
+	local bank = MapLoader.bank
+	local geo = bank and bank:FindFirstChild("Geometry")
+	if not geo then
+		return nil
+	end
+	local found: BasePart? = nil
+	local retired = 0
+	for _, d in geo:GetDescendants() do
+		if d:IsA("BasePart") and d.Name == mesh then
+			if not found then
+				local c = d:Clone()
+				c:ClearAllChildren()
+				found = c
+			end
+			d.Transparency = 1
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			retired += 1
+		end
+	end
+	if found then
+		templates[mesh] = found
+		Log.event("Map", "%d asset '%s' pieces retired; fence nodes lay copies", retired, mesh)
+	end
+	return found
+end
+
 local function buildFences(nodes: Instance)
 	local bank = MapLoader.bank
 	if not bank then
@@ -647,7 +707,8 @@ local function buildFences(nodes: Instance)
 		old:Destroy()
 	end
 	local fences = partsIn(nodes, "Fences")
-	if #fences == 0 then
+	local blockers = partsIn(nodes, "Blockers")
+	if #fences == 0 and #blockers == 0 then
 		return
 	end
 	local folder = Instance.new("Folder")
@@ -666,8 +727,93 @@ local function buildFences(nodes: Instance)
 		p.Material = material
 		p.Parent = folder
 	end
+	-- Brief 13: an invisible wall that stops players (and, unless `enemyPass`, enemies and paths) but never a shot.
+	local function wall(name: string, cf: CFrame, size: Vector3, enemyPass: boolean)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Transparency = 1
+		p.CFrame = cf
+		p.Size = size
+		local m = Instance.new("PathfindingModifier")
+		m.Label = if enemyPass then "Barrier" else "Blocker"
+		m.PassThrough = enemyPass
+		m.Parent = p
+		if enemyPass then
+			p.CollisionGroup = "EnemyPass"
+		end
+		p.Parent = folder
+	end
+	-- Brief 13: a row of the asset's own pieces (Mesh / FenceMesh, e.g. the crowd `barrier`) along a line: `cf` is
+	-- the line's centre with its X axis along the line. The originals are retired (hidden) once copied.
+	local function row(mesh: string, cf: CFrame, length: number, enemyPass: boolean)
+		local template = assetTemplate(mesh)
+		if not template then
+			fail("Fences", "Mesh '" .. mesh .. "' matches no geometry part")
+			return
+		end
+		local long = math.max(template.Size.X, 1)
+		local count = math.max(1, math.round(length / (long * 0.98)))
+		local step = length / count
+		local zig = { 0, 15, 0, -15 } -- the asset's own zig-zag
+		for i = 1, count do
+			local at = cf * CFrame.new(-length / 2 + step * (i - 0.5), 0, 0)
+			local floor = Ground.y(at.Position, at.Position.Y)
+			local c = template:Clone()
+			c.Anchored = true
+			c.CanTouch = false
+			c.CFrame = CFrame.new(at.Position.X, floor + template.Size.Y / 2, at.Position.Z)
+				* at.Rotation
+				* CFrame.Angles(0, math.rad(zig[(i - 1) % 4 + 1]), 0)
+			if enemyPass then
+				c.CollisionGroup = "EnemyPass"
+				local m = Instance.new("PathfindingModifier")
+				m.PassThrough = true
+				m.Parent = c
+			end
+			c.Parent = folder
+		end
+	end
+	for _, n in blockers do
+		-- Nobody walks or paths into a Blocker's box; its listed edges (front = the node's look side, back, left,
+		-- right) carry a row of FenceMesh pieces so the edge reads as fenced.
+		local s, cf = n.Size, n.CFrame
+		wall("Blocker", cf, s, false)
+		local mesh = str(n, "FenceMesh", "")
+		if mesh ~= "" then
+			for _, edge in list(str(n, "FenceEdges", "front")) do
+				local e = string.lower(edge)
+				if e == "front" then
+					row(mesh, cf * CFrame.new(0, 0, -s.Z / 2), s.X, false)
+				elseif e == "back" then
+					row(mesh, cf * CFrame.new(0, 0, s.Z / 2), s.X, false)
+				elseif e == "left" then
+					row(mesh, cf * CFrame.new(-s.X / 2, 0, 0) * CFrame.Angles(0, math.rad(90), 0), s.Z, false)
+				elseif e == "right" then
+					row(mesh, cf * CFrame.new(s.X / 2, 0, 0) * CFrame.Angles(0, math.rad(90), 0), s.Z, false)
+				else
+					fail(n.Name, "FenceEdges names unknown edge '" .. edge .. "' (front / back / left / right)")
+				end
+			end
+		end
+		Log.event("Map", "Blocker %s %.0f x %.0f", n.Name, s.X, s.Z)
+	end
 	for _, n in fences do
 		local s = n.Size
+		local mesh = str(n, "Mesh", "")
+		if mesh ~= "" then
+			-- Brief 13: a fence of the asset's own pieces plus a tall invisible collider (players never hop it; with
+			-- EnemyPass enemies and their paths go through, as they do the original barriers).
+			local cf = streetScaled(n, n.CFrame)
+			local enemyPass = bool(n, "EnemyPass")
+			wall("Collider", cf, Vector3.new(s.X, s.Y, math.max(s.Z, 1)), enemyPass)
+			row(mesh, cf, s.X, enemyPass)
+			Log.event("Map", "Fence %s %.0f studs of %s at x %.0f", n.Name, s.X, mesh, cf.Position.X)
+			continue
+		end
 		local thick = math.max(s.Z, 0.4)
 		piece("Panel", n.CFrame, Vector3.new(s.X, s.Y, thick), color, Enum.Material.CorrodedMetal)
 		local posts = math.max(1, math.round(s.X / math.max(Config.FencePostSpacing, 1)))
@@ -709,8 +855,14 @@ local function buildView(): Room.MapView?
 		dealerSpots = MapLoader.dealerSpots,
 		bossWalls = MapLoader.bossWalls,
 		van = van,
-		lineup = if van then van * CFrame.new(0, 0, -MapLoader.vanLineupOffset) else nil,
+		lineup = if van
+				and MapLoader.vanLineupFromNode
+				and MapLoader.lineup
+			then MapLoader.lineup
+			elseif van then van * CFrame.new(0, 0, -MapLoader.vanLineupOffset)
+			else nil,
 		runEndLine = MapLoader.lineup,
+		driveOff = MapLoader.vanDriveOff,
 	}
 end
 

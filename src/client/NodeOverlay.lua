@@ -25,6 +25,9 @@ NodeOverlay.TYPES = {
 	"VaultRoom",
 	"Fences",
 	"Offices", -- Round 19f
+	"Blockers", -- brief 13
+	"Dressing",
+	"HeliPath",
 	-- Brief 8: the hub (Workspace.Hub.Nodes) and the arena's Van / Lineup (Workspace.Room.Nodes).
 	"Spawn",
 	"QueuePads",
@@ -52,6 +55,9 @@ local SHORT = {
 	VaultRoom = "VAULT",
 	Fences = "FENCE",
 	Offices = "OFFICE",
+	Blockers = "BLOCK",
+	Dressing = "DRESS",
+	HeliPath = "HELI",
 	Spawn = "SPAWN",
 	QueuePads = "PAD",
 	Stations = "BOOTH",
@@ -79,6 +85,9 @@ local KEYS = {
 	VaultRoom = { "Door" },
 	Fences = {},
 	Offices = { "Zone", "Label" },
+	Blockers = {},
+	Dressing = { "Stage", "Mesh" },
+	HeliPath = { "Index" },
 	Spawn = {},
 	QueuePads = { "Index" },
 	Stations = { "Tab", "Rig" },
@@ -145,7 +154,9 @@ function NodeOverlay.refresh()
 			if not f or not NodeOverlay.shown[typeName] then
 				continue
 			end
-			local hex = (Config.NodeShowColor :: any)[typeName] or "FFFFFF"
+			local hex = (Config.NodeShowColor :: any)[typeName]
+				or (Config.NodeShowColorMore :: any)[typeName]
+				or "FFFFFF"
 			local color = Color3.fromHex(hex)
 			for _, p in f:GetChildren() do
 				if not p:IsA("BasePart") then
