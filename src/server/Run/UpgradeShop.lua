@@ -109,7 +109,9 @@ end
 -- `count` cards (3 for the pick-3, Config.DealerStock for the dealer), each a different stat. Each slot first
 -- rolls Config.SynergyChance for a conditional card when any qualifies (not on a debug-forced slot), else draws
 -- normally. Element and synergy cards are never tradeoffs.
-function UpgradeShop.generate(state: PlayerState.State, wave: number, count: number?): { Types.Card }
+-- `luck` (brief 9): the Skill Web's tier shift for this generator (CARD LUCK for the pick-3, DEALER LUCK for the
+-- dealer's stock), already x LuckOddsStep.
+function UpgradeShop.generate(state: PlayerState.State, wave: number, count: number?, luck: number?): { Types.Card }
 	local n = count or 3
 	local cards: { Types.Card } = {}
 	local used: { [string]: boolean } = {}
@@ -123,7 +125,7 @@ function UpgradeShop.generate(state: PlayerState.State, wave: number, count: num
 		until n == 1 or (synergyIndex ~= forcedIndex and synergyIndex ~= elementIndex) or n <= 2
 	end
 	for i = 1, n do
-		local tier = Rarity.roll(wave, nil, nil, Boosts.luckyShift(state.player)) -- LUCKY (brief 6)
+		local tier = Rarity.roll(wave, nil, nil, Boosts.luckyShift(state.player), luck) -- LUCKY (brief 6), LUCK (9)
 		local statId: string? = nil
 		if synergyIndex == i or (forcedIndex ~= i and elementIndex ~= i and math.random() < Config.SynergyChance) then
 			local pool = synergyPool(state, used)
@@ -242,7 +244,7 @@ function UpgradeShop.buy(player: Player): any
 	end
 	state.upgradesBought += 1
 	state.waveUpgrades += 1
-	state.openPick3 = UpgradeShop.generate(state, World.wave)
+	state.openPick3 = UpgradeShop.generate(state, World.wave, nil, state.skillMods.cardLuck * Config.LuckOddsStep)
 	state.dirty = true
 	Log.event(
 		"Upgrade",

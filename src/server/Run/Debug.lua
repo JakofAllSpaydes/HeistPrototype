@@ -52,6 +52,7 @@ local Spawner = require(script.Parent.Spawner)
 local EnemyPath = require(script.Parent.EnemyPath)
 local Runs = require(script.Parent.Parent.Runs)
 local HubMap = require(script.Parent.Parent.HubMap)
+local SkillService = require(script.Parent.Parent.SkillService)
 
 local Debug = {}
 
@@ -348,6 +349,12 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	ResetRun = function(_player, _state, _args)
 		for _, s in mine() do
 			PlayerState.reset(s, if World.inRun() then Config.StartingCash else Config.HubCash)
+			if World.inRun() or s.inRange then
+				PlayerState.armSkills(s, "debug reset run") -- brief 9
+				if World.inRun() then
+					s.cash += s.skillMods.startCashFlat
+				end
+			end
 		end
 		BigCrate.finishAll()
 		CrewCall.clearAll()
@@ -379,6 +386,21 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		PlayerState.applyProfile(state)
 		toast(player, "EVERYTHING UNLOCKED")
 	end,
+	-- Brief 9: the Skill Web.
+	UnlockSkills = function(player, _state, _args)
+		SkillService.unlockAll(player)
+		toast(player, "ALL SKILLS UNLOCKED")
+	end,
+	ResetSkills = function(player, _state, _args)
+		SkillService.reset(player)
+		toast(player, "SKILLS RESET")
+	end,
+	GrantSkill = function(player, _state, args)
+		local branch = if typeof(args) == "table" then tostring(args.branch) else ""
+		local ring = if typeof(args) == "table" then tonumber(args.ring) or 1 else 1
+		local id = SkillService.grant(player, branch, ring)
+		toast(player, if id then "GRANTED " .. string.upper(id) else "NOTHING LEFT IN " .. branch .. " RING " .. ring)
+	end,
 	EndRun = function(player, _state, _args)
 		if World.inRun() then
 			World.runOver = true
@@ -393,11 +415,12 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 	OpenMinigame = function(player, _state, args)
 		Minigames.open(player, tostring(args))
 	end,
-	MinigameStats = function(_player, _state, _args)
+	MinigameStats = function(player, _state, _args)
 		Minigames.printStats()
 		Heat.printStats()
 		Economy.printStats()
 		MapLoader.printStats(Doors.openedLog, Spawner.contactRun, EnemyPath.history)
+		SkillService.printStats(player) -- brief 9: owned per branch and the modifier table
 	end,
 	-- Brief 7 MAP: pin the crew zone (spawns, bursts, the boss wall and the dealer follow it); "auto" unpins.
 	SetCrewZone = function(player, _state, args)

@@ -349,6 +349,39 @@ local function build()
 	btn(r12c, "Pause / resume", 1 / 3, function()
 		send("TogglePause")
 	end)
+	-- Brief 9: the Skill Web. Grant: pick a branch, then a ring (the ring's first unowned node, rules ignored).
+	local rS1 = row(panel, 16.7, rh)
+	btn(rS1, "Unlock all skills", 1 / 3, function()
+		send("UnlockSkills")
+	end, Theme.Colors.gold)
+	btn(rS1, "Reset skills", 1 / 3, function()
+		send("ResetSkills")
+	end, Theme.Colors.malus)
+	btn(rS1, "+10,000 Gold", 1 / 3, function()
+		send("AddGold", 10000)
+	end, Theme.Colors.gold)
+	local rS2 = row(panel, 16.8, rh)
+	local rS3 = row(panel, 16.9, rh)
+	local grantBranch = "DAMAGE"
+	local branchBtns: { [string]: TextButton } = {}
+	local function paintBranches()
+		for id, b in branchBtns do
+			b.BackgroundColor3 = if id == grantBranch then Theme.Colors.blue else Theme.Colors.panel2
+		end
+	end
+	for _, id in { "DAMAGE", "SURVIVAL", "SPEED", "CASH", "LUCK", "ARSENAL" } do
+		branchBtns[id] = btn(rS2, string.sub(id, 1, 4), 1 / 6, function()
+			grantBranch = id
+			paintBranches()
+		end)
+	end
+	paintBranches()
+	btn(rS3, "Grant ring", 1 / 6, function() end, Theme.Colors.grey)
+	for ring = 1, 5 do
+		btn(rS3, tostring(ring), 1 / 6, function()
+			send("GrantSkill", { branch = grantBranch, ring = ring })
+		end, Theme.Colors.gold)
+	end
 
 	-- Brief 6: monetization (fake balance, tokens, free crate opens, the fake clock, pass XP, Jobs, the readout).
 	-- Force rarity above also lands on the next crate open.

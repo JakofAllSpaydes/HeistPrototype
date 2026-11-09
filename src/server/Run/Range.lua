@@ -78,6 +78,7 @@ local function enter(player: Player)
 	state.offhand = PlayerState.starterOffhand(state) -- Round 24z: both starters, as at a run start
 	state.activeSlot = 1
 	PlayerState.refreshHeldVisual(state)
+	PlayerState.armSkills(state, "range") -- brief 9: the Skill Web applies in the range (damage nodes on a dummy)
 	PlayerState.applyCharacterStats(state) -- run walk speed inside (the hub's is HubWalkSpeedMult)
 	refreshPlate(player) -- the hub nameplate is off in the range
 	state.dirty = true
@@ -96,7 +97,7 @@ local function leave(player: Player, why: string?)
 	local n = Abilities.clearOwner(player)
 	state.buffId = nil
 	state.buffUntil = 0
-	PlayerState.applyCharacterStats(state)
+	PlayerState.disarmSkills(state) -- brief 9: the hub runs without the Skill Web
 	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if hum and hum.Health > 0 then
 		hum.Health = hum.MaxHealth

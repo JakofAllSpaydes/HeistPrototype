@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage.Shared
 local Config = require(Shared.Config)
 local Weapons = require(Shared.Weapons)
 local Types = require(Shared.Types)
+local Skills = require(Shared.Skills)
 
 local Stats = {}
 
@@ -33,8 +34,14 @@ local function mult(upgrades: { [string]: Types.TrackerItem }, id: string): numb
 	return math.max(0.2, 1 + pct(upgrades, id))
 end
 
-function Stats.weaponDamage(weaponId: string, rarity: number, dmgPct: number, level: number?): number
-	return Weapons.damageAt(weaponId, rarity, dmgPct, level)
+function Stats.weaponDamage(
+	weaponId: string,
+	rarity: number,
+	dmgPct: number,
+	level: number?,
+	bonus: Weapons.Bonus?
+): number
+	return Weapons.damageAt(weaponId, rarity, dmgPct, level, bonus)
 end
 
 -- A self buff (stim, stim shot, dead eye): multipliers on top of upgrades.
@@ -52,17 +59,28 @@ function Stats.weaponDps(
 	weaponId: string,
 	rarity: number,
 	upgrades: { [string]: Types.TrackerItem },
-	level: number?
+	level: number?,
+	skills: Skills.Mods?
 ): number
 	local w = Weapons.ById[weaponId]
-	return Stats.weaponDamage(weaponId, rarity, pct(upgrades, "Damage"), level)
+	local bonus = if skills then Skills.weaponBonus(skills, w.archetype) else nil
+	return Stats.weaponDamage(weaponId, rarity, pct(upgrades, "Damage"), level, bonus)
 		* Weapons.effectiveRate(w, mult(upgrades, "FireRate") * Weapons.levelRateMult(level or 0))
 		* w.pellets
 end
 
-function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.Held, buffs: Buffs?): Types.Computed
+-- Brief 9: `skills` is the player's armed Skill Web modifier table (Skills.modifiers): percents add at the Armory
+-- stage (weapon damage / mag / reload through Weapons.atLevel) or to the base before the run's upgrade multipliers.
+function Stats.compute(
+	upgrades: { [string]: Types.TrackerItem },
+	held: Types.Held,
+	buffs: Buffs?,
+	skills: Skills.Mods?
+): Types.Computed
 	local w = Weapons.ById[held.weaponId]
-	local base = Weapons.atLevel(w, held.level or 0)
+	local sk = skills or Skills.zero()
+	local bonus = Skills.weaponBonus(sk, w.archetype)
+	local base = Weapons.atLevel(w, held.level or 0, bonus)
 	local crit = upgrades.CritChance
 	local b: Buffs = buffs
 		or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0, spreadMult = 1 }
@@ -78,17 +96,17 @@ function Stats.compute(upgrades: { [string]: Types.TrackerItem }, held: Types.He
 		elseif w.archetype == "Explosive" then boost("Demolition")
 		else 1
 	return {
-		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage"), held.level)
+		damage = Stats.weaponDamage(held.weaponId, held.rarity, pct(upgrades, "Damage"), held.level, bonus)
 			* b.damageMult
 			* archMult,
 		fireRate = base.fireRate * mult(upgrades, "FireRate") * b.fireRateMult,
 		magSize = math.max(1, math.round(base.magSize * mult(upgrades, "MagSize"))),
 		reloadTime = base.reloadTime / (mult(upgrades, "ReloadSpeed") * b.reloadSpeedMult),
-		maxHP = math.max(1, math.round(Config.PlayerMaxHP * mult(upgrades, "MaxHP"))),
-		hpRegen = Config.PlayerHPRegenPerSec * mult(upgrades, "HPRegen"),
-		moveSpeed = Config.PlayerWalkSpeed * mult(upgrades, "MoveSpeed") * b.moveSpeedMult,
-		critChance = math.max(0, Config.BaseCritChancePct + (if crit then crit.pct else 0)),
-		headshotMult = Config.HeadshotMult * mult(upgrades, "HeadshotMult"),
+		maxHP = math.max(1, math.round(Config.PlayerMaxHP * (1 + sk.maxHpPct) * mult(upgrades, "MaxHP"))),
+		hpRegen = (Config.PlayerHPRegenPerSec + sk.hpRegenFlat) * mult(upgrades, "HPRegen"),
+		moveSpeed = Config.PlayerWalkSpeed * (1 + sk.moveSpeedPct) * mult(upgrades, "MoveSpeed") * b.moveSpeedMult,
+		critChance = math.max(0, Config.BaseCritChancePct + sk.critPct * 100 + (if crit then crit.pct else 0)),
+		headshotMult = Config.HeadshotMult * (1 + sk.headshotPct) * mult(upgrades, "HeadshotMult"),
 		cashGain = mult(upgrades, "CashGain"),
 		abilityCdr = math.clamp(points(upgrades, "AbilityCooldown"), -100, Config.AbilityCooldownCap) / 100,
 		abilityPower = mult(upgrades, "AbilityPower"),

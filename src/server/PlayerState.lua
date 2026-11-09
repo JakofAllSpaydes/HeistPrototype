@@ -20,6 +20,7 @@ local GunModels = require(Shared.GunModels)
 local MaskShapes = require(Shared.MaskShapes)
 local Classes = require(Shared.Classes)
 local AbilityGrowth = require(Shared.AbilityGrowth)
+local Skills = require(Shared.Skills)
 local Stats = require(script.Parent.Stats)
 local Runs = require(script.Parent.Runs)
 local Log = require(script.Parent.Log)
@@ -77,6 +78,9 @@ export type State = {
 	lastPosition: Vector3, -- where the character was when it bled out
 	pendingSpawnCFrame: CFrame?, -- next LoadCharacter lands here
 	inRange: boolean, -- brief 8: standing in the hub's training range (armed; Run/Range.lua)
+	-- Brief 9: the Skill Web folded into one modifier table at the run start / range entry (PlayerState.armSkills);
+	-- all zeros in the hub. Every hook reads one field of it.
+	skillMods: Skills.Mods,
 	-- Run stats (reset per run)
 	kills: number,
 	cashCollected: number, -- cash earned this run, not the balance
@@ -148,6 +152,7 @@ local function freshState(player: Player, joinIndex: number): State
 		lastPosition = Vector3.zero,
 		pendingSpawnCFrame = nil,
 		inRange = false,
+		skillMods = Skills.zero(),
 		kills = 0,
 		cashCollected = 0,
 		revives = 0,
@@ -358,7 +363,7 @@ function PlayerState.computed(state: State): Types.Computed
 		b.reloadSpeedMult *= 1 + Config.CrewOverclockReloadPct
 		buffs = b
 	end
-	local st = Stats.compute(state.upgrades, state.held, buffs)
+	local st = Stats.compute(state.upgrades, state.held, buffs, state.skillMods)
 	-- SHARPSHOOTER I / II.
 	if PlayerState.passive(state, "SHARPSHOOTER", 1) then
 		st.headshotMult += Config.SharpHeadshotAdd
@@ -539,6 +544,48 @@ function PlayerState.reset(state: State, cash: number?)
 	state.dirty = true
 end
 
+-- Brief 9: fold the profile's Skill Web into the modifier table for a run start or the range (`why` is the log's
+-- context). Logs every owned node once and the summary line. Health / walk speed pick it up at once.
+function PlayerState.armSkills(state: State, why: string)
+	local p = state.profile or Profiles.get(state.player)
+	local owned = p and p.skills and p.skills.owned
+	state.skillMods = Skills.modifiers(owned)
+	if state.skillMods.nodes > 0 then
+		for _, n in Skills.List do
+			if owned and owned[n.id] then
+				print(
+					string.format(
+						"[GHS Skills] %s applied %s%s %s",
+						n.id,
+						n.effect.stat,
+						if n.effect.filter then "." .. n.effect.filter else "",
+						Skills.fmtValue(n.effect.kind, n.effect.value)
+					)
+				)
+			end
+		end
+	end
+	Log.event(
+		"Skills",
+		"%s applied %d nodes (%s): %s",
+		state.player.Name,
+		state.skillMods.nodes,
+		why,
+		Skills.summary(state.skillMods)
+	)
+	PlayerState.applyCharacterStats(state)
+	state.dirty = true
+end
+
+-- Back to nothing (leaving the range).
+function PlayerState.disarmSkills(state: State)
+	state.skillMods = Skills.zero()
+	state.armor = 0
+	state.armorMax = 0
+	PlayerState.applyCharacterStats(state)
+	state.dirty = true
+end
+
 -- Installed by Downed: what happens at 0 HP. Without it health just resets.
 PlayerState.onZeroHP = nil :: ((Player) -> ())?
 
@@ -550,6 +597,8 @@ function PlayerState.damage(player: Player, amount: number, source: string?)
 	if state.invulnUntil > Workspace:GetServerTimeNow() then
 		return
 	end
+	-- Brief 9 TOUGHNESS: less damage taken, before armor soaks it.
+	amount *= math.max(0.05, 1 - state.skillMods.damageTakenPct)
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then
@@ -598,7 +647,9 @@ end
 -- An ability's cooldown for this player: the Config base less ABILITY COOLDOWN (capped in Stats).
 function PlayerState.abilityCooldown(state: State, abilityId: string): number
 	local base = Config.AbilityCooldown[abilityId] or 10
-	return base * math.max(0.05, 1 - PlayerState.computed(state).abilityCdr)
+	-- Brief 9 COOLDOWN nodes take their share off the base first; the run's ABILITY COOLDOWN (capped) then applies.
+	local skill = math.max(0.05, 1 - state.skillMods.cooldownPct)
+	return base * skill * math.max(0.05, 1 - PlayerState.computed(state).abilityCdr)
 end
 
 -- ABILITY POWER: ability damage, heal and placeable HP multiplier.
@@ -691,6 +742,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 		armor = math.floor(state.armor), -- Round 25 ARMOR (the HP bar's overlay)
 		maxArmor = state.armorMax,
 		dmgPct = PlayerState.damagePct(state), -- the floor-gun tags show guns at your own damage upgrades
+		skillMods = state.skillMods, -- brief 9: the armed Skill Web (floor-gun tags add its weapon bonus too)
 		held = {
 			weaponId = w.id,
 			displayName = w.displayName,
@@ -699,7 +751,7 @@ function PlayerState.buildSync(state: State): Types.Sync
 			rarityName = Rarity.name(state.held.rarity),
 			level = state.held.level,
 			dmg = st.damage,
-			dps = Stats.weaponDps(w.id, state.held.rarity, state.upgrades, state.held.level),
+			dps = Stats.weaponDps(w.id, state.held.rarity, state.upgrades, state.held.level, state.skillMods),
 			fireRate = st.fireRate,
 			magSize = st.magSize,
 			reloadTime = st.reloadTime,
@@ -889,7 +941,8 @@ function PlayerState.init()
 			-- Round 25: ARMOR. A new card fills its points at once; spent armor refills at ArmorRegenPctPerSec of
 			-- the total once ArmorRegenDelay passes without a hit.
 			local up = state.upgrades.Armor
-			local maxArmor = if up then math.max(0, up.pct) else 0
+			-- Brief 9 ARMOR nodes add flat points (full at the run start, like a new card).
+			local maxArmor = math.max(0, (if up then up.pct else 0) + state.skillMods.armorFlat)
 			if maxArmor ~= state.armorMax then
 				if maxArmor > state.armorMax then
 					state.armor += maxArmor - state.armorMax
@@ -903,7 +956,10 @@ function PlayerState.init()
 				and hum.Health > 0
 				and not state.downed
 				and state.armor < maxArmor
-				and Workspace:GetServerTimeNow() - state.lastHurtAt >= Config.ArmorRegenDelay
+				and Workspace:GetServerTimeNow() - state.lastHurtAt >= Config.ArmorRegenDelay * math.max(
+					0,
+					1 - state.skillMods.armorDelayPct
+				)
 				and not Runs.modOf(player, "Pause").active()
 			then
 				local before = math.floor(state.armor)

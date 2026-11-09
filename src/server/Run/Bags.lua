@@ -544,7 +544,9 @@ function Bags.collect(player: Player, b: Bag, streak: number?): boolean
 		toast = string.format(Lines.bagBanked, string.upper(player.Name), b.value)
 	else
 		for _, p in World.runAudience() do
-			Economy.addEarned(PlayerState.get(p), b.value) -- each member's own CASH GAIN
+			-- Each member's own CASH GAIN, and (brief 9) their own BAG VALUE on the cash it pays them.
+			local ps = PlayerState.get(p)
+			Economy.addEarned(ps, b.value * (1 + ps.skillMods.bagValuePct))
 		end
 		toast = string.format(Lines.bagGrabbed, string.upper(player.Name), "$" .. tostring(b.value))
 	end
@@ -613,13 +615,15 @@ end
 local function pick(player: Player, root: BasePart): Bag?
 	local best: Bag? = nil
 	local bestFill, bestDist = -1, math.huge
+	-- Brief 9 MAGNET: the player's Skill Web widens the reach a bag starts filling from.
+	local reach = Config.BagStartRadius * (1 + PlayerState.get(player).skillMods.pickupRadiusPct)
 	for _, b in bags do
 		if not b.active or (b.by ~= nil and b.by ~= player) then
 			continue
 		end
 		local d = root.Position - b.position
 		local dist = Vector2.new(d.X, d.Z).Magnitude
-		if math.abs(d.Y) > Config.BagKeepRadius or dist > Config.BagStartRadius then
+		if math.abs(d.Y) > Config.BagKeepRadius or dist > reach then
 			continue
 		end
 		local fill = math.floor(b.progress * 20) -- 5% bands, so a sliver of drain does not outrank a nearer bag
@@ -705,7 +709,9 @@ local function step(dt: number)
 		end
 		if b then
 			c.idle = 0
-			b.progress = math.min(1, b.progress + dt / channelSec(c.streak))
+			-- Brief 9 FAST HANDS: the player's Skill Web shortens the fill.
+			local speed = 1 + PlayerState.get(player).skillMods.pickupSpeedPct
+			b.progress = math.min(1, b.progress + dt * speed / channelSec(c.streak))
 			if b.progress >= 1 then
 				release(player, c)
 				if Bags.collect(player, b, c.streak) then

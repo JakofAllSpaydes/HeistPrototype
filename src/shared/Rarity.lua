@@ -35,9 +35,45 @@ function Rarity.odds(wave: number, shift: number?): { number }
 	return list[math.clamp(Rarity.bracketIndex(wave) + (shift or 0), 1, #list)].odds
 end
 
+-- Brief 9 LUCK: `luck` (a share of the total, Config.LuckOddsStep per node) of the weight moves off the lowest tier
+-- that has any onto the higher tiers that have some, in proportion to theirs. Never past the bracket's top tier (a
+-- tier at 0 stays at 0); the lowest tier never goes below 0.
+function Rarity.applyLuck(w: { number }, luck: number?)
+	local l = luck or 0
+	if l <= 0 then
+		return
+	end
+	local total, low = 0, nil :: number?
+	for r = 1, 5 do
+		total += w[r]
+		if low == nil and w[r] > 0 then
+			low = r
+		end
+	end
+	if low == nil or total <= 0 then
+		return
+	end
+	local higher = 0
+	for r = low + 1, 5 do
+		higher += w[r]
+	end
+	if higher <= 0 then
+		return
+	end
+	local move = math.min(w[low], total * l)
+	local shares = {}
+	for r = low + 1, 5 do
+		shares[r] = w[r] / higher
+	end
+	w[low] -= move
+	for r = low + 1, 5 do
+		w[r] += move * shares[r]
+	end
+end
+
 -- Weighted roll for the wave bracket. `floor` forces at least that rarity, `weights` multiplies per rarity.
--- `shift` moves up the bracket table (the LUCKY boost).
-function Rarity.roll(wave: number, floor: number?, weights: { number }?, shift: number?): number
+-- `shift` moves up the bracket table (the LUCKY boost); `luck` is the Skill Web's share (Rarity.applyLuck).
+function Rarity.roll(wave: number, floor: number?, weights: { number }?, shift: number?, luck: number?): number
 	local odds = Rarity.odds(wave, shift)
 	local minRarity = floor or 1
 	local total = 0
@@ -45,7 +81,10 @@ function Rarity.roll(wave: number, floor: number?, weights: { number }?, shift: 
 	for r = 1, 5 do
 		local v = if r < minRarity then 0 else odds[r] * ((weights and weights[r]) or 1)
 		w[r] = v
-		total += v
+	end
+	Rarity.applyLuck(w, luck)
+	for r = 1, 5 do
+		total += w[r]
 	end
 	if total <= 0 then
 		return minRarity

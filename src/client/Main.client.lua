@@ -62,6 +62,21 @@ end
 ClientState.Changed:Connect(syncPlayerList)
 syncPlayerList()
 
+-- Brief 9 QUICK HANDS: a hold prompt the server marks with QuickHandsBase (the side job's HACK) runs shorter on this
+-- client by the armed Skill Web's interactPct (the server never times the hold; doors scale on the server).
+do
+	local ProximityPromptService = game:GetService("ProximityPromptService")
+	ProximityPromptService.PromptShown:Connect(function(prompt: ProximityPrompt)
+		local base = prompt:GetAttribute("QuickHandsBase")
+		if typeof(base) ~= "number" then
+			return
+		end
+		local mods = ClientState.sync and (ClientState.sync :: any).skillMods
+		local pct = if typeof(mods) == "table" then tonumber(mods.interactPct) or 0 else 0
+		prompt.HoldDuration = base / (1 + math.max(0, pct))
+	end)
+end
+
 HUD.init()
 require(script.Parent:WaitForChild("PurchaseSheet")).init()
 require(script.Parent:WaitForChild("UpgradeOverlay")).init()

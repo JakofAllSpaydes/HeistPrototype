@@ -40,6 +40,9 @@ local DEFS: { [string]: string } = {
 	Purchase = "RemoteFunction", -- client -> server: productId, args; returns { ok, reason?, balance, data? } (Purchases.lua)
 	SheetState = "RemoteEvent", -- client -> server: open (boolean): the purchase sheet is up (the SECOND CHANCE window holds)
 	Shop = "RemoteFunction", -- client -> server: action, args; returns { ok, reason?, data? } (claims, rerolls, VIP gift, crate credits)
+	-- Brief 9: the Skill Web
+	SkillBuy = "RemoteFunction", -- client -> server: node id; returns { ok, reason?, owned = { ids }, gold } (SkillService.lua)
+	SkillSeen = "RemoteEvent", -- client -> server: { ids }: affordable nodes the player has now seen (they pulse once, then not)
 }
 
 local folder: Instance

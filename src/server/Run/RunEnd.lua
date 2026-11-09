@@ -231,8 +231,15 @@ end
 -- the difficulty's goldMult, plus the side job Gold already granted per job, plus the team's TOTAL BANKED in full.
 -- Lands in the profile at once, with the top wave, the top banked and the lifetime stats. Players who left
 -- before the summary earn nothing.
-local function payout(p: Player, s: PlayerState.State, base: number, banked: number): (number, boolean, boolean)
+-- Brief 9 FENCE: the player's Skill Web adds its share to the banked bags this player is paid (the team's total
+-- stays the team's). Returns the Gold this player gets for `banked`.
+local function fenced(s: PlayerState.State, banked: number): number
+	return math.round(banked * (1 + s.skillMods.bankedPct))
+end
+
+local function payout(p: Player, s: PlayerState.State, base: number, teamBanked: number): (number, boolean, boolean)
 	local earned = base + s.gold
+	local banked = fenced(s, teamBanked)
 	local profile = s.profile or Profiles.get(p)
 	local newBest = false
 	local newBestBanked = false
@@ -244,14 +251,14 @@ local function payout(p: Player, s: PlayerState.State, base: number, banked: num
 			newBest = true
 		end
 		local topB = profile.topBanked[key] or 0
-		if banked > topB then
-			profile.topBanked[key] = banked
-			newBestBanked = banked > 0
+		if teamBanked > topB then
+			profile.topBanked[key] = teamBanked
+			newBestBanked = teamBanked > 0
 		end
 		profile.stats.kills += s.kills
 		profile.stats.matchesPlayed += 1
 		profile.stats.bagsCollected += s.bags
-		profile.stats.goldBanked += banked
+		profile.stats.goldBanked += teamBanked
 		local survived = math.floor(World.survivedSec())
 		profile.stats.timeSurvived += survived
 		if survived > (profile.topTime[key] or 0) then
@@ -261,12 +268,13 @@ local function payout(p: Player, s: PlayerState.State, base: number, banked: num
 	end
 	Log.event(
 		"Payout",
-		"%s earned %d gold (base %d + %d side job) + %d banked, wave %d%s%s",
+		"%s earned %d gold (base %d + %d side job) + %d banked (team %d), wave %d%s%s",
 		p.Name,
 		earned,
 		base,
 		s.gold,
 		banked,
+		teamBanked,
 		World.wave,
 		if newBest then ", NEW PERSONAL BEST" else "",
 		if newBestBanked then ", NEW BEST BANKED" else ""
@@ -325,7 +333,7 @@ function RunEnd.play(): string
 			bags = s.bags,
 			gold = earned,
 			banked = banked,
-			goldTotal = earned + banked,
+			goldTotal = earned + fenced(s, banked), -- brief 9: FENCE on this player's share
 			newBest = newBest,
 			newBestBanked = newBestBanked,
 			level = Progression.level(p),

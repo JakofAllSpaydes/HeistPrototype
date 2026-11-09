@@ -305,6 +305,9 @@ local function buildHackBeacon(
 	prompt.ObjectText = objectText
 	prompt.KeyboardKeyCode = Enum.KeyCode[Config.InteractKey] -- Config.InteractKey everywhere (guns, props, door, beacons)
 	prompt.HoldDuration = holdSec
+	-- Brief 9 QUICK HANDS: each client shortens its own copy of the hold (SkillScene.init scales prompts that carry
+	-- this attribute by the local player's armed interactPct).
+	prompt:SetAttribute("QuickHandsBase", holdSec)
 	prompt.MaxActivationDistance = Config.SideJobBeaconRadius + 2
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = terminal

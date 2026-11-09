@@ -716,6 +716,9 @@ function Hub.beginRun(players: { Player })
 	for _, player in players do
 		local state = PlayerState.get(player)
 		PlayerState.reset(state, Config.StartingCash)
+		-- Brief 9: the Skill Web applies for the whole run; SEED MONEY lands on the starting cash.
+		PlayerState.armSkills(state, "run start")
+		state.cash += state.skillMods.startCashFlat
 		if not player.Character then
 			player:LoadCharacter()
 		end

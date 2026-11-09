@@ -129,7 +129,7 @@ function Downed.down(player: Player)
 	end
 	state.downed = true
 	state.downs += 1
-	state.bleedEndsAt = now() + Config.BleedOutSec
+	state.bleedEndsAt = now() + Config.BleedOutSec + state.skillMods.bleedOutFlat -- brief 9 LAST STAND
 	state.reviveProgress = 0
 	state.reviver = nil
 	state.buffId = nil
@@ -149,7 +149,13 @@ function Downed.down(player: Player)
 	World.fireRun("PlayerDowned", { userId = player.UserId, name = player.Name, bleedEndsAt = state.bleedEndsAt })
 	Heat.onDowned() -- counts against this wave's score (capped), lands at its end
 	callout(player, "downed")
-	Log.event("Downed", "%s is down (down #%d), bleeds out in %ds", player.Name, state.downs, Config.BleedOutSec)
+	Log.event(
+		"Downed",
+		"%s is down (down #%d), bleeds out in %ds",
+		player.Name,
+		state.downs,
+		Config.BleedOutSec + state.skillMods.bleedOutFlat
+	)
 end
 
 -- `quiet`: no callout (Revive Everybody stands the crew up under its own line).
@@ -448,7 +454,10 @@ function Downed.init()
 				local ts = PlayerState.get(target)
 				if ts.reviver == nil or ts.reviver == reviver then
 					ts.reviver = reviver
-					ts.reviveProgress = math.min(1, ts.reviveProgress + dt / math.max(Config.ReviveHoldSec, 0.1))
+					-- Brief 9 REVIVE SPEED: the reviver's Skill Web shortens the hold.
+					local speed = 1 + rs.skillMods.revivePct
+					ts.reviveProgress =
+						math.min(1, ts.reviveProgress + dt * speed / math.max(Config.ReviveHoldSec, 0.1))
 					progressed[target] = reviver
 					if Config.RevivePausesBleed then
 						-- The bleed timer stands still for as long as the hold lasts.

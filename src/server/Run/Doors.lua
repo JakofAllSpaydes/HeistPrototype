@@ -1304,7 +1304,9 @@ function Doors.init()
 			end
 			local before = g.progress
 			if holder then
-				g.progress = math.min(1, g.progress + dt / math.max(door.interactTime, 0.1))
+				-- Brief 9 QUICK HANDS: the holder's Skill Web speeds the hold.
+				local speed = 1 + PlayerState.get(holder).skillMods.interactPct
+				g.progress = math.min(1, g.progress + dt * speed / math.max(door.interactTime, 0.1))
 				g.keepUntil = now + Config.DoorHoldSec
 			elseif g.progress > 0 and now > g.keepUntil then
 				g.progress = 0

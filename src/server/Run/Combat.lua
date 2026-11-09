@@ -78,10 +78,18 @@ local function dealDamage(
 	info: { [string]: any },
 	allowSplash: boolean
 )
-	dmg = math.max(1, math.round(dmg))
 	local ed = Enemy.data(model)
 	local elite = ed ~= nil and ed.elite
 	local boss = ed ~= nil and ed.row.boss == true
+	-- Brief 9: ELITE DAMAGE / BOSS DAMAGE (the shooter's Skill Web) on top of everything else.
+	local sk = shooter.state.skillMods
+	if elite then
+		dmg *= 1 + sk.eliteDamagePct
+	end
+	if boss then
+		dmg *= 1 + sk.bossDamagePct
+	end
+	dmg = math.max(1, math.round(dmg))
 	local killed, killCash = Enemy.damage(model, dmg, shooter.player, {
 		dir = info.dir,
 		headshot = info.headshot == true,

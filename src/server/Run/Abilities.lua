@@ -187,7 +187,20 @@ local function hitEnemy(
 	secondary: boolean,
 	hit: Enemy.Hit?
 ): boolean
-	dmg = math.max(1, math.round(dmg * Boosts.damageMult(owner))) -- POWER boost (brief 6)
+	dmg = dmg * Boosts.damageMult(owner) -- POWER boost (brief 6)
+	-- Brief 9: ABILITY DAMAGE, and ELITE / BOSS DAMAGE, from the owner's Skill Web.
+	if owner.Parent then
+		local sk = PlayerState.get(owner).skillMods
+		local ed = Enemy.data(model)
+		dmg *= 1 + sk.abilityDamagePct
+		if ed and ed.elite then
+			dmg *= 1 + sk.eliteDamagePct
+		end
+		if ed and ed.row.boss == true then
+			dmg *= 1 + sk.bossDamagePct
+		end
+	end
+	dmg = math.max(1, math.round(dmg))
 	local killed, killCash = Enemy.damage(
 		model,
 		dmg,

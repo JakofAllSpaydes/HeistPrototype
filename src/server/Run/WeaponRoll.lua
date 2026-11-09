@@ -311,7 +311,9 @@ function WeaponRoll.rollRarity(
 			floor = state.held.rarity
 			note = string.format("pity floor %s", Rarity.name(floor))
 		end
-		rarity = Rarity.roll(wave, floor, weights, Boosts.luckyShift(state.player)) -- LUCKY (brief 6)
+		-- LUCKY (brief 6); brief 9 CRATE LUCK (the in-run gun crate only; the store's crates never read it).
+		local luck = state.skillMods.crateLuck * Config.LuckOddsStep
+		rarity = Rarity.roll(wave, floor, weights, Boosts.luckyShift(state.player), luck)
 		if pity then
 			state.pityStreak = 0
 			return rarity, note

@@ -18,6 +18,7 @@ local Classes = require(Shared.Classes)
 local Masks = require(Shared.Masks)
 local Emotes = require(Shared.Emotes)
 local Signal = require(Shared.Signal)
+local Skills = require(Shared.Skills)
 local Log = require(script.Parent.Log)
 
 export type WeaponEntry = { level: number, wrap: string? }
@@ -82,6 +83,9 @@ export type Profile = {
 	purchases: { { id: string, price: number, at: number } }, -- the readout log (last Config.PurchaseLogKeep)
 	clockOffset: number, -- seconds added to UTC for this player's fake clock (debug advance day)
 	dailyReroll: { day: number, count: number }, -- Round 18: FEATURED daily items rerolled `count` times on `day`
+	-- Brief 9 (v5): the Skill Web. owned = node ids bought (START is implicit, never stored); seen = affordable nodes
+	-- the player has seen on the web (a node that became affordable since pulses once on open). A respec is a wipe.
+	skills: { owned: { [string]: boolean }, seen: { [string]: boolean } },
 	version: number,
 }
 
@@ -105,7 +109,8 @@ local STORE_NAME = "GHS_Profiles_v1"
 -- 3 (brief 6): fake Robux, revive tokens, boosts, VIP, the pass, Jobs, crate pity / opens, the purchase log.
 -- 4 (brief 7): records are keyed <mapId>:<difficulty>. Every run before brief 7 was on the arena (whose id was
 -- the placeholder "TheBank"), so TheBank:* moves to Arena:* once; a run on the real Bank then writes TheBank:*.
-local VERSION = 4
+-- 5 (brief 9): the Skill Web's owned / seen sets, empty on migration.
+local VERSION = 5
 local RETRY_BACKOFF = { 1, 2, 4 }
 
 local Profiles = {}
@@ -202,6 +207,7 @@ function Profiles.fresh(): Profile
 		purchases = {},
 		clockOffset = 0,
 		dailyReroll = { day = 0, count = 0 },
+		skills = { owned = {}, seen = {} },
 		version = VERSION,
 	}
 end
@@ -467,6 +473,19 @@ local function migrate(raw: any): Profile
 		p.dailyReroll.day = math.floor(num(raw.dailyReroll.day, 0))
 		p.dailyReroll.count = math.max(0, math.floor(num(raw.dailyReroll.count, 0)))
 	end
+	-- Brief 9 (v5): only known node ids survive (a renamed node drops out instead of breaking the set).
+	if typeof(raw.skills) == "table" then
+		for _, key in { "owned", "seen" } do
+			local src = raw.skills[key]
+			if typeof(src) == "table" then
+				for id, v in src do
+					if v == true and typeof(id) == "string" and Skills.ById[id] then
+						(p.skills :: any)[key][id] = true
+					end
+				end
+			end
+		end
+	end
 	local fromVersion = tonumber(raw.version) or 1
 	if raw ~= nil and fromVersion < 4 then
 		local moved = 0
@@ -490,6 +509,9 @@ local function migrate(raw: any): Profile
 	end
 	if fromVersion < 2 and p.classes.owned.SHARPSHOOTER and (p.abilities.claymore or 0) > 0 then
 		Log.event("Profile", "v1 -> v2: claymore LV %d now on INITIATE's Z", p.abilities.claymore)
+	end
+	if raw ~= nil and fromVersion < 5 then
+		Log.event("Profile", "v%d -> v5", fromVersion)
 	end
 	if raw ~= nil and fromVersion < 3 then
 		Log.event(

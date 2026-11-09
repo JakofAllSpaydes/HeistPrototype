@@ -1383,6 +1383,71 @@ local Config = {
 	MetaSuccessSparks = 30, -- Round 25: sparks off a button on a successful upgrade (unlocks / buys: x1.5)
 	MetaEquipBadgeShare = 0.36, -- the big equipped check on a tile, as a share of the tile's width
 
+	------------------------------------------------------------------ Skills (brief 9: the Skill Web; Skills.lua, SkillService.lua)
+	-- 90 one-time account perks bought with Gold in the hub (the SKILLS tile). Every value below is a sample.
+	SkillsEnabled = true, -- false hides the SKILLS tile and every node stops applying (modifiers are all zero)
+	SkillCostByRing = { 500, 1500, 4000, 10000, 25000 }, -- Gold per node by ring (1 = next to START); ~300k for the web
+	LuckOddsStep = 0.03, -- each LUCK node moves this share of the tier weights off the lowest tier onto the higher ones
+	SkillZoomMin = 0.55, -- the web's smallest zoom (also never smaller than "the whole web fits")
+	SkillZoomMax = 1.6,
+	SkillHexPx = 64, -- a hex's width (corner to corner) at zoom 1, px at the UI basis (mobile never under 56 px)
+	SkillNewPulseSec = 1.5, -- a hex that became affordable since the last visit pulses once this long on open
+	SkillBuyRateSec = 0.25, -- the server refuses a second buy from the same player inside this
+	-- The nodes, per branch, per ring (ring 1 next to START), in slot order (the order a ring's cells run clockwise).
+	-- { stat, value }: the stat keys are Skills.lua's (STATS); percents are fractions (0.03 = +3%), armor / regen /
+	-- bleed-out / seed money are flat, luck nodes are counts (each LuckOddsStep). Names, ids and numerals come from
+	-- the order: the first "damage" in DAMAGE is DAMAGE I (id damage_damage_1), the next DAMAGE II.
+	SkillNodes = {
+		DAMAGE = {
+			{ { "damage", 0.03 } },
+			{ { "crit", 0.02 }, { "headshot", 0.05 } },
+			{ { "damage", 0.03 }, { "elite", 0.05 }, { "ability", 0.05 } },
+			{ { "crit", 0.02 }, { "boss", 0.05 }, { "damage", 0.03 }, { "headshot", 0.05 } },
+			{ { "elite", 0.05 }, { "boss", 0.05 }, { "ability", 0.05 }, { "crit", 0.02 }, { "damage", 0.04 } },
+		},
+		SURVIVAL = {
+			{ { "maxHp", 0.08 } },
+			{ { "armor", 10 }, { "regen", 0.5 } },
+			{ { "maxHp", 0.08 }, { "tough", 0.03 }, { "revive", 0.15 } },
+			{ { "armor", 10 }, { "armorRecovery", 0.15 }, { "regen", 0.5 }, { "lastStand", 5 } },
+			{ { "maxHp", 0.08 }, { "armor", 15 }, { "tough", 0.04 }, { "armorRecovery", 0.15 }, { "revive", 0.15 } },
+		},
+		SPEED = {
+			{ { "move", 0.02 } },
+			{ { "reload", 0.06 }, { "cooldown", 0.04 } },
+			{ { "move", 0.02 }, { "quickHands", 0.1 }, { "reload", 0.06 } },
+			{ { "cooldown", 0.04 }, { "quickHands", 0.1 }, { "move", 0.02 }, { "reload", 0.06 } },
+			{ { "cooldown", 0.04 }, { "quickHands", 0.1 }, { "move", 0.03 }, { "reload", 0.07 }, { "cooldown", 0.05 } },
+		},
+		CASH = {
+			{ { "bagValue", 0.04 } },
+			{ { "magnet", 0.15 }, { "fastHands", 0.15 } },
+			{ { "fence", 0.04 }, { "seedMoney", 200 }, { "bagValue", 0.04 } },
+			{ { "haggle", 0.04 }, { "magnet", 0.15 }, { "fence", 0.04 }, { "fastHands", 0.15 } },
+			{ { "seedMoney", 300 }, { "haggle", 0.05 }, { "bagValue", 0.05 }, { "magnet", 0.2 }, { "fence", 0.05 } },
+		},
+		LUCK = {
+			{ { "cardLuck", 1 } },
+			{ { "dealerLuck", 1 }, { "crateLuck", 1 } },
+			{ { "cardLuck", 1 }, { "dealerLuck", 1 }, { "crateLuck", 1 } },
+			{ { "cardLuck", 1 }, { "dealerLuck", 1 }, { "crateLuck", 1 }, { "cardLuck", 1 } },
+			{ { "dealerLuck", 1 }, { "crateLuck", 1 }, { "cardLuck", 1 }, { "dealerLuck", 1 }, { "crateLuck", 1 } },
+		},
+		ARSENAL = {
+			{ { "pistols", 0.04 } },
+			{ { "smgs", 0.04 }, { "rifles", 0.04 } },
+			{ { "shotguns", 0.04 }, { "snipers", 0.04 }, { "lmgs", 0.04 } },
+			{ { "explosives", 0.04 }, { "elemental", 0.04 }, { "pistolMags", 0.1 }, { "smgMags", 0.1 } },
+			{
+				{ "rifleMags", 0.1 },
+				{ "shotgunShells", 1 },
+				{ "sniperMags", 1 },
+				{ "lmgBelts", 0.1 },
+				{ "explosiveAmmo", 1 },
+			},
+		},
+	},
+
 	------------------------------------------------------------------ Payout (GDD_7)
 	GoldPerWaveBase = 20, -- per cleared wave
 	GoldPerWaveAdd = 5, -- x (wave - 1)

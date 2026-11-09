@@ -762,24 +762,30 @@ function Weapons.levelRateMult(level: number): number
 	return 1 + soft(level, Config.UpgSoftCap.rate)
 end
 
--- Base stats at an Armory level, before rarity and in-run upgrades.
+-- Brief 9: the Skill Web's weapon bonuses (Skills.weaponBonus) join the Armory stage: dmg / mag / reload add to the
+-- level's own multipliers before rarity and in-run upgrades, ammo adds whole rounds.
+export type Bonus = { dmg: number, mag: number, ammo: number, reload: number }
+
+-- Base stats at an Armory level (plus the account's skill bonus), before rarity and in-run upgrades.
 function Weapons.atLevel(
 	w: Weapon,
-	level: number
+	level: number,
+	bonus: Bonus?
 ): { dmg: number, fireRate: number, magSize: number, reloadTime: number }
+	local b = bonus or { dmg = 0, mag = 0, ammo = 0, reload = 0 }
 	return {
-		dmg = w.baseDmg * Weapons.levelDmgMult(level),
+		dmg = w.baseDmg * (Weapons.levelDmgMult(level) + b.dmg),
 		fireRate = w.fireRate * Weapons.levelRateMult(level),
-		magSize = math.max(1, math.round(w.magSize * Weapons.levelMagMult(level))),
-		reloadTime = w.reloadTime / Weapons.levelReloadDiv(level),
+		magSize = math.max(1, math.round(w.magSize * (Weapons.levelMagMult(level) + b.mag)) + math.floor(b.ammo)),
+		reloadTime = w.reloadTime / (Weapons.levelReloadDiv(level) + b.reload),
 	}
 end
 
 -- Damage per shot of a gun: Armory level, then in-run damage pct, then rarity (Stats.weaponDamage on the server;
 -- the client uses it for the floor-gun tags, which show the viewer's own level and upgrades).
-function Weapons.damageAt(weaponId: string, rarity: number, dmgPct: number, level: number?): number
+function Weapons.damageAt(weaponId: string, rarity: number, dmgPct: number, level: number?, bonus: Bonus?): number
 	local w = Weapons.ById[weaponId]
-	return Weapons.atLevel(w, level or 0).dmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
+	return Weapons.atLevel(w, level or 0, bonus).dmg * math.max(0.2, 1 + dmgPct) * Config.RarityDmgMult[rarity]
 end
 
 -- Gold cost of the next level: upgBaseCost x RarityUpgCostMult ^ level (both 100 / 1.0 in the prototype).

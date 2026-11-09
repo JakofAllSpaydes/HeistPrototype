@@ -336,23 +336,29 @@ local function waveScale(perWave: number): number
 	return 1 + perWave * math.max(0, World.wave - 1)
 end
 
+-- Brief 9 HAGGLE: the buyer's Skill Web takes its share off every dealer price.
+local function haggle(state: PlayerState.State): number
+	return math.max(0.05, 1 - state.skillMods.dealerPct)
+end
+
 local function cardPrice(card: Types.Card, s: Stock, state: PlayerState.State): number
 	local share = Config.DealerCardPriceShare[math.clamp(card.tier, 1, 5)] or 1
 	local discount = Config.DealerFirstBuyDiscount[s.buys + 1] or 1
-	return math.max(1, math.round(Economy.upgradePrice(state) * share * discount))
+	return math.max(1, math.round(Economy.upgradePrice(state) * share * discount * haggle(state)))
 end
 
 local function rerollPrice(s: Stock): number
 	return math.round(Config.ShopRerollPrice * waveScale(Config.DealerPropWaveMult) * 2 ^ s.rerolls)
 end
 
-local function propPrice(id: string, s: Stock): number
+local function propPrice(id: string, s: Stock, state: PlayerState.State): number
+	local k = haggle(state)
 	if id == "crate" then
-		return math.round(Config.ShopCratePrice * waveScale(Config.DealerPropWaveMult))
+		return math.round(Config.ShopCratePrice * waveScale(Config.DealerPropWaveMult) * k)
 	elseif id == "heal" then
-		return math.round(Config.ShopHealPrice * waveScale(Config.DealerPropWaveMult))
+		return math.round(Config.ShopHealPrice * waveScale(Config.DealerPropWaveMult) * k)
 	end
-	return rerollPrice(s)
+	return math.round(rerollPrice(s) * k)
 end
 
 -- "DAMAGE +30% → +52%": the stat's running total now and after the card (malus lines the same way).
@@ -418,7 +424,7 @@ local function sendStock(player: Player)
 		table.insert(props, {
 			id = id,
 			position = propPosition(id),
-			price = propPrice(id, s),
+			price = propPrice(id, s, state),
 			title = PROP_COPY[id].name,
 			lines = PROP_COPY[id].lines,
 		})
@@ -434,7 +440,12 @@ local function restock(player: Player, rerolls: number?)
 	local state = PlayerState.get(player)
 	local old = stock[player]
 	stock[player] = {
-		cards = UpgradeShop.generate(state, World.wave, Config.DealerStock),
+		cards = UpgradeShop.generate(
+			state,
+			World.wave,
+			Config.DealerStock,
+			state.skillMods.dealerLuck * Config.LuckOddsStep
+		),
 		sold = {},
 		rerolls = rerolls or 0,
 		buys = if rerolls and old then old.buys else 0, -- a reroll keeps this break's count
@@ -483,7 +494,7 @@ local function buy(player: Player, slot: any)
 		if not near(player, propPosition(slot)) then
 			return result(player, false, slot, "far")
 		end
-		local price = propPrice(slot, s)
+		local price = propPrice(slot, s, state)
 		if not Economy.tryCharge(state, price) then
 			return result(player, false, slot, "cash")
 		end
