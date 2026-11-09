@@ -431,7 +431,9 @@ local function build()
 		BackgroundColor3 = Theme.Colors.black,
 		BackgroundTransparency = 1 - Config.ShopDimPct / 100,
 		Size = UDim2.fromScale(1, 1),
-		Active = true,
+		-- Round 28e: on touch the dim lets touches through, so the thumbstick moves you and a drag turns the camera
+		-- around the cards (Camera.client lookBlocked); the cards are still the only buttons.
+		Active = not ClientState.isMobile,
 		Parent = g,
 	})
 	vignettes = {}

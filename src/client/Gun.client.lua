@@ -275,7 +275,10 @@ local function fire(chargeT: number?)
 	if adsTracer or fpMuzzle then
 		local cam = Workspace.CurrentCamera :: Camera
 		local localStart: Vector3
-		if adsTracer then
+		-- Round 28f: aimed with a viewmodel muzzle, the line leaves the real barrel tip (pinned in camera space before
+		-- the kick, like hip fire). The off-axis Config point is only the fallback when there is no muzzle; it read
+		-- as a streak coming from beside the crosshair.
+		if adsTracer and not fpMuzzle then
 			local st = Config.FirstPersonAdsTracerStart
 			local zoomK = math.clamp(
 				math.tan(math.rad(cam.FieldOfView / 2)) / math.tan(math.rad(Config.CameraFov * Config.AdsFovMult / 2)),

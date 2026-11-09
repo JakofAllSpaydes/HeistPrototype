@@ -57,9 +57,10 @@ function Tracer.draw(
 	beam.Width1 = if thin then 0.03 else 0.05
 	if aimed then
 		-- Round 25: an aimed first-person tracer widens with distance, so it still reads through a magnified scope.
+		-- Round 28f: much gentler than before (x0.005 up to 0.6 drew a wide wedge across the sight picture).
 		local startPos = (a0 :: Attachment).WorldPosition
 		beam.Width0 = 0.03
-		beam.Width1 = math.clamp((to - startPos).Magnitude * 0.005, 0.05, 0.6)
+		beam.Width1 = math.clamp((to - startPos).Magnitude * 0.0015, 0.04, 0.15)
 	end
 	beam.FaceCamera = true
 	beam.LightEmission = 1

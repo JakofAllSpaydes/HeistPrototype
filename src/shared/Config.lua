@@ -270,6 +270,8 @@ local Config = {
 	RemoteShotRange = 110, -- studs the teammate's shot sound carries
 	ShotPitchByArchetype = { Sniper = 0.6, Shotgun = 0.7, SMG = 1.3, LMG = 0.85 }, -- anything else plays at 1
 	HitSparks = 6, -- impact particles per bullet hit on an enemy (0 = none)
+	HitFlashColor = "FFFFFF", -- Round 28f: an enemy's body flashes this colour on every hit (was the Theme red, "E8554D")...
+	HitFlashSec = 0.08, -- ...for this long (each hit restarts it)
 	KillSparks = 18, -- extra burst on a kill
 	-- Damage falloff by archetype: full damage out to `start` studs, scaling down to `min` at `finish`,
 	-- flat `min` beyond. The room is 200 studs across; the spawn ring is 90 out.
@@ -308,6 +310,8 @@ local Config = {
 	MouseSensitivity = 0.0022, -- radians per mouse pixel
 	TouchSensitivity = 0.009, -- radians per touch pixel (Round 24b: up from 0.006)
 	TouchCameraStartX = 0.4, -- Round 24: a touch that begins right of this share of the screen width turns the camera (left = thumbstick)
+	TouchHipSensitivityMult = 1.2, -- Round 28e: touch look out of ADS runs this much faster (ADS keeps AdsSensitivityMult)
+	MobileTopbarHidden = true, -- Round 28e: phones hide Roblox's top bar row (only the small Roblox menu button stays; chat goes with it)
 	-- Round 24 aim assist (touch / gamepad). The enemy nearest the crosshair inside the cone pulls the camera to its
 	-- torso; hold the crosshair above AimAssistHeadBias of the way from torso to head (on screen) and it pulls to the head.
 	AimAssistEnabled = true,
@@ -319,16 +323,22 @@ local Config = {
 	AimAssistConeDeg = 11, -- hip fire: enemies within this many degrees of the crosshair pull
 	AimAssistAdsConeDeg = 15, -- ADS: a wider cone
 	AimAssistRange = 180, -- studs
-	AimAssistPull = 6, -- how fast the camera closes on the target (per second; higher = stronger)
-	AimAssistAdsPull = 10,
+	AimAssistPull = 7, -- how fast the camera closes on the target (per second; higher = stronger) (Round 28e: was 6)
+	AimAssistAdsPull = 12, -- (Round 28e: was 10)
 	AimAssistGamepadHipConeDeg = 14, -- brief 11: hip fire on a pad (no ADS): the cone...
 	AimAssistGamepadHipPull = 8, -- ...and the pull (x AimAssistScale.gamepad), near the ADS values
 	AimAssistFiringMult = 1.4, -- pull multiplier while shooting
 	AimAssistHeadBias = 0.55, -- 0 = torso centre, 1 = head centre: crosshair above this switches the pull to the head
-	AimAssistFrictionDeg = 5, -- inside this cone look input slows down...
-	AimAssistFriction = 0.6, -- ...to this share of normal sensitivity on the target's centre (Round 24g: was 0.5)
+	AimAssistFrictionDeg = 6, -- inside this cone look input slows down... (Round 28e: was 5)
+	AimAssistFriction = 0.5, -- ...to this share of normal sensitivity on the target's centre (Round 28e: was 0.6)
+	AimAssistAdsFrictionDeg = 7, -- Round 28e: ADS has its own, stickier slowdown: the cone...
+	AimAssistAdsFriction = 0.35, -- ...and the share of sensitivity left on the target's centre
+	AimAssistTrack = 0.7, -- Round 28e: share of the target's drift across the screen (your strafe, its run) the view follows (hip)...
+	AimAssistAdsTrack = 0.9, -- ...and in ADS (1 = glued, 0 = off); keeps your offset, never drags the view onto a target
 	AimAssistPullAwayMult = 0.15, -- Round 24g: look input moving off the target keeps only this share of the pull (and no friction)...
-	AimAssistReleaseSec = 0.25, -- ...for this long after the last pull-away input
+	AimAssistReleaseSec = 0.25, -- ...for this long after the last pull-away input...
+	AimAssistReleaseDeg = 1.5, -- Round 28e: ...once the away input adds up past this many degrees (a twitch never does)...
+	AimAssistReleaseDrain = 4, -- ...the build-up drains at this rate per second when you stop pulling away
 	------------------------------------------------------------------ Input (brief 11: gamepad)
 	-- The pad's bindings: button (Enum.KeyCode name) -> action, per context. GamepadMap.lua resolves them; Input.lua
 	-- routes each action into the same path the keyboard / touch buttons use. `reload` on ButtonX is the tap; while a
@@ -445,6 +455,7 @@ local Config = {
 	HapticSprint = { motor = "Small", strength = 0.3, sec = 0.04 },
 	-- Round 24 mobile: every HUD button (combat + hub) is scaled by this on phones / tablets.
 	MobileButtonScale = 1.3,
+	MobileFireScale = 0.9, -- Round 28e: FIRE draws this share of its old size (same centre)
 	MobileStoreTextScale = 1.2, -- Round 24d: premium shop labels on mobile read this much bigger
 	MobileFireRight = 200, -- FIRE's right edge this far (UI px) from the screen's right edge (clear of jump)
 	MobileFireUp = 110, -- FIRE's bottom edge this far above the screen's bottom (Round 24b: was 36)
@@ -775,6 +786,7 @@ local Config = {
 	OverclockSec = 8, -- every friendly placeable fires / heals OverclockRateMult x for this long...
 	OverclockRateMult = 1.5,
 	OverclockShieldHp = 150, -- ...and every barricade gets a shield that absorbs damage first, gone with the buff
+	OverclockSelfGunShare = 1, -- Round 28e: the caster's own gun gets this share of the RATE bonus on fire rate and reload (0 = off)
 	-- SHARPSHOOTER (brief 5): Eagle Vision (id eagleeye, EagleEye* keys) / Dead Eye / Flashbang
 	EagleEyeRadius = 60, -- every enemy this close is marked through walls...
 	EagleEyeSec = 6, -- ...for this long...

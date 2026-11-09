@@ -36,6 +36,7 @@ local ClientState = {
 	fpWallK = 0, -- Round 25: 0..1 a wall right ahead of the first-person eye (the viewmodel lowers)
 	fpAdsT = 0, -- Round 24r: 0..1 how far the first-person viewmodel is into ADS (the scope overlay fades with it)
 	firstPerson = false, -- Round 24c: the gameplay camera is in first person (FirstPersonView draws the viewmodel)
+	cameraView = 1, -- Round 28e: 1 normal, 2 far over the shoulder, 3 first person (the POV button's pips)
 	cameraMode = "gameplay", -- gameplay | spectate | cinematic: who drives the camera
 	reviveProgress = 0, -- 0..1 while this player holds a revive on a teammate (ring on the crosshair)
 	reviveNearby = false, -- a downed teammate is within ReviveRadius: F means revive, gun prompts step aside

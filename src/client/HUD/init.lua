@@ -51,6 +51,7 @@ local MANAGED = {
 	"FireButton",
 	"ADSButton",
 	"ReloadButton",
+	"PovButton",
 	"HubHUD",
 	"BoostChips",
 }
@@ -86,6 +87,7 @@ local MODES: { [string]: { hide: { [string]: boolean }?, only: { [string]: boole
 			FireButton = true,
 			ADSButton = true,
 			ReloadButton = true,
+			PovButton = true,
 			BottomCenter = true,
 			Currency = true,
 			Combo = true,
@@ -201,6 +203,9 @@ function HUD.build()
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = playerGui,
 	}) :: ScreenGui
+	-- Round 28e: a touch that starts on a HUD button (ADS, SWAP, an ability, a gun slot) still turns the camera when
+	-- it drags (Camera.client reads this attribute); menus keep their buttons to themselves.
+	gui:SetAttribute("TouchLookThrough", true)
 	HUD.gui = gui
 
 	HUD.components = {

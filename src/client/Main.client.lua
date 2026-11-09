@@ -5,6 +5,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"))
 -- Brief 11: the input device and the gamepad's routing come up first, so every screen built below sees the device.
 require(script.Parent:WaitForChild("Input"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
@@ -42,6 +43,19 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+
+-- Round 28e: on phones Roblox's top bar row (bright in the light app theme) collapses to just its menu button.
+-- Its look follows the player's own Roblox theme setting and can't be restyled; hiding the row is the lever.
+if ClientState.isMobile and Config.MobileTopbarHidden then
+	task.spawn(function()
+		for _ = 1, 10 do
+			if pcall(StarterGui.SetCore, StarterGui, "TopbarEnabled", false) then
+				return
+			end
+			task.wait(0.5)
+		end
+	end)
+end
 
 -- Round 21: in the hub, Tab is Roblox's own player list (LEVEL / BEST WAVE leaderstats, the player menu); in a
 -- run it goes back off so Tab opens our scoreboard.

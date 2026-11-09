@@ -911,7 +911,8 @@ local function build()
 	UI.corner(plus, S(6))
 	plus.Activated:Connect(function()
 		UI.punch(plus, 0.9, 0.15)
-		toast("GOLD · PHASE 4", "click")
+		-- Round 28e: + goes to the store's GOLD packs, like the hub and Skill Web pills (the store closes this screen).
+		ClientState.Juice:Fire("OpenStore", { tab = "GOLD" })
 	end)
 	paintDock()
 end

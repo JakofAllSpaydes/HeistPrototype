@@ -60,7 +60,13 @@ local ARCH = {
 -- kind: pct (a fraction, shown as a percent), flat (a number), luck (a count of LuckOddsStep shifts).
 type StatDef = { field: string, name: string, icon: string, kind: string, fmt: string, filter: string? }
 local STATS: { [string]: StatDef } = {
-	damage = { field = "damagePct", name = "DAMAGE", icon = "Damage", kind = "pct", fmt = "+%s damage with every gun" },
+	damage = {
+		field = "damagePct",
+		name = "DAMAGE",
+		icon = "Damage",
+		kind = "pct",
+		fmt = "+%s damage with every weapon",
+	},
 	crit = {
 		field = "critPct",
 		name = "CRIT CHANCE",
@@ -80,14 +86,14 @@ local STATS: { [string]: StatDef } = {
 		name = "ELITE DAMAGE",
 		icon = "crown",
 		kind = "pct",
-		fmt = "+%s damage to elite enemies (guns and abilities)",
+		fmt = "+%s damage to elite enemies (weapons and abilities)",
 	},
 	boss = {
 		field = "bossDamagePct",
 		name = "BOSS DAMAGE",
 		icon = "boss",
 		kind = "pct",
-		fmt = "+%s damage to TITAN, the boss (guns and abilities)",
+		fmt = "+%s damage to TITAN, the boss (weapons and abilities)",
 	},
 	ability = {
 		field = "abilityDamagePct",
@@ -228,7 +234,7 @@ local STATS: { [string]: StatDef } = {
 		name = "CRATE LUCK",
 		icon = "crate",
 		kind = "luck",
-		fmt = "+%s odds of rarer guns from in-run gun crates (not SHOP crates)",
+		fmt = "+%s odds of rarer weapons from in-run weapon crates (not SHOP crates)",
 	},
 }
 -- ARSENAL: damage per weapon type, then mags / rounds.
@@ -241,7 +247,7 @@ for key, def in
 		snipers = { "sniper", "SNIPERS", "snipers" },
 		lmgs = { "lmg", "LMGS", "LMGs" },
 		explosives = { "explosive", "EXPLOSIVES", "explosives" },
-		elemental = { "elemental", "ELEMENTAL", "elemental guns" },
+		elemental = { "elemental", "ELEMENTAL", "elemental weapons" },
 	} :: { [string]: { string } }
 do
 	STATS[key] = {

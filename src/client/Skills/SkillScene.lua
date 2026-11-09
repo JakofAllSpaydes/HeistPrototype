@@ -10,7 +10,8 @@
 --   the sheet     tap a hex -> docks to the right edge: branch tag, pictogram, name, effect line, RING N, the price,
 --                 BUY (never a single tap on a hex). It stays up after a buy so the player reads what they got.
 -- Hex states: owned (the branch tint, edges lit to owned neighbours), affordable (panel colour, gold price, a slow
--- white edge pulse), revealed but short (red price, no pulse), outlined (two steps out: dim with ?), faint (stroke).
+-- white edge pulse, a red ! badge), revealed but short (red price, grey name, no pulse), outlined (two steps out:
+-- dim with ?), faint (stroke).
 -- Built from plain frames with one selectable button per hex and a selectable BUY, so GamepadNav can walk it later.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -64,6 +65,7 @@ type HexView = {
 	name: TextLabel,
 	price: TextLabel,
 	unknown: TextLabel,
+	badge: Frame, -- Round 28e: the red ! breadcrumb on a hex you can buy right now
 	x: number,
 	y: number,
 	state: string,
@@ -261,6 +263,31 @@ local function buildHex(parent: Frame, id: string, q: number, r: number): HexVie
 		Parent = holder,
 	})
 	unknown:SetAttribute("FixedTextSize", true)
+	-- Round 28e: affordable hexes wear the hub SKILLS tile's breadcrumb (a red dot with a white ring) with a ! in it,
+	-- on the hex's top-right corner, so what you can buy reads at a glance without comparing prices.
+	local badgePx = math.max(12, math.floor(rr * 0.5))
+	local badge = UI.frame({
+		Name = "Badge",
+		BackgroundColor3 = Theme.Colors.red,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.8, 0.12),
+		Size = UDim2.fromOffset(badgePx, badgePx),
+		Visible = false,
+		ZIndex = 9,
+		Parent = holder,
+	})
+	UI.corner(badge, badgePx / 2)
+	UI.stroke(badge, Theme.Colors.white, math.max(1, math.floor(badgePx * 0.09)), 0)
+	local bang = UI.text({
+		Text = "!",
+		FontFace = Theme.Fonts.display,
+		TextSize = math.floor(badgePx * 0.8),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 10,
+		Parent = badge,
+	})
+	bang:SetAttribute("FixedTextSize", true)
 	local v: HexView = {
 		id = id,
 		holder = holder,
@@ -273,6 +300,7 @@ local function buildHex(parent: Frame, id: string, q: number, r: number): HexVie
 		name = name,
 		price = price,
 		unknown = unknown,
+		badge = badge,
 		x = x,
 		y = y,
 		state = "",
@@ -349,6 +377,7 @@ local function paintHex(v: HexView, st: string, animate: boolean)
 	v.unknown.Visible = st == "outlined"
 	v.name.Visible = st == "owned" or st == "affordable" or st == "short"
 	v.price.Visible = st == "affordable" or st == "short"
+	v.badge.Visible = st == "affordable"
 	v.button.Visible = st ~= "faint"
 	-- Round 26b: hexes past the ? ring are hidden, so the web grows as you buy.
 	v.holder.Visible = st ~= "faint"
@@ -367,7 +396,8 @@ local function paintHex(v: HexView, st: string, animate: boolean)
 		v.edge = tint:Lerp(BG, 0.35)
 		paintParts(v.outer, if selectedHere then Theme.Colors.gold else v.edge)
 		paintParts(v.inner, dark)
-		v.name.TextColor3 = Theme.Colors.white
+		-- Round 28e: one you can't afford yet reads dimmer (grey name) beside the bright, badged affordable ones.
+		v.name.TextColor3 = if st == "short" then Theme.Colors.textDim else Theme.Colors.white
 		local cost = Skills.cost(v.id)
 		v.price.Text = string.format(
 			'<font color="#E8B64C">◆</font> <font color="%s">%s</font>',

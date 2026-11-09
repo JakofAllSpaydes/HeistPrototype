@@ -305,10 +305,12 @@ end
 local function endOverclock()
 	overclock.untilT = 0
 	overclock.mult = 1
-	if World.crewOverclockUntil > 0 then
-		World.crewOverclockUntil = 0
-		PlayerState.markAllDirty()
+	World.crewOverclockUntil = 0
+	-- Round 28e: the caster's own gun boost ends too, so every state recomputes.
+	for _, state in mine() do
+		state.overclockGunMult = 1
 	end
+	PlayerState.markAllDirty()
 	for _, s in structures do
 		setGlow(s, false)
 		if s.shield > 0 then
@@ -1359,6 +1361,7 @@ local function startOverclock(player: Player, state: PlayerState.State, _char: M
 		n += 1
 	end
 	state.abilityActive.overclock = overclock.untilT
+	state.overclockGunMult = math.max(if wasOn then state.overclockGunMult else 1, mult) -- Round 28e: own gun
 	state.dirty = true
 	-- CREW OVERCLOCK (ENGINEER III): every crew member's gun runs faster for the same window.
 	local crew = PlayerState.passive(state, "ENGINEER", 3)

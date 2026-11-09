@@ -1212,6 +1212,8 @@ renderTrack = function(p: any)
 	gotoBtn.AnchorPoint = Vector2.new(0.5, 1)
 	gotoBtn.Position = UDim2.new(0.5, 0, 1, 0)
 	gotoBtn.TextSize = S(14)
+	-- Round 28e: only when the current level is off the shown page (it has nowhere to take you otherwise).
+	gotoBtn.Visible = pass.level < page or pass.level > page + per - 1
 	gotoBtn.Activated:Connect(function()
 		page = math.clamp(pass.level - math.floor(per / 2) + 1, 1, lastPage(p))
 		selLevel, selLane = pass.level, "free"

@@ -118,7 +118,7 @@ Classes.List = {
 				hotkey = "Z",
 				system = "self",
 				price = 200,
-				description = "Every placeable on the floor works faster; barricades get a shield.",
+				description = "Your gun and every placeable on the floor work faster; barricades get a shield.",
 				vars = {
 					var("RatePct", "RATE", (Config.OverclockRateMult - 1) * 100, "%"),
 					var("ShieldHp", "SHIELD", Config.OverclockShieldHp),

@@ -172,6 +172,9 @@ dummies, the seven minigame props and the tier pad. Party and downed / revive li
 | Backtick | Debug panel (brief 8 adds HUB: To hub / To range, Reset dummies, Open garage (the departure beat with nobody in the van), Force pad 1–4, Spawn at range (the archetype row, ELITE, Range boss); brief 7 adds MAP: Show nodes with per-type toggles, Recompute nodes, Teleport to zone, Open D1–D4, Close all doors, Open / Gas / Seal vault, Spawn at a chosen box (with the archetype row and ELITE), Pin the crew zone / AUTO, Path debug; Stats adds the MAP block; Round 18 adds NO COOLDOWNS and SYNERGY, which forces a qualifying synergy card into the next pick-3; brief 6 adds MONETIZATION: set R$, set tokens, +10 free Arms / Mask opens, +1 fake day, +1,000 pass XP, reset jobs, the purchase log readout; Force rarity also lands on the next crate open): add cash, skip/set wave, pause spawns, kill all, force rarity/tradeoff, drop crate, trigger call, god mode, reset run, force queue start, skip to run end, down me / down all / revive all, open any minigame, set tier, Stats (minigame averages and the run's heat clear / par ratios), +1,000 Gold, unlock all, reset profile, +500 XP / set level / reset daily, spawn any archetype (ELITE toggle), spawn boss, cash / gold bag, open vault, set heat, gas vault, Loot Rush, force element card, +100 mastery (held gun and class), open dealer, pause / resume. Mobile: the `DBG` chip top-left. |
 
 Mobile: touch look, pinch to zoom, on-screen fire / ADS toggle / reload / ability buttons, tap the VOTES and AUTO SKIP pills, no hotkeys.
+Round 28e: POV (left of the weapon slots) cycles normal / far over the shoulder / first person like the pad's R3; a drag
+that starts on any HUD button (ADS, SWAP, abilities, gun slots) still turns the camera; on phones Roblox's top-bar row
+collapses to its menu button (`MobileTopbarHidden`, chat goes with it).
 Round 24b–ag: the game holds landscape (LandscapeSensor, also set on StarterGui in default.project.json); touch look is
 polled per finger and a pinch only counts with both fingers right of the stick, so move + look + fire work together.
 PC (Round 24aa prototype): hold **Shift** while moving to sprint (SprintSpeedMult, gun away: no fire, no ADS). Charge
@@ -1681,6 +1684,28 @@ to fire. Rojo serve: new client and shared modules only, a running serve picks t
     its ring and hold → the faint arc, then sprint with the » SPRINT mark over the stick; FIRE ends it and shoots at
     once; pump the thumb back inside the ring to sprint again. The pad player sees glyphs, the phone player none.
 
+### Round 28e–28f verify list
+
+Built and checked with `stylua`, `luau-lsp`, `rojo build` and `lune run tests/input.spec.luau`; in Studio Jack
+confirmed scoped tracers show again (28e) and the white hit flash (28f); the rest is not yet played.
+
+1. Phone (emulator, landscape), hub: no SWAP button on the hub HUD even with two guns; only the Roblox menu button top-left.
+2. A run on the phone: FIRE is a little smaller, SWAP is round, POV sits left of the weapon slots and its three pips
+   follow each tap (normal → far → first person → normal). Press ADS and keep dragging: ADS toggles and the camera
+   turns; the same from SWAP, an ability tile or the gap above FIRE. Hip look is a touch faster, ADS look unchanged.
+3. Aim assist (phone): strafe past an enemy with the look thumb still: the crosshair stays on it. Hold ADS with a
+   resting thumb: small twitches keep the target; a deliberate swipe away lets go.
+4. Open the pick-3 on the phone: the stick still walks and a drag outside the cards still turns the camera; a card taps.
+5. ENGINEER: Overclock → your own gun fires and reloads faster for the window (Stats / the RPM readout), back after.
+6. Shop crates ×1 and ×10: SKIP shows as the crate lands; SKIP on ×1 → the summary with one card; a ×1 that plays out
+   shows CONFIRM with no SKIP.
+7. Battle pass: GO TO CURRENT LEVEL only shows on a page that does not hold your level.
+8. Skill Web: affordable hexes carry a red ! badge; ones you can't afford have grey names. Effect lines say "weapons".
+9. Weapons / Classes / Avatar: Gold + opens the store on GOLD. Store: a tap on empty space inside the window keeps it
+   open; a tap on the dim outside closes it.
+10. First person, ADS through an ACOG / medium scope / sniper scope: a thin tracer leaves the barrel under the sight.
+11. A fast gun on an enemy: a white body flash per hit plus the occasional white flinch pop, never red.
+
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
@@ -2441,6 +2466,29 @@ PlayRibbon, MatchCardLine, Round 27c's DailyGuide and SummaryCrateCard) and Came
   (NavDefault) now wins when the old selection disappears. V and D-pad → toggle AUTO SKIP in every phase of a run
   (they only voted in an intermission before; AUTO SKIP is also the intermission vote); at the dealer they still skip
   the break.
+- **Round 28e (9 Nov) — mobile, aim assist and meta feedback.** Mobile HUD: SWAP is round and only shows with the gun
+  controls (never on the hub HUD); FIRE draws at `MobileFireScale` (0.9) around the same centre; a POV button left of
+  the weapon slots fires the pad's CameraCycle (three pips show `ClientState.cameraView`). The HUD ScreenGui carries
+  `TouchLookThrough`, so a touch that starts on one of its buttons still becomes a camera touch (Camera.client
+  `looksThrough`); ADS toggles on press. Touch hip look x `TouchHipSensitivityMult` (1.2). The pick-3 overlay on touch
+  only blocks look through `lookBlocked()` and its dim is not Active, so the stick and look work around the cards.
+  Phones hide Roblox's top-bar row (`MobileTopbarHidden`; its light look follows the player's Roblox theme and can't
+  be restyled). Aim assist: tracking follows the target's drift across the screen (`AimAssistTrack` 0.7 /
+  `AimAssistAdsTrack` 0.9, keeps the offset, never drags onto a target), stronger pull (7 / 12) and friction (0.5 hip,
+  `AimAssistAdsFriction` 0.35 inside `AimAssistAdsFrictionDeg` 7), and a pull-away must add up past
+  `AimAssistReleaseDeg` (1.5°, draining at `AimAssistReleaseDrain`) before it lets go. ENGINEER's Overclock also
+  speeds the caster's own gun (`OverclockSelfGunShare` of the RATE bonus on fire rate and reload; with CREW OVERCLOCK
+  the larger applies). Crates: SKIP from the first drop, ×1 included (a skipped ×1 lands on the summary). Battle pass:
+  GO TO CURRENT LEVEL hides while the current level is on the page. Skill Web: a red ! breadcrumb on affordable hexes,
+  grey names on short ones; generic damage / elite / boss / crate luck / elemental lines say "weapons". Meta Gold +
+  opens the store on GOLD. The store closes only on a tap outside its window (the tap position decides; on touch the
+  window let taps on its empty space through to the dim). Scoped tracers: Roblox draws no beams behind a Glass part,
+  so the first-person viewmodel's lenses are SmoothPlastic.
+- **Round 28f (9 Nov) — tracer origin, hit flash.** An aimed first-person tracer starts on the viewmodel's muzzle
+  (pinned in camera space like hip fire; `FirstPersonAdsTracerStart` is only the fallback) and widens far less
+  (0.04–0.15 studs; it drew a wedge beside the crosshair). The per-hit body flash is `HitFlashColor` (white, was red)
+  for `HitFlashSec` (0.08); the throttled white flinch pop is unchanged. (A single held white Highlight was tried and
+  dropped: flat and washed out under fast fire.)
 
 ## Open design notes (not built)
 

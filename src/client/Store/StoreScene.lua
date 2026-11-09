@@ -205,7 +205,28 @@ local function build(focus: string, arg: any?)
 		Parent = g,
 	})
 	UI.tween(dim, { BackgroundTransparency = 0.3 }, 0.25)
-	dim.Activated:Connect(function()
+	local win: Frame? = nil
+	-- Round 28e: a tap closes the store only when it lands outside the whole window. On touch the window frame did
+	-- not keep a tap on its empty space from reaching the dim, so the tap's own position decides (checked with and
+	-- without the top-bar inset, since touch positions may or may not include it).
+	local function insideWindow(input: InputObject?): boolean
+		local wf = win
+		if not wf or not input then
+			return false
+		end
+		local p = Vector2.new(input.Position.X, input.Position.Y)
+		local a, s = wf.AbsolutePosition, wf.AbsoluteSize
+		for _, q in { p, p + game:GetService("GuiService"):GetGuiInset() } do
+			if q.X >= a.X and q.X <= a.X + s.X and q.Y >= a.Y and q.Y <= a.Y + s.Y then
+				return true
+			end
+		end
+		return false
+	end
+	dim.Activated:Connect(function(input: InputObject?)
+		if insideWindow(input) then
+			return
+		end
 		if not PurchaseSheet.isOpen() and not (overlay and #overlay:GetChildren() > 0) then
 			StoreScene.close()
 		end
@@ -228,6 +249,7 @@ local function build(focus: string, arg: any?)
 		ZIndex = 3,
 		Parent = g,
 	})
+	win = w
 	UI.corner(w, S(16))
 	UI.stroke(w, Color3.fromHex("F2C14E"), S(1.5), 0.55)
 	UI.new("UIGradient", {

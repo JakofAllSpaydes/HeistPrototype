@@ -60,7 +60,10 @@ end
 
 -- The color is captured fresh on every flash that is not already mid-flash, so an element tint (StatusFx) that
 -- changed the body since the last hit is what comes back.
+-- Round 28f: the body flashes Config.HitFlashColor (white; it was red, which under rapid fire read as "white pop,
+-- then red" beside the flinch's white Highlight).
 local function flashEnemy(model: Model)
+	local flashColor = Color3.fromHex(Config.HitFlashColor)
 	for _, p in model:GetChildren() do
 		if p:IsA("BasePart") and p.Name ~= "Head" then
 			if p:GetAttribute("Flashing") ~= true then
@@ -68,8 +71,8 @@ local function flashEnemy(model: Model)
 			end
 			local original = p:GetAttribute("OrigColor") :: Color3?
 			p:SetAttribute("Flashing", true)
-			p.Color = Theme.Colors.red
-			task.delay(0.08, function()
+			p.Color = flashColor
+			task.delay(Config.HitFlashSec, function()
 				if p.Parent and original then
 					p.Color = original
 					p:SetAttribute("Flashing", nil)

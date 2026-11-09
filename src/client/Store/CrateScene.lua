@@ -7,7 +7,7 @@
 --           (CrateLegendarySlowSec) and a sting; the name card slams in with the rarity label and either a NEW
 --           ribbon or `DUPLICATE · +◆ 160 · +80 mastery`
 --   ×1      CONFIRM → back to the store on CRATES
---   ×N      NEXT (or CrateAutoNextSec) → the crate resets and opens again; SKIP (from the first reveal) jumps to
+--   ×N      NEXT (or CrateAutoNextSec) → the crate resets and opens again; SKIP (from the first drop, ×1 too) jumps to
 --           the summary: a grid of every result, the Gold and mastery totals, OPEN AGAIN and DONE
 -- Mobile: full screen, SKIP and NEXT are 56px, haptics on the lid and on Legendary.
 local Players = game:GetService("Players")
@@ -372,6 +372,9 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	UI.sound(Fx.Sounds.whoosh, 0.8, 0.4)
 
 	local function openOne(i: number, r: Result): boolean
+		-- Round 28e: SKIP is up from the moment the opening starts, even for a single crate (a skipped ×1 still
+		-- lands on the summary, with its one card, since the reveal never finished).
+		skip.Visible = true
 		counter.Text = string.format("%d / %d", i, #results)
 		UI.punch(counter, 1.2, 0.25)
 		local color = Rarity.color(r.rarity)
@@ -517,7 +520,6 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 				Fx.rays(holder, color, 6 + tier * 2, S(140 + tier * 90), 2, 8 + tier * 3)
 			end
 		end)
-		skip.Visible = #results > 1
 		-- The name card slams in.
 		local wait1 = if tier >= 5 then Config.CrateLegendarySlowSec + 0.3 else 0.45
 		if not pause(wait1) then
@@ -794,7 +796,8 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 				break
 			end
 			if #results == 1 then
-				-- ×1: CONFIRM.
+				-- ×1: CONFIRM (the reveal finished, so SKIP has nothing left to cut).
+				skip.Visible = false
 				local confirm, _c = Fx.button(
 					gui,
 					"CONFIRM",

@@ -57,6 +57,7 @@ export type State = {
 	buffId: string?, -- the running self buff (stim | stimshot | deadeye), nil = none
 	buffUntil: number, -- server time the self buff ends, 0 = inactive
 	abilityActive: { [string]: number }, -- non-buff abilities with a running window (overclock, eagleeye): server time it ends
+	overclockGunMult: number, -- Round 28e: the caster's own gun rate / reload multiplier while their Overclock runs
 	-- Mastery (brief 5): the class and its tier at run start (the passives), and the per-run passive counters.
 	masteryClass: string?,
 	masteryTier: number,
@@ -133,6 +134,7 @@ local function freshState(player: Player, joinIndex: number): State
 		buffId = nil,
 		buffUntil = 0,
 		abilityActive = {},
+		overclockGunMult = 1,
 		masteryClass = nil,
 		masteryTier = 0,
 		stimExtended = 0,
@@ -356,11 +358,23 @@ function PlayerState.computed(state: State): Types.Computed
 		buffs = PlayerState.buffFor(state, id)
 	end
 	-- CREW OVERCLOCK (ENGINEER III): every crew member's gun runs faster while the Overclock lasts.
+	-- Round 28e: the ENGINEER's own Overclock speeds up their own gun too (Config.OverclockSelfGunShare of the
+	-- placeable rate bonus, on fire rate and reload); with CREW OVERCLOCK the better of the two applies, not both.
 	local W = Runs.worldOf(state.player)
-	if W.crewOverclockUntil > Workspace:GetServerTimeNow() and W.isInParty(state.player) then
+	local nowT = Workspace:GetServerTimeNow()
+	local rateAdd, reloadAdd = 0, 0
+	if W.crewOverclockUntil > nowT and W.isInParty(state.player) then
+		rateAdd, reloadAdd = Config.CrewOverclockFireRatePct, Config.CrewOverclockReloadPct
+	end
+	local ocUntil = state.abilityActive.overclock
+	if ocUntil and ocUntil > nowT and state.overclockGunMult > 1 then
+		local own = (state.overclockGunMult - 1) * Config.OverclockSelfGunShare
+		rateAdd, reloadAdd = math.max(rateAdd, own), math.max(reloadAdd, own)
+	end
+	if rateAdd > 0 or reloadAdd > 0 then
 		local b = buffs or { fireRateMult = 1, moveSpeedMult = 1, reloadSpeedMult = 1, damageMult = 1, pierceAdd = 0 }
-		b.fireRateMult *= 1 + Config.CrewOverclockFireRatePct
-		b.reloadSpeedMult *= 1 + Config.CrewOverclockReloadPct
+		b.fireRateMult *= 1 + rateAdd
+		b.reloadSpeedMult *= 1 + reloadAdd
 		buffs = b
 	end
 	local st = Stats.compute(state.upgrades, state.held, buffs, state.skillMods)

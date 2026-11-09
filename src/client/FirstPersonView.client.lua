@@ -177,6 +177,12 @@ local function build(char: Model, held: BasePart)
 		p.CanTouch = false
 		p.CastShadow = false
 		p.LocalTransparencyModifier = 0
+		-- Round 28e: Roblox draws no beams / particles behind a Glass part, and an aimed optic's lens (faded but
+		-- still Glass) sits between the eye and the whole tracer, so scoped shots showed no line at all. The
+		-- viewmodel's lenses are plain plastic instead (same colour and transparency; the third-person gun keeps Glass).
+		if p.Material == Enum.Material.Glass then
+			p.Material = Enum.Material.SmoothPlastic
+		end
 		table.insert(parts, p)
 		if OPTICS[p.Name] then
 			table.insert(optics, p)

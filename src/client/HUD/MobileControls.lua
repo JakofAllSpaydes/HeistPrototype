@@ -1,6 +1,6 @@
 --!strict
 -- Mobile landscape: fire + ADS toggle bottom-right, reload tap button beside the weapon slot,
--- swap button above fire (visible only with a second weapon). The joystick is Roblox's default dynamic thumbstick.
+-- swap button above fire (visible only with a second weapon), POV left of the weapon slots (Round 28e). The joystick is Roblox's default dynamic thumbstick.
 -- Round 24: every button is Config.MobileButtonScale bigger, FIRE and ADS sit left of Roblox's jump button (which
 -- keeps the corner), and FIRE is also a look stick: hold it to shoot and slide the thumb to aim.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -29,10 +29,12 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 
 	-- Round 24b: FIRE's centre, from the bottom-right corner (Config.MobileFireRight / MobileFireUp clear its edge);
 	-- ADS sits up-left of it on the diagonal, SWAP up-right.
-	local fireSize = S(96)
-	local fcx = UI.S(Config.MobileFireRight) + fireSize / 2
-	local fcy = UI.S(Config.MobileFireUp) + fireSize / 2
-	local ring = fireSize / 2 + S(56) / 2 + UI.S(10)
+	-- Round 28e: FIRE draws at Config.MobileFireScale around the same centre (the ring of buttons stays put).
+	local baseFire = S(96)
+	local fireSize = math.floor(baseFire * Config.MobileFireScale)
+	local fcx = UI.S(Config.MobileFireRight) + baseFire / 2
+	local fcy = UI.S(Config.MobileFireUp) + baseFire / 2
+	local ring = baseFire / 2 + S(56) / 2 + UI.S(10)
 	local diag = ring * 0.7071
 
 	local fire = UI.button({
@@ -44,10 +46,10 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Size = UDim2.fromOffset(fireSize, fireSize),
 		Text = "FIRE",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(22),
+		TextSize = math.floor(S(22) * Config.MobileFireScale),
 		Parent = gui,
 	})
-	UI.corner(fire, S(48))
+	UI.corner(fire, fireSize / 2)
 	UI.stroke(fire, Theme.Colors.gold, S(3))
 	-- The touch that pressed FIRE is followed globally: it keeps firing (and turning the camera) when the thumb
 	-- slides off the button, and lets go only when that finger lifts.
@@ -100,7 +102,15 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		ads.BackgroundTransparency = if on then 0 else 0.25
 	end
 	paintAds(ClientState.ads)
-	ads.Activated:Connect(function()
+	-- Round 28e: ADS toggles on the press, so the same finger can carry on into a camera drag (the HUD's buttons
+	-- look through, Camera.client) without the release having to land back on the button.
+	ads.InputBegan:Connect(function(input)
+		if
+			input.UserInputType ~= Enum.UserInputType.Touch
+			and input.UserInputType ~= Enum.UserInputType.MouseButton1
+		then
+			return
+		end
 		ClientState.setAds(not ClientState.ads)
 		UI.punch(ads, 0.9, 0.15)
 	end)
@@ -142,16 +152,57 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		Visible = false,
 		Parent = gui,
 	})
-	UI.corner(swap, S(12))
+	UI.corner(swap, S(28)) -- Round 28e: a circle like ADS
 	UI.stroke(swap, Theme.Colors.text, S(2))
 	swap.Activated:Connect(function()
 		ClientState.Juice:Fire("SprintCancel", { reason = "swap" })
 		Remotes.SwitchWeapon:FireServer()
 		UI.punch(swap, 0.9, 0.15)
 	end)
+	-- Round 28e: only with a second weapon AND while the gun controls are up (FIRE is a HUD-managed piece, hidden in
+	-- the hub and while spectating), so SWAP no longer floats over the hub HUD.
+	local hasOffhand = false
 	_track(ClientState.Changed:Connect(function(sync: any)
-		swap.Visible = sync and sync.offhand ~= nil
+		hasOffhand = sync ~= nil and sync.offhand ~= nil
 	end))
+
+	-- Round 28e: POV, left of the weapon panel (mirrors RELOAD): cycles the same three views as the pad's camera
+	-- button (normal -> far over the shoulder -> first person); three pips under the label show which one is on.
+	local pov = UI.button({
+		Name = "PovButton",
+		BackgroundColor3 = Theme.Colors.panel,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(0.5, -UI.S(186 * G), 1, -UI.S(18)),
+		Size = UDim2.fromOffset(S(56), S(56)),
+		Text = "",
+		Parent = gui,
+	})
+	UI.corner(pov, S(12))
+	UI.stroke(pov, Theme.Colors.text, S(2))
+	UI.text({
+		Text = "POV",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(20),
+		Position = UDim2.fromOffset(0, S(6)),
+		Size = UDim2.new(1, 0, 0, S(28)),
+		Parent = pov,
+	})
+	local pips: { Frame } = {}
+	for i = 1, 3 do
+		local pip = UI.frame({
+			BackgroundColor3 = Theme.Colors.grey,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, (i - 2) * S(12), 0, S(38)),
+			Size = UDim2.fromOffset(S(8), S(8)),
+			Parent = pov,
+		})
+		UI.corner(pip, S(4))
+		pips[i] = pip
+	end
+	pov.Activated:Connect(function()
+		ClientState.Juice:Fire("CameraCycle", {})
+		UI.punch(pov, 0.9, 0.15)
+	end)
 
 	-- Brief 11 step 3: the tap SPRINT button (settings: sprint = button), small, bottom-left under the thumbstick.
 	local sprintBtn = UI.button({
@@ -174,6 +225,10 @@ function MobileControls.build(gui: ScreenGui, _track: (RBXScriptConnection) -> (
 		UI.punch(sprintBtn, 0.9, 0.15)
 	end)
 	_track(game:GetService("RunService").RenderStepped:Connect(function()
+		swap.Visible = hasOffhand and fire.Visible
+		for i, pip in pips do
+			pip.BackgroundColor3 = if ClientState.cameraView == i then Theme.Colors.gold else Theme.Colors.grey
+		end
 		sprintBtn.Visible = ClientState.inputSettings().sprintTouch == "button" and not ClientState.combatOff()
 		sprintStroke.Color = if ClientState.sprinting then Theme.Colors.gold else Theme.Colors.text
 		sprintBtn.TextColor3 = if ClientState.sprinting then Theme.Colors.gold else Theme.Colors.text

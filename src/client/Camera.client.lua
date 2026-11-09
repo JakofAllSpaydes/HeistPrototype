@@ -68,13 +68,41 @@ local GuiService = game:GetService("GuiService")
 local ContextActionService = game:GetService("ContextActionService")
 local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
 
+-- Round 28e: buttons in a ScreenGui marked TouchLookThrough (the HUD: ADS, SWAP, abilities, gun slots) don't keep
+-- the touch to themselves: the press still works and a drag from there turns the camera. Text boxes always own it.
+local function looksThrough(g: GuiObject): boolean
+	if g:IsA("TextBox") then
+		return false
+	end
+	local sg = g:FindFirstAncestorWhichIsA("LayerCollector")
+	return sg ~= nil and sg:GetAttribute("TouchLookThrough") == true
+end
+
 local function onOurButton(p: Vector2): boolean
 	local inset = GuiService:GetGuiInset()
 	for _, at in { p, p + inset } do
 		for _, g in playerGui:GetGuiObjectsAtPosition(at.X, at.Y) do
-			if (g:IsA("GuiButton") or g:IsA("TextBox")) and not g:FindFirstAncestor("TouchGui") then
+			if
+				(g:IsA("GuiButton") or g:IsA("TextBox"))
+				and not g:FindFirstAncestor("TouchGui")
+				and not looksThrough(g)
+			then
 				return true
 			end
+		end
+	end
+	return false
+end
+
+-- Round 28e: on touch the pick-3 overlay leaves the world live around its cards: move and look still work (the
+-- cards and the gaps between them are the only things the overlay takes). Every other screen stops the look.
+local function lookBlocked(): boolean
+	if not ClientState.isMobile then
+		return ClientState.blocked()
+	end
+	for reason in ClientState.blocks do
+		if reason ~= "overlay" then
+			return true
 		end
 	end
 	return false
@@ -269,6 +297,11 @@ assistParams.FilterType = Enum.RaycastFilterType.Exclude
 local assistModel: Model? = nil
 local assistHead = false
 local firingUntil = 0
+-- Round 28e tracking: where the target sat (yaw / pitch from the camera) last frame, so the view can follow it as
+-- you strafe or it moves; and the pull-away input built up toward a deliberate break (AimAssistReleaseDeg).
+local lastWantYaw: number?, lastWantPitch: number? = nil, nil
+local lastTrackPart: BasePart? = nil
+local awayBuild = 0
 ClientState.Juice:Connect(function(name: string)
 	if name == "LocalFire" then
 		firingUntil = os.clock() + 0.25
@@ -306,6 +339,7 @@ local function aimAssist(dt: number, char: Model)
 	assistFriction = 1
 	local hadYaw, hadPitch = inputYaw, inputPitch
 	inputYaw, inputPitch = 0, 0 -- consumed below only when a target is in reach
+	lastTrackPart = nil -- set again below when a target is still in reach this frame
 	if not assistWanted() then
 		assistModel = nil
 		return
@@ -416,23 +450,42 @@ local function aimAssist(dt: number, char: Model)
 	local wantYaw = math.atan2(-d.X, -d.Z)
 	local wantPitch = math.asin(math.clamp(d.Y, -1, 1))
 	-- Pulling away: look input pointing off the target lets go (most of the pull, all of the friction) for a
-	-- moment, so breaking off is easy while tracking still sticks.
+	-- moment, so breaking off is easy while tracking still sticks. Round 28e: only a deliberate pull counts. The
+	-- away input has to build past AimAssistReleaseDeg (it drains at AimAssistReleaseDrain per second), so a thumb
+	-- resting on the screen and twitching a pixel no longer drops the target.
 	local toYaw, toPitch = wrapAngle(wantYaw - yaw), wantPitch - pitch
 	local inMag = math.sqrt(hadYaw * hadYaw + hadPitch * hadPitch)
+	awayBuild *= math.exp(-Config.AimAssistReleaseDrain * dt)
 	if inMag > 1e-4 and (hadYaw * toYaw + hadPitch * toPitch) < 0 then
-		awayUntil = os.clock() + Config.AimAssistReleaseSec
+		awayBuild += inMag
+		if awayBuild > math.rad(Config.AimAssistReleaseDeg) then
+			awayUntil = os.clock() + Config.AimAssistReleaseSec
+		end
 	end
 	local away = os.clock() < awayUntil
 	if away then
 		pull *= Config.AimAssistPullAwayMult
 	end
+
+	-- Round 28e tracking: the view turns with the target's own drift across the screen (your strafe, its run), so
+	-- walking with a still thumb keeps the crosshair where it was on the body. It keeps the offset (never drags
+	-- the view onto a target), so it is the same on every device; a deliberate pull-away turns it off.
+	if part == lastTrackPart and lastWantYaw and lastWantPitch and not away then
+		local track = (if ads then Config.AimAssistAdsTrack else Config.AimAssistTrack) * assistScale
+		local trackK = math.clamp(track * math.sqrt(falloff), 0, 1)
+		yaw += wrapAngle(wantYaw - lastWantYaw) * trackK
+		pitch = math.clamp(pitch + (wantPitch - lastWantPitch) * trackK, PITCH_MIN, PITCH_MAX)
+	end
+	lastTrackPart, lastWantYaw, lastWantPitch = part, wantYaw, wantPitch
+
 	local k = (1 - math.exp(-pull * dt)) * math.sqrt(falloff)
 	yaw += wrapAngle(wantYaw - yaw) * k
 	pitch = math.clamp(pitch + (wantPitch - pitch) * k, PITCH_MIN, PITCH_MAX)
 
-	local frictionCone = math.rad(Config.AimAssistFrictionDeg)
+	local frictionCone = math.rad(if ads then Config.AimAssistAdsFrictionDeg else Config.AimAssistFrictionDeg)
 	if angle < frictionCone and not away then
-		assistFriction = 1 - (1 - Config.AimAssistFriction) * (1 - angle / frictionCone) * assistScale
+		local floor = if ads then Config.AimAssistAdsFriction else Config.AimAssistFriction
+		assistFriction = 1 - (1 - floor) * (1 - angle / frictionCone) * assistScale
 	end
 end
 
@@ -447,8 +500,11 @@ local function pollTouches()
 			touchLast[input] = nil
 		end
 	end
-	local sens = (if ClientState.ads then Config.AdsSensitivityMult else 1) * assistFriction * opticSens
-	local canTurn = not pinching and not ClientState.blocked()
+	-- Round 28e: touch hip look runs Config.TouchHipSensitivityMult faster; ADS stays where it was.
+	local sens = (if ClientState.ads then Config.AdsSensitivityMult else Config.TouchHipSensitivityMult)
+		* assistFriction
+		* opticSens
+	local canTurn = not pinching and not lookBlocked()
 	for input in cameraTouches do
 		if input.UserInputState == Enum.UserInputState.End or input.UserInputState == Enum.UserInputState.Cancel then
 			cameraTouches[input] = nil
@@ -571,6 +627,7 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 	pollTouches()
 	pollPad(dt)
 
+	ClientState.cameraView = if targetZoom <= 0 then 3 elseif targetZoom >= Config.CameraZoomMax - 0.01 then 2 else 1
 	zoom += (targetZoom - zoom) * math.min(1, dt * Config.CameraZoomSmoothing)
 	if math.abs(targetZoom - zoom) < 0.02 then
 		zoom = targetZoom
