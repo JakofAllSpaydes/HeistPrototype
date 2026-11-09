@@ -68,7 +68,7 @@ JobPool.Daily = {
 		kind = "class",
 		arg = "TORCH",
 		target = 1,
-		title = "RUN A HEIST AS TORCH",
+		title = "RUN A HEIST AS PYRO", -- brief 12: the id stays d_torch / TORCH
 		flavor = "Bring the matches. Bring a lot of them.",
 		needsClass = "TORCH",
 	},

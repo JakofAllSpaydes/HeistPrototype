@@ -220,7 +220,7 @@ local function classPill(
 		lock.Position = UDim2.new(1, -S(2), 1, -S(3))
 	end
 	UI.text({
-		Text = string.upper(c.name),
+		Text = c.displayName,
 		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = if own then Theme.Colors.white else Theme.Colors.grey,
@@ -415,7 +415,7 @@ function ClassesTab.render(scene: any)
 	local n = #class.abilities
 	local available = grid.AbsoluteSize.Y - S(26) - S(8) * (n + 1)
 	local rowH = math.max(S(150), math.floor(available / math.max(n, 1)))
-	MetaUI.header(grid, 1, string.upper(class.name) .. " · ABILITIES")
+	MetaUI.header(grid, 1, class.displayName .. " · ABILITIES")
 	for i, a in class.abilities do
 		abilityRow(scene, grid, 1 + i, rowH, class, a, isOwned)
 	end
@@ -435,7 +435,7 @@ function ClassesTab.render(scene: any)
 		lock.Position = UDim2.new(1, -S(10), 0, S(10))
 	end
 	-- Round 25: the name alone (the three abilities are already the rows on the left).
-	MetaUI.heading(card, 2, class.name, "")
+	MetaUI.heading(card, 2, class.displayName, "")
 	local m = profile and profile.mastery and profile.mastery.classes and profile.mastery.classes[class.id]
 	masteryBlock(card, 5, class.id, if m then (tonumber(m.xp) or 0) else 0)
 	if equipped == class.id then

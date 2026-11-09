@@ -261,7 +261,7 @@ local function build(p: Player, head: BasePart): Plate
 			top,
 			if map ~= "" then string.format('<font color="#%s">  ·  %s</font>', Theme.Colors.grey:ToHex(), map) else ""
 		)
-		else string.format('<font color="#%s">%s</font>', class.color, string.upper(class.name))
+		else string.format('<font color="#%s">%s</font>', class.color, class.displayName)
 	text({
 		Text = info,
 		RichText = true,

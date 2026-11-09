@@ -3,6 +3,7 @@
 -- Brief 5: every stat has a category (gun | element | utility); the generator draws a category by
 -- Config.CategoryWeights, then a stat inside it.
 local Config = require(script.Parent.Config)
+local Classes = require(script.Parent.Classes)
 
 -- unit: "%" for percent stats, "" for flat counts (Pierce). additive = added in points, not multiplying a base.
 -- noMalus: never picked as the malus side of a tradeoff card (flat counts would go negative; elements; cash gain).
@@ -428,7 +429,7 @@ function Upgrades.synergyTag(statId: string): string?
 	if s and s.tag then
 		why = s.tag
 	elseif r.class then
-		why = r.class
+		why = Classes.displayName(r.class) -- brief 12: PYRO SYNERGY, not the TORCH id
 	elseif r.element then
 		-- "Fire Ammo" -> "FIRE"
 		why = string.upper((string.match(Upgrades.statName(r.element), "^(%S+)") or r.element))

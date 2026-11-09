@@ -100,7 +100,7 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		order = {}
 		cooldowns = {}
 		local class = Classes.ById[classId] or Classes.ById[Classes.Default]
-		header.Text = string.upper(class.name)
+		header.Text = class.displayName
 		header.TextColor3 = Color3.fromHex(class.color)
 		local list = {}
 		for i, a in class.abilities do

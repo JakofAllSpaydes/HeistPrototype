@@ -67,7 +67,7 @@ function Rewards.name(r: Reward): string
 		return if e then string.upper(e.name) else id
 	elseif k == "class" then
 		local c = Classes.ById[id]
-		return if c then string.upper(c.name) else id
+		return if c then c.displayName else id
 	elseif k == "boost" then
 		local b = BoostDefs.ById[id]
 		return string.format("%s %s BOOST", Rewards.duration(r.sec or 0), if b then b.name else id)

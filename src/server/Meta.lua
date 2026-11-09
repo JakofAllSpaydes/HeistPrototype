@@ -255,7 +255,8 @@ handlers.unlockClass = function(player, state, p, args)
 	state.dirty = true
 	Hub.refreshTag(player)
 	Log.event("Meta", "%s unlocked and equipped class %s", player.Name, c.id)
-	return done(string.upper(c.name) .. " unlocked and equipped!", "celebrate")
+	Log.event("Class", "%s %s unlocked and equipped by %s", string.lower(c.id), c.displayName, player.Name)
+	return done(c.displayName .. " unlocked and equipped!", "celebrate")
 end
 
 handlers.equipClass = function(player, state, p, args)
@@ -269,7 +270,8 @@ handlers.equipClass = function(player, state, p, args)
 	state.dirty = true
 	Hub.refreshTag(player)
 	Log.event("Meta", "%s equipped class %s", player.Name, c.id)
-	return done(string.upper(c.name) .. " equipped!", "click")
+	Log.event("Class", "%s %s equipped by %s", string.lower(c.id), c.displayName, player.Name)
+	return done(c.displayName .. " equipped!", "click")
 end
 
 handlers.upgradeAbility = function(player, state, p, args)

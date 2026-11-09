@@ -17,9 +17,12 @@ export type Ability = {
 }
 -- The class emblem in its colored circle (pills, wells, the scoreboard) is the Icons.lua pictogram keyed by the
 -- class id; glyph is the letter shown where no pictogram is drawn (the fallback, store art).
+-- Brief 12: `id` is the saved key (profiles, mastery, Armory, stats) and never changes; `displayName` is what a
+-- player reads (caps, the house style) and `name` its mixed-case twin. A rename costs no migration (TORCH -> PYRO).
 export type Class = {
 	id: string,
 	name: string,
+	displayName: string,
 	color: string,
 	glyph: string,
 	abilities: { Ability },
@@ -46,6 +49,7 @@ Classes.List = {
 	{
 		id = "INITIATE",
 		name = "Initiate",
+		displayName = "INITIATE",
 		color = "E8B64C",
 		glyph = "I",
 		free = true,
@@ -89,6 +93,7 @@ Classes.List = {
 	{
 		id = "ENGINEER",
 		name = "Engineer",
+		displayName = "ENGINEER",
 		color = "D9822B",
 		glyph = "E",
 		abilities = {
@@ -133,6 +138,7 @@ Classes.List = {
 	{
 		id = "DOC",
 		name = "Doc",
+		displayName = "DOC",
 		color = "8FE3A1",
 		glyph = "D",
 		abilities = {
@@ -175,6 +181,7 @@ Classes.List = {
 	{
 		id = "SHARPSHOOTER",
 		name = "Sharpshooter",
+		displayName = "SHARPSHOOTER",
 		color = "4D9FE8",
 		glyph = "S",
 		abilities = {
@@ -222,9 +229,10 @@ Classes.List = {
 	},
 	{
 		id = "TORCH",
-		name = "Torch",
+		name = "Pyro", -- brief 12: TORCH is PYRO to the player; the id stays "TORCH" (no profile migration)
+		displayName = "PYRO",
 		color = "E8554D",
-		glyph = "T",
+		glyph = "P",
 		abilities = {
 			ability({
 				id = "molotov",
@@ -342,6 +350,12 @@ end
 
 function Classes.isUnassigned(abilityId: string): boolean
 	return Classes.AbilityById[abilityId] ~= nil and Classes.ClassOfAbility[abilityId] == nil
+end
+
+-- What a player reads for a class id ("PYRO" for TORCH); unknown ids read as themselves.
+function Classes.displayName(classId: string): string
+	local c = Classes.ById[classId]
+	return if c then c.displayName else classId
 end
 
 -- Hotkey slot (1..3) of an ability in its class.

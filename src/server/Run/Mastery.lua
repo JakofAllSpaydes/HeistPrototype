@@ -59,7 +59,7 @@ local function nameOf(kind: string, id: string): string
 		return if w then string.upper(w.displayName) else id
 	end
 	local c = Classes.ById[id]
-	return if c then string.upper(c.name) else id
+	return if c then c.displayName else id
 end
 
 -- A class tier the player now holds turns on right away for the class they are playing.
@@ -153,6 +153,15 @@ function Mastery.beginRun(players: { Player })
 		end
 		state.dirty = true
 		Log.event("Mastery", "%s runs %s at mastery %d", p.Name, classId, state.masteryTier)
+		Log.event(
+			"Class",
+			"%s %s run by %s (mastery %d, kit %s)",
+			string.lower(classId),
+			Classes.displayName(classId),
+			p.Name,
+			state.masteryTier,
+			table.concat(PlayerState.kitOf(state), " / ")
+		)
 	end
 end
 
