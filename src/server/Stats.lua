@@ -599,6 +599,25 @@ local function sourceName(id: string): string
 	return names[kind] or string.upper(kind)
 end
 
+-- The shown total of a card stat with `delta` more points (the dealer's "now -> after"), without touching the book:
+-- the resolved value the way the card labels read (a cooldown's time saved, a softcap's effective percent).
+function Stats.shownWith(player: Player, statId: string, delta: number): number
+	local stat = Stats.cardStat(statId)
+	local def = Stats.def(stat)
+	local h = Stats.points(player, stat) + delta
+	if def.mode == "haste" then
+		local m = math.max(Config.StatMultFloor, 1 + h / 100)
+		local u = Upgrades.byId(statId)
+		return if u and u.negative then (1 - 1 / m) * 100 else (m - 1) * 100
+	elseif def.mode == "softcap" then
+		return softcap(def, h)
+	elseif def.mode == "capped" then
+		local base = if def.base then tonumber((Config :: any)[def.base]) or 0 else 0
+		return math.clamp(base + h, 0, def.cap or 100)
+	end
+	return h
+end
+
 function Stats.cardView(player: Player, statId: string): CardView
 	local stat = Stats.cardStat(statId)
 	local shown = shownPct(statId, stat, player)

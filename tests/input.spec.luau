@@ -29,6 +29,12 @@ local function loadShared(name: string): any
 		return { __shared = child }
 	end
 	fakeParent.FindFirstChild = fakeParent.WaitForChild
+	-- Brief 12: `script.Parent.Config` (Classes, Upgrades) resolves the same way.
+	setmetatable(fakeParent, {
+		__index = function(_, child)
+			return { __shared = child }
+		end,
+	})
 	local env: { [string]: any } = {
 		script = fakeScript,
 		require = function(target: any)
@@ -493,6 +499,40 @@ do
 			)
 		end
 	end
+end
+
+------------------------------------------------------------------ Brief 12: the kits on LB / RB / R3
+-- The pad fires abilities by slot (UseAbilitySlot 1..3 -> the kit's id at that slot), so every class's three, the
+-- new sentry / heal drone / Inferno and SWARM's three, and a debug grant must sit on slots 1..3.
+do
+	local Classes = loadShared("Classes")
+	local slotAction = { "ability1", "ability2", "ability3" }
+	local slotButton = { "ButtonL1", "ButtonR1", "ButtonR3" }
+	check("six classes", #Classes.List == 6)
+	check("SWARM after PYRO", Classes.List[6].id == "SWARM" and Classes.List[5].id == "TORCH")
+	check("TORCH reads PYRO", Classes.displayName("TORCH") == "PYRO")
+	local expect = {
+		INITIATE = { "frag", "stim", "turret" },
+		ENGINEER = { "sentry", "barricade", "overclock" },
+		DOC = { "stimshot", "medbag", "healdrone" },
+		TORCH = { "molotov", "flameturret", "inferno" },
+		SWARM = { "drone", "surge", "aegis" },
+	}
+	for classId, ids in expect do
+		local kit = Classes.kit(classId, nil)
+		for slot, id in ids do
+			check(string.format("%s slot %d is %s", classId, slot, id), kit[slot] == id)
+		end
+	end
+	for slot = 1, 3 do
+		check(
+			string.format("slot %d's action rides %s", slot, slotButton[slot]),
+			GamepadMap.buttonFor("run", slotAction[slot]) ~= nil
+		)
+	end
+	local granted = Classes.kit("SWARM", { [3] = "claymore" })
+	check("a grant lays over its slot", granted[3] == "claymore" and granted[1] == "drone")
+	check("the unassigned pool is unassigned", Classes.isUnassigned("oildrum") and not Classes.isUnassigned("drone"))
 end
 
 print(string.format("input.spec: %d passed, %d failed", passed, failed))

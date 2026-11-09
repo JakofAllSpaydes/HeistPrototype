@@ -381,11 +381,14 @@ local function effectLines(state: PlayerState.State, card: Types.Card): { string
 				Upgrades.pctText(math.round((now + delta) * 10) / 10, statId)
 			)
 		end
+		-- Brief 12: the resolved total now and after (COOLDOWN -23% → -29% from all its haste, not the cards' sum).
+		local a = Stats.shownWith(state.player, statId, 0)
+		local b = Stats.shownWith(state.player, statId, delta)
 		return string.format(
 			"%s %s → %s",
 			string.upper(Upgrades.statName(statId)),
-			Upgrades.pctText(now, statId),
-			Upgrades.pctText(math.round((now + delta) * 10) / 10, statId)
+			Upgrades.pctText(math.round(a * 10) / 10, statId),
+			Upgrades.pctText(math.round(b * 10) / 10, statId)
 		)
 	end
 	local out = { line(card.stat, card.pct) }

@@ -34,6 +34,10 @@ Brief 11 makes the game playable on a controller end to end: the pad's combat ma
 aim assist tier and rumble, a glyph for the current device on every prompt and hint, every screen walkable with an
 amber selection ring, the seven minigames on a pad, sprint on PC / pad / phone with the fire-always-wins rule, a
 CONTROLS sheet (the INPUT settings; no button opens it for now, Round 28c). The HUD keeps the PC layout and size on a pad (Round 28b).
+Brief 12 (Round 29) works on the class roster and the numbers under it: one stat resolver every bonus stacks through
+(haste / resist / softcap / additive / capped), four kit changes (INITIATE's turret, ENGINEER's Sentry, DOC's Heal
+Drone, PYRO's Inferno), TORCH renamed PYRO (the id stays), SWARM as the sixth class (drones that orbit you and shoot
+on their own), and `area` as a real stat with explosive knockback and a proper explosion.
 
 State as of **8 Nov 2026 (Round 28)**: all brief 1 acceptance items are in, plus eight playtest rounds of feedback, the brief 2
 slices (Round 9) and six feedback rounds on them (9b–10d below), the brief 3 build (Round 11) with its feedback rounds,
@@ -1156,6 +1160,85 @@ FIRST HEIST OF THE DAY ×2 XP (`profile.lastHeistDay`, Progression) moved onto t
   moves the band; Stats prints `[GHS Streak]` and `[GHS Daily]` state lines. Force rarity also lands on the next daily
   roll.
 
+**Classes and stats (brief 12; `Stats.lua`, `Run/Drones.lua`, `Run/Swarm.lua`, `Run/Explosion.lua`,
+`shared/DroneOrbit.lua`, `client/DroneFx`, `client/ExplosionFx`).** Built unplayed, one commit per step.
+- **The resolver** (`Stats.lua`). Every bonus to a stat is a source `{ id, stat, value }` registered for the player by the
+  system that grants it and removed when it ends (never edited): pick-3 cards `card:<n>:<stat>` and dealer stands
+  `dealer:<n>` (UpgradeShop), the held gun's Armory level `armory:gun:*` (re-registered when the gun in hand changes),
+  every owned Skill Web node `web:<node>` (armSkills), SHARPSHOOTER I / II and SWARM's UPLINK `passive:*` (Mastery at the
+  run start, the range on entry), boosts and VIP `boost:*` / `vip:cash` (Boosts, re-asserted every second), and the
+  timed windows `buff:<id>:*` (Adrenaline, Stim Shot, Dead Eye), `overclock:*` and `field:hospital` (PlayerState).
+  `Stats.resolve(player, stat)` folds a stat by its mode in `Config.StatDefs` and caches until the next change; every
+  hook reads through it (`Stats.resolve / mult / time`). Modes: **haste** (cooldown, fire rate, reload, interact,
+  revive, pickup, armor delay; points add, a time divides by `1 + h / 100`; cooldowns never under
+  `AbilityMinCooldownSec` 2), **resist** (damage taken: `1 - prod(1 - r)`, never 100%), **softcap** (move speed,
+  pickup radius, turret / sentry range, area: `base x (1 + max x h / (h + K))`; `MoveSpeedSoftMax` / `MoveSpeedK` 1000),
+  **additive** (damage, HP, armor, regen, cash, elite / boss / ability damage, everything else), **capped** (crit chance
+  100 with `BaseCritChancePct`, element proc, `droneInherit`). Within a stat the mode rules; different stats still
+  multiply (damage x elite damage x crit). Card and node labels never changed (COOLDOWN -8% is +8 haste). At zero bonus
+  every number is what it was. Crit at 100%: `UpgradeShop.excluded` (`Stats.isMaxed`) takes the crit cards out of that
+  player's pick-3 and dealer stock; teammates still see them. The HUD's upgrade tiles show the resolved total for utility
+  / defense / synergy stats (COOLDOWN -23% from all its haste) with `FROM N SOURCES` and each source in the tip (hover
+  or pad selection); dealer stands read `COOLDOWN -23% → -29%` from the resolver. StateSync carries `resolved`
+  (hold speeds, the floor-gun tags' typed damage, `areaMult`) and `cardViews`. `[GHS Stats] <name> <stat> <resolved>
+  <- <n> sources` per change with debug Stats log; the Stats button prints the STATS block (every stat, mode, sources)
+  and `[GHS Area] <name> area <resolved> from <n> sources`.
+- **Kit changes.** INITIATE: Frag / Adrenaline / **Turret** (the basic turret on Z, instant). ENGINEER: **Sentry** /
+  Barricade / Overclock: a tripod `SentryScale` 1.6x the turret, `SentryDeploySec` 1.5 of legs swinging out and the head
+  rising, then a beep and a red tracking laser; twin barrels alternate at 2x the turret's rate with per-barrel damage
+  that makes `SentryDpsMult` 2.5x its DPS, `SentryHp` 300, `SentrySec` 50, `SentryRangeMult` 1.5x; several can stand;
+  Overclock and ENGINEER's passives apply. DOC: Stim Shot / Med Bag / **Heal Drone**: a drone at your shoulder for
+  `HealDroneSec` 20 that heals the lowest-HP ally within `HealDroneRange` 18 (an ally reviving someone first, ties to you)
+  `HealDroneHps` every `FieldTickSec`, with a green beam; no HP, fades out. PYRO: Molotov / Flame Turret / **Inferno**: a
+  ring of fire `InfernoRadius` 9 (x area) round you for `InfernoSec` 10 that trails your feet; enemies inside burn (the
+  burn status, `InfernoBurnPerSec`, so SLOW BURN applies) and walk `InfernoSlowPct` 30 slower (a named slow that
+  multiplies with Ice Ammo's, never a stop); players and placeables are untouched. Cooldowns: `SentryCooldown` 35,
+  `HealDroneCooldown` 25, `InfernoCooldown` 30. TURRET DAMAGE fits INITIATE and ENGINEER and raises the sentry;
+  HEALING raises the drone. Claymore, Oil Drum and Healing Turret live in `Classes.Unassigned` (code, Config and art
+  kept) behind `UnassignedAbilitiesEnabled` false. Ally radio lines (`Callouts` sentryUp / healDroneUp / infernoUp /
+  swarmUp, `[Copy: TBA]`), one per player per `AbilityCalloutCooldownSec`.
+- **PYRO.** Every class has `displayName` beside `id` and `name`; TORCH reads PYRO (glyph P) on the carousel, the
+  Classes tab, the in-run ability header, the hub nameplate, toasts, mastery tier-ups and callouts, rewards, the PYRO
+  SYNERGY pill and the daily job. The id stays `TORCH`: no profile migration. `[GHS Class] <id> <NAME> ...` on unlock,
+  equip, run start (with the kit) and debug Force class.
+- **SWARM** (sixth in the carousel, Gold unlock like the others). Nothing is aimed. **DRONE** (Q, `DroneCooldown` 15):
+  one attack drone for `DroneSec` 20, no count cap. A drone is an orbit (radius 4–6, height 3, its own phase and speed;
+  `DroneOrbit`) evaluated on the server clock round your root: no part on the server, no physics, no pathfinding, no
+  collision, not targetable. Every `DroneRetargetSec` 0.25 it picks the nearest enemy within `DroneRange` 40 it can see
+  and fires `DroneFireRate` 2 shots a second through Abilities' hit path, so its kills are yours (MVP, Jobs, mastery,
+  stats). **UPLINK**: each shot is `DroneWeaponDamagePct` 60% of your equipped gun's resolved damage (the capped
+  `droneInherit` stat), read per shot. **SURGE** (E, `SurgeCooldown` 20, `SurgeSec` 8): drones fire `SurgeFireMult` 1.5x,
+  every shot ricochets to `SurgeRicochet` 1 more enemy within 12 studs, and each drone fetches a bag within
+  `SurgeFetchRange` 20 to your feet every 2 s (its beacon re-announces at the new spot). **AEGIS** (Z, `AegisCooldown`
+  35): a shield drone over you for `AegisSec` 8 with `AegisHp` 400 (x ability power) and a bubble of `AegisRadius` 7: an
+  enemy hit on anyone inside goes to the bubble (`PlayerState.shieldHooks`; fire / gas on the floor pass), melee
+  enemies pressed on it are blocked (an invisible enemy-only sphere with a `PathfindingModifier`) and burn
+  `AegisContactDps`, and it detonates for `AegisBurst` 180 in `AegisBurstRadius` 10 (x area) on break or expiry. Mastery:
+  I LONG RANGE +5 s drones, II CHAIN REACTION surge ricochets twice, III HIVE MIND your kills add `DroneKillExtendSec`
+  0.5 to every drone, never past 20 s left. `DroneHardCap` 40 per caster replaces the oldest (`[GHS Swarm] WARN
+  hardcap`). Clients draw the drones (`DroneFx`: a small mesh each, lerped along the same orbit; one shared pool of
+  tracer parts; zaps capped at `DroneZapsPerSec`; the hum is off until `DroneHumSoundId` is set), the AEGIS bubble and its
+  HP bar, the SURGE flare. `[GHS Swarm]` lines on summon, surge, fetch, aegis, detonation and once per wave end
+  (`<name> drones <n> surge <on|off> aegis <hp>`). Pictograms: SWARM, DRN, SRG, AEG (and STY, HDR, INF).
+- **Area and explosions.** `area` (softcap, max / K 200) sizes everything that is not a bullet: projectile blasts (RPG,
+  launchers, TNT, bomblets), Frag, the claymore, Splash, Molotov's pool, AEGIS's burst, stream length and half-angle
+  (flamethrower, cryo; capped at `AreaStreamAngleCap`), the plasma beam's width, Inferno's ring, the flame turret's
+  reach. The **AREA** card (BLAST RADIUS folded in) offers only with an Explosive gun or a stream gun in either slot
+  (`Requires.mode`) or as PYRO / SWARM / INITIATE, and its face says why: BIGGER BOOM / LONGER STREAM / WIDER RING
+  (`AreaCardsEnabled`). Baselines: RPG radius 13 → 18.2, flamethrower reach 22.5 → 30.4, the cryo sprayer 16 → 30.4
+  (its angle and freeze unchanged); the client jets scale with the reach and your area. **Knockback**
+  (`Run/Explosion.lua`): after its damage every explosion shoves the survivors out from its centre, `KnockbackStuds` 4 at
+  the centre to 0 at the edge, x `KnockbackMult` (Henchman 1, Runner 1.2, Marksman 1, Boomer / Grenadier 0.8, Heavy
+  0.5, TITAN 0; elites x0.7), moving the root on the server over `KnockbackSec` 0.2 (`Enemy.shove`, clamped by a wall
+  ray), and a `KnockbackStunSec` interrupt cancels a swing (`KnockbackInterrupt`); kills ragdoll as before; players and
+  placeables never move. **The feel** (`ExplosionFx`): a one-frame white flash, a shock ring out to the radius, dust and
+  debris by radius, a low thud under the boom, the shooter's camera punch `ExplosionPunchRef` / distance up to
+  `ExplosionPunch`, a small shake for the rest; blast hit numbers pop outward. `MobileFxScale` 0.5 thins every brief 12
+  effect on a phone.
+- **Debug** (CLASSES & STATS group at the bottom): Stats log, Set haste <n> (a source on every haste stat), Set area <n>,
+  Combat log (`[GHS Combat] knockback <archetype> <studs>`), Force class <id or name>, Grant ability <id> [slot] (any
+  ability on any slot, the unassigned pool included; `clear` drops them; grants survive a run reset), Spawn drones <n>.
+
 ## Verifying a change
 
 ```
@@ -1706,6 +1789,48 @@ confirmed scoped tracers show again (28e) and the white hit flash (28f); the res
 10. First person, ADS through an ACOG / medium scope / sniper scope: a thin tracer leaves the barrel under the sight.
 11. A fast gun on an enemy: a white body flash per hit plus the occasional white flinch pop, never red.
 
+### Brief 12 verify list
+
+Written and built (`stylua`, `luau-lsp`, `rojo build`, `lune run tests/input.spec.luau`: 272 checks, 23 new on the kits
+by slot) one commit per step; nothing here has been run in Studio. Done-line: six classes in the carousel, every
+ability fires on PC, phone and pad, a SWARM run with stacked cooldown upgrades fills the screen with drones without a
+hitch, and the debug Stats print explains every number on the HUD. Rojo serve: new server / client / shared modules
+only, a running serve picks them up.
+
+1. Arena, INITIATE, no upgrades: Stats → the STATS block lists only base sources (`armory:gun:*` if the gun is
+   levelled); the HUD's DMG / RPM / reload read what they did before brief 12. Take COOLDOWN cards: the tile reads the
+   resolved total and its tip `FROM N SOURCES` with each card; a dealer stand reads `ABILITY COOLDOWN -8% → -13%`.
+2. Stats log on, pop Adrenaline: `[GHS Stats] <you> fireRate +60 haste <- 1 sources`, then its removal as it ends.
+   Set haste 300: cooldowns drop to a quarter, never under 2 s.
+3. Debug-stack Crit (pick-3 / dealer) to 100: crit cards stop appearing for you; a teammate still draws them.
+4. Classes tab: six classes and FUTURE in the pill row (PYRO, SWARM last); check SHARPSHOOTER's label still reads.
+   INITIATE's Z is Turret (instant); ENGINEER's Q a Sentry: legs out, head up, a beep at 1.5 s, then a red laser on
+   its target and alternating muzzle flashes; put down two. DOC's Z: the heal drone sits at your shoulder, follows you,
+   beams the most hurt teammate (someone reviving first), fades at 20 s. PYRO's Z: a blue fire ring trails your feet
+   for 10 s; enemies crossing it burn and slow; teammates and placeables are untouched.
+5. Grant ability claymore 3 → Claymore on Z for any class; `clear` → back. `UnassignedAbilitiesEnabled` false keeps
+   them off otherwise.
+6. PYRO everywhere: the carousel, the class card, the in-run header, the nameplate, the unlock toast, the Accelerant
+   card's PYRO SYNERGY pill, a mastery tier-up. An existing TORCH profile loads as PYRO with its mastery and levels.
+7. SWARM (Force class swarm): Q every cooldown adds a drone that orbits, retargets and shoots (tracers in teal); kills
+   count on the scoreboard as yours. E: drones flare, fire faster, shots bounce once (twice at mastery II); drop a bag
+   nearby → a drone carries it to your feet and its beacon moves. Z: the bubble with an HP bar over your head; a
+   Marksman's shots and a Henchman's swings drain it, not you; a teammate inside is covered; it blows on break or at 8 s
+   with an explosion (flash, ring, knockback). Swap guns: the next drone shot uses the new gun's damage.
+8. Spawn drones 40 → 40 drones, frame holds; Spawn drones 5 more → `[GHS Swarm] WARN hardcap`. Wave end prints
+   `[GHS Swarm] <you> drones <n> surge <on|off> aegis <hp>`. With mastery III, kills visibly keep drones alive.
+9. Area: with a pistol as SHARPSHOOTER no AREA card ever shows; with the RPG / M32 it does (BIGGER BOOM), with the
+   flamethrower (LONGER STREAM), as PYRO (WIDER RING). Set area 100: Frag, RPG, Molotov's pool, the Inferno ring, the
+   flame jet and AEGIS's burst all grow.
+10. Explosions: an RPG into a crowd: a white flash, a ring, dust, a thud, your camera punches (less from further);
+    Henchmen slide about 4 studs, Heavies half, the TITAN not at all, a winding-up Heavy loses its swing, nobody slides
+    through a wall; teammates and placeables never move. Combat log prints the knockback lines; hit numbers spread
+    outward.
+11. Pad: LB / RB / ○ fire every kit's three (the Sentry, the Heal Drone, Inferno, DRONE / SURGE / AEGIS); the Input
+    monitor shows them; `lune run tests/input.spec.luau` passes.
+12. Phone (emulator throttle): Inferno, SURGE and 20+ drones in a 100-enemy wave stay above 30 fps; effects are visibly
+    thinner (`MobileFxScale`).
+
 ## Layout
 
 See `default.project.json`. `src/shared` → ReplicatedStorage.Shared, `src/server` → ServerScriptService.Server,
@@ -1758,6 +1883,11 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothManneq
 PlayRibbon, MatchCardLine, Round 27c's DailyGuide and SummaryCrateCard) and CameraShots (named camera frames on hub objects). Tools: `genmap.luau`,
 `importbank.luau`, `genbanknodes.luau`, `importhub.luau`, `genhubnodes.luau`, `exportnodes.luau`, `nodestyle.luau`,
 `rbxl-uncompress.js` (node).
+
+Brief 12: `src/server/Stats.lua` gains the resolver; `src/server/Run/` adds Drones (orbit drones: heal / attack / aegis),
+Swarm (SWARM's kit, UPLINK, AEGIS shield hook) and Explosion (knockback and the Explosion event); `src/shared/` adds
+DroneOrbit; `src/client/` adds DroneFx (drones, tracer pool, the Inferno ring, AEGIS bubble, the sentry beep) and
+ExplosionFx (the explosion feel). Classes.lua carries `displayName`, `Classes.Unassigned`, `Classes.kit`.
 
 ## Changelog (playtest rounds)
 
@@ -2490,7 +2620,40 @@ PlayRibbon, MatchCardLine, Round 27c's DailyGuide and SummaryCrateCard) and Came
   for `HitFlashSec` (0.08); the throttled white flinch pop is unchanged. (A single held white Highlight was tried and
   dropped: flat and washed out under fast fire.)
 
+- **Round 29 (9 Nov) — the brief 12 build: classes and stats.** Built one commit per step, unplayed. Step 1: the
+  resolver in `Stats.lua` (sources, `Config.StatDefs` modes, the cache), every bonus source registered (cards, dealer,
+  the held gun's Armory level, the web, passives, boosts / VIP, timed windows), every `skillMods` / boost read moved
+  onto `Stats.resolve / mult / time`, crit-maxed filtering, resolved totals with their sources on the HUD tiles and the
+  dealer, the debug STATS block, Stats log, Set haste / area. Step 2: INITIATE's turret, ENGINEER's Sentry, DOC's Heal
+  Drone (`Run/Drones.lua`, `shared/DroneOrbit.lua`), PYRO's Inferno (`Enemy.slowSource`, `Elements.burnAt`), the
+  unassigned pool with debug grants (`Classes.kit`, `sync.kit`; the HUD tiles follow the kit), cards re-homed, radio
+  lines, `client/DroneFx`. Step 3: `displayName`, TORCH → PYRO everywhere a player reads it, `[GHS Class]` lines.
+  Step 4: SWARM (`Run/Swarm.lua`: DRONE, SURGE, AEGIS, UPLINK, mastery, hard cap, logs, Spawn drones, Force class) and
+  its pictograms. Step 5: `area` everywhere that is not a bullet, the AREA card with its faces, the RPG / flamethrower /
+  cryo baselines, `Run/Explosion.lua` knockback, `client/ExplosionFx`. Step 6: the pad spec's kit checks (272), the
+  dealer's resolved lines, this README.
 ## Open design notes (not built)
+
+- **Brief 12 notes and deviations (Round 29, unplayed).** The resolver lives in the existing `server/Stats.lua` (it was
+  already "all stat math"). Step 1 landed as one commit, not one per hook: the hooks were few once `Stats.compute` read
+  the resolver, and the arena check is the same. The Armory level of the **held gun** is a source; ability Armory
+  levels stay the abilities' own base numbers (AbilityGrowth), since they are not shared stats. Damage is additive
+  across all its sources now (level, cards, web, POWER, Dead Eye, FIELD HOSPITAL, the archetype synergies), so a
+  levelled gun gains less from damage cards than before: expect a balance pass from the logs. HP, regen and cash gain
+  likewise (the web's HP no longer multiplies the cards'). Kit-only passives (ENGINEER's placeables, PYRO's tick rate,
+  DOC's reach) stay on their abilities; only stat-moving ones register. The armor refill delay counts as haste.
+  `MobileFxScale` did not exist: it is new (0.5) and only brief 12 effects read it. There is no MVP / summary callout
+  per class, no per-class pose table, no per-class default head, no kill feed, no booth class label and no class slot
+  in Create Match in the game today, so `SWARM · 3 DRONES UP`, the directing pose and the mask-less head are not built
+  (the class idle falls back to the default; a radio line fires at 5 / 10 / 20 drones instead). No verified drone hum
+  loop exists yet: `DroneHumSoundId` is empty until one is auditioned. Drone shots, SURGE fetches and kills credit the
+  caster; a drone granted to another class by the debug panel uses `DroneWeaponDamagePct` (UPLINK is SWARM's). AEGIS
+  soaks every enemy hit on anyone inside the bubble (melee that reaches in included) and lets floor fire / gas through;
+  its body-block is an enemy-only collider moved with you, so an enemy already inside when it rises stays inside.
+  The pad needs no new bindings (abilities fire by slot); the drone and the sentry have no prompts, so nothing there
+  uses `InputGlyphs`. The Classes tab row now holds seven pills (six classes and FUTURE): watch SHARPSHOOTER's label
+  width. SURGE moves a bag by re-announcing its beacon (`BagFizzled` then `BagSpawned`), so `Markers.lua` (brief 13's) is
+  untouched. Shared files only gained new Config groups, new `Callouts` lines and new README sections.
 
 - **Brief 11 notes and deviations (Round 28, mostly unplayed).** There is no settings screen in the game: the INPUT
   page is its own CONTROLS sheet (parked since Round 28c: no button opens it), and Options / Start stays Roblox's
