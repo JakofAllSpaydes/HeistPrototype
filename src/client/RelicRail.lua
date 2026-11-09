@@ -20,6 +20,7 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 local GamepadNav = require(Client:WaitForChild("GamepadNav"))
+local CloseButton = require(Client:WaitForChild("UI"):WaitForChild("CloseButton")) -- Round 29b
 
 local RelicRail = {}
 
@@ -43,7 +44,7 @@ local function countOwned(mapId: string): (number, number)
 end
 
 -- The relic list (rail or sheet): header, one row per relic, the info line. Returns the first row (pad focus).
-local function list(parent: Frame, mapId: string, rowH: number): TextButton?
+local function list(parent: Frame, mapId: string, rowH: number, headerH: number?): TextButton?
 	local S = UI.S
 	for _, c in parent:GetChildren() do
 		if c:IsA("GuiObject") then
@@ -59,7 +60,8 @@ local function list(parent: Frame, mapId: string, rowH: number): TextButton?
 		TextSize = S(16),
 		TextColor3 = RELIC,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Size = UDim2.new(1, 0, 0, S(22)),
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = if headerH then UDim2.new(1, -headerH - S(6), 0, headerH) else UDim2.new(1, 0, 0, S(22)),
 		LayoutOrder = 0,
 		Parent = parent,
 	})
@@ -214,41 +216,27 @@ local function openSheet(mapId: string)
 	})
 	UI.corner(sheet, S(10))
 	UI.stroke(sheet, RELIC, S(2), 0.2)
-	UI.pad(sheet, S(12), S(12), S(12), S(12))
-	UI.list(sheet, Enum.FillDirection.Vertical, S(6))
 	UI.mobileGrow(sheet, true)
+	-- The list lives in its own frame so the close control can sit in the sheet's corner (a list layout would place it).
 	local body = UI.frame({
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
-		LayoutOrder = 1,
 		Parent = sheet,
 	})
+	UI.pad(body, S(12), S(12), S(12), S(12))
 	UI.list(body, Enum.FillDirection.Vertical, S(6))
-	local first = list(body, mapId, S(56))
-	local close: () -> ()
-	local closeBtn = UI.button({
-		Name = "Close",
-		Text = "X",
-		FontFace = Theme.Fonts.display,
-		TextSize = S(18),
-		TextColor3 = Theme.Colors.white,
-		BackgroundColor3 = Theme.Colors.red,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, S(6), 0, -S(6)),
-		Size = UDim2.fromOffset(S(36), S(36)),
-		ZIndex = 25,
-		Parent = sheet,
-	})
-	UI.corner(closeBtn, S(6))
-	close = function()
+	-- The header row is as tall as the close control and stops short of it.
+	local first = list(body, mapId, S(56), CloseButton.size())
+	local function close()
 		if dim.Parent then
 			dim:Destroy()
 		end
 		r.sheet = nil
 		GamepadNav.pop("relicSheet")
 	end
-	closeBtn.Activated:Connect(close)
+	-- Round 29b: the shared close control (a red square X, top-right) every window uses.
+	CloseButton.new(sheet, close, { margin = S(12), z = 25 })
 	dim.Activated:Connect(close)
 	r.sheet = dim
 	UI.punch(sheet, 1.06, 0.2)
