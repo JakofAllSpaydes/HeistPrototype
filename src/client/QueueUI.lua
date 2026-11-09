@@ -21,6 +21,7 @@ local BoostDefs = require(Shared:WaitForChild("BoostDefs"))
 local ReviveTokenPacks = require(Shared:WaitForChild("ReviveTokenPacks"))
 local Clock = require(Shared:WaitForChild("Clock"))
 local Maps = require(Shared:WaitForChild("Maps"))
+local MatchCardLine = require(script.Parent:WaitForChild("Retention"):WaitForChild("MatchCardLine")) -- brief 10
 
 local QueueUI = {}
 
@@ -505,6 +506,8 @@ local function openCreate(v: any)
 		})
 		closeCreate()
 	end)
+	-- Brief 10: PLAY A MATCH · DAILY CRATE · ×2 XP under the map row while today's first run is still to come.
+	MatchCardLine.add(body, 3)
 end
 
 ------------------------------------------------------------------ Compact party card (hub HUD, under PLAY)

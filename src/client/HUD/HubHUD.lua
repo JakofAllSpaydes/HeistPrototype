@@ -22,6 +22,7 @@ local LevelCard = require(script.Parent.LevelCard)
 local BoostChips = require(script.Parent.BoostChips)
 local PassSeason = require(Shared:WaitForChild("PassSeason"))
 local Clock = require(Shared:WaitForChild("Clock"))
+local PlayRibbon = require(Client:WaitForChild("Retention"):WaitForChild("PlayRibbon")) -- brief 10
 
 local HubHUD = {}
 
@@ -127,6 +128,8 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			UI.punch(play, 1.04, 0.15)
 		end
 	end)
+	-- Brief 10: the amber PLAY A MATCH · DAILY CRATE · ×2 XP ribbon until today's first run reaches its summary.
+	PlayRibbon.attach(play)
 
 	-- Slot for the compact queue card, under PLAY.
 	local queueSlot = UI.frame({
