@@ -1,7 +1,8 @@
 --!strict
 -- Brief 13: relics. When a gun crate finishes its reels (BigCrate.open), this decides whether a relic comes out of it:
---   1. the guarantee: the opener's profile has never opened a gun crate (relics.firstCrateOpened false) -> the
---      party gets Config.StarterRelic (on any map), and the flag is set on that first open whatever the map;
+--   1. a guarantee (Relics.guarantees: first_crate = Config.StarterRelic on any map, plus Config.RelicGuarantees)
+--      the opener's profile has not had yet -> the party gets its relic and the opener's profile records its id, so
+--      one added later reaches existing players on their next qualifying crate;
 --   2. otherwise, on a map with relics, ONE roll per crate (not per gun) at Config.RelicDropChance among the map's
 --      relics that at least one member does not own (none left to find = no roll). No pity, no luck source (not
 --      LUCKY, not the Skill Web's LUCK, not Stats), no difficulty or wave factor. Debug Force relic drop makes the
@@ -50,16 +51,20 @@ function RelicService.grant(player: Player, id: string): string
 	return "unlocked"
 end
 
--- Which relic (if any) this crate drops for the party, and why. Sets the opener's first-crate flag.
+-- Which relic (if any) this crate drops for the party, and why. A guarantee the opener has not had yet (in list
+-- order, on its map) comes first and is recorded on their profile; one per crate.
 local function decide(opener: Player, crateId: string): (string?, string)
 	local prof = Profiles.get(opener)
-	if prof and not prof.relics.firstCrateOpened then
-		prof.relics.firstCrateOpened = true
-		Profiles.markDirty(opener)
-		task.spawn(Profiles.save, opener, "first crate")
-		if Relics.ById[Config.StarterRelic] then
-			Log.event("Relic", "roll %s hit %s (first crate for %s)", crateId, Config.StarterRelic, opener.Name)
-			return Config.StarterRelic, "first"
+	if prof then
+		for _, g in Relics.guarantees() do
+			if prof.relics.guarantees[g.id] or not Relics.ById[g.relic] or (g.map ~= "" and g.map ~= World.map) then
+				continue
+			end
+			prof.relics.guarantees[g.id] = true
+			Profiles.markDirty(opener)
+			task.spawn(Profiles.save, opener, "guarantee " .. g.id)
+			Log.event("Relic", "roll %s hit %s (guarantee %s for %s)", crateId, g.relic, g.id, opener.Name)
+			return g.relic, if g.id == "first_crate" then "first" else "guarantee"
 		end
 	end
 	local members = World.partyPlayers()
@@ -145,7 +150,7 @@ function RelicService.resetRun()
 	RelicService.found = {}
 end
 
--- Debug Reset relics: no relic owned, the first-crate flag cleared (equipped relics go back to the plain mask).
+-- Debug Reset relics: no relic owned, every guarantee armed again (equipped relics go back to the plain mask).
 function RelicService.reset(player: Player)
 	local p = Profiles.get(player)
 	if not p then
@@ -158,7 +163,7 @@ function RelicService.reset(player: Player)
 		end
 	end
 	p.relics.owned = {}
-	p.relics.firstCrateOpened = false
+	p.relics.guarantees = {}
 	Profiles.markDirty(player)
 	Log.event("Relic", "%s reset relics", player.Name)
 end

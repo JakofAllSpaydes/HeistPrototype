@@ -3,7 +3,8 @@
 -- drop (RelicService.lua). A relic is an ordinary mask everywhere (Masks.List carries these rows, equipped through
 -- the profile's masks.equipped by id) except its saleType "Relic" (the catalog's source tag: never sold, never in
 -- the store, the daily crate, the pass or a bundle), its `relic` rarity above Legendary and the RELIC tag. They have
--- no stats. The first gun crate a profile ever opens drops Config.StarterRelic for the whole party (the tutorial).
+-- no stats. The first gun crate a profile opens drops Config.StarterRelic for the whole party (the tutorial), as the
+-- first of the guarantees (Relics.guarantees).
 -- Placeholder masks in THE BANK's palette until art lands. The Arena has none.
 local Config = require(script.Parent.Config)
 
@@ -92,6 +93,20 @@ function Relics.forMap(mapId: string?): { Relic }
 		if r.map == mapId and #out < Config.RelicsPerMap then
 			table.insert(out, r)
 		end
+	end
+	return out
+end
+
+-- Guaranteed drops. Each has a stable id that a profile records once it has had it (profile.relics.guarantees), so a
+-- guarantee added later still reaches every existing profile on its next qualifying gun crate. The built-in one is
+-- `first_crate` (Config.StarterRelic on any map); Config.RelicGuarantees adds more. `map` "" = any map. Never reuse
+-- or rename an id: a renamed one would drop again for everyone.
+export type Guarantee = { id: string, relic: string, map: string }
+
+function Relics.guarantees(): { Guarantee }
+	local out: { Guarantee } = { { id = "first_crate", relic = Config.StarterRelic, map = "" } }
+	for _, g in Config.RelicGuarantees :: { any } do
+		table.insert(out, { id = tostring(g.id), relic = tostring(g.relic), map = tostring(g.map or "") })
 	end
 	return out
 end

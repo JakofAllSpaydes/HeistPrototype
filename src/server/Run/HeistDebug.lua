@@ -46,15 +46,15 @@ function HeistDebug.init()
 	end)
 	Debug.add("ResetRelics", function(player, _state, _args)
 		RelicService.reset(player)
-		Debug.toast(player, "RELICS RESET · FIRST CRATE ARMED")
+		Debug.toast(player, "RELICS RESET · GUARANTEES ARMED")
 	end)
 	Debug.add("ForceFirstCrate", function(player, _state, _args)
 		local p = Profiles.get(player)
 		if p then
-			p.relics.firstCrateOpened = false
+			p.relics.guarantees = {}
 			Profiles.markDirty(player)
 		end
-		Debug.toast(player, "FIRST CRATE ARMED")
+		Debug.toast(player, "GUARANTEES ARMED (FIRST CRATE NEXT)")
 	end)
 	Debug.add("HeliToggle", function(player, _state, _args)
 		local on = not (if Dressing.heliOverride ~= nil then Dressing.heliOverride else Config.HeliEnabled)

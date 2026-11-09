@@ -2018,6 +2018,10 @@ local Config = {
 	RelicsPerMap = 4, -- set size per map
 	RelicDropChance = 0.10, -- TESTING value (the real one is far lower): one roll per opened gun crate, no luck of any kind
 	StarterRelic = "bank_teller", -- the first gun crate a profile ever opens drops this for the whole party
+	-- More guaranteed drops, each once per profile on its next qualifying gun crate: { id = "<stable, never reused>",
+	-- relic = "<relic id>", map = "<map id, or "" for any>" }. Profiles record ids, so one added later reaches
+	-- existing players too. Example: { id = "vault_launch", relic = "bank_vault", map = "TheBank" }.
+	RelicGuarantees = {},
 	RelicDupeGold = 500, -- Gold to a member who already owns the relic that dropped
 	RelicHangSec = 2.5, -- the relic hangs over the crate this long (spinning, rays, the sting) before it flies off
 	RelicPopupSec = 4, -- the RELIC FOUND popup's hold

@@ -34,7 +34,7 @@ export type Profile = {
 	abilities: { [string]: number }, -- ability id -> level
 	masks: { owned: { [string]: boolean }, equipped: string },
 	-- Brief 13 (v7): relic masks owned (also in masks.owned, so they equip like any mask) and the first-crate flag.
-	relics: { owned: { [string]: boolean }, firstCrateOpened: boolean },
+	relics: { owned: { [string]: boolean }, guarantees: { [string]: boolean } }, -- guarantees: ids already dropped (Relics.guarantees)
 	emotes: { owned: { [string]: boolean }, squad: string, mvp: string }, -- line-up pose and MVP flex
 	wraps: { owned: { [string]: boolean } },
 	topWave: { [string]: number }, -- "<mapId>:<difficulty>" ("Arena:Normal", "TheBank:Hard") -> wave
@@ -139,7 +139,8 @@ local STORE_NAME = "GHS_Profiles_v1"
 -- 5 (brief 9): the Skill Web's owned / seen sets, empty on migration.
 -- 6 (brief 10): the login streak and the daily crate; a v5 profile starts the streak at day 1 today and has the
 -- crate locked today with everOpened false.
--- 7 (brief 13): relics (owned relic masks, the first-gun-crate flag); a v6 profile owns none and has not opened one.
+-- 7 (brief 13): relics (owned relic masks, the guarantee ids already dropped); a v6 profile owns none and has had none,
+-- so its next gun crate drops the first_crate starter (and any guarantee added later reaches it the same way).
 local VERSION = 7
 local RETRY_BACKOFF = { 1, 2, 4 }
 
@@ -189,7 +190,7 @@ function Profiles.fresh(): Profile
 		classes = { owned = { [Classes.Default] = true }, equipped = Classes.Default },
 		abilities = {},
 		masks = { owned = { [Masks.Default] = true }, equipped = Masks.Default },
-		relics = { owned = {}, firstCrateOpened = false }, -- brief 13
+		relics = { owned = {}, guarantees = {} }, -- brief 13
 		emotes = (function()
 			local owned = {}
 			for _, id in Emotes.DefaultOwned do
@@ -564,7 +565,17 @@ local function migrate(raw: any): Profile
 				end
 			end
 		end
-		p.relics.firstCrateOpened = raw.relics.firstCrateOpened == true
+		if typeof(raw.relics.guarantees) == "table" then
+			for id, v in raw.relics.guarantees do
+				if typeof(id) == "string" and v then
+					p.relics.guarantees[id] = true
+				end
+			end
+		end
+		-- An unreleased v7 build kept one first-crate flag; it maps onto the first_crate guarantee.
+		if raw.relics.firstCrateOpened == true then
+			p.relics.guarantees.first_crate = true
+		end
 	end
 	if typeof(raw.dailyCrate) == "table" then
 		local rd = raw.dailyCrate

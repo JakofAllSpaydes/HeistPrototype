@@ -2748,7 +2748,10 @@ rolled off so it is faint in the lobby). Log: `[GHS Dressing] stage <n> wave N`.
 the daily crate, the pass and bundles never carry them; Meta refuses to sell them) and `Rarity.Relic` (6, `RelicColor`)
 above Legendary. `RelicService.lua`, after a gun crate's last reel: the opener's first-ever gun crate (any map) forces
 `StarterRelic` for the party and sets the flag; otherwise one roll per crate at `RelicDropChance` (0.10, testing) among
-the map's relics some member lacks (none left = no roll), with no pity and no luck source. A hit unlocks for every
+the map's relics some member lacks (none left = no roll), with no pity and no luck source. Guarantees are a list
+(`Relics.guarantees`: the built-in `first_crate` = `StarterRelic` on any map, plus `RelicGuarantees` entries
+`{ id, relic, map }`); a profile records each id it has had, so a guarantee added later still reaches existing
+players on their next qualifying crate (one per crate, the opener's profile, a party-wide drop; never reuse an id). A hit unlocks for every
 member at once (saved now); owners get `RelicDupeGold`. `RelicShow.lua`: the mask rises out of the open crate on a
 beam visible through walls, hangs `RelicHangSec` spinning with rays while the sting plays for everyone, flies to the
 camera, and the mastery-style `RELIC FOUND` card drops (the mask spinning, `THE TELLER · THE BANK`, `UNLOCKED` or
@@ -2758,12 +2761,13 @@ shelf (owned in colour, equippable, a RELIC badge; the rest `???` silhouettes th
 Create Match card gets a side rail while THE BANK is highlighted (`THE BANK · RELICS 1/4`, the four masks, owned in
 colour, the rest shadow silhouettes, FIRST CRATE on the starter; tap for the name or DROPS FROM GUN CRATES); the card
 keeps its size; phones get a `RELICS 1/4` chip on the tile that opens a sheet; RB hops card ↔ rail. Profile v7:
-`relics = { owned, firstCrateOpened }` (`[GHS Profile] v6 -> v7`). Logs: `[GHS Relic] roll <crate> hit|miss <id>`,
+`relics = { owned, guarantees }` (`[GHS Profile] v6 -> v7`; a v6 profile has had no guarantee, so an existing
+account's next gun crate drops the teller: no wipe needed to test). Logs: `[GHS Relic] roll <crate> hit|miss <id>`,
 `unlock <name> <id>`, `dupe <name> <id>`.
 
 **Debug (HEIST group, under MAP).** Breach now · Marker debug (each marker's tier, distance and decision: SHOW, CAP,
 FAR, CLUSTER, WALL) · dressing Stage 0 / 1 / 2 / 3 / BOSS · Heli on / off · Force relic drop · Force first crate ·
-Relic: <id> + Grant relic · Reset relics. Server side: `Run/HeistDebug.lua` registers them through `Debug.add`.
+Relic: <id> + Grant relic · Reset relics (also re-arms the guarantees) · Re-arm guarantees. Server side: `Run/HeistDebug.lua` registers them through `Debug.add`.
 
 **Config, the Brief 13 group** (end of Config.lua): `StreetSpawnDistanceMult`, `NodeShowColorMore`, `PreHeistMaps`,
 `PreHeistNagSec`, `BreachDoorGroup`, `BreachZone`, `BreachAlarmSec`, `BreachWaveDelaySec`, `BreachIdleShowSec`,
@@ -2774,7 +2778,7 @@ Relic: <id> + Grant relic · Reset relics. Server side: `Run/HeistDebug.lua` reg
 `SearchlightSweepDeg`, `SearchlightSweepSec`, `HeliEnabled`, `HeliAltitude`, `HeliSpeed`, `HeliSpotSwitchSec`,
 `HeliRotorSound`, `HeliRotorVolume`, `DressingAmbience`, `DressingAmbienceVolume`, `DressingAmbienceBossMult`,
 `DressingAmbienceCombatDuck`, `DressingAmbienceRollOff`, `RelicsEnabled`, `RelicsPerMap`, `RelicDropChance`,
-`StarterRelic`, `RelicDupeGold`, `RelicHangSec`, `RelicPopupSec`, `RelicRiseSec`, `RelicColor`, `RelicSting`,
+`StarterRelic`, `RelicGuarantees`, `RelicDupeGold`, `RelicHangSec`, `RelicPopupSec`, `RelicRiseSec`, `RelicColor`, `RelicSting`,
 `RelicStingVolume`, `HapticRelic`. Audio picks are verified ProSoundEffects / APM ids with alternatives listed beside
 them.
 
@@ -2813,7 +2817,8 @@ the rest works solo. Watch the output for `[GHS Breach]`, `[GHS Markers]`, `[GHS
    helicopter circling with a spotlight that moves between crew members; BOSS adds the ambulance, extra cruisers, a
    louder siren and dust under the helicopter. Standing where a piece goes → it waits until you step off.
    `[GHS Dressing] stage N wave N`. Heli on / off toggles it.
-9. Relics: open the first gun crate on a fresh profile (or Force first crate) → after the guns, the teller mask rises
+9. Relics: open the first gun crate on your existing account (a v6 profile has had no guarantee; or Re-arm
+   guarantees) → after the guns, the teller mask rises
    on a beam (visible through walls), hangs spinning with rays and the sting, flies at the camera, RELIC FOUND ·
    THE TELLER · THE BANK · UNLOCKED for both players; the summary has `RELIC FOUND · THE TELLER`. Force relic drop →
    the next crate drops another; a member who owns it reads ALREADY OWNED · +500 G and gains 500 Gold. Avatar booth →
@@ -2846,8 +2851,10 @@ the rest works solo. Watch the output for `[GHS Breach]`, `[GHS Markers]`, `[GHS
   light bars and the siren beds are driven by part names and Config instead. Nothing of the dressing collides.
 - **Kill feed.** The build has none, so the relic's one line goes to MARLOW's card and a toast.
 - **HEIST ON** is the centre stamp in the wave-banner style rather than a small toast (it reads as the run starting).
-- **The first-crate guarantee** follows the member who pressed OPEN (their first-ever gun crate); every member then
-  unlocks (owners take the dupe Gold). A second member's first open later in the run drops the starter again.
+- **Guarantees** follow the member who pressed OPEN (the first one their profile has not had); every member then
+  unlocks (owners take the dupe Gold). The brief's single first-crate flag became a list of guarantee ids (Jack, Round
+  30) so guarantees added later reach existing profiles; a guarantee for a relic the opener already owns still drops
+  (a dupe for them). A second member's first open later in the run drops the starter again.
 - **The window breach** counts once a member's root is inside the `lobby` zone volume; the window bays in front of
   the facade are outside it, so it fires as you step from a bay into the lobby proper.
 - **Objective cap of one** means D3's three shutter parts show one beacon (the nearest), and the hatch beacon hides
