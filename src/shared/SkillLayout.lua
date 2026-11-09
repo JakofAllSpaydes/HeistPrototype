@@ -11,7 +11,7 @@ local SkillLayout = {}
 
 export type Cell = { q: number, r: number, ring: number, wedge: number, slot: number }
 
-SkillLayout.Rings = 5
+SkillLayout.Rings = 8 -- Round 29b: was 5 (rings 1-5 and their node ids are unchanged; 6-8 were added)
 SkillLayout.DIRS = {
 	{ 1, 0 },
 	{ 1, -1 },

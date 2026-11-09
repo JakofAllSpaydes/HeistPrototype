@@ -36,6 +36,13 @@ local function featuredBundle(arg: any?): Bundles.Bundle
 	return Bundles.List[(slot % #Bundles.List) + 1]
 end
 
+-- Phone pass (touch): the bundle bar stacks in two rows (name · tagline · -X% left and worth · price · BUY right
+-- over the full-width item strip, no + signs), so a 7-item bundle's tiles stay wide enough for their art and names;
+-- the daily cards get a fixed height and the section grows to hold both (StoreScene keeps the size a tab sets).
+local MOBILE_BAR_H = 330 -- the bundle bar's height (UI px at the basis)
+local MOBILE_TOP_H = 130 -- its top row (name / price / BUY); the item strip fills the rest
+local MOBILE_DAILY_H = 280 -- one daily card's height
+
 -- A framed countdown pill: `LEAVING IN 62:14:05`.
 local function timerPill(parent: Instance, position: UDim2, anchor: Vector2, color: Color3): TextLabel
 	local S = UI.S
@@ -58,6 +65,9 @@ local function timerPill(parent: Instance, position: UDim2, anchor: Vector2, col
 		ZIndex = 9,
 		Parent = pill,
 	})
+	if ClientState.isMobile then
+		Card.fitText(l)
+	end
 	return l
 end
 
@@ -117,11 +127,13 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 	})
 	Fx.rays(bar, color, 10, math.floor(h * 2.4), 7, 6).Position = UDim2.fromScale(0.12, 0.5)
 	Fx.particles(bar, color, 4, 8)
-	-- Left: the name, the tagline, the discount.
+	local mobile = ClientState.isMobile
+	local topH = S(MOBILE_TOP_H)
+	-- Left: the name, the tagline, the discount (phone: one line each across the top row).
 	local left = UI.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(S(22), S(18)),
-		Size = UDim2.new(0.24, 0, 1, -S(36)),
+		Position = UDim2.fromOffset(S(22), if mobile then S(14) else S(18)),
+		Size = if mobile then UDim2.new(0.58, 0, 0, topH) else UDim2.new(0.24, 0, 1, -S(36)),
 		ZIndex = 8,
 		Parent = bar,
 	})
@@ -130,26 +142,30 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 		FontFace = Theme.Fonts.display,
 		TextSize = S(32),
 		TextColor3 = Theme.Colors.white,
-		TextWrapped = true,
+		TextWrapped = not mobile,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
-		Size = UDim2.new(1, 0, 0, S(80)),
+		Size = UDim2.new(1, 0, 0, if mobile then S(46) else S(80)),
 		ZIndex = 9,
 		Parent = left,
 	})
 	UI.stroke(name, Color3.new(0, 0, 0), S(2), 0.2)
-	UI.text({
+	local tagline = UI.text({
 		Text = b.tagline,
 		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Fx.shade(color, 0.45),
-		TextWrapped = true,
+		TextWrapped = not mobile,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(0, S(84)),
-		Size = UDim2.new(1, 0, 0, S(36)),
+		Position = UDim2.fromOffset(0, if mobile then S(50) else S(84)),
+		Size = UDim2.new(1, 0, 0, if mobile then S(26) else S(36)),
 		ZIndex = 9,
 		Parent = left,
 	})
+	if mobile then
+		Card.fitText(name)
+		Card.fitText(tagline)
+	end
 	local off = UI.frame({
 		BackgroundColor3 = Color3.fromHex("FF6A3D"),
 		AnchorPoint = Vector2.new(0, 1),
@@ -169,30 +185,37 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 		ZIndex = 10,
 		Parent = off,
 	})
-	-- Middle: every item, joined by +.
+	-- Middle: every item, joined by + (phone: the full-width strip under the top row, spaced by a gap).
+	local stripTop = S(14) + topH + S(10)
 	local contents = UI.frame({
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0.26, 0, 0.5, 0),
-		Size = UDim2.new(0.52, 0, 1, -S(28)),
+		AnchorPoint = if mobile then Vector2.zero else Vector2.new(0, 0.5),
+		Position = if mobile then UDim2.fromOffset(S(16), stripTop) else UDim2.new(0.26, 0, 0.5, 0),
+		Size = if mobile then UDim2.new(1, -S(32), 0, h - stripTop - S(12)) else UDim2.new(0.52, 0, 1, -S(28)),
 		ZIndex = 8,
 		Parent = bar,
 	})
+	local gapW = if mobile then S(8) else S(4)
 	UI.list(
 		contents,
 		Enum.FillDirection.Horizontal,
-		S(4),
+		gapW,
 		Enum.HorizontalAlignment.Center,
 		Enum.VerticalAlignment.Center
 	)
 	local cw = contents.AbsoluteSize.X
 	if cw < 50 then
-		cw = S(520)
+		cw = if mobile and parent.AbsoluteSize.X > 50
+			then parent.AbsoluteSize.X - S(32)
+			elseif mobile then S(860)
+			else S(520)
 	end
 	local n = #b.contents
 	local plusW = S(18)
-	local tileW = math.floor(math.min((cw - plusW * (n - 1) - S(4) * (2 * n)) / n, S(150)))
-	local tileH = math.min(h - S(40), math.floor(tileW * 1.35))
+	local tileW = if mobile
+		then math.floor(math.min((cw - gapW * (n - 1)) / n, S(150)))
+		else math.floor(math.min((cw - plusW * (n - 1) - S(4) * (2 * n)) / n, S(150)))
+	local tileH = if mobile then h - stripTop - S(12) else math.min(h - S(40), math.floor(tileW * 1.35))
 	local tiles: { GuiObject } = {}
 	for i, c in b.contents do
 		local r = c :: any
@@ -211,38 +234,49 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 			"UIGradient",
 			{ Color = ColorSequence.new(Fx.shade(rc, -0.35), Fx.shade(rc, -0.85)), Rotation = 90, Parent = tile }
 		)
-		local art = ItemArt.draw(tile, r, math.floor(math.min(tileW, tileH * 0.62) * 0.92), 10)
-		art.AnchorPoint = Vector2.new(0.5, 0.5)
-		art.Position = UDim2.fromScale(0.5, 0.38)
+		-- Phone: the art is a square in the space over the two text rows (top-anchored, inside the tile); the name gets
+		-- two wrapped lines and the kind line a readable size, both fitted to their boxes.
+		local artSize = if mobile
+			then math.max(S(24), math.floor(math.min(tileW - S(10), tileH - S(78))))
+			else math.floor(math.min(tileW, tileH * 0.62) * 0.92)
+		local art = ItemArt.draw(tile, r, artSize, 10)
+		art.AnchorPoint = if mobile then Vector2.new(0.5, 0) else Vector2.new(0.5, 0.5)
+		art.Position = if mobile then UDim2.new(0.5, 0, 0, S(6)) else UDim2.fromScale(0.5, 0.38)
 		Fx.bob(art, S(2), 2.2 + i * 0.2)
-		UI.text({
+		local itemName = UI.text({
 			Text = Rewards.name(r),
 			FontFace = Theme.Fonts.display,
 			TextSize = S(13),
 			TextColor3 = Theme.Colors.white,
 			TextWrapped = true,
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -S(20)),
-			Size = UDim2.new(1, -S(8), 0, S(30)),
+			Position = UDim2.new(0.5, 0, 1, if mobile then -S(28) else -S(20)),
+			Size = UDim2.new(1, -S(8), 0, if mobile then S(42) else S(30)),
 			ZIndex = 10,
 			Parent = tile,
 		})
-		UI.text({
-			Text = if owned[i] then "OWNED" else Rewards.kindLabel(r),
+		-- (Phone: no kind line where the name already says it, 10 REVIVE TOKENS / 2,000 GOLD / ARMS CRATE ×1.)
+		local named = mobile and (r.kind == "gold" or r.kind == "tokens" or r.kind == "crate" or r.kind == "boost")
+		local kind = UI.text({
+			Text = if owned[i] then "OWNED" elseif named then "" else Rewards.kindLabel(r),
 			FontFace = Theme.Fonts.body,
-			TextSize = S(10),
+			TextSize = if mobile then S(13) else S(10),
 			TextColor3 = if owned[i] then Theme.Colors.grey else rc,
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -S(5)),
-			Size = UDim2.new(1, 0, 0, S(13)),
+			Size = UDim2.new(1, if mobile then -S(6) else 0, 0, if mobile then S(20) else S(13)),
 			ZIndex = 10,
 			Parent = tile,
 		})
+		if mobile then
+			Card.fitText(itemName)
+			Card.fitText(kind)
+		end
 		if owned[i] then
 			tile.BackgroundTransparency = 0.5
 		end
 		table.insert(tiles, tile)
-		if i < n then
+		if i < n and not mobile then
 			UI.text({
 				Text = "+",
 				FontFace = Theme.Fonts.display,
@@ -267,12 +301,12 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 			end)
 		end
 	end
-	-- Right: worth, price, BUY.
+	-- Right: worth, price, BUY (phone: the top row's right side).
 	local right = UI.frame({
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -S(20), 0.5, 0),
-		Size = UDim2.new(0.19, 0, 1, -S(36)),
+		AnchorPoint = if mobile then Vector2.new(1, 0) else Vector2.new(1, 0.5),
+		Position = if mobile then UDim2.new(1, -S(20), 0, S(14)) else UDim2.new(1, -S(20), 0.5, 0),
+		Size = if mobile then UDim2.new(0.3, 0, 0, topH) else UDim2.new(0.19, 0, 1, -S(36)),
 		ZIndex = 8,
 		Parent = bar,
 	})
@@ -285,6 +319,9 @@ local function bundleBar(ctx: any, parent: Frame, y: number, h: number)
 		ZIndex = 9,
 		Parent = right,
 	})
+	if mobile then
+		Card.fitText(worth)
+	end
 	UI.frame({
 		BackgroundColor3 = Theme.Colors.grey,
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -425,11 +462,17 @@ local function dailyItems(ctx: any, parent: Frame, y: number): TextLabel
 	local aw, ah = area.AbsoluteSize.X, area.AbsoluteSize.Y
 	if aw < 50 then
 		aw, ah = S(1000), S(500)
+		if ClientState.isMobile and parent.AbsoluteSize.X > 50 then
+			aw = parent.AbsoluteSize.X
+		end
 	end
 	local cols = 3
 	local gap = S(20)
 	local cardW = math.floor(math.min((aw - gap * (cols - 1)) / cols, S(300)) / UI.scale)
-	local cardH = math.floor(math.min((ah - gap) / 2, S(250)) / UI.scale)
+	-- Phone: a fixed height (the section grows to fit, FeaturedTab.render), tall enough for the bigger text.
+	local cardH = if ClientState.isMobile
+		then MOBILE_DAILY_H
+		else math.floor(math.min((ah - gap) / 2, S(250)) / UI.scale)
 	local grid = UI.frame({ BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 6, Parent = area })
 	UI.new("UIGridLayout", {
 		CellSize = UDim2.fromOffset(S(cardW), S(cardH)),
@@ -485,9 +528,17 @@ function FeaturedTab.render(ctx: any)
 	local S = UI.S
 	local root = ctx.content :: Frame
 	sectionTitle(root, "FEATURED", 0, Theme.Colors.gold)
-	local barH = S(230)
+	local mobile = ClientState.isMobile
+	local barH = if mobile then S(MOBILE_BAR_H) else S(230)
+	local dailyY = S(44) + barH + S(28)
+	if mobile then
+		-- The section holds the taller bar and two rows of fixed-height daily cards (StoreScene sized it for PC).
+		local rows = math.ceil(Config.DailyShopItems / 3)
+		local need = dailyY + S(46) + rows * S(MOBILE_DAILY_H) + (rows - 1) * S(20) + S(12)
+		root.Size = UDim2.new(root.Size.X.Scale, root.Size.X.Offset, 0, math.max(root.Size.Y.Offset, need))
+	end
 	local bundleTimer = bundleBar(ctx, root, S(44), barH)
-	local dailyTimer = dailyItems(ctx, root, S(44) + barH + S(28))
+	local dailyTimer = dailyItems(ctx, root, dailyY)
 	if timerConn then
 		timerConn:Disconnect()
 	end

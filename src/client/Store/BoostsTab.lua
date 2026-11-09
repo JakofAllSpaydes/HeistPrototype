@@ -39,17 +39,20 @@ function BoostsTab.render(ctx: any)
 		ZIndex = 6,
 		Parent = root,
 	})
-	UI.text({
+	local blurb = UI.text({
 		Text = "Real-time from purchase · in-run only · Gold, XP, pass XP and paid crates are never boosted",
 		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(0, S(30)),
-		Size = UDim2.new(1, 0, 0, S(16)),
+		Size = UDim2.new(1, 0, 0, if ctx.mobile then S(22) else S(16)),
 		ZIndex = 6,
 		Parent = root,
 	})
+	if ctx.mobile then
+		Card.fitText(blurb) -- phone pass: one line that fits the width instead of running off the page
+	end
 	local profile = ctx.profile()
 	local area = UI.frame({
 		BackgroundTransparency = 1,
@@ -146,6 +149,9 @@ function BoostsTab.render(ctx: any)
 			10
 		)
 		buy.LayoutOrder = 3
+		if ctx.mobile then
+			Card.fitText(buy) -- EXTEND · R$ 1,234 ran past the card's edges on a phone
+		end
 		buy.Activated:Connect(function()
 			ctx.buy(BoostDefs.productId(def.id, d.id), {
 				context = "store BOOSTS",

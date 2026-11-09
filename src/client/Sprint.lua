@@ -112,7 +112,15 @@ function Sprint.cancel(reason: string)
 	apply(false)
 end
 
+-- Round 29b: the hub outside the range walks fast already; sprint is off there (Config.SprintInHub).
+local function hubBlocked(): boolean
+	return not Config.SprintInHub and ClientState.combatOff()
+end
+
 local function press(device: string)
+	if hubBlocked() then
+		return
+	end
 	rule.device = device
 	rule.holdMode = holdModeFor(device)
 	local rec = rule:press(os.clock())
@@ -176,7 +184,7 @@ local function ringRadius(): number
 		end
 	end
 	if best >= 20 then
-		return best
+		return math.min(best, UI.S(Config.SprintTouchRingMaxPx)) -- Round 29b: never a half-screen push
 	end
 	return UI.S(Config.SprintTouchRingPx)
 end
@@ -282,6 +290,7 @@ local function cond(): SprintRule.Cond
 		keep = moving and (touchMode() == "button" or touchForward >= Config.SprintKeepThreshold)
 	end
 	local allowed = Config.SprintEnabled
+		and not hubBlocked()
 		and not ClientState.downed
 		and not ClientState.blocked()
 		and ClientState.cameraMode == "gameplay"

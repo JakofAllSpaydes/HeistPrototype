@@ -1,7 +1,7 @@
 --!strict
 -- The six classes and their three abilities (Q / E / Z), brief 12: INITIATE Frag / Adrenaline / Turret, ENGINEER
 -- Sentry / Barricade / Overclock, DOC Stim Shot / Med Bag / Heal Drone, SHARPSHOOTER Eagle Vision / Dead Eye /
--- Flashbang, PYRO (id TORCH) Molotov / Flame Turret / Inferno, SWARM Drone / Surge / Aegis. Claymore, Oil Drum and
+-- Flashbang, PYRO (id TORCH) Molotov / Inferno / Flame Turret (Round 29b: swapped), SWARM Drone / Surge / Aegis. Claymore, Oil Drum and
 -- Healing Turret sit in Classes.Unassigned. Every number comes from Config so the designer tunes there.
 -- `vars` lists the upgradeable variables shown as current > next in the Classes tab; everything else is static.
 export type Var = { id: string, label: string, base: number, unit: string }
@@ -248,19 +248,9 @@ Classes.List = {
 				icon = "MOL",
 			}),
 			ability({
-				id = "flameturret",
-				name = "Flame Turret",
-				hotkey = "E",
-				system = "B",
-				price = 250,
-				description = "A short, angry stream of fire.",
-				vars = { var("FlameDps", "FLAME DPS", Config.FlameTurretDps), var("Hp", "HP", Config.FlameTurretHP) },
-				icon = "FTR",
-			}),
-			ability({
 				id = "inferno", -- brief 12: replaces the oil drum
 				name = "Inferno",
-				hotkey = "Z",
+				hotkey = "E",
 				system = "self",
 				price = 200,
 				description = "A ring of fire that moves with you. Burns and slows whatever crosses it.",
@@ -269,6 +259,16 @@ Classes.List = {
 					var("InfernoSlowPct", "SLOW", Config.InfernoSlowPct, "%"),
 				},
 				icon = "INF",
+			}),
+			ability({
+				id = "flameturret",
+				name = "Flame Turret",
+				hotkey = "Z",
+				system = "B",
+				price = 250,
+				description = "A short, angry stream of fire.",
+				vars = { var("FlameDps", "FLAME DPS", Config.FlameTurretDps), var("Hp", "HP", Config.FlameTurretHP) },
+				icon = "FTR",
 			}),
 		},
 	},

@@ -93,6 +93,12 @@ local function leave(player: Player, why: string?)
 	state.inRange = false
 	if player.Character then
 		player.Character:SetAttribute("InRange", nil)
+		if not Config.SprintInHub then
+			player.Character:SetAttribute("Sprinting", nil) -- Round 29b: no sprint in the hub
+		end
+	end
+	if not Config.SprintInHub then
+		(state :: any).sprinting = false
 	end
 	local n = Abilities.clearOwner(player)
 	state.buffId = nil

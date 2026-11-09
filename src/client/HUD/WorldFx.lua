@@ -875,6 +875,13 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			blastRing(data.position, 14, Theme.Colors.amber)
 		elseif name == "ThrowLaunch" then
 			UI.sound(Theme.Sounds.swap, 1.8, 0.45)
+		elseif name == "Explosion" and typeof(data.position) == "Vector3" then
+			-- Round 29b: every explosion also draws the grenade's blast ring, so its size reads (ExplosionFx adds the rest).
+			blastRing(
+				data.position,
+				tonumber(data.radius) or 8,
+				if typeof(data.color) == "Color3" then data.color else Theme.Colors.red
+			)
 		elseif name == "Blast" then
 			blastRing(data.position, data.radius or 8, data.color or Theme.Colors.red)
 			if (data.pitch or 1) >= 1.5 then

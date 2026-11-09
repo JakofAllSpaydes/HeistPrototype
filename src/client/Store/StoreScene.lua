@@ -1,6 +1,6 @@
 --!strict
 -- Brief 6 (Round 17b): the premium store as an overlay window over a dark dim, not a scene. Opens from the hub's
--- SHOP tile, the Gold +, and VIEW CRATE / VIEW BUNDLE / VIEW VIP deep links. Header: SHOP, Gold with + and LEAVE
+-- SHOP tile, the Gold +, and VIEW CRATE / VIEW BUNDLE / VIEW VIP deep links. Header: SHOP, Gold with + and the red X
 -- (Round 18: no R$ balance; a tap on the dim outside the window closes it too). The tabs are a rail on the left (FEATURED · CRATES · BOOSTS · VIP · GOLD, a red
 -- dot = something claimable or new) and the whole store is one scrolling page: a tab scrolls to the start of its
 -- section and the rail follows the scroll, so nothing is ever hidden. Every section is a module under Store/ that
@@ -19,6 +19,7 @@ local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local CloseButton = require(Client:WaitForChild("UI"):WaitForChild("CloseButton"))
 local HUD = require(Client:WaitForChild("HUD"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
@@ -29,6 +30,8 @@ local StoreScene = {}
 local TABS = { "FEATURED", "CRATES", "BOOSTS", "VIP", "GOLD" }
 -- Each section's height at the basis (its module lays out inside it).
 local HEIGHTS = { FEATURED = 880, CRATES = 540, BOOSTS = 620, VIP = 440, GOLD = 600 }
+-- Round 29b: on a phone FEATURED stacks its bundle bar in two rows, so the section starts taller (it still grows to fit).
+local PHONE_HEIGHTS = { FEATURED = 1040 }
 local MODULES =
 	{ FEATURED = "FeaturedTab", CRATES = "CratesTab", BOOSTS = "BoostsTab", VIP = "VipTab", GOLD = "GoldTab" }
 local ACCENT = {
@@ -261,8 +264,10 @@ local function build(focus: string, arg: any?)
 	UI.tween(winScale, { Scale = 1 }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	Fx.slideIn(w, UDim2.fromOffset(0, S(30)), 0.3)
 
-	-- Header: SHOP · Gold · LEAVE.
-	local headerH = if mobile then S(56) else S(64)
+	-- Header: SHOP · Gold · the shared red X (top-right, vertically centred in the header).
+	local closeSize = CloseButton.size()
+	local headerH = math.max(if mobile then S(56) else S(64), closeSize + S(12))
+	local closeInset = S(14)
 	local header = UI.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, headerH), ZIndex = 4, Parent = w })
 	local title = UI.text({
 		Text = "SHOP",
@@ -293,7 +298,7 @@ local function build(focus: string, arg: any?)
 	local right = UI.frame({
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -S(14), 0.5, 0),
+		Position = UDim2.new(1, -(closeInset + closeSize + S(10)), 0.5, 0),
 		Size = UDim2.fromOffset(0, headerH - S(16)),
 		AutomaticSize = Enum.AutomaticSize.X,
 		ZIndex = 5,
@@ -351,18 +356,9 @@ local function build(focus: string, arg: any?)
 	goldLabel = balancePill(2, "◆", Theme.Colors.gold, function()
 		scrollTo("GOLD")
 	end)
-	local leave, _ = Fx.button(
-		right,
-		if mobile then "X" else "LEAVE",
-		Theme.Colors.red,
-		Theme.Colors.white,
-		UDim2.fromOffset(if mobile then S(44) else S(110), headerH - S(22)),
-		6
-	)
-	leave.LayoutOrder = 3
-	leave.Activated:Connect(function()
+	CloseButton.new(header, function()
 		StoreScene.close()
-	end)
+	end, { margin = closeInset, top = (headerH - closeSize) // 2, z = 6 })
 
 	-- The rail of tabs on the left.
 	local railW = if mobile then S(158) else S(176) -- Round 24d: wider on mobile for the bigger labels
@@ -479,7 +475,12 @@ local function build(focus: string, arg: any?)
 		local sec = UI.frame({
 			Name = tab,
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, -S(8), 0, S(HEIGHTS[tab])),
+			Size = UDim2.new(
+				1,
+				-S(8),
+				0,
+				S(if ClientState.isMobile then PHONE_HEIGHTS[tab] or HEIGHTS[tab] else HEIGHTS[tab])
+			),
 			LayoutOrder = i * 2,
 			ZIndex = 5,
 			Parent = sc,

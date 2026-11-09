@@ -1,9 +1,9 @@
 --!strict
 -- Brief 9: the Skill Web scene, in the pass / store family. A full-screen overlay over the blurred hub (the hub HUD
--- hidden, the local nameplate hidden, movement locked); Esc / BACK / B closes it.
+-- hidden, the local nameplate hidden, movement locked); the red X, Esc or B closes it.
 --   top-left      SKILL WEB in the stencil face, the branch legend under it (the hovered / selected branch lit)
---   top-right     the Gold pill (the store's balance style; + goes to the store's GOLD section)
---   bottom-left   BACK, the red X tile
+--   top-right     the shared red X (UI/CloseButton)
+--   bottom-left   the Gold pill (the store's balance style; + goes to the store's GOLD section)
 --   the canvas    91 flat-top hexes on a regular hex grid (Skills / SkillLayout): drag pans (mouse, touch, right
 --                 stick), scroll / pinch / triggers zoom between SkillZoomMin (never smaller than the whole web on
 --                 screen) and SkillZoomMax; double-tap the backdrop to recentre on START
@@ -32,6 +32,7 @@ local GamepadNav = require(Client:WaitForChild("GamepadNav"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
+local CloseButton = require(Client:WaitForChild("UI"):WaitForChild("CloseButton"))
 local HUD = require(Client:WaitForChild("HUD"))
 local Nameplates = require(Client:WaitForChild("Nameplates"))
 local Fx = require(Client:WaitForChild("Store"):WaitForChild("Fx"))
@@ -1531,13 +1532,13 @@ build = function()
 		row.Visible = Skills.unlocked(ownedSet())
 	end
 
-	-- The Gold pill, top-right (the store's balance style).
+	-- The Gold pill, bottom-left (the store's balance style; designer feedback: currency bottom-left, X top-right).
 	local pillH = if mobile then S(36) else S(42)
 	local pill = UI.frame({
 		Name = "Gold",
 		BackgroundColor3 = Color3.fromHex("1E1E25"),
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(14), 0, top),
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, S(20), 1, -S(14)),
 		Size = UDim2.fromOffset(if mobile then S(150) else S(190), pillH),
 		ZIndex = 10,
 		Parent = g,
@@ -1589,48 +1590,11 @@ build = function()
 	shownGold = -1
 	paintGold(false)
 
-	-- BACK, bottom-left: the red X tile.
-	local backSize = if mobile then S(56) else S(60)
-	local backHolder = UI.frame({
-		Name = "Back",
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, S(20), 1, -S(14)),
-		Size = UDim2.fromOffset(backSize, backSize + S(16)),
-		ZIndex = 10,
-		Parent = g,
-	})
-	table.insert(chrome, backHolder)
-	UI.mobileGrow(backHolder, mobile)
-	local back = UI.button({
-		Name = "BackButton",
-		Text = "",
-		BackgroundColor3 = Theme.Colors.red,
-		Size = UDim2.fromOffset(backSize, backSize),
-		Selectable = true,
-		ZIndex = 11,
-		Parent = backHolder,
-	})
-	UI.corner(back, S(4))
-	UI.stroke(back, Theme.Colors.black, S(1.5), 0.3)
-	local x = Icons.draw(back, "close", math.floor(backSize * 0.6), Theme.Colors.white, Theme.Colors.red)
-	x.AnchorPoint = Vector2.new(0.5, 0.5)
-	x.Position = UDim2.fromScale(0.5, 0.5)
-	local backLabel = UI.text({
-		Text = "BACK",
-		FontFace = Theme.Fonts.display,
-		TextSize = S(12),
-		TextColor3 = Theme.Colors.text,
-		Position = UDim2.fromOffset(0, backSize + S(1)),
-		Size = UDim2.new(1, 0, 0, S(14)),
-		ZIndex = 11,
-		Parent = backHolder,
-	})
-	UI.stroke(backLabel, Theme.Colors.black, S(1.5), 0.3)
-	Fx.interactive(back)
-	back.Activated:Connect(function()
+	-- The shared red X, top-right under the Roblox top bar (selectable: a pad can land on it; B still closes).
+	local closeBtn = CloseButton.new(g, function()
 		SkillScene.close()
-	end)
+	end, { top = top, z = 11 })
+	table.insert(chrome, closeBtn)
 
 	buildSheet(g, vp, top, mobile)
 	bindInput()

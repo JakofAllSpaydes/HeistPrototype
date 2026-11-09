@@ -116,7 +116,8 @@ local CLASS: { [string]: { () -> (string, string) } } = {
 			return "HOT ROUNDS", "Your bullets set enemies on fire"
 		end,
 		function()
-			return "BACKDRAFT", "Burning kills recharge Molotov"
+			return "BACKDRAFT",
+				string.format("Kills keep your Inferno burning (+%gs each)", Config.InfernoKillExtendSec)
 		end,
 	},
 	-- Brief 12.

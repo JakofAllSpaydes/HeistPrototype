@@ -30,6 +30,7 @@ local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
+local CloseButton = require(Client:WaitForChild("UI"):WaitForChild("CloseButton"))
 local HUD = require(Client:WaitForChild("HUD"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local StoreFolder = Client:WaitForChild("Store")
@@ -1382,7 +1383,7 @@ local function build()
 	})
 	layer("selected", {
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -S(20), 0, top + S(66)),
+		Position = UDim2.new(1, -S(20), 0, top + math.max(S(66), CloseButton.size() + S(14))), -- under the X
 		Size = UDim2.fromOffset(S(if mobile then 260 else 330), S(100)),
 		ZIndex = 5,
 	})
@@ -1399,20 +1400,10 @@ local function build()
 		ZIndex = 5,
 	})
 	layer("overlay", { Size = UDim2.fromScale(1, 1), ZIndex = 60 })
-	-- LEAVE, top-right.
-	local leave, _ = Fx.button(
-		g,
-		if mobile then "X" else "LEAVE",
-		Theme.Colors.red,
-		Theme.Colors.white,
-		UDim2.fromOffset(if mobile then S(48) else S(110), S(48)),
-		20
-	)
-	leave.AnchorPoint = Vector2.new(1, 0)
-	leave.Position = UDim2.new(1, -S(20), 0, top)
-	leave.Activated:Connect(function()
+	-- The shared red X, top-right under the Roblox top bar.
+	CloseButton.new(g, function()
 		PassScene.close()
-	end)
+	end, { top = top, z = 20 })
 	fade = UI.frame({
 		BackgroundColor3 = Color3.new(0, 0, 0),
 		BackgroundTransparency = 1,

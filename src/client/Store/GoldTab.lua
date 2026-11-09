@@ -26,17 +26,20 @@ function GoldTab.render(ctx: any)
 		ZIndex = 6,
 		Parent = root,
 	})
-	UI.text({
+	local blurb = UI.text({
 		Text = "Weapons, classes, upgrades and cosmetics in the customization scene all spend Gold.",
 		FontFace = Theme.Fonts.body,
 		TextSize = S(13),
 		TextColor3 = Theme.Colors.textDim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(0, S(32)),
-		Size = UDim2.new(1, 0, 0, S(18)),
+		Size = UDim2.new(1, 0, 0, if ctx.mobile then S(24) else S(18)),
 		ZIndex = 6,
 		Parent = root,
 	})
+	if ctx.mobile then
+		Card.fitText(blurb) -- phone pass: one line that fits the width
+	end
 	local best = GoldPacks.bestValueId()
 	local area = UI.frame({
 		BackgroundTransparency = 1,

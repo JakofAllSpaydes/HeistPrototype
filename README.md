@@ -1189,8 +1189,8 @@ FIRST HEIST OF THE DAY ×2 XP (`profile.lastHeistDay`, Progression) moved onto t
   that makes `SentryDpsMult` 2.5x its DPS, `SentryHp` 300, `SentrySec` 50, `SentryRangeMult` 1.5x; several can stand;
   Overclock and ENGINEER's passives apply. DOC: Stim Shot / Med Bag / **Heal Drone**: a drone at your shoulder for
   `HealDroneSec` 20 that heals the lowest-HP ally within `HealDroneRange` 18 (an ally reviving someone first, ties to you)
-  `HealDroneHps` every `FieldTickSec`, with a green beam; no HP, fades out. PYRO: Molotov / Flame Turret / **Inferno**: a
-  ring of fire `InfernoRadius` 9 (x area) round you for `InfernoSec` 10 that trails your feet; enemies inside burn (the
+  `HealDroneHps` every `FieldTickSec`, with a green beam; no HP, fades out. PYRO: Molotov / **Inferno** / Flame Turret (Round 29b: Inferno on F, the turret on Z): a
+  ring of fire `InfernoRadius` 24 (x area; Round 29b) round you for `InfernoSec` 10, its flames locked to the ring at your feet; enemies inside burn (the
   burn status, `InfernoBurnPerSec`, so SLOW BURN applies) and walk `InfernoSlowPct` 30 slower (a named slow that
   multiplies with Ice Ammo's, never a stop); players and placeables are untouched. Cooldowns: `SentryCooldown` 35,
   `HealDroneCooldown` 25, `InfernoCooldown` 30. TURRET DAMAGE fits INITIATE and ENGINEER and raises the sentry;
@@ -1210,7 +1210,7 @@ FIRST HEIST OF THE DAY ×2 XP (`profile.lastHeistDay`, Progression) moved onto t
   `droneInherit` stat), read per shot. **SURGE** (E, `SurgeCooldown` 20, `SurgeSec` 8): drones fire `SurgeFireMult` 1.5x,
   every shot ricochets to `SurgeRicochet` 1 more enemy within 12 studs, and each drone fetches a bag within
   `SurgeFetchRange` 20 to your feet every 2 s (its beacon re-announces at the new spot). **AEGIS** (Z, `AegisCooldown`
-  35): a shield drone over you for `AegisSec` 8 with `AegisHp` 400 (x ability power) and a bubble of `AegisRadius` 7: an
+  35): a shield drone over you for `AegisSec` 8 with `AegisHp` 400 (x ability power) and a bubble of `AegisRadius` 4.7 (Round 29b; the tile counts it down): an
   enemy hit on anyone inside goes to the bubble (`PlayerState.shieldHooks`; fire / gas on the floor pass), melee
   enemies pressed on it are blocked (an invisible enemy-only sphere with a `PathfindingModifier`) and burn
   `AegisContactDps`, and it detonates for `AegisBurst` 180 in `AegisBurstRadius` 10 (x area) on break or expiry. Mastery:
@@ -1806,8 +1806,8 @@ only, a running serve picks them up.
 4. Classes tab: six classes and FUTURE in the pill row (PYRO, SWARM last); check SHARPSHOOTER's label still reads.
    INITIATE's Z is Turret (instant); ENGINEER's Q a Sentry: legs out, head up, a beep at 1.5 s, then a red laser on
    its target and alternating muzzle flashes; put down two. DOC's Z: the heal drone sits at your shoulder, follows you,
-   beams the most hurt teammate (someone reviving first), fades at 20 s. PYRO's Z: a blue fire ring trails your feet
-   for 10 s; enemies crossing it burn and slow; teammates and placeables are untouched.
+   beams the most hurt teammate (someone reviving first), fades at 20 s. PYRO's F (Round 29b): a blue fire ring
+   locked round your feet for 10 s, no trail; enemies crossing it burn and slow; teammates and placeables are untouched.
 5. Grant ability claymore 3 → Claymore on Z for any class; `clear` → back. `UnassignedAbilitiesEnabled` false keeps
    them off otherwise.
 6. PYRO everywhere: the carousel, the class card, the in-run header, the nameplate, the unlock toast, the Accelerant
@@ -2632,6 +2632,27 @@ ExplosionFx (the explosion feel). Classes.lua carries `displayName`, `Classes.Un
   its pictograms. Step 5: `area` everywhere that is not a bullet, the AREA card with its faces, the RPG / flamethrower /
   cryo baselines, `Run/Explosion.lua` knockback, `client/ExplosionFx`. Step 6: the pad spec's kit checks (272), the
   dealer's resolved lines, this README.
+- **Round 29b (9 Nov) — classes, mobile and window feedback.** Unplayed except the Inferno look (Jack tuned it in
+  Studio). Inferno: the flames are locked emitters at the molotov fire's size and blue, riding their spot on the ring
+  (no trail left behind), the ring sits on your feet (no lag), one flame per ~6.5 studs, `InfernoRadius` 9 → 24.
+  AEGIS: `AegisRadius` 7 → 4.7; every explosion also draws the grenade's blast ring (WorldFx) so the burst's size reads;
+  the Z tile counts the bubble down like Adrenaline (`abilityActive.aegis`, cleared if it breaks early). Sprint: off in
+  the hub outside the range (`SprintInHub` false; client and server, ended on leaving the range); on a phone the
+  measured thumbstick ring is capped at `SprintTouchRingMaxPx` 60 (Roblox's frame reported a much bigger image, so the
+  push felt like half the screen) and `SprintPushRadius` 1.3 → 1.1. Phone POV sits `MobilePovGap` left of the
+  equipped weapon card, measured from the card each frame. Skill Web: 8 rings (`SkillLayout.Rings`, 90 → 216 nodes),
+  every stat repeating in rings 6–8 (ARSENAL's per-type damage two or three times), `SkillCostByRing` to 140,000; rings
+  1–5 and every owned node id unchanged. Windows: one close control, `UI/CloseButton.lua` (a red square with a white X,
+  top-right, `CloseButtonSize` / `Margin` / `MinPx`), on the streak modal (an unclaimed day still claims), the daily
+  crate sheet, the store (LEAVE gone), the pass (LEAVE gone), the Jobs board (BACK gone; NEW JOBS IN and BOUNTY RESETS
+  IN centred side by side), the Skill Web (BACK gone, Gold bottom-left) and customization (the dock's LEAVE tile gone).
+  Phone hub HUD: friend (now "+ INVITE"), Gold and the level card stack bottom-left in one column, smallest on top,
+  about 20% smaller, inside the device safe area (`MobileHubCluster`), with a one-row phone level card. Phone store:
+  text fits its boxes (`Card.fitText`, `MobileTextMin` 10), FEATURED's bundle bar is two rows with square item art,
+  the crate / boost / gold / VIP lines shrink to fit; FEATURED starts taller on a phone. Card odds are unchanged by
+  brief 12 apart from the crit-at-100% and AREA gates. PYRO's kit is Molotov / Inferno (F) / Flame Turret (Z). PYRO III BACKDRAFT now keeps a running
+  Inferno burning: each kill the PYRO makes, or any burning enemy of theirs dying, adds `InfernoKillExtendSec` 0.5 s, no
+  cap (`BackdraftCdr` and the Molotov trim are gone).
 ## Open design notes (not built)
 
 - **Brief 12 notes and deviations (Round 29, unplayed).** The resolver lives in the existing `server/Stats.lua` (it was

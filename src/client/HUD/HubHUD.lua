@@ -36,6 +36,62 @@ local function hubS(n: number): number
 	return UI.S(n * (if ClientState.isMobile then Config.MobileButtonScale else 1))
 end
 
+-- Phone pass: the label's text shrinks to fit its box, never past Config.MobileTextMin; the TextSize it was given
+-- (after the font factor) stays the ceiling.
+local function fitText(label: TextLabel | TextButton)
+	local c = UI.new("UITextSizeConstraint", { Parent = label })
+	local function cap()
+		c.MaxTextSize = math.clamp(math.max(label.TextSize, Config.MobileTextMin), 1, 100)
+		c.MinTextSize = math.min(Config.MobileTextMin, c.MaxTextSize)
+	end
+	cap()
+	local l: any = label -- (no Roblox types for luau-lsp: the union has no methods)
+	l:GetPropertyChangedSignal("TextSize"):Connect(cap)
+	label.TextScaled = true
+end
+
+-- Phone pass: the device safe area's left and bottom insets in px (notch, rounded corners, home bar). The HUD gui
+-- ignores every inset, so a probe gui with DeviceSafeInsets measures them; `apply` reruns when either side resizes.
+-- Left comes from the probe's position (X has no top-bar offset), bottom from the height it loses (landscape phones
+-- have no top inset).
+local function watchSafeArea(root: GuiObject, apply: (number, number) -> (), track: (RBXScriptConnection) -> ())
+	local playerGui = root:FindFirstAncestorOfClass("PlayerGui")
+	if not playerGui then
+		return
+	end
+	local probe = playerGui:FindFirstChild("SafeAreaProbe") :: ScreenGui?
+	if not probe then
+		local made = Instance.new("ScreenGui")
+		made.Name = "SafeAreaProbe"
+		made.ResetOnSpawn = false
+		made.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+		local f = Instance.new("Frame")
+		f.Name = "Safe"
+		f.BackgroundTransparency = 1
+		f.Size = UDim2.fromScale(1, 1)
+		f.Parent = made
+		made.Parent = playerGui
+		probe = made
+	end
+	local safe = (probe :: ScreenGui):FindFirstChild("Safe") :: Frame?
+	if not safe then
+		return
+	end
+	local function measure()
+		local s = safe :: Frame
+		if root.AbsoluteSize.Y <= 0 or s.AbsoluteSize.Y <= 0 then
+			return
+		end
+		local left = s.AbsolutePosition.X - root.AbsolutePosition.X
+		local bottom = root.AbsoluteSize.Y - s.AbsoluteSize.Y
+		apply(math.clamp(math.floor(left), 0, 80), math.clamp(math.floor(bottom), 0, 40))
+	end
+	track(safe:GetPropertyChangedSignal("AbsoluteSize"):Connect(measure))
+	track(safe:GetPropertyChangedSignal("AbsolutePosition"):Connect(measure))
+	track(root:GetPropertyChangedSignal("AbsoluteSize"):Connect(measure))
+	measure()
+end
+
 -- Icon tile with a label under it. Returns the button.
 local function iconTile(
 	parent: Instance,
@@ -328,9 +384,16 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local skillsStroke = skills:FindFirstChildOfClass("UIStroke")
 	local skillsBadgeScale = UI.new("UIScale", { Name = "BreadcrumbScale", Parent = skillsBadge })
 
-	-- Gold pill with + and INVITE FRIENDS, bottom-left; the level card sits above them.
-	local goldW = if mobile then S(170) else S(230)
-	local levelCard = LevelCard.build(root, goldW, true) -- the same width as the Gold pill and INVITE under it
+	-- Gold pill with + and INVITE FRIENDS, bottom-left; the level card sits above them. On touch (phone pass) the
+	-- three stack the other way up in one left-aligned column, smallest to biggest: INVITE, Gold, the level card, at
+	-- plain UI.S sizes (Config.MobileHubCluster: the corner was too big with the MobileButtonScale grow).
+	local M = Config.MobileHubCluster
+	local u = UI.S -- the phone column's unit (no grow)
+	local goldW = if mobile then u(M.goldW) else S(230)
+	local goldH = if mobile then u(M.goldH) else S(38)
+	local levelCard = if mobile
+		then LevelCard.build(root, u(M.cardW), true, u(M.cardH))
+		else LevelCard.build(root, goldW, true) -- the same width as the Gold pill and INVITE under it
 	levelCard.frame.AnchorPoint = Vector2.new(0, 1)
 	levelCard.frame.Position = UDim2.new(0, S(20), 1, -S(62) - S(38) - S(12))
 	local gold = UI.frame({
@@ -338,39 +401,48 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, S(20), 1, -S(62)),
-		Size = UDim2.fromOffset(goldW, S(38)),
+		Size = UDim2.fromOffset(goldW, goldH),
 		Parent = root,
 	})
 	UI.corner(gold, S(8))
 	UI.stroke(gold, Theme.Colors.black, S(1.5), 0.3)
+	local coinW, coinH = if mobile then u(22) else S(26), if mobile then u(11) else S(13)
 	local bar = UI.frame({
 		BackgroundColor3 = Theme.Colors.gold,
-		Size = UDim2.fromOffset(S(26), S(13)),
-		Position = UDim2.fromOffset(S(10), S(13)),
+		Size = UDim2.fromOffset(coinW, coinH),
+		Position = if mobile
+			then UDim2.fromOffset(u(8), math.floor((goldH - coinH) / 2))
+			else UDim2.fromOffset(S(10), S(13)),
 		Rotation = -8,
 		Parent = gold,
 	})
 	UI.corner(bar, S(3))
+	local plusSize = if mobile then goldH - u(6) else S(28)
 	local goldLabel = UI.text({
 		Name = "Gold",
 		Text = "0",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(22),
+		TextSize = if mobile then u(20) else S(22),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(44), 0),
-		Size = UDim2.new(1, -S(88), 1, 0),
+		Position = UDim2.fromOffset(if mobile then u(8) + coinW + u(7) else S(44), 0),
+		Size = if mobile
+			then UDim2.new(1, -(u(8) + coinW + u(7) + plusSize + u(3) + u(4)), 1, 0)
+			else UDim2.new(1, -S(88), 1, 0),
 		Parent = gold,
 	})
+	if mobile then
+		fitText(goldLabel)
+	end
 	local plus = UI.button({
 		Text = "+",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(20),
+		TextSize = if mobile then u(22) else S(20),
 		TextColor3 = Theme.Colors.bg,
 		BackgroundColor3 = GREEN,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -S(6), 0.5, 0),
-		Size = UDim2.fromOffset(S(28), S(28)),
+		Position = UDim2.new(1, if mobile then -u(3) else -S(6), 0.5, 0),
+		Size = UDim2.fromOffset(plusSize, plusSize),
 		Parent = gold,
 	})
 	UI.corner(plus, S(6))
@@ -384,14 +456,14 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end)
 	local invite = UI.button({
 		Name = "Invite",
-		Text = if mobile then "+👥" else "INVITE FRIENDS",
-		FontFace = Theme.Fonts.body,
-		TextSize = S(13),
+		Text = if mobile then "+ INVITE" else "INVITE FRIENDS",
+		FontFace = if mobile then Theme.Fonts.display else Theme.Fonts.body,
+		TextSize = if mobile then u(15) else S(13),
 		TextColor3 = Theme.Colors.white,
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, S(20), 1, -S(20)),
-		Size = UDim2.fromOffset(if mobile then S(44) else goldW, S(34)),
+		Size = if mobile then UDim2.fromOffset(u(M.inviteW), u(M.inviteH)) else UDim2.fromOffset(goldW, S(34)),
 		Parent = root,
 	})
 	UI.corner(invite, S(6))
@@ -399,6 +471,32 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	invite.Activated:Connect(function()
 		UI.punch(invite, 0.92, 0.15) -- present, does nothing (brief)
 	end)
+	if mobile then
+		fitText(invite)
+		-- The column: one left edge, one gap, bottom-aligned; a plain Frame, so a touch on its gaps (and on the level
+		-- card) still reaches the thumbstick.
+		local edge, gap = u(M.edge), u(M.gap)
+		local column = UI.frame({
+			Name = "Corner",
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, edge, 1, -edge),
+			Size = UDim2.fromOffset(
+				math.max(u(M.cardW), goldW, u(M.inviteW)),
+				u(M.inviteH) + goldH + u(M.cardH) + gap * 2
+			),
+			Parent = root,
+		})
+		UI.list(column, Enum.FillDirection.Vertical, gap, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Bottom)
+		for i, item in { invite, gold, levelCard.frame } :: { GuiObject } do
+			item.AnchorPoint = Vector2.zero
+			item.LayoutOrder = i
+			item.Parent = column
+		end
+		watchSafeArea(root, function(left: number, bottom: number)
+			column.Position = UDim2.new(0, edge + left, 1, -(edge + bottom))
+		end, track)
+	end
 
 	-- Dock, bottom-center: WEAPONS · CLASSES · AVATAR icon tiles with labels.
 	local tile = if mobile then S(64) else S(92)
