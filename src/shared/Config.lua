@@ -1979,6 +1979,7 @@ local Config = {
 	JobHighlightFill = 0.1, -- the outline's fill opacity (0 = outline only); never a solid block
 	JobHighlightColor = "4D9FE8", -- the job blue
 	JobPillMobileScale = 1.15, -- phones: the Job pill this much bigger
+	MarkerMobileWorldScale = 1.5, -- phones draw UI.S about half size: world markers start this much bigger there (as the gun crate tag does)
 	BagWallRange = 30, -- studs: loot markers show through walls only this close
 	BagMarkerRange = 60, -- studs: loot markers fade out beyond this
 	LootMarkerCap = 6, -- loot markers on screen at once (the nearest)

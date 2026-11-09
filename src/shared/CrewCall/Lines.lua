@@ -289,7 +289,8 @@ local Lines = {
 		nagLabel = "WHENEVER YOU'RE READY",
 		stamp = "HEIST ON", -- the centre stamp at the breach
 		pill = "BREACH WHEN READY", -- where the wave bar sits until the breach
-		pillHint = "BLOW THE DOORS OR GO IN THROUGH A WINDOW",
+		pillHint = "BLOW THE DOORS OR GO IN THROUGH A WINDOW", -- phones
+		pillKeyHint = "{key} AT THE DOORS · OR IN THROUGH A WINDOW", -- PC / pad: {key} is the interact glyph
 		idleRow = "IDLE BEFORE BREACH %s", -- the summary's small line under the time row
 	},
 	-- Brief 13: relics (RelicService, the RELIC FOUND popup, the Create Match rail, the booth). [Copy: TBA]

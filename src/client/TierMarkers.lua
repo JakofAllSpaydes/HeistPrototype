@@ -194,7 +194,7 @@ end
 -- A side job's CallStart: the pill, the outline (once the beacon replicates) and the pulse clock.
 function TierMarkers.setJob(id: any, position: Vector3, name: string, hint: string)
 	TierMarkers.clearJob()
-	local scale = if ClientState.isMobile then Config.JobPillMobileScale else 1
+	local scale = if ClientState.isMobile then Config.MarkerMobileWorldScale * Config.JobPillMobileScale else 1
 	local function S(n: number): number
 		return UI.S(n * scale)
 	end
@@ -493,7 +493,7 @@ local function icon(
 	glyph: string,
 	labelText: string
 ): (Attachment, BillboardGui, TextLabel)
-	local scale = if ClientState.isMobile then Config.LootIconMobileScale else 1
+	local scale = if ClientState.isMobile then Config.MarkerMobileWorldScale * Config.LootIconMobileScale else 1
 	local function S(n: number): number
 		return UI.S(n * scale)
 	end
@@ -571,7 +571,7 @@ local function clusterMarker(i: number): Cluster
 	if c then
 		return c
 	end
-	local scale = if ClientState.isMobile then Config.LootIconMobileScale else 1
+	local scale = if ClientState.isMobile then Config.MarkerMobileWorldScale * Config.LootIconMobileScale else 1
 	local function S(n: number): number
 		return UI.S(n * scale)
 	end
