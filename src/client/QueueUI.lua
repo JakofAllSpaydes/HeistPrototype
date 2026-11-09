@@ -22,6 +22,7 @@ local ReviveTokenPacks = require(Shared:WaitForChild("ReviveTokenPacks"))
 local Clock = require(Shared:WaitForChild("Clock"))
 local Maps = require(Shared:WaitForChild("Maps"))
 local MatchCardLine = require(script.Parent:WaitForChild("Retention"):WaitForChild("MatchCardLine")) -- brief 10
+local RelicRail = require(script.Parent:WaitForChild("RelicRail")) -- brief 13
 
 local QueueUI = {}
 
@@ -321,6 +322,7 @@ local function openCreate(v: any)
 				chosen.mapIndex = i
 				paintMaps()
 				repaintBonus()
+				RelicRail.select(m.id) -- brief 13: the rail follows the highlighted map
 				UI.punch(c, 0.96, 0.15)
 			end)
 		end
@@ -486,6 +488,7 @@ local function openCreate(v: any)
 	end)
 
 	local create = UI.button({
+		Name = "CreateParty",
 		Text = "CREATE PARTY",
 		FontFace = Theme.Fonts.body,
 		TextSize = S(24),
@@ -508,6 +511,8 @@ local function openCreate(v: any)
 	end)
 	-- Brief 10: PLAY A MATCH · DAILY CRATE · ×2 XP under the map row while today's first run is still to come.
 	MatchCardLine.add(body, 3)
+	-- Brief 13: the relic rail beside the card (a chip on the tile on phones).
+	RelicRail.attach(g, panel, mapCards, liveMaps, (liveMaps[chosen.mapIndex] or liveMaps[1]).id)
 end
 
 ------------------------------------------------------------------ Compact party card (hub HUD, under PLAY)

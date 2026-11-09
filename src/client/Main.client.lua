@@ -127,6 +127,7 @@ require(script.Parent:WaitForChild("RunEndUI")).init()
 require(script.Parent:WaitForChild("BossCutscene")).init()
 require(script.Parent:WaitForChild("Scoreboard")).init()
 require(script.Parent:WaitForChild("QueueUI")).init()
+require(script.Parent:WaitForChild("RelicRail")).init() -- brief 13
 require(script.Parent:WaitForChild("MetaScene")).init()
 require(script.Parent:WaitForChild("Store"):WaitForChild("StoreScene")).init()
 require(script.Parent:WaitForChild("Pass"):WaitForChild("PassScene")).init()
