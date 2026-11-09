@@ -514,7 +514,12 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 				elseif data.headshot then Theme.Colors.gold
 				else Theme.Colors.text
 			local size = if data.secondary then 18 elseif data.crit then 34 elseif data.headshot then 30 else 24
-			floatText(data.position, tostring(data.amount), color, size, 2.5, 0.7)
+			-- Brief 12: an explosion's numbers pop outward from its centre (a cluster, not a stack).
+			local at: Vector3 = data.position
+			if typeof(data.outward) == "Vector3" and typeof(at) == "Vector3" then
+				at += Vector3.new(data.outward.X, 0, data.outward.Z) * (1 + math.random() * 1.5)
+			end
+			floatText(at, tostring(data.amount), color, size, 2.5, 0.7)
 			if typeof(data.model) == "Instance" then
 				flashEnemy(data.model)
 			end

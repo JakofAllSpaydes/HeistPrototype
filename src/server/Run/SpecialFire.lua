@@ -16,6 +16,7 @@ local Config = require(Shared.Config)
 local Enemy = require(script.Parent.Enemy)
 local Elements = require(script.Parent.Elements)
 local World = require(script.Parent.World)
+local Explosion = require(script.Parent.Explosion) -- brief 12
 local Pause = require(script.Parent.Pause)
 local Remotes = require(script.Parent.SlotRemotes)
 
@@ -63,8 +64,8 @@ end
 
 ------------------------------------------------------------------ explosions
 local function explode(shooter: any, pos: Vector3, radius: number, dmg: number, color: Color3, shake: number)
-	World.fireRun("Blast", { position = pos, radius = radius, color = color, shake = shake, pitch = 0.6 })
-	for _, model in Enemy.within(pos, radius) do
+	local victims = Enemy.within(pos, radius)
+	for _, model in victims do
 		local ep = Enemy.rootPosition(model) or pos
 		local away = ep - pos
 		local t = 1 - math.clamp(away.Magnitude / radius, 0, 1)
@@ -76,6 +77,8 @@ local function explode(shooter: any, pos: Vector3, radius: number, dmg: number, 
 			blastT = t,
 		})
 	end
+	-- Brief 12: the survivors are shoved out and the explosion lands with its flash, ring, dust and punch.
+	Explosion.after(shooter.player, pos, radius, color, victims, shake)
 end
 
 ------------------------------------------------------------------ projectiles
@@ -159,8 +162,8 @@ local launch: (shooter: any, origin: Vector3, velocity: Vector3, spec: ProjSpec,
 
 local function detonate(shooter: any, spec: ProjSpec, pos: Vector3, dmg: number, scale: number)
 	local color = if spec.kind == "plasma" then Color3.fromHex("5BFF9A") else Color3.fromHex("FF8A2A")
-	-- Round 25: BLAST RADIUS (explosive synergy) widens an Explosive gun's blasts too.
-	local radius = spec.radius * scale * (shooter.stats.blastRadiusMult or 1)
+	-- Brief 12: the area stat widens every projectile blast (BLAST RADIUS folded into AREA).
+	local radius = spec.radius * scale * (shooter.stats.areaMult or 1)
 	explode(shooter, pos, radius, dmg, color, if spec.kind == "tnt" or spec.kind == "rocket" then 0.45 else 0.25)
 	-- Cluster: the shell splits and throws bomblets that each blow where they land.
 	local n = spec.bomblets or 0
@@ -456,7 +459,7 @@ function SpecialFire.fire(shooter: any, origin: Vector3, dir: Vector3, extra: an
 		-- damage (up to maxDmgMult) is split across the ticks; the beam leaves from the shooter's head each tick.
 		local c = w.charge
 		local t = math.clamp(tonumber(typeof(extra) == "table" and extra.charge or 0) or 0, 0, 1)
-		local width = c.minWidth + (c.maxWidth - c.minWidth) * t
+		local width = (c.minWidth + (c.maxWidth - c.minWidth) * t) * (st.areaMult or 1) -- brief 12: area widens it
 		local dur = c.minDur + (c.maxDur - c.minDur) * t
 		local ticks = 1 + math.floor(t * (c.maxTicks - 1) + 0.5)
 		local perTick = st.damage * (1 + (c.maxDmgMult - 1) * t) / ticks
@@ -497,7 +500,14 @@ function SpecialFire.fire(shooter: any, origin: Vector3, dir: Vector3, extra: an
 			end
 		end)
 	elseif mode == "stream" then
-		streamTick(shooter, origin, dir, w.stream)
+		-- Brief 12: the area stat lengthens and widens the stream.
+		local a = st.areaMult or 1
+		local s = w.stream
+		streamTick(shooter, origin, dir, {
+			element = s.element,
+			range = s.range * a,
+			angle = math.min(Config.AreaStreamAngleCap, s.angle * a),
+		})
 	elseif mode == "chain" then
 		chainTick(shooter, origin, dir, w.chain)
 	end

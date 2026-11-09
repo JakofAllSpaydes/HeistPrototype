@@ -18,6 +18,7 @@ local WeaponRoll = require(script.Parent.WeaponRoll)
 local BigCrate = require(script.Parent.BigCrate)
 local CrewCall = require(script.Parent.CrewCall)
 local Abilities = require(script.Parent.Abilities)
+local Explosion = require(script.Parent.Explosion) -- brief 12
 local World = require(script.Parent.World)
 
 -- Brief 8: the players this run slot looks after (its party; the hub slot: everyone not in a run).
@@ -633,6 +634,10 @@ local handlers: { [string]: (Player, PlayerState.State, any) -> () } = {
 		state.charges[id] = nil
 		state.cooldowns[id] = 0
 		toast(player, string.format("%s ON SLOT %d", string.upper(Classes.AbilityById[id].name), slot))
+	end,
+	CombatLog = function(player, _state, _args)
+		Explosion.logEnabled = not Explosion.logEnabled
+		toast(player, if Explosion.logEnabled then "COMBAT LOG ON" else "COMBAT LOG OFF")
 	end,
 	SpawnDrones = function(player, _state, args)
 		local n = tonumber(args) or 10

@@ -2071,6 +2071,28 @@ local Config = {
 	DroneKillExtendCap = 20,
 	DroneHardCap = 40, -- per caster, an engine guard (the oldest is replaced, a WARN log), never surfaced as a rule
 	SwarmCalloutAt = { 5, 10, 20 }, -- the radio line fires as your live drone count reaches each of these
+
+	------------------------------------------------------------------ Brief 12: area, explosions, knockback
+	-- `area` (a softcap stat, StatDefs) is the size of anything that is not a bullet: explosion radii (RPG, grenade
+	-- launcher, every projectile gun, Frag, Molotov's pool, AEGIS's burst, Splash), stream length and width
+	-- (flamethrower, cryo, the plasma beam's width), Inferno's ring, the flame turret's reach. Never hitscan or projectile
+	-- bullets, melee or heal fields. AREA cards (BIGGER BOOM / LONGER STREAM / WIDER RING: one card, three faces) show
+	-- only with an eligible gun (Explosive, a stream gun) or class (PYRO, SWARM, INITIATE); BLAST RADIUS folded into it.
+	AreaCardsEnabled = true,
+	AreaStreamAngleCap = 40, -- degrees: a stream's half-angle never widens past this however big the area
+	-- Knockback (Run/Explosion.lua): every explosion shoves the enemies it didn't kill out from its centre.
+	KnockbackStuds = 4, -- at the centre, falling to 0 at the edge
+	KnockbackSec = 0.2, -- the shove runs this long (server root movement, clamped by walls)
+	KnockbackMult = { Henchman = 1, Runner = 1.2, Marksman = 1, Boomer = 0.8, Grenadier = 0.8, Heavy = 0.5, TITAN = 0 },
+	EliteKnockbackMult = 0.7,
+	KnockbackInterrupt = true, -- a shove cancels a wind-up or swing in progress (a short stun, never the boss)
+	KnockbackStunSec = 0.25,
+	-- The explosion feel (client ExplosionFx): a one-frame flash, a shock ring out to the radius, dust and debris by
+	-- radius, a low thud, and the shooter's camera punch: ExplosionPunchRef / distance, never more than ExplosionPunch.
+	ExplosionPunch = 0.5,
+	ExplosionPunchRef = 12,
+	ExplosionOthersShake = 0.15, -- everyone else in range gets this much, fading over ExplosionShakeRange
+	ExplosionShakeRange = 60,
 }
 
 return Config

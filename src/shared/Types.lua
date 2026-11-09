@@ -88,7 +88,8 @@ export type Computed = {
 	turretDmgMult: number, -- ENGINEER: Turret damage
 	healMult: number, -- DOC: Stim Shot / Med Bag / Healing Turret healing
 	deadEyeTimeMult: number, -- SHARPSHOOTER: Dead Eye duration
-	blastRadiusMult: number, -- explosive synergy: Frag / Claymore / Explosive gun / Splash blast radius
+	blastRadiusMult: number, -- brief 12: the area stat's multiplier (every explosion radius)
+	areaMult: number, -- brief 12: the area stat (explosions, streams, rings)
 	explosiveDmgMult: number, -- Round 25 DEMOLITION: Frag / Claymore / Splash damage (Explosive guns: in damage)
 }
 

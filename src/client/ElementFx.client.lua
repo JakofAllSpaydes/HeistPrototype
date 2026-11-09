@@ -30,7 +30,10 @@ local function muzzleFor(userId: number): Attachment?
 end
 
 ------------------------------------------------------------------ streams
-local function jet(element: string): ParticleEmitter
+-- Brief 12: the streams reach further (flamethrower +35%, cryo matched to it) and the area stat lengthens them, so the
+-- jet's speed scales with the reach: `reach` x the round-24aa tuning.
+local function jet(element: string, reach: number?): ParticleEmitter
+	local k = reach or 1
 	local e = Instance.new("ParticleEmitter")
 	e.Name = "ElementJet"
 	e.EmissionDirection = Enum.NormalId.Front -- gun space -Z is the muzzle's forward
@@ -52,14 +55,14 @@ local function jet(element: string): ParticleEmitter
 		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 2.4) })
 		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) })
 		e.Lifetime = NumberRange.new(0.38, 0.55)
-		e.Speed = NumberRange.new(48, 57) -- Round 24aa: reaches the longer flame range
+		e.Speed = NumberRange.new(48 * k, 57 * k) -- Round 24aa: reaches the flame range (x the brief 12 reach)
 		e.Acceleration = Vector3.new(0, 5, 0)
 	else
 		e.Color = ColorSequence.new(Color3.fromHex("FFFFFF"), Color3.fromHex("8FD3FF"))
 		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 2.0) })
 		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
 		e.Lifetime = NumberRange.new(0.35, 0.5)
-		e.Speed = NumberRange.new(30, 36)
+		e.Speed = NumberRange.new(30 * k, 36 * k)
 		e.Acceleration = Vector3.new(0, -3, 0)
 	end
 	e.Enabled = false
@@ -110,7 +113,10 @@ local function stream(userId: number, element: string)
 		att.Name = "ElementJetAtt"
 		att.CFrame = m.CFrame
 		att.Parent = m.Parent
-		local e = jet(element)
+		-- Your own stream also carries your area stat (teammates' at the base reach).
+		local r = ClientState.sync and (ClientState.sync :: any).resolved
+		local area = if userId == player.UserId and typeof(r) == "table" then tonumber(r.areaMult) or 1 else 1
+		local e = jet(element, area * (if element == "fire" then 30.4 / 22.5 else 30.4 / 16))
 		e.Parent = att
 		local smoke = if element == "fire" then smokeTrail() else nil
 		if smoke then

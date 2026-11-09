@@ -727,10 +727,11 @@ DRAW.DeadEyeTime = function(c: Ctx) -- the dead eye with a stopwatch
 	stopwatch(s)
 end
 
-DRAW.BlastRadius = function(c: Ctx) -- an explosion inside its radius ring
+DRAW.BlastRadius = function(c: Ctx) -- an explosion inside its radius ring (brief 12: AREA uses it too)
 	ring(c, 0.5, 0.5, 0.94, 0.06, 1, c.fg)
 	burst(sub(c, 0.2, 0.2, 0.6))
 end
+DRAW.Area = DRAW.BlastRadius -- brief 12: the AREA card (BLAST RADIUS folded in)
 
 -- Round 25: defense.
 DRAW.MaxHP = function(c: Ctx) -- a heart with a plus

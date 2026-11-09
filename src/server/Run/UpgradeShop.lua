@@ -50,6 +50,9 @@ local function synergyPool(state: PlayerState.State, exclude: { [string]: boolea
 		local w = h and Weapons.ById[h.weaponId]
 		if w then
 			archetypes[w.archetype] = true
+			if w.mode then
+				archetypes["mode:" .. w.mode] = true -- brief 12: the AREA card's stream gate
+			end
 		end
 	end
 	for _, s in Upgrades.Stats do
@@ -112,12 +115,30 @@ end
 local CAPPED_CARDS: { [string]: string } = { CritChance = "critChance" }
 function UpgradeShop.excluded(state: PlayerState.State): { [string]: boolean }
 	local out: { [string]: boolean } = {}
+	if not Config.AreaCardsEnabled then
+		out.Area = true
+	end
 	for statId, stat in CAPPED_CARDS do
 		if Stats.isMaxed(state.player, stat) then
 			out[statId] = true
 		end
 	end
 	return out
+end
+
+-- Brief 12: the AREA card's face: what made it eligible (an Explosive gun or a blast ability: BIGGER BOOM; a stream
+-- gun: LONGER STREAM; PYRO's Inferno: WIDER RING).
+function UpgradeShop.areaFace(state: PlayerState.State): string
+	for _, h in { state.held, state.offhand } do
+		local w = h and Weapons.ById[h.weaponId]
+		if w and w.archetype == "Explosive" then
+			return "Bigger Boom"
+		end
+		if w and w.mode == "stream" then
+			return "Longer Stream"
+		end
+	end
+	return if PlayerState.classOf(state) == "TORCH" then "Wider Ring" else "Bigger Boom"
 end
 
 -- `count` cards (3 for the pick-3, Config.DealerStock for the dealer), each a different stat. Each slot first
@@ -160,6 +181,9 @@ function UpgradeShop.generate(state: PlayerState.State, wave: number, count: num
 			malusStat = nil,
 			malusPct = nil,
 		}
+		if stat == "Area" then
+			card.name = UpgradeShop.areaFace(state)
+		end
 		if isTradeoff then
 			-- Buff rolls one tier higher; malus on a different random stat at the ratio.
 			card.pct = Upgrades.magnitude(stat, math.min(tier + 1, 5))

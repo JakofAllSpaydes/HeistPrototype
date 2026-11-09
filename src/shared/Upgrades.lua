@@ -23,6 +23,7 @@ export type Requires = {
 	archetype: string?,
 	owns: string?,
 	anyOf: { Requires }?,
+	mode: string?, -- brief 12: a gun with this Weapons.mode in either slot ("stream")
 }
 export type Stat = {
 	id: string,
@@ -244,18 +245,28 @@ Upgrades.Stats = {
 		noMalus = true,
 		requires = { class = "SHARPSHOOTER" },
 	},
+	-- Brief 12: AREA (BLAST RADIUS folded in). The size of anything that is not a bullet. Offered with an Explosive
+	-- gun, a stream gun, or PYRO / SWARM / INITIATE; its face says why (UpgradeShop: BIGGER BOOM / LONGER STREAM /
+	-- WIDER RING).
 	{
-		id = "BlastRadius",
-		name = "Blast Radius",
-		short = "BLR",
-		effect = "Blast Radius",
+		id = "Area",
+		name = "Area",
+		short = "AREA",
+		effect = "Area",
 		additive = true,
 		unit = "%",
 		category = "synergy",
 		noMalus = true,
-		-- Round 25: an explosive synergy now (was INITIATE only): Frag, Claymore, Explosive guns, Splash.
-		requires = EXPLOSIVE_REQ,
-		tag = "EXPLOSIVE",
+		requires = {
+			anyOf = {
+				{ archetype = "Explosive" } :: Requires,
+				{ mode = "stream" } :: Requires,
+				{ class = "TORCH" } :: Requires,
+				{ class = "SWARM" } :: Requires,
+				{ class = "INITIATE" } :: Requires,
+			},
+		},
+		tag = "AREA",
 	},
 } :: { Stat }
 
@@ -292,6 +303,7 @@ Upgrades.TierNames = {
 	HealPower = { "Bedside Manner", "Triage", "Field Medic", "Surgeon", "Miracle Worker" },
 	DeadEyeTime = { "Steady Breath", "Held Breath", "Patient", "In The Zone", "Time Stops" },
 	BlastRadius = { "Bigger Bang", "Shrapnel", "Wide Blast", "Demo Expert", "Ground Zero" },
+	Area = { "Bigger Boom", "Bigger Boom", "Bigger Boom", "Bigger Boom", "Bigger Boom" }, -- the face is set per player
 	Demolition = { "Hot Powder", "Shaped Charge", "Demolition", "High Yield", "Big Boom" },
 } :: { [string]: { string } }
 
@@ -330,7 +342,8 @@ Upgrades.Magnitude = {
 	TurretDamage = { 15, 22, 30, 40, 55 }, -- % more Turret and Sentry damage per shot (brief 12)
 	HealPower = { 15, 22, 30, 40, 55 }, -- % more Stim Shot, Med Bag and Heal Drone healing (brief 12)
 	DeadEyeTime = { 15, 22, 30, 40, 55 }, -- % longer Dead Eye
-	BlastRadius = { 10, 15, 20, 28, 36 }, -- % wider Frag, Claymore, Explosive gun and Splash blasts
+	BlastRadius = { 10, 15, 20, 28, 36 }, -- (folded into Area, brief 12)
+	Area = { 10, 15, 20, 28, 36 }, -- area points (softcap): bigger explosions, longer / wider streams, a wider ring
 	Demolition = { 12, 18, 25, 33, 45 }, -- % more Frag, Claymore, Explosive gun and Splash damage
 } :: { [string]: { number } }
 
@@ -378,6 +391,9 @@ local function holds(r: Requires, owned: { [string]: any }, classId: string, arc
 		end
 	end
 	if r.archetype and not archetypes[r.archetype] then
+		return false
+	end
+	if r.mode and not archetypes["mode:" .. r.mode] then
 		return false
 	end
 	if r.owns and not owned[r.owns] then

@@ -31,6 +31,7 @@ local World = require(script.Parent.World)
 local Slot = require(script.Parent.Slot)
 local Drones = require(script.Parent.Drones) -- brief 12
 local Swarm = require(script.Parent.Swarm) -- brief 12
+local Explosion = require(script.Parent.Explosion) -- brief 12: knockback and the explosion feel
 
 -- Brief 8: the players this run slot looks after (its party; the hub slot: everyone not in a run).
 local function mine(): { [Player]: PlayerState.State }
@@ -226,6 +227,7 @@ local function hitEnemy(
 		model = model,
 		cash = cash,
 		secondary = secondary,
+		outward = if hit and hit.blast then hit.dir else nil, -- brief 12: blast numbers pop outward
 	})
 	return killed
 end
@@ -1106,7 +1108,7 @@ local function placeClaymore(player: Player, state: PlayerState.State, char: Mod
 	s.dmg = grown("claymore", "ClaymoreDamage", Config.ClaymoreDamage, lv)
 		* PlayerState.abilityPower(state)
 		* PlayerState.computed(state).explosiveDmgMult -- DEMOLITION (explosive synergy)
-	s.range = Config.ClaymoreBlastRadius * PlayerState.computed(state).blastRadiusMult -- BLAST RADIUS (INITIATE synergy)
+	s.range = Config.ClaymoreBlastRadius * PlayerState.computed(state).areaMult -- brief 12: the area stat
 	s.armedAt = now() + Config.ClaymoreArmSec
 	placed(s, Color3.fromHex("4D9FE8"), 3)
 	Log.event("Ability", "%s planted a claymore (LV %d: %d dmg)", player.Name, lv, math.round(s.dmg))
@@ -1121,26 +1123,8 @@ local function claymoreTick(s: Structure, t: number)
 		return
 	end
 	local radius = if s.range > 0 then s.range else Config.ClaymoreBlastRadius
-	local victims = Enemy.within(pos, radius)
-	World.fireRun("Blast", { position = pos, radius = radius, color = COLOR.red, shake = 0.3, pitch = 0.8 })
-	local kills = 0
-	for _, model in victims do
-		local ep = Enemy.rootPosition(model) or pos
-		-- Thrown out of the blast, hardest at the center.
-		local away = ep - pos
-		local hit: Enemy.Hit = {
-			dir = if away.Magnitude > 0.1 then away.Unit else nil,
-			blast = true,
-			blastT = 1 - math.clamp(away.Magnitude / radius, 0, 1),
-		}
-		if hitEnemy(s.owner, model, s.dmg, ep, false, hit) then
-			kills += 1
-		end
-	end
-	if kills >= Config.CalloutMultiKill then
-		AllyCallout.send(s.owner, "multiKill", kills)
-	end
-	Log.event("Ability", "%s's claymore went off: %d hit, %d killed", s.owner.Name, #victims, kills)
+	local n = Abilities.explode(s.owner, pos, radius, s.dmg, COLOR.red)
+	Log.event("Ability", "%s's claymore went off: %d hit", s.owner.Name, n)
 	destroyStructure(s, "detonated")
 end
 
@@ -1177,12 +1161,10 @@ local function throwMolotov(player: Player, state: PlayerState.State, char: Mode
 		* PlayerState.abilityPower(state)
 		* PlayerState.computed(state).fireAbilityMult -- ACCELERANT (TORCH synergy card)
 	local slowPct = math.min(90, grown("molotov", "MoveSlowPct", Config.MolotovMoveSlowPct, lv))
+	local poolR = Config.MolotovRadius * Stats.mult(player, "area") -- brief 12: the area stat
 	throw(char, COLOR.allyFire, true, function(pos: Vector3)
-		placeField("molotov", player, pos, Config.MolotovRadius, Config.MolotovLifetime, burn, 1 - slowPct / 100)
-		World.fireRun(
-			"Blast",
-			{ position = pos, radius = Config.MolotovRadius, color = COLOR.allyFire, shake = 0.1, pitch = 1.2 }
-		)
+		placeField("molotov", player, pos, poolR, Config.MolotovLifetime, burn, 1 - slowPct / 100)
+		World.fireRun("Blast", { position = pos, radius = poolR, color = COLOR.allyFire, shake = 0.1, pitch = 1.2 })
 	end, aim)
 end
 
@@ -1204,6 +1186,7 @@ local function placeFlameTurret(player: Player, state: PlayerState.State, char: 
 		* pw
 		* PlayerState.computed(state).fireAbilityMult
 	s.head = head
+	s.range = Config.FlameTurretRange * Stats.mult(player, "area") -- brief 12: the cone's reach is area
 	s.fill = hpBar(base, COLOR.red)
 	placed(s, COLOR.fire)
 	Log.event("Ability", "%s placed a flame turret (LV %d: %d HP, %d dps)", player.Name, lv, s.hp, math.round(s.dmg))
@@ -1217,7 +1200,7 @@ local function flameTurretTick(s: Structure, t: number)
 	if not head then
 		return
 	end
-	local target = Enemy.nearest(head.Position, Config.FlameTurretRange, nil)
+	local target = Enemy.nearest(head.Position, if s.range > 0 then s.range else Config.FlameTurretRange, nil)
 	if not target then
 		return
 	end
@@ -1321,37 +1304,10 @@ local function throwFrag(player: Player, state: PlayerState.State, char: Model, 
 	local dmg = grown("frag", "FragDamage", Config.FragDamage, lv)
 		* PlayerState.abilityPower(state)
 		* PlayerState.computed(state).explosiveDmgMult -- DEMOLITION (explosive synergy)
-	local radius = Config.FragRadius * PlayerState.computed(state).blastRadiusMult -- BLAST RADIUS (INITIATE synergy)
+	local radius = Config.FragRadius * PlayerState.computed(state).areaMult -- brief 12: the area stat
 	throw(char, Color3.fromRGB(60, 70, 50), false, function(pos: Vector3)
-		do
-			local victims = Enemy.within(pos, radius)
-			World.fireRun("Blast", { position = pos, radius = radius, color = COLOR.fire, shake = 0.35, pitch = 0.7 })
-			local kills = 0
-			for _, model in victims do
-				local ep = Enemy.rootPosition(model) or pos
-				local away = ep - pos
-				local hit: Enemy.Hit = {
-					dir = if away.Magnitude > 0.1 then away.Unit else nil,
-					blast = true,
-					blastT = 1 - math.clamp(away.Magnitude / radius, 0, 1),
-				}
-				if hitEnemy(player, model, dmg, ep, false, hit) then
-					kills += 1
-				end
-			end
-			if kills >= Config.CalloutMultiKill then
-				AllyCallout.send(player, "multiKill", kills)
-			end
-			Log.event(
-				"Ability",
-				"%s's frag (LV %d, %d dmg): %d hit, %d killed",
-				player.Name,
-				lv,
-				math.round(dmg),
-				#victims,
-				kills
-			)
-		end
+		local n = Abilities.explode(player, pos, radius, dmg, COLOR.fire)
+		Log.event("Ability", "%s's frag (LV %d, %d dmg, r%.1f): %d hit", player.Name, lv, math.round(dmg), radius, n)
 	end, aim)
 end
 
@@ -1733,7 +1689,6 @@ end
 -- body thrown out of the blast. Step 5 adds knockback and the explosion feel. Returns how many it hit.
 function Abilities.explode(owner: Player, at: Vector3, radius: number, dmg: number, color: Color3): number
 	local victims = Enemy.within(at, radius)
-	World.fireRun("Blast", { position = at, radius = radius, color = color, shake = 0.3, pitch = 0.8 })
 	local kills = 0
 	for _, model in victims do
 		local ep = Enemy.rootPosition(model) or at
@@ -1748,6 +1703,7 @@ function Abilities.explode(owner: Player, at: Vector3, radius: number, dmg: numb
 			kills += 1
 		end
 	end
+	Explosion.after(owner, at, radius, color, victims, 0.3)
 	if kills >= Config.CalloutMultiKill then
 		AllyCallout.send(owner, "multiKill", kills)
 	end

@@ -416,7 +416,8 @@ Stats.CardStat = {
 	TurretDamage = "turretDamage",
 	HealPower = "healPower",
 	DeadEyeTime = "deadEyeTime",
-	BlastRadius = "blastRadius",
+	BlastRadius = "area", -- brief 12: folded into AREA
+	Area = "area",
 	Demolition = "demolition",
 } :: { [string]: string }
 
@@ -545,7 +546,8 @@ function Stats.compute(player: Player, held: Types.Held): Types.Computed
 		turretDmgMult = plus(player, "turretDamage"),
 		healMult = plus(player, "healPower"),
 		deadEyeTimeMult = plus(player, "deadEyeTime"),
-		blastRadiusMult = plus(player, "blastRadius"),
+		blastRadiusMult = Stats.mult(player, "area"), -- brief 12: every explosion radius is the area stat
+		areaMult = Stats.mult(player, "area"),
 		explosiveDmgMult = plus(player, "demolition"),
 	}
 end

@@ -21,6 +21,7 @@ local Pause = require(script.Parent.Pause)
 local World = require(script.Parent.World)
 local Slot = require(script.Parent.Slot)
 local SpecialFire = require(script.Parent.SpecialFire)
+local Explosion = require(script.Parent.Explosion) -- brief 12
 
 local Combat = {}
 
@@ -123,11 +124,12 @@ local function dealDamage(
 		model = model,
 		cash = cash,
 		secondary = info.secondary == true,
+		outward = if info.blast == true then info.dir else nil, -- brief 12: blast numbers pop outward
 	})
 	if killed and allowSplash and shooter.stats.splash > 0 then
 		-- Round 25: the explosive synergies (DEMOLITION, BLAST RADIUS) raise the kill explosion too.
 		local splashDmg = dmg * shooter.stats.splash / 100 * (shooter.stats.explosiveDmgMult or 1)
-		local splashR = Config.SplashRadius * (shooter.stats.blastRadiusMult or 1)
+		local splashR = Config.SplashRadius * (shooter.stats.areaMult or 1) -- brief 12: the area stat
 		local victims = Enemy.within(position, splashR, model)
 		World.fireRun("Splash", { position = position, radius = splashR, hits = #victims })
 		for _, victim in victims do
@@ -140,6 +142,8 @@ local function dealDamage(
 				blastT = 1 - math.clamp(away.Magnitude / splashR, 0, 1),
 			}, false)
 		end
+		-- Brief 12: a kill explosion is an explosion: knockback and the feel (the Splash ring stays).
+		Explosion.after(shooter.player, position, splashR, Color3.fromHex("FF8A2A"), victims, 0.15)
 	end
 end
 

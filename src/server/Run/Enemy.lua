@@ -581,6 +581,17 @@ function Enemy.slow(model: Model, mult: number, seconds: number)
 	d.slowUntil = math.max(d.slowUntil, untilT)
 end
 
+-- Brief 12: an explosion's knockback. Moves the root by `offset` (flat studs) over `seconds` on the server, eased
+-- out; no physics force, so nothing ragdolls unless the hit killed it. A new shove replaces one in progress.
+function Enemy.shove(model: Model, offset: Vector3, seconds: number)
+	local d = active[model]
+	if not d or d.dead then
+		return
+	end
+	(d :: any).shove =
+		{ offset = Vector3.new(offset.X, 0, offset.Z), t0 = os.clock(), sec = math.max(seconds, 0.01), e = 0 }
+end
+
 -- Brief 12: named slows on top of the main one, multiplied together (Inferno x Ice Ammo: resist-style, never a
 -- full stop). A key refreshes its own entry.
 function Enemy.slowSource(model: Model, key: string, mult: number, seconds: number)
@@ -1072,6 +1083,17 @@ function Enemy.init()
 					hold(d)
 				end
 				continue
+			end
+			-- Brief 12: a knockback in progress moves the root a step this frame.
+			local sh = (d :: any).shove
+			if sh then
+				local a = math.clamp((now - sh.t0) / sh.sec, 0, 1)
+				local e = 1 - (1 - a) * (1 - a)
+				d.root.CFrame += sh.offset * (e - sh.e)
+				sh.e = e
+				if a >= 1 then
+					(d :: any).shove = nil
+				end
 			end
 			-- Stun and slow drive the walk speed; a stunned enemy neither steers nor attacks.
 			local stunned = now < d.stunUntil

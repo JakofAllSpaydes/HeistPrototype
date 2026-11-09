@@ -353,7 +353,7 @@ Weapons.List = {
 		reloadTime = 2.8,
 		spread = 0.4,
 		mode = "projectile",
-		proj = { kind = "rocket", speed = 47.5, gravity = 2, fuse = 0, radius = 13 }, -- Round 24aa: half speed (was 95)
+		proj = { kind = "rocket", speed = 47.5, gravity = 2, fuse = 0, radius = 18.2 }, -- brief 12: radius x1.4 (was 13); Round 24aa: half speed
 	}),
 	def({
 		id = "M32",
@@ -422,7 +422,7 @@ Weapons.List = {
 		spread = 0,
 		auto = true,
 		mode = "stream",
-		stream = { element = "fire", range = 22.5, angle = 14 }, -- Round 24aa: +25% reach (was 18)
+		stream = { element = "fire", range = 30.4, angle = 14 }, -- brief 12: +35% reach (was 22.5); x the area stat
 	}),
 	def({
 		id = "CryoSprayer",
@@ -435,7 +435,7 @@ Weapons.List = {
 		spread = 0,
 		auto = true,
 		mode = "stream",
-		stream = { element = "frost", range = 16, angle = 16 },
+		stream = { element = "frost", range = 30.4, angle = 16 }, -- brief 12: the flamethrower's reach (was 16)
 	}),
 	def({
 		id = "ArcGun",
