@@ -466,11 +466,29 @@ local function openPanel(it: Item)
 	panel = { gui = gui, att = att, frame = frame, price = price, key = it.key }
 end
 
+-- Brief 11: the stand the pad picked with D-pad left / right (its key), kept until you walk off.
+local padPick: any = nil
+local padPickAt = 0
+
 local function nearest(): Item?
 	local char = player.Character
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then
 		return nil
+	end
+	if padPick ~= nil then
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local walked = hum ~= nil and hum.MoveDirection.Magnitude > 0.1 and os.clock() - padPickAt > 0.4
+		for _, it in items do
+			if it.key == padPick and not it.sold and not walked then
+				local d = (it.position - root.Position).Magnitude
+				if d <= Config.DealerPadReach then
+					ClientState.dealerFocus = true
+					return it
+				end
+			end
+		end
+		padPick = nil
 	end
 	-- Round 25: among the stands in reach, the one you're looking at (ClientState.aimScore), not just the nearest;
 	-- and a floor gun in reach that you're looking at more squarely takes the interact key instead (the panel
@@ -504,6 +522,59 @@ local function nearest(): Item?
 	end
 	ClientState.dealerFocus = best ~= nil
 	return best
+end
+
+-- D-pad left / right: the next unsold stand in reach, ordered left to right as you see them; the camera turns
+-- onto it and its panel opens (A buys).
+local function padWalk(dir: number)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local cam = workspace.CurrentCamera
+	if not root or not cam then
+		return
+	end
+	local camCf = cam.CFrame
+	local list: { { it: Item, a: number } } = {}
+	for _, it in items do
+		if not it.sold and (it.position - root.Position).Magnitude <= Config.DealerPadReach then
+			local rel = camCf:PointToObjectSpace(it.position)
+			table.insert(list, { it = it, a = math.atan2(rel.X, -rel.Z) })
+		end
+	end
+	if #list == 0 then
+		return
+	end
+	table.sort(list, function(x, y)
+		return x.a < y.a
+	end)
+	local cur = 0
+	local p = panel
+	for i, e in list do
+		if p and e.it.key == p.key then
+			cur = i
+		end
+	end
+	local nextI: number
+	if cur == 0 then
+		-- nothing focused yet: the stand nearest the centre of the view in that direction
+		nextI = 1
+		for i, e in list do
+			if (dir > 0 and e.a >= 0) or (dir < 0 and e.a <= 0) then
+				nextI = i
+				if dir > 0 then
+					break
+				end
+			end
+		end
+	else
+		nextI = (cur - 1 + dir) % #list + 1
+	end
+	local it = list[nextI].it
+	padPick = it.key
+	padPickAt = os.clock()
+	local to = it.position - camCf.Position
+	ClientState.cameraYawGoal = { yaw = math.atan2(-to.X, -to.Z), sec = Config.DealerPadTurnSec }
+	UI.sound(Theme.Sounds.click, 1.2, 0.3)
 end
 
 local function onResult(data: any)
@@ -659,6 +730,7 @@ local function start()
 		return
 	end
 	active = true
+	ClientState.dealerActive = true
 	cardToken += 1
 	local token = cardToken
 	task.delay(Config.CallHoldSec + 0.45, function()
@@ -670,7 +742,9 @@ end
 
 local function stop()
 	active = false
+	ClientState.dealerActive = false
 	ClientState.dealerFocus = false
+	padPick = nil
 	cardToken += 1
 	clearItems()
 	closePanel()
@@ -728,6 +802,21 @@ function DealerUI.init()
 				UI.punch(c.inner, 1.08, 0.3)
 				c.title.TextColor3 = Theme.Colors.red
 				UI.tween(c.title, { TextColor3 = Theme.Colors.amber }, 1.2)
+			end
+		elseif name == "PadDealer" and active and typeof(data) == "table" then
+			-- Brief 11: the pad (Input.lua). Up teleports, down votes skip, left / right walk the stands, A buys.
+			local a = data.action
+			if a == "dealerTeleport" then
+				Remotes.DealerAction:FireServer("teleport")
+			elseif a == "voteSkip" then
+				Remotes.DealerAction:FireServer("skip")
+			elseif a == "dealerBuy" then
+				local p = panel
+				if p and ClientState.dealerFocus then
+					buy(p.key)
+				end
+			elseif a == "dealerPrev" or a == "dealerNext" then
+				padWalk(if a == "dealerNext" then 1 else -1)
 			end
 		elseif name == "DealerTeleported" then
 			UI.sound(Theme.Sounds.swap, 0.7, 0.6)

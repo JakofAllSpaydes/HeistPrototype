@@ -18,6 +18,7 @@ local Classes = require(Shared.Classes)
 local Masks = require(Shared.Masks)
 local Emotes = require(Shared.Emotes)
 local Signal = require(Shared.Signal)
+local InputSettings = require(Shared.InputSettings)
 local Skills = require(Shared.Skills)
 local Log = require(script.Parent.Log)
 
@@ -55,6 +56,8 @@ export type Profile = {
 	pendingPayout: number, -- Gold granted this session that has not reached the store yet
 	-- Round 16: per-account client options (Profiles.OPTIONS lists the keys), e.g. hotwireSymbols (colorblind).
 	options: { [string]: boolean },
+	-- Brief 11: the settings screen's pages; input = InputSettings.Values (sprint mode, look, assist, haptics, glyphs).
+	settings: { input: { [string]: any } },
 	-- Brief 6 (v3): the fake monetization layer.
 	fakeRobux: number, -- the fake R$ balance every purchase debits (Purchases.lua)
 	reviveTokens: number, -- SELF-REVIVE / REVIVE EVERYBODY spend these
@@ -210,6 +213,7 @@ function Profiles.fresh(): Profile
 		},
 		pendingPayout = 0,
 		options = table.clone(OPTIONS),
+		settings = { input = InputSettings.defaults() :: any },
 		fakeRobux = Config.FakeRobuxStart,
 		reviveTokens = Config.ReviveTokensStart,
 		boosts = {},
@@ -426,6 +430,10 @@ local function migrate(raw: any): Profile
 				p.options[k] = raw.options[k]
 			end
 		end
+	end
+	-- Brief 11: input settings; anything missing or invalid falls back to the default (no version bump needed).
+	if typeof(raw.settings) == "table" then
+		p.settings.input = InputSettings.merge(raw.settings.input) :: any
 	end
 	-- Brief 6 (v3). A v2 store has none of these: the fresh defaults stand (100,000 fake R$, 3 tokens).
 	if typeof(raw.fakeRobux) == "number" then

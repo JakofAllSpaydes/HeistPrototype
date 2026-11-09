@@ -14,6 +14,10 @@ local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 local NodeOverlay = require(script.Parent:WaitForChild("NodeOverlay"))
+local Input = require(script.Parent:WaitForChild("Input"))
+local InputMonitor = require(script.Parent:WaitForChild("InputMonitor"))
+local Haptics = require(script.Parent:WaitForChild("Haptics"))
+local GamepadMap = require(Shared:WaitForChild("GamepadMap"))
 
 local DebugPanel = {}
 
@@ -111,6 +115,87 @@ local function build()
 	})
 
 	local rh = S(26)
+
+	-- Brief 11: INPUT. The monitor, a forced device, live look / assist dials (GamepadMap.live: they win over Config
+	-- until Reset), the haptics test and the input settings reset.
+	local function inputHeader(order: number, text: string)
+		UI.text({
+			Text = text,
+			FontFace = Theme.Fonts.display,
+			TextSize = S(12),
+			TextColor3 = Theme.Colors.amber,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Size = UDim2.new(1, 0, 0, S(16)),
+			LayoutOrder = order,
+			Parent = panel,
+		})
+	end
+	inputHeader(0.1, "INPUT")
+	local ri1 = row(panel, 0.11, rh)
+	local monBtn: TextButton
+	monBtn = btn(ri1, if InputMonitor.visible() then "Input monitor ON" else "Input monitor", 0.5, function()
+		InputMonitor.setVisible(not InputMonitor.visible())
+		monBtn.Text = if InputMonitor.visible() then "Input monitor ON" else "Input monitor"
+		monBtn.TextColor3 = if InputMonitor.visible() then Theme.Colors.gold else Theme.Colors.text
+	end, Theme.Colors.amber)
+	local devices = { "auto", "keyboard", "touch", "gamepad" }
+	local devBtn: TextButton
+	devBtn = btn(ri1, "Device: " .. (Input.forcedDevice or "auto"), 0.5, function()
+		local cur = Input.forcedDevice or "auto"
+		local i = table.find(devices, cur) or 1
+		local nextD = devices[i % #devices + 1]
+		Input.forceDevice(if nextD == "auto" then nil else nextD)
+		devBtn.Text = "Device: " .. nextD
+	end, Theme.Colors.amber)
+	-- A dial: label, value, - and +. get / set read and write GamepadMap.live (nil = the Config value).
+	local function dial(order: number, label: string, key: string, step: number, lo: number, hi: number, path: string?)
+		local r = row(panel, order, rh)
+		local function get(): number
+			local v = GamepadMap.cfg(key)
+			if path then
+				v = v[path]
+			end
+			return tonumber(v) or 0
+		end
+		local valueBtn: TextButton
+		local function set(v: number)
+			v = math.clamp(math.round(v / step) * step, lo, hi)
+			if path then
+				local t = table.clone(GamepadMap.cfg(key))
+				t[path] = v
+				GamepadMap.live[key] = t
+			else
+				GamepadMap.live[key] = v
+			end
+			valueBtn.Text = string.format("%s %s", label, tostring(v))
+		end
+		btn(r, "-", 0.2, function()
+			set(get() - step)
+		end)
+		valueBtn = btn(r, string.format("%s %s", label, tostring(get())), 0.6, function()
+			-- tap the value: back to Config
+			GamepadMap.live[key] = nil
+			valueBtn.Text = string.format("%s %s", label, tostring(get()))
+		end, Theme.Colors.amber)
+		btn(r, "+", 0.2, function()
+			set(get() + step)
+		end)
+	end
+	dial(0.12, "Look speed", "GamepadLookSpeed", 10, 30, 600)
+	dial(0.121, "Look curve", "GamepadLookCurve", 0.1, 1, 4)
+	dial(0.122, "Dead zone", "GamepadLookDeadZone", 0.02, 0, 0.5)
+	dial(0.123, "Assist gamepad", "AimAssistScale", 0.05, 0, 1.5, "gamepad")
+	dial(0.124, "Assist touch", "AimAssistScale", 0.05, 0, 1.5, "touch")
+	local ri2 = row(panel, 0.13, rh)
+	btn(ri2, "Haptics test", 0.5, function()
+		Haptics.test()
+	end, Theme.Colors.amber)
+	btn(ri2, "Reset input settings", 0.5, function()
+		Remotes.SetInputSetting:FireServer("reset", true)
+		table.clear(GamepadMap.live)
+		build()
+	end, Theme.Colors.red)
+
 	local r1 = row(panel, 1, rh)
 	btn(r1, "+$1,000", 0.5, function()
 		send("AddCash", 1000)

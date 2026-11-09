@@ -1,0 +1,10 @@
+#!/bin/sh
+# Brief 11: the input self-test on every commit. Install once: cp tools/pre-commit .git/hooks/pre-commit
+LUNE="$HOME/.aftman/bin/lune"
+if [ ! -x "$LUNE" ] && [ ! -x "$LUNE.exe" ]; then
+	LUNE="lune"
+fi
+"$LUNE" run tests/input.spec.luau || {
+	echo "pre-commit: tests/input.spec.luau failed" >&2
+	exit 1
+}

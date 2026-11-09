@@ -311,9 +311,11 @@ local Config = {
 	-- Round 24 aim assist (touch / gamepad). The enemy nearest the crosshair inside the cone pulls the camera to its
 	-- torso; hold the crosshair above AimAssistHeadBias of the way from torso to head (on screen) and it pulls to the head.
 	AimAssistEnabled = true,
-	AimAssistMouse = false, -- true: mouse aim gets the FULL touch / gamepad assist...
-	AimAssistMouseScale = 0.15, -- ...otherwise a faint one (Round 24aa): this share of the pull and the stickiness (0 = off)
-	AimAssistMouseCone = 0.6, -- and this share of the cone
+	-- Brief 11: the assist per device (share of the pull and the stickiness; 0 = off). Mouse keeps the faint Round
+	-- 24aa value, touch the full one, the gamepad sits between (felt, never aiming for you).
+	AimAssistScale = { touch = 1.0, gamepad = 0.6, mouse = 0.15 },
+	AimAssistMouseCone = 0.6, -- the mouse's cone is this share of the full one
+	AimAssistGamepadStickOnly = true, -- gamepad: the pull works only while the right stick moves or you fire (no drift onto targets)
 	AimAssistConeDeg = 11, -- hip fire: enemies within this many degrees of the crosshair pull
 	AimAssistAdsConeDeg = 15, -- ADS: a wider cone
 	AimAssistRange = 180, -- studs
@@ -325,6 +327,68 @@ local Config = {
 	AimAssistFriction = 0.6, -- ...to this share of normal sensitivity on the target's centre (Round 24g: was 0.5)
 	AimAssistPullAwayMult = 0.15, -- Round 24g: look input moving off the target keeps only this share of the pull (and no friction)...
 	AimAssistReleaseSec = 0.25, -- ...for this long after the last pull-away input
+	------------------------------------------------------------------ Input (brief 11: gamepad)
+	-- The pad's bindings: button (Enum.KeyCode name) -> action, per context. GamepadMap.lua resolves them; Input.lua
+	-- routes each action into the same path the keyboard / touch buttons use. `reload` on ButtonX is the tap; while a
+	-- ProximityPrompt (or a downed teammate in reach) is up, X is the prompt instead (the prompt wins). Screens (A
+	-- select, B back, LB / RB tabs, LT / RT page) are GamepadNav's and not listed here.
+	GamepadMap = {
+		run = {
+			ButtonR2 = "fire", -- hold for auto; charge guns hold and release
+			ButtonL2 = "ads", -- hold (InputAdsToggle default false)
+			ButtonX = "reload", -- tap; hold = the active prompt (interact / revive / door / minigame / pickup)
+			ButtonY = "swap",
+			ButtonA = "jump", -- Roblox's own jump; A buys at an open dealer panel
+			ButtonL1 = "ability1",
+			ButtonR1 = "ability2",
+			ButtonR3 = "ability3",
+			ButtonL3 = "sprint",
+			DPadUp = "dealerTeleport", -- at the dealer break (nothing otherwise)
+			DPadDown = "voteSkip", -- the dealer break or an intermission
+			DPadLeft = "dealerPrev", -- walk the stands
+			DPadRight = "dealerNext",
+			ButtonSelect = "scoreboard", -- hold (a tap opens settings)
+		},
+		hub = {
+			ButtonX = "interact", -- the prompt (board, shelf, props); Roblox's prompt takes it
+			ButtonA = "jump",
+			ButtonL3 = "sprint",
+			ButtonSelect = "settings",
+		},
+	},
+	GamepadTapMaxSec = 0.3, -- ButtonSelect: shorter than this is a tap (settings), longer a hold (scoreboard)
+	GamepadTriggerPress = 0.25, -- LT / RT count as pressed past this depth (analog Position.Z)
+	DeviceSwitchHoldSec = 0.75, -- glyph flip debounce: after a device switch, another needs this long
+	-- The right stick look: a radial dead zone, a response curve (exponent: small pushes stay fine, the edge is fast),
+	-- GamepadLookSpeed degrees / second at full tilt, ramping up to GamepadLookAccelMult after GamepadLookAccelSec
+	-- held at the edge (past GamepadLookAccelEdge). ADS multiplies by GamepadAdsLookMult. Pitch runs at
+	-- GamepadLookPitchShare of the yaw speed. Settings sensitivity 1..10 scales the speed by sens / 5.
+	GamepadLookDeadZone = 0.18,
+	GamepadLookCurve = 1.6,
+	GamepadLookSpeed = 180,
+	GamepadLookPitchShare = 0.7,
+	GamepadLookAccelMult = 1.5,
+	GamepadLookAccelSec = 0.5,
+	GamepadLookAccelEdge = 0.92,
+	GamepadAdsLookMult = 0.55,
+	GamepadMoveDeadZone = 0.2, -- the left stick counts as real input (device switch) past this
+	-- Haptics (HapticService, gamepad only): per event { motor = "Small" | "Large", strength 0..1, sec }. HapticFire per
+	-- gun kind (the HeldGun's GunKind attribute; `default` for the rest); auto guns buzz while the trigger is held.
+	HapticsEnabled = true, -- the default for new profiles (settings INPUT: haptics on / off)
+	HapticFire = {
+		pistol = { motor = "Small", strength = 0.35, sec = 0.06 },
+		shotgun = { motor = "Large", strength = 0.9, sec = 0.14 },
+		sniper = { motor = "Large", strength = 0.8, sec = 0.12 },
+		launcher = { motor = "Large", strength = 0.85, sec = 0.16 },
+		default = { motor = "Small", strength = 0.3, sec = 0.05 }, -- smg / rifle / lmg: a buzz while the trigger is held
+	},
+	HapticHit = { motor = "Small", strength = 0.25, sec = 0.03 },
+	HapticHeadshot = { motor = "Small", strength = 0.6, sec = 0.05 },
+	HapticDamage = { motor = "Large", strength = 0.45, sec = 0.1 },
+	HapticDoor = { motor = "Large", strength = 0.7, sec = 0.4 }, -- a door opening, the vault swing
+	HapticDowned = { motor = "Large", strength = 0.5, sec = 0.25, pulses = 3, gap = 0.45 }, -- a slow pulse
+	HapticSprint = { motor = "Small", strength = 0.3, sec = 0.04 },
+	HapticNav = { motor = "Small", strength = 0.12, sec = 0.02 }, -- the minigames' ticks (zone, tumbler)
 	-- Round 24 mobile: every HUD button (combat + hub) is scaled by this on phones / tablets.
 	MobileButtonScale = 1.3,
 	MobileStoreTextScale = 1.2, -- Round 24d: premium shop labels on mobile read this much bigger
@@ -1064,6 +1128,8 @@ local Config = {
 	DealerPerTable = 3, -- cards per table (the last takes what is left)
 	DealerStandSpacing = 2.8, -- studs between cards on a table
 	DealerTeleportDistance = 4, -- TELEPORT TO DEALER (any number of times) lands you this far outside the middle table
+	DealerPadReach = 30, -- brief 11: D-pad left / right picks stands within this many studs (the camera turns to it, A buys)
+	DealerPadTurnSec = 0.25, -- how long the camera takes to turn onto the picked stand
 	DealerCardWidth = 190, -- the stand panel (a pick-3 card with a price bar), design px
 	ShopReadRadius = 6, -- walking this close to a stand or prop opens its panel (the nearest one only)
 	-- Round 19c: about a quarter cheaper across the stall (was 100 / 160 / 260 / 420 / 700, crate 800, heal 300, reroll 150).

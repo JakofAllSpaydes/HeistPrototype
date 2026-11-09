@@ -581,7 +581,7 @@ function DownedUI.init()
 			and not ClientState.spectating
 			and HUD.mode == "gameplay"
 		setPrompt(if canRevive and nearest then nearest.name else nil)
-		local hold = canRevive and (holdingKey or holdingTouch) and not ClientState.blocked()
+		local hold = canRevive and (holdingKey or holdingTouch or ClientState.padInteract) and not ClientState.blocked()
 		sendHold(hold)
 		-- The reviver's bar: predicted locally so it fills smoothly, never behind the server's progress.
 		local b = reviveBar

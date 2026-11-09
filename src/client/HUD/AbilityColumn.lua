@@ -204,6 +204,20 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		end
 	end))
 
+	-- Brief 11: the pad's LB / RB / R3 (Input.lua) by slot, through the same gate as the keys.
+	track(ClientState.Juice:Connect(function(name: string, data: any)
+		if name ~= "UseAbilitySlot" or typeof(data) ~= "table" then
+			return
+		end
+		if ClientState.blocked() or ClientState.combatOff() then
+			return
+		end
+		local id = order[tonumber(data.slot) or 0]
+		if id then
+			use(id)
+		end
+	end) :: any)
+
 	-- A small float off the top of a tile: "-0.2s" when a cooldown is trimmed, "+0.5s" when a running effect is
 	-- extended, "+1" when a spare charge comes back. Anything that changes an ability's clock goes through here.
 	local function floatOnTile(id: string, text: string, color: Color3)

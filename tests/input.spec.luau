@@ -1,0 +1,303 @@
+-- Brief 11 self-test: `lune run tests/input.spec.luau` (the git pre-commit hook runs it too).
+-- Feeds synthetic gamepad InputObjects through GamepadMap's router (the same code Input.lua runs) and checks every
+-- binding resolves to its action, the X prompt rule, the Select tap / hold, the dealer D-pad, sprint, and the look
+-- math (dead zone, curve, acceleration, ADS) as pure functions against expected numbers.
+local fs = require("@lune/fs")
+local luau = require("@lune/luau")
+local process = require("@lune/process")
+
+------------------------------------------------------------------ loader: src/shared modules with a fake `script`
+local function vec(...)
+	return { ... }
+end
+local ROBLOX = {
+	Vector2 = { new = vec },
+	Vector3 = { new = vec },
+	CFrame = { new = vec },
+	Color3 = { fromHex = vec, fromRGB = vec, new = vec },
+}
+
+local cache: { [string]: any } = {}
+local function loadShared(name: string): any
+	if cache[name] ~= nil then
+		return cache[name]
+	end
+	local path = "src/shared/" .. name .. ".lua"
+	local fakeParent = {}
+	local fakeScript = { Parent = fakeParent, Name = name }
+	function fakeParent:WaitForChild(child: string)
+		return { __shared = child }
+	end
+	fakeParent.FindFirstChild = fakeParent.WaitForChild
+	local env: { [string]: any } = {
+		script = fakeScript,
+		require = function(target: any)
+			if type(target) == "table" and target.__shared then
+				return loadShared(target.__shared)
+			end
+			error("unexpected require in " .. name)
+		end,
+	}
+	for k, v in ROBLOX do
+		env[k] = v
+	end
+	local chunk = luau.load(fs.readFile(path), { debugName = name, environment = env })
+	local m = chunk()
+	cache[name] = m
+	return m
+end
+
+local Config = loadShared("Config")
+local GamepadMap = loadShared("GamepadMap")
+
+------------------------------------------------------------------ tiny test kit
+local passed, failed = 0, 0
+local function check(label: string, ok: boolean, detail: string?)
+	if ok then
+		passed += 1
+	else
+		failed += 1
+		print("FAIL  " .. label .. (if detail then "  (" .. detail .. ")" else ""))
+	end
+end
+local function near(a: number, b: number, eps: number?): boolean
+	return math.abs(a - b) <= (eps or 1e-6)
+end
+
+-- A synthetic InputObject: enums by name, like the real thing's EnumItem.Name.
+local function inp(key: string, state: string, z: number?): any
+	return {
+		KeyCode = { Name = key },
+		UserInputType = { Name = "Gamepad1" },
+		UserInputState = { Name = state },
+		Position = { X = 0, Y = 0, Z = z or 0 },
+	}
+end
+
+local function actions(list: { any }): string
+	local parts = {}
+	for _, e in list do
+		table.insert(parts, e.action .. ":" .. e.phase)
+	end
+	return table.concat(parts, ",")
+end
+
+local RUN = { context = "run" }
+local function press(r: any, key: string, ctx: any?, now: number?): string
+	local out = r:input(inp(key, "Begin"), ctx or RUN, now or 0)
+	return actions(out)
+end
+local function release(r: any, key: string, ctx: any?, now: number?): string
+	local out = r:input(inp(key, "End"), ctx or RUN, now or 0)
+	return actions(out)
+end
+
+------------------------------------------------------------------ 1. every binding resolves
+for context, map in Config.GamepadMap do
+	for key, action in map do
+		check(
+			"resolve " .. context .. "." .. key,
+			GamepadMap.resolve(context, key) == action,
+			tostring(GamepadMap.resolve(context, key))
+		)
+		check("buttonFor " .. context .. "." .. action, GamepadMap.buttonFor(context, action) ~= nil)
+	end
+end
+local EXPECT_RUN = {
+	ButtonR2 = "fire",
+	ButtonL2 = "ads",
+	ButtonX = "reload",
+	ButtonY = "swap",
+	ButtonA = "jump",
+	ButtonL1 = "ability1",
+	ButtonR1 = "ability2",
+	ButtonR3 = "ability3",
+	ButtonL3 = "sprint",
+	DPadUp = "dealerTeleport",
+	DPadDown = "voteSkip",
+	DPadLeft = "dealerPrev",
+	DPadRight = "dealerNext",
+	ButtonSelect = "scoreboard",
+}
+for key, action in EXPECT_RUN do
+	check("brief table run." .. key .. " = " .. action, GamepadMap.resolve("run", key) == action)
+end
+check("ButtonB unbound in a run", GamepadMap.resolve("run", "ButtonB") == nil)
+
+------------------------------------------------------------------ 2. combat through the router
+do
+	local r = GamepadMap.newRouter()
+	check("RT begin fires", press(r, "ButtonR2") == "fire:begin")
+	check("RT repeat Begin ignored", press(r, "ButtonR2") == "")
+	check("RT end stops", release(r, "ButtonR2") == "fire:end")
+	-- analog: a light squeeze is not a shot, past GamepadTriggerPress is
+	local light = r:input(inp("ButtonR2", "Change", Config.GamepadTriggerPress * 0.5), RUN, 0)
+	check("RT light squeeze no fire", actions(light) == "")
+	local deep = r:input(inp("ButtonR2", "Change", 0.9), RUN, 0)
+	check("RT deep squeeze fires", actions(deep) == "fire:begin")
+	local back = r:input(inp("ButtonR2", "Change", 0.05), RUN, 0)
+	check("RT let off stops", actions(back) == "fire:end")
+
+	check("LT hold ADS begin", press(r, "ButtonL2") == "ads:begin")
+	check("LT release ADS end", release(r, "ButtonL2") == "ads:end")
+	local toggle = { context = "run", adsToggle = true }
+	check("LT toggle on", press(r, "ButtonL2", toggle) == "ads:begin")
+	check("LT toggle release nothing", release(r, "ButtonL2", toggle) == "")
+	check("LT toggle off", press(r, "ButtonL2", toggle) == "ads:end")
+	release(r, "ButtonL2", toggle)
+
+	check("X tap reloads", press(r, "ButtonX") == "reload:tap")
+	check("X release after reload nothing", release(r, "ButtonX") == "")
+	local prompt = { context = "run", promptVisible = true }
+	check("X with a prompt = interact (no reload)", press(r, "ButtonX", prompt) == "interact:begin")
+	check("X release ends the prompt hold", release(r, "ButtonX", prompt) == "interact:end")
+	local revive = { context = "run", reviveNearby = true }
+	check("X near a downed teammate = revive hold", press(r, "ButtonX", revive) == "interact:begin")
+	-- the prompt goes away mid-hold: still the prompt's hold until release
+	check("X hold keeps its mode when the prompt hides", release(r, "ButtonX", RUN) == "interact:end")
+
+	check("Y swaps", press(r, "ButtonY") == "swap:tap")
+	release(r, "ButtonY")
+	check("LB ability 1", press(r, "ButtonL1") == "ability1:tap")
+	check("RB ability 2", press(r, "ButtonR1") == "ability2:tap")
+	check("R3 ability 3", press(r, "ButtonR3") == "ability3:tap")
+	release(r, "ButtonL1")
+	release(r, "ButtonR1")
+	release(r, "ButtonR3")
+
+	check("A jumps (no action, Roblox keeps it)", press(r, "ButtonA") == "")
+	release(r, "ButtonA")
+	local dealer = { context = "run", dealerActive = true, dealerPanel = true }
+	local out, sink = r:input(inp("ButtonA", "Begin"), dealer, 0)
+	check("A at an open dealer panel buys", actions(out) == "dealerBuy:tap" and sink == true)
+	release(r, "ButtonA", dealer)
+
+	check("D-pad up teleports at the dealer", press(r, "DPadUp", dealer) == "dealerTeleport:tap")
+	check("D-pad down votes skip at the dealer", press(r, "DPadDown", dealer) == "voteSkip:tap")
+	check("D-pad left walks the stands", press(r, "DPadLeft", dealer) == "dealerPrev:tap")
+	check("D-pad right walks the stands", press(r, "DPadRight", dealer) == "dealerNext:tap")
+	for _, k in { "DPadUp", "DPadDown", "DPadLeft", "DPadRight" } do
+		release(r, k, dealer)
+	end
+	check("D-pad up does nothing outside the dealer", press(r, "DPadUp") == "")
+	release(r, "DPadUp")
+	check(
+		"D-pad down votes skip in an intermission",
+		press(r, "DPadDown", { context = "run", intermission = true }) == "voteSkip:tap"
+	)
+	release(r, "DPadDown")
+
+	check("L3 sprint begin", press(r, "ButtonL3") == "sprint:begin")
+	check("L3 sprint end", release(r, "ButtonL3") == "sprint:end")
+
+	-- ButtonSelect: a tap opens settings, a hold is the scoreboard
+	press(r, "ButtonSelect", RUN, 10)
+	check("Select tap -> settings", release(r, "ButtonSelect", RUN, 10.1) == "settings:tap")
+	press(r, "ButtonSelect", RUN, 20)
+	check("Select under the hold time: nothing yet", actions(r:tick(RUN, 20.1)) == "")
+	check("Select held -> scoreboard", actions(r:tick(RUN, 20 + Config.GamepadTapMaxSec + 0.01)) == "scoreboard:begin")
+	check("Select held: only once", actions(r:tick(RUN, 21)) == "")
+	check("Select release closes the scoreboard", release(r, "ButtonSelect", RUN, 21.2) == "scoreboard:end")
+
+	-- a screen owns the pad: combat presses do nothing, releases still pass
+	local blocked = { context = "run", blocked = true }
+	check("blocked: RT press ignored", press(r, "ButtonR2", blocked) == "")
+	check("blocked: Y ignored", press(r, "ButtonY", blocked) == "")
+	release(r, "ButtonY", blocked)
+	release(r, "ButtonR2", blocked)
+
+	-- reset lets go of every hold
+	press(r, "ButtonR2")
+	press(r, "ButtonL2")
+	local let = actions(r:reset())
+	check("reset ends fire", string.find(let, "fire:end", 1, true) ~= nil, let)
+	check("reset ends ads", string.find(let, "ads:end", 1, true) ~= nil, let)
+end
+
+do -- the hub: X is the prompt, Select settings
+	local r = GamepadMap.newRouter()
+	local HUB = { context = "hub" }
+	check("hub X = interact", press(r, "ButtonX", HUB) == "interact:begin")
+	check("hub X release", release(r, "ButtonX", HUB) == "interact:end")
+	check("hub RT does nothing", press(r, "ButtonR2", HUB) == "")
+	check("hub Select = settings", press(r, "ButtonSelect", HUB) == "settings:tap")
+end
+
+------------------------------------------------------------------ 3. look math
+do
+	local dz = Config.GamepadLookDeadZone
+	local speed = math.rad(Config.GamepadLookSpeed)
+	local y0, p0, a0 = GamepadMap.look(dz * 0.9, 0, 0, false, 5, false)
+	check("inside the dead zone: no look", y0 == 0 and p0 == 0 and a0 == 0)
+	local y1 = GamepadMap.look(1, 0, 0, false, 5, false)
+	check("full right: -speed yaw", near(y1, -speed), tostring(y1))
+	local yl = GamepadMap.look(-1, 0, 0, false, 5, false)
+	check("full left: +speed yaw", near(yl, speed))
+	-- half way past the dead zone: (0.5)^curve of the speed
+	local m = dz + (1 - dz) * 0.5
+	local yh = GamepadMap.look(m, 0, 0, false, 5, false)
+	check("curve at half push", near(yh, -speed * 0.5 ^ Config.GamepadLookCurve), tostring(yh))
+	check("curve keeps small pushes fine", math.abs(yh) < speed * 0.5)
+	-- acceleration: full ramp after GamepadLookAccelSec at the edge
+	local ya = GamepadMap.look(1, 0, Config.GamepadLookAccelSec, false, 5, false)
+	check("accel at the full ramp", near(ya, -speed * Config.GamepadLookAccelMult), tostring(ya))
+	local yah = GamepadMap.look(1, 0, Config.GamepadLookAccelSec / 2, false, 5, false)
+	check("accel half way", near(yah, -speed * (1 + (Config.GamepadLookAccelMult - 1) * 0.5)))
+	local yna = GamepadMap.look(m, 0, 99, false, 5, false)
+	check("no accel off the edge", near(yna, yh))
+	-- the ramp clock
+	local t = 0
+	for _ = 1, 10 do
+		t = GamepadMap.accelStep(t, 1, 0.05)
+	end
+	check("accel clock counts at the edge", near(t, 0.5, 1e-9))
+	check("accel clock resets off the edge", GamepadMap.accelStep(t, 0.5, 0.05) == 0)
+	-- ADS, sensitivity, invert
+	local yads = GamepadMap.look(1, 0, 0, true, 5, false)
+	check("ADS multiplier", near(yads, -speed * Config.GamepadAdsLookMult))
+	local ys10 = GamepadMap.look(1, 0, 0, false, 10, false)
+	check("sensitivity 10 doubles", near(ys10, -speed * 2))
+	local ys1 = GamepadMap.look(1, 0, 0, false, 1, false)
+	check("sensitivity 1 is a fifth", near(ys1, -speed * 0.2))
+	local _, pu = GamepadMap.look(0, 1, 0, false, 5, false)
+	check("stick up looks up", near(pu, speed * Config.GamepadLookPitchShare))
+	local _, pi = GamepadMap.look(0, 1, 0, false, 5, true)
+	check("invert Y", near(pi, -speed * Config.GamepadLookPitchShare))
+	-- diagonal: the direction is normalised, the amount from the radial magnitude
+	local yd, pd, ad = GamepadMap.look(0.7071, 0.7071, 0, false, 5, false)
+	check("diagonal amount ~1", near(ad, 1, 1e-3))
+	check("diagonal splits", near(math.abs(yd), speed * 0.7071, 1e-3) and pd > 0)
+	-- live override (the debug slider)
+	GamepadMap.live.GamepadLookSpeed = 90
+	local ylive = GamepadMap.look(1, 0, 0, false, 5, false)
+	check("live slider overrides speed", near(ylive, -math.rad(90)))
+	GamepadMap.live.GamepadLookSpeed = nil
+end
+
+------------------------------------------------------------------ 4. device detection
+do
+	check("mouse motion is no device", GamepadMap.deviceOf("MouseMovement", "Unknown", 0) == nil)
+	check("wheel is no device", GamepadMap.deviceOf("MouseWheel", "Unknown", 0) == nil)
+	check("a click is keyboard", GamepadMap.deviceOf("MouseButton1", "Unknown", 0) == "keyboard")
+	check("a key is keyboard", GamepadMap.deviceOf("Keyboard", "E", 0) == "keyboard")
+	check("a touch is touch", GamepadMap.deviceOf("Touch", "Unknown", 0) == "touch")
+	check("a button is gamepad", GamepadMap.deviceOf("Gamepad1", "ButtonA", 0) == "gamepad")
+	check("stick in its dead zone: none", GamepadMap.deviceOf("Gamepad1", "Thumbstick1", 0.05) == nil)
+	check("stick past it: gamepad", GamepadMap.deviceOf("Gamepad1", "Thumbstick2", 0.6) == "gamepad")
+	local hold = Config.DeviceSwitchHoldSec
+	local d = GamepadMap.newDeviceTracker("keyboard")
+	check("first switch is instant", d:see("gamepad", 100) == true and d.current == "gamepad")
+	check("a stray click inside the hold waits", d:see("keyboard", 100 + hold * 0.5) == false)
+	check("...and the pad again cancels it", d:see("gamepad", 100 + hold * 0.6) == false and d.pending == nil)
+	check("tick with nothing pending", d:tick(100 + hold * 2) == false and d.current == "gamepad")
+	d:see("keyboard", 200)
+	check("a real switch after the hold", d.current == "keyboard")
+	d:see("gamepad", 200 + hold * 0.2)
+	check("pending inside the hold", d.current == "keyboard" and d.pending == "gamepad")
+	check("lands when the hold ends (within a second)", d:tick(200 + hold) == true and d.current == "gamepad")
+end
+
+print(string.format("input.spec: %d passed, %d failed", passed, failed))
+if failed > 0 then
+	process.exit(1)
+end

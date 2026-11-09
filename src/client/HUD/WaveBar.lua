@@ -268,6 +268,12 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			castVote()
 		end
 	end))
+	-- Brief 11: D-pad down in an intermission (Input.lua).
+	track(ClientState.Juice:Connect(function(name: string)
+		if name == "PadVoteSkip" and not ClientState.blocked() and not ClientState.inHub() then
+			castVote()
+		end
+	end) :: any)
 
 	-- Center banner: WAVE N, WAVE N CLEAR, the final countdown digits.
 	local bannerToken = 0

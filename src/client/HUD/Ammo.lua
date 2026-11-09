@@ -74,6 +74,8 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	camLabel.FontFace = Theme.Fonts.display
 	local lastFree: boolean? = nil
 	track(RunService.RenderStepped:Connect(function()
+		-- Brief 11: no free-cursor mode on a pad, so no chip.
+		camRow.Visible = not ClientState.isMobile and ClientState.inputDevice == "keyboard"
 		local free = ClientState.mouseFree or ClientState.mouseFreeHold
 		if free == lastFree then
 			return

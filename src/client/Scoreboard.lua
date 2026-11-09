@@ -711,9 +711,13 @@ function Scoreboard.init()
 			Scoreboard.setOpen(false)
 		end
 	end)
-	ClientState.Juice:Connect(function(name: string)
+	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "ToggleScoreboard" then
 			Scoreboard.setOpen(not open)
+		elseif name == "ScoreboardHold" then
+			-- Brief 11: the pad's View / Create held (Input.lua); a run only.
+			local on = typeof(data) == "table" and data.on == true
+			Scoreboard.setOpen(on and not ClientState.inHub())
 		elseif name == "HubEnter" or name == "RunEndBegin" then
 			Scoreboard.setOpen(false)
 		end

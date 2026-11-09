@@ -14,6 +14,7 @@ local Emotes = require(Shared.Emotes)
 local Wraps = require(Shared.Wraps)
 local Prices = require(Shared.Prices)
 local MasteryCopy = require(Shared.MasteryCopy)
+local InputSettings = require(Shared.InputSettings)
 local PlayerState = require(script.Parent.PlayerState)
 local Profiles = require(script.Parent.Profiles)
 local Runs = require(script.Parent.Runs)
@@ -417,6 +418,28 @@ function Meta.init()
 		Profiles.markDirty(player)
 		PlayerState.get(player).dirty = true
 		Log.event("Meta", "%s set option %s = %s", player.Name, key, tostring(value))
+	end)
+	-- Brief 11: the settings INPUT page (any time, in a run too). Validated against the shared schema.
+	Remotes.SetInputSetting.OnServerEvent:Connect(function(player: Player, key: any, value: any)
+		if typeof(key) ~= "string" then
+			return
+		end
+		local profile = Profiles.get(player)
+		if not profile then
+			return
+		end
+		if key == "reset" then
+			profile.settings.input = InputSettings.defaults() :: any
+		else
+			local v = InputSettings.sanitize(key, value)
+			if v == nil then
+				return
+			end
+			profile.settings.input[key] = v
+		end
+		Profiles.markDirty(player)
+		PlayerState.get(player).dirty = true
+		Log.event("Input", "%s set input %s = %s", player.Name, key, tostring(value))
 	end)
 	-- Nothing else: the MatchMode is local, so there is no server list to talk to.
 	local _ = Config.MatchMode

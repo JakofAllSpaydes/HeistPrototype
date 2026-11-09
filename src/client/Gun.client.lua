@@ -322,12 +322,16 @@ local chargeStart: number? = nil -- Round 24v: the plasma trigger went down at t
 -- Round 24aa prototype: sprint. Hold Shift while moving: the gun goes away (no fire, no ADS) and the server runs
 -- you SprintSpeedMult faster. Letting go, stopping, or a menu ends it.
 local shiftHeld = false
+local padSprint = false
 local function updateSprint()
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local moving = hum ~= nil and hum.MoveDirection.Magnitude > 0.1
+	if not moving then
+		padSprint = false
+	end
 	local want = Config.SprintEnabled
-		and shiftHeld
+		and (shiftHeld or padSprint)
 		and moving
 		and not ClientState.downed
 		and not ClientState.blocked()
@@ -378,7 +382,7 @@ RunService.Heartbeat:Connect(function()
 	-- maxCost rounds, so the charge stops growing at what the mag can pay for.
 	local special = specialOf(h)
 	if special and special.mode == "charge" then
-		local want = firing or ClientState.touchFire
+		local want = firing or ClientState.touchFire or ClientState.padFire
 		if want and not chargeStart and mag > 0 and not reloading and now - lastShot >= 1 / h.fireRate then
 			chargeStart = now
 		end
@@ -415,7 +419,7 @@ RunService.Heartbeat:Connect(function()
 			end
 			return
 		end
-		local want = firing or ClientState.touchFire
+		local want = firing or ClientState.touchFire or ClientState.padFire
 		if not want or now - burstEndedAt < h.burstDelay then
 			return
 		end
@@ -431,7 +435,7 @@ RunService.Heartbeat:Connect(function()
 		end
 		return
 	end
-	local want = firing or ClientState.touchFire
+	local want = firing or ClientState.touchFire or ClientState.padFire
 	if not want then
 		return
 	end
@@ -503,8 +507,11 @@ ClientState.Juice:Connect(function(name: string, data: any)
 		if not cancelReload() then
 			reload()
 		end
-	elseif name == "TouchFireReleased" then
+	elseif name == "TouchFireReleased" or name == "PadFireReleased" then
 		semiLatch = false
+	elseif name == "PadSprint" and typeof(data) == "table" and data.on then
+		-- Brief 11 step 2: L3 latches the sprint until you stop moving (step 3 gives it the full model).
+		padSprint = true
 	elseif name == "MagAdd" then
 		-- SHARPSHOOTER's DEAD EYE OVERDRIVE mastery: a headshot during Dead Eye puts a round back in the mag.
 		local h = held

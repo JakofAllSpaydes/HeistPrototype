@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local GamepadMap = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GamepadMap"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 
 local player = Players.LocalPlayer
@@ -268,7 +269,11 @@ ClientState.Juice:Connect(function(name: string)
 	end
 end)
 
-local assistScale = 1 -- Round 24aa: 1 for touch / gamepad, AimAssistMouseScale for the mouse
+-- Brief 11: the assist's strength per device (Config.AimAssistScale: touch full, gamepad between, mouse faint);
+-- the settings toggle turns it off for gamepad and touch. GamepadMap.live carries the debug sliders.
+local assistScale = 1
+local assistDevice = "keyboard"
+local padLookMoving = false -- the right stick moved this frame (the gamepad pull only works then)
 local function assistWanted(): boolean
 	if not Config.AimAssistEnabled then
 		return false
@@ -276,16 +281,14 @@ local function assistWanted(): boolean
 	if ClientState.blocked() or ClientState.combatOff() or ClientState.isMouseFree() or ClientState.downed then
 		return false
 	end
-	assistScale = 1
-	if ClientState.isMobile or Config.AimAssistMouse then
-		return true
+	local device = if ClientState.isMobile then "touch" else ClientState.inputDevice
+	assistDevice = device
+	local scales = GamepadMap.cfg("AimAssistScale")
+	local key = if device == "keyboard" then "mouse" else device
+	assistScale = tonumber(scales[key]) or 0
+	if device ~= "keyboard" and not ClientState.inputSettings().aimAssist then
+		assistScale = 0
 	end
-	local last = UserInputService:GetLastInputType()
-	if last == Enum.UserInputType.Touch or string.find(last.Name, "Gamepad") ~= nil then
-		return true
-	end
-	-- Round 24aa: mouse gets a faint version (AimAssistMouseScale of the pull and stickiness, a narrower cone).
-	assistScale = Config.AimAssistMouseScale
 	return assistScale > 0
 end
 
@@ -310,7 +313,7 @@ local function aimAssist(dt: number, char: Model)
 	local look = camCf.LookVector
 	local ads = ClientState.ads
 	local cone = math.rad(if ads then Config.AimAssistAdsConeDeg else Config.AimAssistConeDeg)
-		* (if assistScale < 1 then Config.AimAssistMouseCone else 1)
+		* (if assistDevice == "keyboard" then Config.AimAssistMouseCone else 1)
 	local range = Config.AimAssistRange
 	local vp = camera.ViewportSize
 	local centreY = vp.Y / 2
@@ -388,8 +391,14 @@ local function aimAssist(dt: number, char: Model)
 	local angle = math.acos(math.clamp(look:Dot(d), -1, 1))
 	local falloff = math.clamp(1 - angle / cone, 0, 1)
 	local pull = (if ads then Config.AimAssistAdsPull else Config.AimAssistPull) * assistScale
-	if os.clock() < firingUntil or ClientState.touchFire then
+	local firingNow = os.clock() < firingUntil or ClientState.touchFire or ClientState.padFire
+	if firingNow then
 		pull *= Config.AimAssistFiringMult
+	end
+	-- Brief 11: on a pad the pull only helps a stick that is moving (or a trigger that is held): it never drifts
+	-- the view onto a target by itself. The slowdown near the target still applies.
+	if assistDevice == "gamepad" and Config.AimAssistGamepadStickOnly and not padLookMoving and not firingNow then
+		pull = 0
 	end
 	local wantYaw = math.atan2(-d.X, -d.Z)
 	local wantPitch = math.asin(math.clamp(d.Y, -1, 1))
@@ -446,6 +455,47 @@ local function pollTouches()
 	end
 end
 
+-- Brief 11: the right stick, the third look source beside the mouse delta and the touches. Read every frame from
+-- the pad's state and applied as yaw / pitch the same way, so the locked camera, the assist (its pull-away release
+-- included), ADS and the cinematic modes all work unchanged. Dead zone, curve and acceleration: GamepadMap.look.
+local padEdgeSec = 0
+local function pollPad(dt: number)
+	padLookMoving = false
+	local look = ClientState.padLook
+	if not UserInputService.GamepadEnabled then
+		look.x, look.y, look.amount, look.yawRate, look.pitchRate = 0, 0, 0, 0, 0
+		return
+	end
+	local x, y = 0, 0
+	for _, state in UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1) do
+		if state.KeyCode == Enum.KeyCode.Thumbstick2 then
+			x, y = state.Position.X, state.Position.Y
+			break
+		end
+	end
+	local s = ClientState.inputSettings()
+	local amount = GamepadMap.stickAmount(x, y)
+	padEdgeSec = GamepadMap.accelStep(padEdgeSec, amount, dt)
+	local yawRate, pitchRate = GamepadMap.look(x, y, padEdgeSec, ClientState.ads, s.lookSens, s.invertY)
+	look.x, look.y, look.amount, look.edgeSec = x, y, amount, padEdgeSec
+	if ClientState.blocked() then
+		-- a screen is open: the stick walks the screen (GamepadNav), never the camera
+		look.yawRate, look.pitchRate = 0, 0
+		return
+	end
+	look.yawRate, look.pitchRate = yawRate, pitchRate
+	if amount <= 0 then
+		return
+	end
+	padLookMoving = true
+	ClientState.cameraYawGoal = nil -- the player takes the camera back
+	local k = assistFriction * opticSens * dt
+	yaw += yawRate * k
+	inputYaw += yawRate * k
+	inputPitch += pitchRate * k
+	pitch = math.clamp(pitch + pitchRate * k, PITCH_MIN, PITCH_MAX)
+end
+
 -- The held gun's magnified optic zoom (an FOV multiplier) in first person, or nil.
 local function opticZoom(): number?
 	if not ClientState.firstPerson then
@@ -500,12 +550,25 @@ RunService:BindToRenderStep("GHSCamera", Enum.RenderPriority.Camera.Value, funct
 		then Enum.MouseBehavior.LockCenter
 		elseif drag then Enum.MouseBehavior.LockCurrentPosition
 		else Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = free and not drag
+	-- Brief 11: no cursor on a pad.
+	UserInputService.MouseIconEnabled = free and not drag and ClientState.inputDevice ~= "gamepad"
 	-- Spectate and the run start / end sequences drive the camera themselves.
 	if ClientState.cameraMode ~= "gameplay" then
 		return
 	end
 	pollTouches()
+	pollPad(dt)
+	local goal = ClientState.cameraYawGoal
+	if goal then
+		-- brief 11: an eased turn onto a yaw (the dealer's D-pad walk); the stick cancels it
+		local diff = (goal.yaw - yaw + math.pi) % (2 * math.pi) - math.pi
+		if math.abs(diff) < 0.01 then
+			yaw = goal.yaw
+			ClientState.cameraYawGoal = nil
+		else
+			yaw += diff * math.clamp(dt / math.max(goal.sec / 3, 0.01), 0, 1)
+		end
+	end
 
 	zoom += (targetZoom - zoom) * math.min(1, dt * Config.CameraZoomSmoothing)
 	if math.abs(targetZoom - zoom) < 0.02 then

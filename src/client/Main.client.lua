@@ -5,6 +5,8 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+-- Brief 11: the input device and the gamepad's routing come up first, so every screen built below sees the device.
+require(script.Parent:WaitForChild("Input"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
 
 -- Round 24d: phones and tablets stay in landscape (either way up), never portrait.
@@ -78,6 +80,8 @@ do
 end
 
 HUD.init()
+require(script.Parent:WaitForChild("Haptics")).init() -- brief 11
+require(script.Parent:WaitForChild("InputMonitor")).init() -- brief 11: the debug overlay
 require(script.Parent:WaitForChild("PurchaseSheet")).init()
 require(script.Parent:WaitForChild("UpgradeOverlay")).init()
 require(script.Parent:WaitForChild("CrateReelUI")).init()

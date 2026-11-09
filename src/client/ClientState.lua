@@ -11,6 +11,7 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local Skills = require(Shared:WaitForChild("Skills"))
 local Signal = require(Shared:WaitForChild("Signal"))
 local Types = require(Shared:WaitForChild("Types"))
+local InputSettings = require(Shared:WaitForChild("InputSettings"))
 
 local ClientState = {
 	sync = nil :: Types.Sync?,
@@ -40,9 +41,22 @@ local ClientState = {
 	reviveNearby = false, -- a downed teammate is within ReviveRadius: F means revive, gun prompts step aside
 	downedPlayers = {} :: { [number]: boolean }, -- userId -> currently down (any player)
 	requestCameraYaw = nil :: number?, -- a sequence hands the gameplay camera back facing this yaw
+	cameraYawGoal = nil :: { yaw: number, sec: number }?, -- brief 11: ease the gameplay camera onto this yaw (the dealer's D-pad walk)
 	musicDuck = false, -- Round 19d: a big moment (the boss cutscene) holds the soundtrack down (Music.lua)
 	streakOpen = false, -- brief 10: the streak modal is up (first-time pulses wait behind it)
 	dailyOpenOnArrival = false, -- Round 27c: the summary's crate card was tapped: the podium opens once you land
+	-- Brief 11: the input device ("keyboard" | "touch" | "gamepad"), from the last real input with a short hold
+	-- (Input.lua); every prompt, hint and layout reads it. DeviceChanged fires (device) on each switch.
+	inputDevice = if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+		then "touch"
+		else "keyboard",
+	DeviceChanged = Signal.new(),
+	padFire = false, -- RT held (Gun.client reads it beside touchFire)
+	padInteract = false, -- X held as the prompt (DownedUI's revive hold reads it)
+	dealerActive = false, -- the dealer break is on (DealerUI)
+	promptVisible = false, -- a ProximityPrompt is showing (Input.lua: X is the prompt, not a reload)
+	-- The right stick this frame and what the camera made of it (the Input monitor reads it).
+	padLook = { x = 0, y = 0, amount = 0, yawRate = 0, pitchRate = 0, edgeSec = 0 },
 }
 
 -- Round 25: how squarely the player is looking at a world point, for choosing between interactables in reach
@@ -147,8 +161,23 @@ function ClientState.movementLocked(): boolean
 	return next(controlLocks) ~= nil
 end
 
+-- Brief 11: on a gamepad the Ctrl / Alt free-cursor mode does not exist (the character always faces the camera aim).
 function ClientState.isMouseFree(): boolean
-	return ClientState.mouseFree or ClientState.mouseFreeHold or ClientState.blocked() or ClientState.combatOff()
+	local manual = (ClientState.mouseFree or ClientState.mouseFreeHold) and ClientState.inputDevice ~= "gamepad"
+	return manual or ClientState.blocked() or ClientState.combatOff()
+end
+
+-- Brief 11: the profile's INPUT settings (defaults until the first sync).
+function ClientState.inputSettings(): InputSettings.Values
+	local sync = ClientState.sync
+	local p = sync and (sync :: any).profile
+	local s = p and p.settings
+	return InputSettings.merge(s and s.input)
+end
+
+-- Can the player raise the gun into ADS right now (RMB, LT, the ADS button)?
+function ClientState.canAds(): boolean
+	return not ClientState.blocked() and not ClientState.downed and not ClientState.combatOff()
 end
 
 function ClientState.serverNow(): number
