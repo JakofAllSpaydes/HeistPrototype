@@ -273,6 +273,8 @@ local Lines = {
 		DEALER = { skin = "A8714F", shirt = "5A2E2E", accent = "E8B64C", hair = "141414" },
 		default = { skin = "C9C2B8", shirt = "3A3F4A", accent = "9BA0A8", hair = "2A2A2A" },
 	},
+	-- Brief 9: MARLOW's daily announce card adds this while a profile owns nothing on the Skill Web.
+	skillsIntro = "Planning board's open. Spend some Gold on yourself.",
 	-- Half-time reminder while a job is still open (Config.SideJobReminderPct).
 	reminder = {
 		title = "STILL OPEN",

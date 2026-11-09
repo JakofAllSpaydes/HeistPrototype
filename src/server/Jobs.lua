@@ -21,6 +21,7 @@ local Shop = require(script.Parent.Shop)
 local RunEvents = require(script.Parent.RunEvents)
 local Purchases = require(script.Parent.Purchases)
 local Log = require(script.Parent.Log)
+local Lines = require(Shared.CrewCall.Lines)
 
 local Jobs = {}
 
@@ -375,7 +376,12 @@ function Jobs.announce(player: Player)
 	end
 	profile.jobs.announcedDay = day
 	Profiles.markDirty(player)
-	Remotes.Juice:FireClient(player, "JobsAnnounce", { line = Config.JobAnnounceLine })
+	-- Brief 9: a profile with nothing on the Skill Web hears about it on the same card.
+	local line = Config.JobAnnounceLine
+	if Config.SkillsEnabled and next(profile.skills.owned) == nil then
+		line ..= " " .. Lines.skillsIntro
+	end
+	Remotes.Juice:FireClient(player, "JobsAnnounce", { line = line })
 	Log.event("Jobs", "MARLOW announced the board to %s", player.Name)
 end
 

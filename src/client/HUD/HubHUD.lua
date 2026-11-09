@@ -11,6 +11,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local LevelRewards = require(Shared:WaitForChild("LevelRewards"))
+local Skills = require(Shared:WaitForChild("Skills"))
 
 local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
@@ -260,6 +261,55 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	end)
 	component.skillsTile = skills
 	component.skillsHolder = skillsHolder
+	-- The breadcrumb: the pass tile's red badge, with the number of nodes affordable right now (none at 0).
+	local skillsBadge = UI.frame({
+		Name = "Badge",
+		BackgroundColor3 = Theme.Colors.red,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -S(4), 0, S(4)),
+		Size = UDim2.fromOffset(S(20), S(20)),
+		Visible = false,
+		ZIndex = 5,
+		Parent = skillsHolder,
+	})
+	UI.corner(skillsBadge, S(10))
+	UI.stroke(skillsBadge, Theme.Colors.white, S(1.5), 0)
+	local skillsCount = UI.text({
+		Text = "0",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.white,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 6,
+		Parent = skillsBadge,
+	})
+	local skillsStamp = ""
+	local skillsFirstPulse = false -- the first-time pulse plays once per session
+	local skillsPulseUntil = 0
+	local function paintSkills(profile: any)
+		local gold = if profile and typeof(profile.gold) == "number" then profile.gold else 0
+		local owned = profile and profile.skills and profile.skills.owned or {}
+		local n = 0
+		for _ in owned do
+			n += 1
+		end
+		local st = gold .. "|" .. n
+		if st == skillsStamp then
+			return
+		end
+		skillsStamp = st
+		local count = #Skills.affordableIds(owned, gold)
+		skillsBadge.Visible = count > 0 -- (one UIScale per object: the badge breathes in pulseTop, no punch)
+		skillsCount.Text = if count > 99 then "99+" else tostring(count)
+		-- First time: a profile with only START gets one pulse on the first hub entry (the pass's first-time pulse).
+		if n == 0 and profile and not skillsFirstPulse and Config.SkillsEnabled then
+			skillsFirstPulse = true
+			skillsPulseUntil = os.clock() + 2.4
+			UI.punch(skills, 1.15, 0.5)
+		end
+	end
+	local skillsStroke = skills:FindFirstChildOfClass("UIStroke")
+	local skillsBadgeScale = UI.new("UIScale", { Name = "BreadcrumbScale", Parent = skillsBadge })
 
 	-- Gold pill with + and INVITE FRIENDS, bottom-left; the level card sits above them.
 	local goldW = if mobile then S(170) else S(230)
@@ -625,6 +675,13 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			jobsStroke.Thickness = if jobsDot.Visible then S(2 + k * 2) else S(2)
 		end
 		shopScale.Scale = if shopDot.Visible then 1 + k * 0.25 else 1
+		skillsBadgeScale.Scale = if skillsBadge.Visible then 1 + k * 0.15 else 1
+		if skillsStroke then
+			local first = os.clock() < skillsPulseUntil
+			skillsStroke.Color = if first then Theme.Colors.white else Theme.Colors.black
+			skillsStroke.Thickness = if first then S(2 + k * 3) else S(1.5)
+			skillsStroke.Transparency = if first then 0 else 0.3
+		end
 	end
 
 	component.frame = root
@@ -639,6 +696,9 @@ function HubHUD.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	function component.update(sync: any)
 		chipRow.update(sync)
 		paintTop(sync.profile)
+		if root.Visible then
+			paintSkills(sync.profile) -- brief 9
+		end
 		local profile = sync.profile
 		local gold = if profile and typeof(profile.gold) == "number" then profile.gold else 0
 		if gold ~= shown then

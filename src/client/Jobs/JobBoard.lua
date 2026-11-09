@@ -1214,11 +1214,13 @@ local function announce(line: string)
 		"ScreenGui",
 		{ Name = "JobsAnnounce", IgnoreGuiInset = true, ResetOnSpawn = false, DisplayOrder = 7, Parent = playerGui }
 	) :: ScreenGui
+	-- Brief 9: a long line (the Skill Web intro rides along) gets a taller card.
+	local extra = if #line > 48 then S(28) else 0
 	local card = UI.frame({
 		BackgroundColor3 = Theme.Colors.panel,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -S(20), 0, S(118)),
-		Size = UDim2.fromOffset(S(340), S(78)),
+		Size = UDim2.fromOffset(S(340), S(78) + extra),
 		ZIndex = 2,
 		Parent = g,
 	})
@@ -1252,7 +1254,7 @@ local function announce(line: string)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Position = UDim2.fromOffset(S(80), S(28)),
-		Size = UDim2.new(1, -S(90), 0, S(44)),
+		Size = UDim2.new(1, -S(90), 0, S(44) + extra),
 		ZIndex = 3,
 		Parent = card,
 	})

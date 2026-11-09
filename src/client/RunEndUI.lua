@@ -21,6 +21,7 @@ local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
 local MinigameFrame = require(script.Parent:WaitForChild("Minigames"):WaitForChild("Frame"))
 local LevelCard = require(script.Parent:WaitForChild("HUD"):WaitForChild("LevelCard"))
 local LevelRewards = require(Shared:WaitForChild("LevelRewards"))
+local Skills = require(Shared:WaitForChild("Skills"))
 
 local RunEndUI = {}
 
@@ -37,6 +38,7 @@ local summaryShownAt = -1
 local hiddenForMvp: { Instance } = {} -- the rest of the crew and their tags, hidden locally for the MVP beat
 local bankedLabel: TextLabel? = nil
 local xpAnim: any = nil -- the XP row and its fill segments (see showSummary)
+local skillsLine: TextLabel? = nil -- brief 9: N SKILLS AFFORDABLE under the Gold gain (once the count-up lands)
 
 local function fmtClock(seconds: number): string
 	local s = math.max(0, math.floor(seconds))
@@ -126,6 +128,7 @@ local function teardown()
 	dim = nil
 	stampFrame = nil
 	bankedLabel = nil
+	skillsLine = nil
 	xpAnim = nil
 	lobbyButton = nil
 	summaryShownAt = -1
@@ -236,7 +239,7 @@ local function showSummary(d: any)
 	local vp = camera.ViewportSize
 	local W = math.min(math.floor(vp.X * 0.9), S(700))
 	local rowH = S(30)
-	local headerH = S(100) -- the headline block (the level card floats above the panel)
+	local headerH = S(114) -- the headline block (the level card floats above the panel); brief 9: +14 for the skills line
 	local H = headerH + S(24) + rowH * n + S(72) + S(28)
 	H = math.min(H, math.floor(vp.Y * 0.94))
 	local panel = UI.frame({
@@ -300,6 +303,20 @@ local function showSummary(d: any)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(S(26), S(80)),
 		Size = UDim2.fromOffset(S(400), S(14)),
+		ZIndex = 11,
+		Parent = panel,
+	})
+	-- Brief 9: the Skill Web breadcrumb, filled in when the count-up lands (the new balance decides N).
+	skillsLine = UI.text({
+		Name = "SkillsAffordable",
+		Text = "",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(12),
+		TextColor3 = Theme.Colors.textDim,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(S(26), S(96)),
+		Size = UDim2.fromOffset(S(400), S(14)),
+		Visible = false,
 		ZIndex = 11,
 		Parent = panel,
 	})
@@ -705,6 +722,21 @@ local function step(_dt: number)
 			end
 			bankedLabel.Text = string.format("◆ %d", math.floor(mine * k))
 			bankedLabel.TextSize = if k < 1 then UI.S(40 + 6 * math.sin(e * 30)) else UI.S(40)
+		end
+		-- Brief 9: the Gold landed; if the new balance makes N >= 1 Skill Web nodes affordable, say so once.
+		local sl = skillsLine
+		if sl and k >= 1 and not sl:GetAttribute("Done") then
+			sl:SetAttribute("Done", true)
+			local profile = ClientState.sync and ClientState.sync.profile
+			local gold = if profile and typeof(profile.gold) == "number" then profile.gold else 0
+			local owned = profile and profile.skills and profile.skills.owned or {}
+			local count = #Skills.affordableIds(owned, gold)
+			if count >= 1 then
+				sl.Text = string.format("%d SKILL%s AFFORDABLE", count, if count == 1 then "" else "S")
+				sl.Visible = true
+				sl.TextTransparency = 1
+				UI.tween(sl, { TextTransparency = 0 }, 0.3)
+			end
 		end
 		-- The level card: drops in after the Gold count-up, the bar fills over XpFillSec at a constant XP
 		-- speed with `+N XP` counting; a level crossed flashes, bumps the card, pops the reward line and keeps
