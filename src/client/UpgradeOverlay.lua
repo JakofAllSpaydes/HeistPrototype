@@ -153,6 +153,13 @@ local function buildTrackerTile(
 	tile.MouseLeave:Connect(function()
 		tip.Visible = false
 	end)
+	-- Brief 11: the pad's selection shows the tip too (nothing needs a hover).
+	tile.SelectionGained:Connect(function()
+		tip.Visible = true
+	end)
+	tile.SelectionLost:Connect(function()
+		tip.Visible = false
+	end)
 	tile.Activated:Connect(function()
 		tip.Visible = not tip.Visible
 	end)

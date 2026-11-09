@@ -593,6 +593,15 @@ function MetaUI.masteryBar(parent: GuiObject, kind: string, id: string, xp: numb
 	parent.MouseLeave:Connect(function()
 		tip.Visible = false
 	end)
+	-- Brief 11: nothing needs a hover: the pad's selection shows it too.
+	if parent:IsA("GuiObject") then
+		parent.SelectionGained:Connect(function()
+			tip.Visible = true
+		end)
+		parent.SelectionLost:Connect(function()
+			tip.Visible = false
+		end)
+	end
 end
 
 -- The mastery panel in a detail column (weapons and classes share it). One line: `MASTERY II` with its tier

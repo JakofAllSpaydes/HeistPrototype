@@ -407,6 +407,20 @@ local function create(parent: Instance?, model: Model?, size: number | UDim2, o:
 				ic.hovered = false
 			end)
 		)
+		-- Brief 11: the pad's selection turns the model too.
+		table.insert(
+			ic.conns,
+			target.SelectionGained:Connect(function()
+				ic.hovered = true
+				startStep(ic)
+			end)
+		)
+		table.insert(
+			ic.conns,
+			target.SelectionLost:Connect(function()
+				ic.hovered = false
+			end)
+		)
 	elseif o.motion == "always" then
 		startStep(ic)
 	end

@@ -419,6 +419,10 @@ local Config = {
 		},
 	},
 	-- Brief 11 step 4: screens on a pad (GamepadNav, SelectionRing).
+	-- Brief 11 step 6: the 10-foot pass. On a pad the HUD (and prompts, minigame panels) scale up and keep inside the
+	-- console safe area: the gui inset plus this share of the screen on every edge.
+	UiScaleGamepad = 1.15,
+	SafeAreaPct = 3.5,
 	NavRepeatDelaySec = 0.35, -- a held direction (stick or D-pad) repeats after this...
 	NavRepeatSec = 0.18, -- ...every this long
 	NavStickPress = 0.55, -- the left stick counts as a direction past this

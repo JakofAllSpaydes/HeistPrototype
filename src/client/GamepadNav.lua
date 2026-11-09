@@ -703,11 +703,13 @@ local function frame()
 	end
 	cur = ctx.current :: GuiObject
 	-- Roblox's own navigation stays put (we move it); A activates what is selected.
-	cur.Selectable = true
-	cur.NextSelectionUp = cur
-	cur.NextSelectionDown = cur
-	cur.NextSelectionLeft = cur
-	cur.NextSelectionRight = cur
+	if cur.NextSelectionUp ~= cur then
+		cur.Selectable = true
+		cur.NextSelectionUp = cur
+		cur.NextSelectionDown = cur
+		cur.NextSelectionLeft = cur
+		cur.NextSelectionRight = cur
+	end
 	if GuiService.SelectedObject ~= cur then
 		GuiService.SelectedObject = cur
 	end

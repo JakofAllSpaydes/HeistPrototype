@@ -349,6 +349,9 @@ function Frame.open(name: string, spec: GameSpec, tier: number, token: number, o
 	local vp = camera.ViewportSize
 	local short = math.min(vp.X, vp.Y)
 	local width = math.floor(short * Config.MinigamePanelPct)
+	if Frame.onPad() then
+		width = math.floor(width * Config.UiScaleGamepad) -- brief 11: read from a couch (the height check below still fits it)
+	end
 	local headerH = math.floor(width * 0.17)
 	local pad = math.floor(width * 0.03)
 	local contentH = math.floor(width * spec.aspect)
