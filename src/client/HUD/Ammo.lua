@@ -7,6 +7,9 @@ local Client = script.Parent.Parent
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ClientState = require(Client:WaitForChild("ClientState"))
+local Hint = require(Client:WaitForChild("Hint"))
+local Glyphs = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Glyphs"))
+local InputGlyphs = require(Client:WaitForChild("InputGlyphs"))
 
 local Ammo = {}
 
@@ -32,7 +35,7 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	UI.stroke(ammo, Theme.Colors.black, S(1.5), 0.4)
 	local hint = UI.text({
 		Name = "Hint",
-		Text = "R RELOAD · F INTERACT · Q E Z ABILITIES · ` DEBUG",
+		Text = "",
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.grey,
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -41,6 +44,56 @@ function Ammo.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Visible = not ClientState.isMobile,
 		Parent = root,
 	})
+
+	-- Brief 11: the keyboard line reads its keys from Glyphs; on a pad the line is drawn chips instead.
+	local function keys(...: string): string
+		local out = {}
+		for _, a in { ... } do
+			table.insert(out, Glyphs.keyboard(a) or "?")
+		end
+		return table.concat(out, " ")
+	end
+	local padRow = UI.frame({
+		Name = "PadHint",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, S(48)),
+		Size = UDim2.new(1, 0, 0, S(22)),
+		Visible = false,
+		Parent = root,
+	})
+	UI.list(padRow, Enum.FillDirection.Horizontal, S(5), Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Center)
+	local order = 0
+	local function padItem(actions: { string }, words: string)
+		for _, a in actions do
+			order += 1
+			InputGlyphs.chip(a, S(20), { LayoutOrder = order, Parent = padRow }, { context = "run", padOnly = true })
+		end
+		order += 1
+		UI.text({
+			Text = words,
+			TextSize = S(14),
+			TextColor3 = Theme.Colors.grey,
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, S(20)),
+			LayoutOrder = order,
+			Parent = padRow,
+		})
+	end
+	padItem({ "reload" }, "RELOAD")
+	padItem({ "ability1", "ability2", "ability3" }, "ABILITIES")
+	padItem({ "cameraCycle" }, "VIEW")
+	Hint.watch(root, function()
+		local pad = ClientState.inputDevice == "gamepad"
+		padRow.Visible = pad and not ClientState.isMobile
+		hint.Visible = not pad and not ClientState.isMobile
+		hint.Text = string.format(
+			"%s RELOAD · %s INTERACT · %s ABILITIES · %s DEBUG",
+			keys("reload"),
+			keys("interact"),
+			keys("ability1", "ability2", "ability3"),
+			keys("debug")
+		)
+	end)
 
 	-- Camera lock chip, right-aligned just above the count.
 	local camRow = UI.frame({

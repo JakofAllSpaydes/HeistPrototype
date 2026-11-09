@@ -13,6 +13,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Hint = require(script.Parent:WaitForChild("Hint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
@@ -303,7 +304,7 @@ local function buildPrompt()
 	else
 		local label = UI.text({
 			Name = "RevivePromptLabel",
-			Text = "HOLD " .. Config.InteractKey .. " · REVIVE",
+			Text = Hint.text("HOLD {key} · REVIVE", "interact", "run"),
 			FontFace = Theme.Fonts.display,
 			TextSize = S(18),
 			TextColor3 = Theme.Colors.cash,
@@ -334,7 +335,7 @@ local function setPrompt(name: string?)
 	end
 	if promptLabel then
 		promptLabel.Visible = name ~= nil
-		promptLabel.Text = if name then "HOLD " .. Config.InteractKey .. " · " .. text else ""
+		promptLabel.Text = if name then Hint.text("HOLD {key} · ", "interact", "run") .. text else ""
 		if name then
 			UI.punch(promptLabel, 1.2, 0.3)
 		end

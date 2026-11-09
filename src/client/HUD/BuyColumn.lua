@@ -37,7 +37,7 @@ function BuyColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	local tiles = {
 		upgrade = Tile.build(
 			root,
-			{ name = "UPGRADE", hotkey = "2", order = 1, iconKind = "plus", showPrice = true },
+			{ name = "UPGRADE", hotkey = "2", action = "upgrade", order = 1, iconKind = "plus", showPrice = true },
 			profile.tile,
 			profile.hotkeyChips
 		),

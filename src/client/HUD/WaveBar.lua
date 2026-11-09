@@ -14,6 +14,7 @@ local Lines = require(Shared:WaitForChild("CrewCall"):WaitForChild("Lines"))
 
 local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
+local Hint = require(Client:WaitForChild("Hint"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 
@@ -159,7 +160,7 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	votes.Position = UDim2.new(0.5, -S(150), 0, S(42))
 	local votesStroke = UI.stroke(votes, Theme.Colors.grey, S(1), 0.5)
 	local votesHint = UI.text({
-		Text = if ClientState.isMobile then "TAP TO SKIP" else "V TO SKIP",
+		Text = "TAP TO SKIP",
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.grey,
 		Position = UDim2.new(0, 0, 1, S(2)),
@@ -171,14 +172,25 @@ function WaveBar.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 	pause.AnchorPoint = Vector2.new(0, 0)
 	pause.Position = UDim2.new(0.5, S(150), 0, S(12))
 	local pauseStroke = UI.stroke(pause, Theme.Colors.grey, S(1), 0.5)
-	UI.text({
-		Text = if ClientState.isMobile then "TAP TO PAUSE" else "P TO PAUSE",
+	local pauseHint = UI.text({
+		Text = "TAP TO PAUSE",
 		TextSize = S(10),
 		TextColor3 = Theme.Colors.grey,
 		Position = UDim2.new(0, 0, 1, S(2)),
 		Size = UDim2.new(1, 0, 0, S(14)),
 		Parent = pause,
 	})
+	-- Brief 11: the keys follow the device (a pad has no pause key: Create opens the scoreboard, which has PAUSE).
+	if not ClientState.isMobile then
+		Hint.bind(votesHint, function()
+			return Hint.text("{key} TO SKIP", "voteSkip", "run")
+		end)
+		Hint.bind(pauseHint, function()
+			return if Hint.gamepad()
+				then Hint.text("{key} TO PAUSE", "scoreboard", "run")
+				else Hint.text("{key} TO PAUSE", "pause", "run")
+		end)
+	end
 	local pauseView: any = nil
 	local function paintPause()
 		local pv = pauseView

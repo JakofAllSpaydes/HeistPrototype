@@ -18,6 +18,7 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 local MetaUI = require(script.Parent:WaitForChild("MetaUI"))
+local InputGlyphs = require(Client:WaitForChild("InputGlyphs"))
 
 local ClassesTab = {}
 
@@ -291,11 +292,13 @@ local function abilityRow(
 	pricePill.BackgroundTransparency = 0.15
 	priceLabel.FontFace = Theme.Fonts.display
 	-- Hotkey on the icon's top-left corner.
-	local hotkey, hotkeyLabel = UI.pill(well, a.hotkey, Theme.Colors.bg, Theme.Colors.white, S(22), S(13))
-	hotkey.Position = UDim2.fromOffset(S(5), S(5))
-	hotkey.ZIndex = 3
-	hotkeyLabel.ZIndex = 3
-	hotkeyLabel.FontFace = Theme.Fonts.display
+	-- Brief 11: the current device's glyph (Q on keyboard, L1 on a pad, none on touch).
+	InputGlyphs.chip("ability" .. (order - 1), S(24), {
+		Name = "Hotkey",
+		Position = UDim2.fromOffset(S(5), S(5)),
+		ZIndex = 3,
+		Parent = well,
+	}, { context = "run", keyboardText = a.hotkey })
 	local textX = pad + wellSize + S(14)
 	local rightW = S(170)
 	UI.text({

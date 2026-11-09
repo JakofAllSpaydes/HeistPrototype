@@ -15,6 +15,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Types = require(Shared:WaitForChild("Types"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Hint = require(script.Parent:WaitForChild("Hint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
@@ -469,7 +470,7 @@ local function build()
 		Size = UDim2.new(1, 0, 0, S(36)),
 		Parent = panel,
 	})
-	UI.text({
+	local keepHint = UI.text({
 		Text = "ESC / X / 2 KEEPS THESE CARDS",
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.grey,
@@ -477,6 +478,9 @@ local function build()
 		Size = UDim2.new(1, 0, 0, S(16)),
 		Parent = panel,
 	})
+	Hint.bind(keepHint, function()
+		return if Hint.gamepad() then Hint.text("{key} KEEPS THESE CARDS", "back") else "ESC / X / 2 KEEPS THESE CARDS"
+	end)
 	cardsRow = UI.frame({
 		Name = "Cards",
 		BackgroundTransparency = 1,

@@ -82,6 +82,7 @@ end
 HUD.init()
 require(script.Parent:WaitForChild("Haptics")).init() -- brief 11
 require(script.Parent:WaitForChild("InputMonitor")).init() -- brief 11: the debug overlay
+require(script.Parent:WaitForChild("PadPrompt")).init() -- brief 11: prompts wear the pad glyph on a pad
 require(script.Parent:WaitForChild("PurchaseSheet")).init()
 require(script.Parent:WaitForChild("UpgradeOverlay")).init()
 require(script.Parent:WaitForChild("CrateReelUI")).init()

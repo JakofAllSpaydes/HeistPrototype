@@ -8,6 +8,7 @@ local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
 local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 local ClientState = require(Client:WaitForChild("ClientState"))
+local InputGlyphs = require(Client:WaitForChild("InputGlyphs"))
 
 export type Tile = {
 	button: TextButton,
@@ -32,6 +33,7 @@ export type Tile = {
 export type Opts = {
 	name: string,
 	hotkey: string,
+	action: string?, -- brief 11: the input action, so the chip shows the current device's glyph (else the hotkey text)
 	order: number,
 	iconKind: string, -- gun | plus | an ability's Icons.lua id (Classes.lua `icon`)
 	stub: boolean?,
@@ -75,7 +77,14 @@ function Tile.build(parent: Instance, opts: Opts, tileSize: Vector2, showChips: 
 	local stroke = UI.stroke(button, Theme.Colors.grey, S(2))
 
 	local hotkeyChip: Frame? = nil
-	if showChips then
+	if showChips and opts.action then
+		hotkeyChip = InputGlyphs.chip(opts.action, S(24), {
+			Name = "Hotkey",
+			Position = UDim2.fromOffset(-S(5), -S(7)),
+			ZIndex = 3,
+			Parent = button,
+		}, { keyboardText = opts.hotkey })
+	elseif showChips then
 		local chip = UI.frame({
 			Name = "Hotkey",
 			BackgroundColor3 = Theme.Colors.panel2,

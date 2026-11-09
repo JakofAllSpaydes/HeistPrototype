@@ -49,6 +49,7 @@ end
 
 local Config = loadShared("Config")
 local GamepadMap = loadShared("GamepadMap")
+local Glyphs = loadShared("Glyphs")
 
 ------------------------------------------------------------------ tiny test kit
 local passed, failed = 0, 0
@@ -315,6 +316,45 @@ do
 	d:see("gamepad", 200 + hold * 0.2)
 	check("pending inside the hold", d.current == "keyboard" and d.pending == "gamepad")
 	check("lands when the hold ends (within a second)", d:tick(200 + hold) == true and d.current == "gamepad")
+end
+
+------------------------------------------------------------------ 5. glyphs (step 1)
+do
+	local KEY = Config.InteractKey
+	check("keyboard interact is the interact key", Glyphs.label("interact", "keyboard", nil, "run") == KEY)
+	check("keyboard abilities follow AbilityKeys", Glyphs.label("ability3", "keyboard") == Config.AbilityKeys[3])
+	check("pad interact is square", Glyphs.label("interact", "gamepad", "playstation", "run") == "□")
+	check("pad ability 3 is circle", Glyphs.label("ability3", "gamepad", "playstation", "run") == "○")
+	check("pad ability 1 is L1", Glyphs.label("ability1", "gamepad", "playstation", "run") == "L1")
+	check("xbox ability 1 is LB", Glyphs.label("ability1", "gamepad", "xbox", "run") == "LB")
+	check("pad camera view is R3", Glyphs.label("cameraCycle", "gamepad", "playstation", "run") == "R3")
+	check("pad upgrade is D-pad up", Glyphs.label("upgrade", "gamepad", "playstation", "run") == "↑")
+	check("pad teleport rides D-pad up", Glyphs.label("dealerTeleport", "gamepad", "playstation", "run") == "↑")
+	check("pad back is circle", Glyphs.label("back", "gamepad", "playstation") == "○")
+	check("pad has no pause key", Glyphs.label("pause", "gamepad", "playstation", "run") == nil)
+	check("keyboard has no camera view key", Glyphs.label("cameraCycle", "keyboard") == nil)
+	check("touch shows no key", Glyphs.label("interact", "touch") == "")
+	-- every action a HUD line names has a glyph on keyboard and pad
+	for _, a in { "reload", "swap", "ability1", "ability2", "ability3", "sprint", "upgrade", "voteSkip", "scoreboard" } do
+		check("keyboard glyph " .. a, Glyphs.label(a, "keyboard") ~= nil)
+		check("pad glyph " .. a, Glyphs.label(a, "gamepad", "playstation", "run") ~= nil)
+	end
+	check("fmt fills the key", Glyphs.fmt("{key} TO SKIP", "V") == "V TO SKIP")
+	check(
+		"fmt on touch drops the key",
+		Glyphs.fmt("HOLD {key} · CUT", "") == "HOLD CUT" or Glyphs.fmt("HOLD {key} · CUT", "") == "HOLD · CUT",
+		Glyphs.fmt("HOLD {key} · CUT", "")
+	)
+	check("fmt drops a leading key and its dot", Glyphs.fmt("{key} · OPEN", "") == "OPEN")
+	check("swapKey HOLD", Glyphs.swapKey("HOLD " .. KEY .. " · CUT", KEY, "□") == "HOLD □ · CUT")
+	check("swapKey leading", Glyphs.swapKey(KEY .. " · BREACH", KEY, "□") == "□ · BREACH")
+	check("swapKey bare marker", Glyphs.swapKey("HOLD " .. KEY, KEY, "□") == "HOLD □")
+	check(
+		"swapKey leaves words alone",
+		Glyphs.swapKey("ESCAPE THE " .. KEY .. "XIT", KEY, "□") == "ESCAPE THE " .. KEY .. "XIT"
+	)
+	check("style auto defaults to playstation", Glyphs.style("auto", nil) == "playstation")
+	check("style setting wins", Glyphs.style("xbox", "ButtonCross") == "xbox")
 end
 
 print(string.format("input.spec: %d passed, %d failed", passed, failed))

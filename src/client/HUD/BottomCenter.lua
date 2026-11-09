@@ -17,6 +17,7 @@ local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon"))
 local ClientState = require(Client:WaitForChild("ClientState"))
+local InputGlyphs = require(Client:WaitForChild("InputGlyphs"))
 
 -- Brief 6: GET TOKENS opens the purchase sheet (required lazily: PurchaseSheet loads the store kit).
 local function sheet(): any
@@ -291,26 +292,15 @@ function BottomCenter.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		Size = UDim2.fromScale(1, 1),
 		Parent = offWell,
 	})
-	local offKey = UI.frame({
-		Name = "Hotkey",
-		BackgroundColor3 = Theme.Colors.panel2,
-		Position = UDim2.fromOffset(-S(6), -S(8)),
-		Size = UDim2.fromOffset(S(24), S(20)),
-		ZIndex = 3,
-		Visible = not ClientState.isMobile,
-		Parent = offhand,
-	})
-	UI.corner(offKey, S(5))
-	UI.stroke(offKey, Theme.Colors.grey, S(1), 0.4)
-	UI.text({
-		Text = "1",
-		FontFace = Theme.Fonts.display,
-		TextSize = S(14),
-		TextColor3 = Theme.Colors.text,
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 3,
-		Parent = offKey,
-	})
+	-- Brief 11: the swap key for the current device (1 / △), none on touch.
+	if not ClientState.isMobile then
+		InputGlyphs.chip("swap", S(22), {
+			Name = "Hotkey",
+			Position = UDim2.fromOffset(-S(6), -S(8)),
+			ZIndex = 3,
+			Parent = offhand,
+		}, { context = "run" })
+	end
 	track(offhand.Activated:Connect(function()
 		local sync = ClientState.sync :: any
 		if sync and sync.offhand and not ClientState.downed then

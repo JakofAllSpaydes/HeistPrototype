@@ -18,6 +18,7 @@ local Rarity = require(Shared:WaitForChild("Rarity"))
 local Upgrades = require(Shared:WaitForChild("Upgrades"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Hint = require(script.Parent:WaitForChild("Hint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
@@ -355,7 +356,7 @@ local function openCardPanel(it: Item, card: any)
 		Parent = bar,
 	})
 	local buyBtn = UI.button({
-		Text = if ClientState.isMobile then "BUY" else Config.InteractKey .. "  BUY",
+		Text = if ClientState.isMobile then "BUY" else Hint.text("{key}  BUY", "dealerBuy", "run"),
 		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.bg,
@@ -447,7 +448,7 @@ local function openPanel(it: Item)
 		Parent = frame,
 	})
 	local buyBtn = UI.button({
-		Text = if ClientState.isMobile then "BUY" else Config.InteractKey .. "  BUY",
+		Text = if ClientState.isMobile then "BUY" else Hint.text("{key}  BUY", "dealerBuy", "run"),
 		FontFace = Theme.Fonts.display,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.bg,
@@ -692,9 +693,14 @@ local function buildCard()
 		return b
 	end
 	local hot = not mobile
-	local teleport = button(if hot then "TELEPORT [T]" else "TELEPORT", Theme.Colors.blue, 1, function()
+	local teleport = button("TELEPORT", Theme.Colors.blue, 1, function()
 		Remotes.DealerAction:FireServer("teleport")
 	end)
+	if hot then
+		Hint.bind(teleport, function()
+			return Hint.text("TELEPORT [{key}]", "dealerTeleport", "run")
+		end)
+	end
 	local skip = button(if hot then "SKIP [V]" else "SKIP", Theme.Colors.cash, 2, function()
 		Remotes.DealerAction:FireServer("skip")
 	end)
@@ -718,7 +724,7 @@ local function paintCard()
 			if dv.mySkip then "SKIPPING" else "SKIP",
 			tonumber(dv.skips) or 0,
 			tonumber(dv.needed) or 1,
-			if mobile then "" else " [V]"
+			if mobile then "" else Hint.text(" [{key}]", "voteSkip", "run")
 		)
 		c.skip.BackgroundColor3 = if dv.mySkip then Theme.Colors.gold else Theme.Colors.cash
 	end

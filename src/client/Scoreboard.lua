@@ -18,6 +18,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local JobPool = require(Shared:WaitForChild("JobPool"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Hint = require(script.Parent:WaitForChild("Hint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
@@ -517,6 +518,12 @@ local function build()
 		Parent = p,
 	})
 	UI.corner(pauseBtn, S(6))
+	if not ClientState.isMobile then
+		-- Brief 11: a pad has no pause key (the button itself is selectable with the pad).
+		Hint.bind(pauseBtn, function()
+			return if Hint.gamepad() then "VOTE PAUSE" else Hint.text("VOTE PAUSE [{key}]", "pause", "run")
+		end)
+	end
 	pauseBtn.Activated:Connect(function()
 		local pv = ClientState.sync and (ClientState.sync :: any).pause
 		if pv and not pv.active then
@@ -524,8 +531,8 @@ local function build()
 			UI.punch(pauseBtn, 0.9, 0.15)
 		end
 	end)
-	UI.text({
-		Text = if ClientState.isMobile then "TAP TO CLOSE" else "RELEASE TAB TO CLOSE",
+	local closeHint = UI.text({
+		Text = "TAP TO CLOSE",
 		TextSize = S(9),
 		TextColor3 = Theme.Colors.grey,
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -533,6 +540,13 @@ local function build()
 		Size = UDim2.new(1, 0, 0, S(12)),
 		Parent = p,
 	})
+	if not ClientState.isMobile then
+		Hint.bind(closeHint, function()
+			return if Hint.gamepad()
+				then Hint.text("{key} TO CLOSE", "scoreboard", "run")
+				else Hint.text("RELEASE {key} TO CLOSE", "scoreboard", "run")
+		end)
+	end
 end
 
 local function paint()

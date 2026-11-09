@@ -373,6 +373,56 @@ local Config = {
 	GamepadLookAccelEdge = 0.92,
 	GamepadAdsLookMult = 0.55,
 	GamepadMoveDeadZone = 0.2, -- the left stick counts as real input (device switch) past this
+	-- Brief 11 glyphs: the text a pad button reads as inside a line of text (Hint.lua). The HUD chips draw the face
+	-- buttons as shapes (InputGlyphs); these are for the labels that stay text. Settings glyphs = auto picks
+	-- PlayStation unless Roblox reports an Xbox pad.
+	GlyphText = {
+		playstation = {
+			ButtonA = "✕",
+			ButtonB = "○",
+			ButtonX = "□",
+			ButtonY = "△",
+			ButtonL1 = "L1",
+			ButtonR1 = "R1",
+			ButtonL2 = "L2",
+			ButtonR2 = "R2",
+			ButtonL3 = "L3",
+			ButtonR3 = "R3",
+			DPadUp = "↑",
+			DPadDown = "↓",
+			DPadLeft = "←",
+			DPadRight = "→",
+			ButtonSelect = "CREATE",
+			ButtonStart = "OPTIONS",
+			Thumbstick1 = "L STICK",
+			Thumbstick2 = "R STICK",
+		},
+		xbox = {
+			ButtonA = "A",
+			ButtonB = "B",
+			ButtonX = "X",
+			ButtonY = "Y",
+			ButtonL1 = "LB",
+			ButtonR1 = "RB",
+			ButtonL2 = "LT",
+			ButtonR2 = "RT",
+			ButtonL3 = "LS",
+			ButtonR3 = "RS",
+			DPadUp = "↑",
+			DPadDown = "↓",
+			DPadLeft = "←",
+			DPadRight = "→",
+			ButtonSelect = "VIEW",
+			ButtonStart = "MENU",
+			Thumbstick1 = "L STICK",
+			Thumbstick2 = "R STICK",
+		},
+	},
+	-- The face buttons' colours on the drawn chips (PlayStation shapes / Xbox letters).
+	GlyphColors = {
+		playstation = { ButtonA = "7DA9FF", ButtonB = "FF6B73", ButtonX = "E89BD0", ButtonY = "3FCCA6" },
+		xbox = { ButtonA = "6CC24A", ButtonB = "E8554D", ButtonX = "4D9FE8", ButtonY = "E8C34D" },
+	},
 	-- Haptics (HapticService, gamepad only): per event { motor = "Small" | "Large", strength 0..1, sec }. HapticFire per
 	-- gun kind (the HeldGun's GunKind attribute; `default` for the rest); auto guns buzz while the trigger is held.
 	HapticsEnabled = true, -- the default for new profiles (settings INPUT: haptics on / off)

@@ -11,6 +11,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local Ground = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Ground"))
 local Lines = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CrewCall"):WaitForChild("Lines"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Hint = require(script.Parent:WaitForChild("Hint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 
@@ -137,7 +138,7 @@ function Markers.add(
 		Parent = frame,
 	})
 	local sub = UI.text({
-		Text = subText,
+		Text = Hint.swap(subText), -- brief 11: HOLD E reads HOLD □ on a pad
 		TextSize = S(11),
 		TextColor3 = Theme.Colors.text,
 		Position = UDim2.fromOffset(0, S(25)),
@@ -324,6 +325,7 @@ function Markers.setSub(id: string, text: string, color: Color3?, punch: boolean
 	if not m then
 		return
 	end
+	text = Hint.swap(text)
 	if m.sub.Text ~= text then
 		m.sub.Text = text
 		if punch ~= false then

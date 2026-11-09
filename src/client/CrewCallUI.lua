@@ -11,6 +11,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Lines = require(Shared:WaitForChild("CrewCall"):WaitForChild("Lines"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
+local Hint = require(script.Parent:WaitForChild("Hint"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
@@ -620,7 +621,7 @@ local function onVaultOpen(data: any)
 		text = {},
 		rewardLine = "",
 		-- Brief 7: on THE BANK the pill's side line says the tunnel is open (the back way out).
-		rewardShort = tostring(data.tunnelText or data.hint or Lines.vault.lootHint),
+		rewardShort = Hint.swap(tostring(data.tunnelText or data.hint or Lines.vault.lootHint)),
 		endsAt = tonumber(data.endsAt) or 0,
 		duration = tonumber(data.openSec) or Config.VaultOpenSec,
 	})

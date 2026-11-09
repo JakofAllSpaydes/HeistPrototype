@@ -100,12 +100,13 @@ function AbilityColumn.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 		header.Text = string.upper(class.name)
 		header.TextColor3 = Color3.fromHex(class.color)
 		for i, a in class.abilities do
-			local t = Tile.build(
-				root,
-				{ name = string.upper(a.name), hotkey = a.hotkey, order = i, iconKind = a.icon },
-				profile.tile,
-				profile.hotkeyChips
-			)
+			local t = Tile.build(root, {
+				name = string.upper(a.name),
+				hotkey = a.hotkey,
+				action = "ability" .. i,
+				order = i,
+				iconKind = a.icon,
+			}, profile.tile, profile.hotkeyChips)
 			t.setAffordable(true)
 			tiles[a.id] = t
 			order[i] = a.id
