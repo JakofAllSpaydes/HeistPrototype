@@ -77,7 +77,9 @@ weapon types, eight more guns and the four showcase guns made real, per-gun rece
 category tiles, favourites (weapons and avatar), two starter slots, soft-capped weapon and ability levels, a Shift sprint
 prototype, faint mouse aim assist, a centred camera when the cursor is unlocked, and the Railcaster beam hitting real
 body parts), then
-Round 26 (8 Nov: the brief 9 build, the Skill Web; one commit per step, built unplayed).
+Round 26 (8 Nov: the brief 9 build, the Skill Web; one commit per step, built unplayed) with Jack's feedback
+rounds 26b (a compact sheet, branch-coloured hexes, the web growing as you buy, varied costs, centring, plain effect
+lines) and 26c (START bought first, UNLOCK SKILLS, the unlock sequence).
 Everything on `main` builds clean and is what Studio sees through Rojo. The "Brief 3 verify list", the "Round 12 verify
 list", the "Round 13 verify list", the "Brief 4 verify list", the "Brief 5 verify list", the "Brief 6 verify list", the "Brief 7 verify list", the "Brief 8 verify list" and the
 "Brief 9 verify list" are the walk-throughs for a fresh Studio session. Brief 5 has been played in Studio by the designer through the 15b–15m feedback rounds (which is
@@ -951,7 +953,8 @@ them (Range is a volume, off by default like Zones). The arena is a standalone r
 
 **The Skill Web (brief 9; `Skills.lua`, `SkillLayout.lua`, `SkillService.lua`, `client/Skills/SkillScene.lua`).**
 Horizontal progression beside the Armory: 90 one-time nodes bought with Gold (never R$) on a regular hex grid of
-91 hexes, START at the centre and five rings (6 / 12 / 18 / 24 / 30). Six branches clockwise from the top, each a
+91 hexes, START at the centre (Round 26c: START is bought first, `SkillStartCost`, UNLOCK SKILLS, and its purchase
+plays the web's unlock sequence) and five rings (6 / 12 / 18 / 24 / 30). Six branches clockwise from the top, each a
 60° wedge holding N nodes in ring N (15 a branch): DAMAGE · SURVIVAL · SPEED · CASH · LUCK · ARSENAL.
 `SkillLayout` places every node deterministically (axial coordinates; wedge k owns 60k..60k+60° clockwise from
 straight up, a ring's cells in the wedge sorted by angle, slot j takes cell j); positions are never hand-authored and
@@ -959,7 +962,9 @@ the server validates adjacency from the same table. The node values are `Config.
 in slot order, `{ stat, value }`); ids (`<branch>_<stat>_<n>`, e.g. `damage_crit_2`), names (CRIT CHANCE II, a numeral
 only when the stat repeats in its branch), pictograms and the effect line come from `Skills.lua`. A node can be
 bought when one of its six hex neighbours is owned (START counts; seams between wedges are real neighbours) and the
-Gold covers `SkillCostByRing` (500 · 1,500 · 4,000 · 10,000 · 25,000; about 300k for the web). Nothing is a rule
+Gold covers its cost: the ring's `SkillCostByRing` base (500 · 1,500 · 4,000 · 10,000 · 25,000) x the stat's
+`SkillCostByStat` weight x `SkillCostRepeatStep` per earlier node of that stat in the branch, rounded (Round 26b: ring 1
+runs 350–650, so the choices are never all equal; about 1.2M for the whole web). Nothing is a rule
 change: `Skills.modifiers(owned)` folds the owned set into one flat table that the run start (`Hub.beginRun`) and
 the range entry arm on the player (`PlayerState.armSkills`, logged `[GHS Skills] <id> applied <stat> <value>` per
 node and `[GHS Skills] <player> applied N nodes (run start): damage +9% hp +16% …`); the hub runs on zeros. The
@@ -981,15 +986,19 @@ gold on skill <id>` and replies with the owned set and balance; `SkillSeen(ids)`
 The scene: a full-screen overlay over the blurred hub (the hub HUD and your nameplate hidden, movement locked):
 SKILL WEB and the branch legend top-left (the hovered / selected branch lit; pictograms only under 720 px wide), the
 Gold pill top-right (its + opens the store's GOLD), BACK bottom-left. Hexes are drawn from frames (three rotated
-bars each, an edge layer and a fill): owned = the branch tint with lit white edges to owned neighbours; affordable =
-panel colour, the price in the Gold style, a slow white edge pulse; short = a red price, no pulse; two steps out = a
-dim hex with ?; farther = a faint outline, so the web's shape shows from the start. START is a larger gold hex with
+bars each, an edge layer and a fill): owned = the bright branch colour with lit white edges to owned neighbours;
+affordable = a dark shade of the branch colour (the type reads without the text), the price in the Gold style, a slow
+edge pulse; short = the same with a red price, no pulse; two steps out = a dim grey hex with ? (it never lights the
+legend); anything farther is hidden, so the web grows as you buy (Round 26b). START is a larger gold hex with
 the star. A hex that became affordable since the last visit pulses once on open (`SkillNewPulseSec`). Pan by drag
 (mouse, touch, right stick), zoom by scroll / pinch / triggers between `SkillZoomMin` (never above "the whole web
-fits") and `SkillZoomMax`; it opens on the last selected hex at zoom 1 (`SkillHexPx` wide, at least 56 px on a
-phone); double-tap the backdrop to recentre on START. Tap a hex → the sheet docks right (40% of the width on a phone,
-BUY in the bottom-right thumb zone): branch tag, pictogram, name, effect line, RING N, the price, BUY / NOT ENOUGH
-GOLD (the store's refusal tick on a tap) / OWNED / LOCKED · UNLOCK A NEIGHBOUR. BUY → the hex wipes in with the loot
+fits") and `SkillZoomMax`; it opens centred on START at `SkillOpenZoom` (all the way in; a hex is `SkillHexPx`
+wide at zoom 1, at least 56 px on a phone); double-tap the backdrop to recentre on START. Tap a hex → it glides to the
+centre of the space beside the sheet, and the sheet docks right as a compact card (Round 26b; vertically centred,
+bottom-right on a phone at 40% of the width): branch tag and RING N, the pictogram well (dark branch shade, bright once
+owned) beside the name and a plain-language effect line, then BUY with the price on it / NOT ENOUGH GOLD · NEED N
+MORE (the store's refusal tick on a tap) / OWNED / LOCKED · UNLOCK A NEIGHBOUR. LUCK lines say what gets rarer and
+where (pick-3 cards, the in-run dealer, in-run gun crates; never the SHOP's crates). BUY → the hex wipes in with the loot
 ding and a small burst, the edges to owned neighbours light one by one, the newly revealed neighbours pop in, the Gold
 counts down, the sheet flips to OWNED and stays up; a refused buy shakes the Gold pill. Breadcrumbs: the SKILLS tile
 (directly under SHOP, hub only) wears a red badge with the number of nodes affordable right now; it pulses once on
@@ -1396,16 +1405,20 @@ Gold, every bought node measurably changes a run (or a range dummy), and the web
 phone in landscape.
 
 1. Rejoin an existing profile → `[GHS Profile] v4 -> v5` once (not on the next join). A fresh profile: the SKILLS
-   tile under SHOP with a red `6` badge (10,000 Gold covers ring 1), its edge pulses white once; MARLOW's first
-   card of the day adds the Skill Web line.
-2. SKILLS → the web over the blurred hub: no hub HUD, no nameplate over you, you can't walk; START gold at the
-   centre, six affordable ring-1 hexes pulsing once then breathing, twelve ? hexes, the rest faint outlines. Esc / BACK
+   tile under SHOP with a red `1` badge (START), its edge pulses white once; MARLOW's first card of the day adds the
+   Skill Web line.
+2. SKILLS → the web over the blurred hub: no hub HUD, no nameplate over you, you can't walk; START in dark gold at
+   the centre, zoomed in, priced ◆ 250 and pulsing, six grey ? hexes round it, no legend rows. Tap START → the sheet
+   (THE WEB, star, START, UNLOCK SKILLS, BUY ◆ 250). BUY → the flash and gold rings, SKILL WEB UNLOCKED, the six
+   ring-1 hexes turn over clockwise in dark branch shades (prices 350–650) as the legend fills, then twelve ? hexes
+   fade in; `[GHS Economy] … spent 250 gold on skill START`. Esc / BACK
    closes; the hub HUD, nameplate and walking come back.
 3. Drag pans, scroll zooms around the cursor (out until the whole web fits, in to 1.6x), double-tap empty space eases
    back to START. A drag that ends on a hex does not open its sheet.
-4. Tap DAMAGE I → the sheet (DAMAGE tag, skull, +3% weapon damage, RING 1, ◆ 500, BUY). BUY → the wipe, ding and burst,
-   a lit edge to START, CRIT CHANCE I / HEADSHOT I reveal, the ? ring moves out, Gold counts 10,000 → 9,500, the
-   sheet says OWNED; `[GHS Economy] … spent 500 gold on skill damage_damage_1`. Rejoin → still owned.
+4. Tap DAMAGE I → it glides to the centre beside a compact sheet (DAMAGE tag, RING 1, skull, +3% damage with every
+   gun, BUY ◆ 650). BUY → the hex turns bright red with a wipe, ding and burst, a lit edge to START, CRIT CHANCE I /
+   HEADSHOT I reveal, a new ? ring appears, Gold counts 10,000 → 9,350, the sheet says OWNED;
+   `[GHS Economy] … spent 650 gold on skill damage_damage_1`. Rejoin → still owned.
 5. Debug +10,000 Gold a few times and buy DAMAGE II → III → IV (or any path to ring 5) in one branch; a ring-2 hex in
    SURVIVAL is reachable from DAMAGE ring 2 across the seam. A node you can't afford: red price, BUY dimmed with NOT
    ENOUGH GOLD (the refusal tick); a ? hex: ???, LOCKED · UNLOCK A NEIGHBOUR.
@@ -2068,10 +2081,28 @@ soundtrack), LockdownUI (the lockdown line and edge arrow). Brief 8: BoothManneq
   count badge and first-time pulse, the summary's `N SKILLS AFFORDABLE`, MARLOW's intro line, the pulse-once
   `seen` set. Step 4: the phone pass (56 px hexes, the 40% sheet with a thumb-sized BUY, the legend collapse, store
   text scale, the tapped hex eased out from under the sheet) and this README.
+- **Round 26b (8 Nov) — Skill Web feedback.** Unplayed. The sheet is a compact card (no more full-height column):
+  the well sits beside the name and effect line and the price rides on BUY. Revealed hexes wear a dark shade of their
+  branch colour and go bright and saturated when owned; ? hexes stay grey and never light the legend. Hexes past the ?
+  ring are hidden, so the web grows as you progress. Costs vary inside a ring (`SkillCostByStat` weights,
+  `SkillCostRepeatStep`, tidy rounding; an optional third field on a `SkillNodes` entry overrides the weight). The
+  web opens centred on START zoomed all the way in (`SkillOpenZoom`), and a tapped hex glides to the centre of the
+  space beside the sheet. Every effect line rewritten in plain words; LUCK reads "+3% odds of rarer upgrade cards when
+  you buy a pick-3 in a run" / "… at the in-run dealer" / "… guns from in-run gun crates (not SHOP crates)".
+- **Round 26c (8 Nov) — START is bought too.** Unplayed. START costs `SkillStartCost` (250) and its effect is UNLOCK
+  SKILLS. Before it is bought the web is START (priced, pulsing) with the six ring-1 hexes as ? around it, nothing
+  farther, and an empty legend; a fresh profile's SKILLS badge reads 1. Buying it plays the unlock: START ignites (a
+  warm flash, two gold shockwave rings, the rising ding stinger), SKILL WEB UNLOCKED drops in under the top bar with a
+  one-line hint, the six ring-1 hexes turn over clockwise from DAMAGE in their branch colours with a burst and a rising
+  ding each while that branch's legend row appears, then the next ? ring fades in. `START` is now stored in
+  `skills.owned`; a profile that already owned nodes gets START on load (no version bump). Debug Unlock all / Grant
+  open the web too.
 
 ## Open design notes (not built)
 
-- **Brief 9 notes and deviations (Round 26, unplayed).** The canvas is a plain Frame with a UIScale, not a
+- **Brief 9 notes and deviations (Round 26, unplayed).** Round 26b: the brief's "about 300k" did not match its own
+  ring costs (6 × (500 + 2 × 1,500 + 3 × 4,000 + 4 × 10,000 + 5 × 25,000) is about 1.08M); with the stat weights the
+  web is about 1.2M. Cost is no longer by ring only (Jack's call). The canvas is a plain Frame with a UIScale, not a
   `CanvasGroup`: a CanvasGroup bigger than the screen renders into a capped texture (blurry when zoomed) and
   re-renders on every pan step. Hexes are frames (three rotated bars for the edge, three for the fill), so a faint
   hex is an edge with a backdrop-coloured fill. Stacking: damage / type damage / mag / reload add to the Armory

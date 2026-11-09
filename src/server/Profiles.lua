@@ -83,7 +83,7 @@ export type Profile = {
 	purchases: { { id: string, price: number, at: number } }, -- the readout log (last Config.PurchaseLogKeep)
 	clockOffset: number, -- seconds added to UTC for this player's fake clock (debug advance day)
 	dailyReroll: { day: number, count: number }, -- Round 18: FEATURED daily items rerolled `count` times on `day`
-	-- Brief 9 (v5): the Skill Web. owned = node ids bought (START is implicit, never stored); seen = affordable nodes
+	-- Brief 9 (v5): the Skill Web. owned = node ids bought (Round 26c: START too, it unlocks the web); seen = affordable nodes
 	-- the player has seen on the web (a node that became affordable since pulses once on open). A respec is a wipe.
 	skills: { owned: { [string]: boolean }, seen: { [string]: boolean } },
 	version: number,
@@ -479,11 +479,16 @@ local function migrate(raw: any): Profile
 			local src = raw.skills[key]
 			if typeof(src) == "table" then
 				for id, v in src do
-					if v == true and typeof(id) == "string" and Skills.ById[id] then
+					if v == true and typeof(id) == "string" and (Skills.ById[id] or id == Skills.START) then
 						(p.skills :: any)[key][id] = true
 					end
 				end
 			end
+		end
+		-- Round 26c: START is bought now. A profile that already owns nodes (bought while START was free) keeps the
+		-- web open.
+		if next(p.skills.owned) ~= nil and not p.skills.owned[Skills.START] then
+			p.skills.owned[Skills.START] = true
 		end
 	end
 	local fromVersion = tonumber(raw.version) or 1

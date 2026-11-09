@@ -52,22 +52,25 @@ function SkillService.buy(player: Player, id: any): Result
 	if Runs.inRun(player) then
 		return reply(p, false, "NOT IN A RUN")
 	end
-	local node = typeof(id) == "string" and Skills.ById[id] or nil
-	if not node then
+	-- Round 26c: START is bought too (it unlocks the web) and needs no neighbour.
+	local isStart = id == Skills.START
+	local node = if typeof(id) == "string" then Skills.ById[id] else nil
+	if not node and not isStart then
 		return reply(p, false, "NO SUCH SKILL")
 	end
-	if p.skills.owned[node.id] then
+	local key = if isStart then Skills.START else (node :: Skills.Node).id
+	if p.skills.owned[key] then
 		return reply(p, false, "OWNED")
 	end
-	if not Skills.adjacent(p.skills.owned, node.id) then
+	if not Skills.adjacent(p.skills.owned, key) then
 		return reply(p, false, "LOCKED · UNLOCK A NEIGHBOUR")
 	end
-	local cost = Skills.cost(node.id)
+	local cost = Skills.cost(key)
 	if not Profiles.tryCharge(player, cost) then
 		return reply(p, false, "NOT ENOUGH GOLD")
 	end
-	p.skills.owned[node.id] = true
-	p.skills.seen[node.id] = nil -- owned now; the seen set only tracks affordable ones
+	p.skills.owned[key] = true
+	p.skills.seen[key] = nil -- owned now; the seen set only tracks affordable ones
 	Profiles.markDirty(player)
 	PlayerState.get(player).dirty = true
 	local n = #ownedList(p)
@@ -76,12 +79,12 @@ function SkillService.buy(player: Player, id: any): Result
 		"%s spent %d gold on skill %s (%s, ring %d), %d gold left, %d / %d nodes",
 		player.Name,
 		cost,
-		node.id,
-		node.name,
-		node.ring,
+		key,
+		if node then node.name else "UNLOCK SKILLS",
+		if node then node.ring else 0,
 		p.gold,
 		n,
-		#Skills.List
+		#Skills.List + 1
 	)
 	-- A buy in the range applies at once (the range is armed); everywhere else it waits for the next run start.
 	local state = PlayerState.get(player)
@@ -98,10 +101,10 @@ function SkillService.seen(player: Player, ids: any)
 	end
 	local changed = false
 	for i, id in ids do
-		if i > #Skills.List then
+		if i > #Skills.List + 1 then
 			break
 		end
-		if typeof(id) == "string" and Skills.ById[id] and not p.skills.seen[id] then
+		if typeof(id) == "string" and (Skills.ById[id] or id == Skills.START) and not p.skills.seen[id] then
 			p.skills.seen[id] = true
 			changed = true
 		end
@@ -132,6 +135,7 @@ function SkillService.unlockAll(player: Player)
 	if not p then
 		return
 	end
+	p.skills.owned[Skills.START] = true
 	for _, n in Skills.List do
 		p.skills.owned[n.id] = true
 	end
@@ -156,6 +160,7 @@ function SkillService.grant(player: Player, branch: string, ring: number): strin
 	end
 	for _, n in Skills.List do
 		if n.branch == branch and n.ring == ring and not p.skills.owned[n.id] then
+			p.skills.owned[Skills.START] = true -- a grant opens the web too
 			p.skills.owned[n.id] = true
 			changed(player, "debug grant " .. n.id)
 			return n.id

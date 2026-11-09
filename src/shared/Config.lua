@@ -1386,10 +1386,59 @@ local Config = {
 	------------------------------------------------------------------ Skills (brief 9: the Skill Web; Skills.lua, SkillService.lua)
 	-- 90 one-time account perks bought with Gold in the hub (the SKILLS tile). Every value below is a sample.
 	SkillsEnabled = true, -- false hides the SKILLS tile and every node stops applying (modifiers are all zero)
-	SkillCostByRing = { 500, 1500, 4000, 10000, 25000 }, -- Gold per node by ring (1 = next to START); ~300k for the web
+	SkillCostByRing = { 500, 1500, 4000, 10000, 25000 }, -- Gold per node by ring (1 = next to START), before the stat's weight
+	-- Round 26b: costs differ inside a ring so the choices aren't all equal. A node costs its ring's base x its stat's
+	-- weight here (1 when missing) x (1 + SkillCostRepeatStep per earlier node of the same stat in its branch), rounded
+	-- to a tidy number. A third field on a SkillNodes entry ({ stat, value, weight }) overrides the stat's weight.
+	SkillCostByStat = {
+		damage = 1.3,
+		crit = 1.15,
+		headshot = 1.0,
+		elite = 0.9,
+		boss = 0.8,
+		ability = 0.95,
+		maxHp = 1.2,
+		armor = 1.1,
+		regen = 0.85,
+		tough = 1.25,
+		armorRecovery = 0.8,
+		revive = 0.7,
+		lastStand = 0.65,
+		move = 0.9,
+		reload = 1.05,
+		cooldown = 1.15,
+		quickHands = 0.7,
+		bagValue = 1.0,
+		magnet = 0.75,
+		fastHands = 0.8,
+		fence = 1.3,
+		seedMoney = 0.85,
+		haggle = 1.1,
+		cardLuck = 0.8,
+		dealerLuck = 0.9,
+		crateLuck = 1.0,
+		pistols = 0.7,
+		smgs = 0.9,
+		rifles = 1.0,
+		shotguns = 0.95,
+		snipers = 0.85,
+		lmgs = 0.9,
+		explosives = 1.05,
+		elemental = 1.05,
+		pistolMags = 0.7,
+		smgMags = 0.75,
+		rifleMags = 0.8,
+		shotgunShells = 0.85,
+		sniperMags = 0.9,
+		lmgBelts = 0.75,
+		explosiveAmmo = 1.2,
+	},
+	SkillCostRepeatStep = 0.1, -- DAMAGE II costs 10% more than DAMAGE I would at the same ring, III 20% more...
 	LuckOddsStep = 0.03, -- each LUCK node moves this share of the tier weights off the lowest tier onto the higher ones
 	SkillZoomMin = 0.55, -- the web's smallest zoom (also never smaller than "the whole web fits")
 	SkillZoomMax = 1.6,
+	SkillStartCost = 250, -- Round 26c: START is bought too (UNLOCK SKILLS): it opens the web; ring 1 waits as ? until then
+	SkillOpenZoom = 1.6, -- Round 26b: the web opens centred on START at this zoom (clamped to Min / Max)
 	SkillHexPx = 64, -- a hex's width (corner to corner) at zoom 1, px at the UI basis (mobile never under 56 px)
 	SkillNewPulseSec = 1.5, -- a hex that became affordable since the last visit pulses once this long on open
 	SkillBuyRateSec = 0.25, -- the server refuses a second buy from the same player inside this

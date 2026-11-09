@@ -66,6 +66,7 @@ type HexView = {
 	x: number,
 	y: number,
 	state: string,
+	edge: Color3, -- the edge colour at rest (the affordable pulse breathes from it to white)
 	pulse: number, -- os.clock until the pulse-once glow ends (0 = none)
 }
 
@@ -79,7 +80,6 @@ local seams: { [string]: Frame } = {}
 local seamLayer: Frame? = nil
 local selected: string? = nil
 local hovered: string? = nil
-local lastSelected = START
 local zoom = 1
 local zoomMin, zoomMax = 0.55, 1.6
 local pan = Vector2.zero
@@ -95,6 +95,7 @@ local legendRows: { [string]: { label: TextLabel?, icon: Frame, bg: Frame } } = 
 local chrome: { GuiObject } = {}
 local sheet: GuiObject? = nil
 local buying = false
+local revealing = false -- Round 26c: the unlock sequence is playing (sync repaints wait for it)
 local renderConn: RBXScriptConnection? = nil
 local inputConns: { RBXScriptConnection } = {}
 
@@ -274,6 +275,7 @@ local function buildHex(parent: Frame, id: string, q: number, r: number): HexVie
 		x = x,
 		y = y,
 		state = "",
+		edge = Color3.fromHex("26262E"),
 		pulse = 0,
 	}
 	return v
@@ -347,16 +349,23 @@ local function paintHex(v: HexView, st: string, animate: boolean)
 	v.name.Visible = st == "owned" or st == "affordable" or st == "short"
 	v.price.Visible = st == "affordable" or st == "short"
 	v.button.Visible = st ~= "faint"
+	-- Round 26b: hexes past the ? ring are hidden, so the web grows as you buy.
+	v.holder.Visible = st ~= "faint"
+	-- Round 26b: a revealed hex wears a dark shade of its branch colour (the type reads without the text); owned goes
+	-- to the bright, saturated colour.
+	local dark = tint:Lerp(BG, 0.62)
 	if st == "owned" then
-		paintParts(v.outer, if selectedHere then Theme.Colors.gold else tint:Lerp(Color3.new(1, 1, 1), 0.45))
-		paintParts(v.inner, tint:Lerp(PANEL, 0.35))
+		v.edge = tint:Lerp(Color3.new(1, 1, 1), 0.35)
+		paintParts(v.outer, if selectedHere then Theme.Colors.gold else v.edge)
+		paintParts(v.inner, tint)
 		v.name.TextColor3 = Theme.Colors.white
 		if prev ~= "owned" then
-			setIcon(v, Theme.Colors.white, tint:Lerp(Color3.new(0, 0, 0), 0.45))
+			setIcon(v, Theme.Colors.white, tint)
 		end
 	elseif st == "affordable" or st == "short" then
-		paintParts(v.outer, if selectedHere then Theme.Colors.gold else Color3.fromHex("6A6A76"))
-		paintParts(v.inner, PANEL)
+		v.edge = tint:Lerp(BG, 0.35)
+		paintParts(v.outer, if selectedHere then Theme.Colors.gold else v.edge)
+		paintParts(v.inner, dark)
 		v.name.TextColor3 = Theme.Colors.white
 		local cost = Skills.cost(v.id)
 		v.price.Text = string.format(
@@ -365,7 +374,7 @@ local function paintHex(v: HexView, st: string, animate: boolean)
 			fmtK(cost)
 		)
 		if prev ~= "affordable" and prev ~= "short" then
-			setIcon(v, Theme.Colors.white, PANEL)
+			setIcon(v, Color3.fromHex("E6E6EA"), dark)
 		end
 	elseif st == "outlined" then
 		paintParts(v.outer, if selectedHere then Theme.Colors.gold else Color3.fromHex("3A3A44"))
@@ -390,6 +399,11 @@ end
 
 local function paintLegend()
 	local focus = hovered or selected
+	-- A ? hex never lights its branch (that would give away what it is).
+	local fv = focus and hexes[focus]
+	if fv and (fv.state == "outlined" or fv.state == "faint") then
+		focus = nil
+	end
 	local n = focus and Skills.ById[focus]
 	local lit = n and n.branch
 	for id, row in legendRows do
@@ -451,7 +465,8 @@ local function applyView()
 end
 
 local function clampPan(p: Vector2): Vector2
-	local lim = webRadius * zoom
+	-- (plus room to centre an edge hex in the space beside the sheet)
+	local lim = webRadius * zoom + UI.S(220)
 	return Vector2.new(math.clamp(p.X, -lim, lim), math.clamp(p.Y, -lim, lim))
 end
 
@@ -508,13 +523,33 @@ end
 
 local buy: (string) -> () = function() end
 
+-- Round 26b: centre a hex in the space the sheet leaves free (the whole view when no sheet is up).
+local function centreInFree(id: string, instant: boolean)
+	local v = hexes[id]
+	if not v then
+		return
+	end
+	local free = viewCentre().X * 2
+	local s = sheet
+	if s and s.Visible then
+		free -= s.AbsoluteSize.X + UI.S(14)
+	end
+	local target = clampPan(Vector2.new(free / 2 - viewCentre().X - v.x * zoom, -v.y * zoom))
+	if instant then
+		pan = target
+		panTarget = nil
+		applyView()
+	else
+		panTarget = target
+	end
+end
+
 local function select(id: string)
 	if buying then
 		return
 	end
 	local prev = selected
 	selected = id
-	lastSelected = id
 	if prev and prev ~= id and hexes[prev] then
 		paintHex(hexes[prev], hexes[prev].state, false)
 	end
@@ -530,36 +565,39 @@ local function select(id: string)
 		if not was then
 			Fx.slideIn(s, UDim2.fromOffset(UI.S(40), 0), 0.25)
 		end
-		-- Keep the hex clear of the sheet (on a phone it takes 40% of the width): ease it into the free space.
-		if v then
-			local sheetLeft = viewCentre().X * 2 - s.Size.X.Offset - UI.S(14)
-			local hexX = viewCentre().X + pan.X + v.x * zoom
-			if hexX + side * zoom > sheetLeft - UI.S(12) then
-				panTarget = clampPan(Vector2.new(pan.X - (hexX - sheetLeft / 2), pan.Y))
-			end
-		end
 	end
 	local ps = paintSheet
 	if ps then
 		ps()
 	end
+	-- The tapped hex glides to the centre of the free space.
+	centreInFree(id, false)
 	paintLegend()
 	UI.sound(Fx.Sounds.tab, 1.4, 0.25)
 end
 
-local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolean)
+-- Round 26b: a compact card (was a full-height column, mostly empty): the branch tag and ring, the pictogram well
+-- beside the name and effect line, then BUY with the price on it (or OWNED) and a status line. Docked right,
+-- vertically centred (bottom-right on a phone, BUY under the thumb).
+local function buildSheet(g: ScreenGui, vp: Vector2, _top: number, mobile: boolean)
 	local S = UI.S
-	local w = if mobile then math.floor(vp.X * 0.4) else S(340)
+	local w = if mobile then math.floor(vp.X * 0.4) else S(390)
 	local margin = S(14)
+	local pad = S(14)
+	local headH = S(22)
+	local wellSize = if mobile then S(70) else S(92)
+	local buyH = if mobile then math.max(44, S(56)) else S(52) -- a thumb-sized target on a phone
+	local statusH = S(18)
+	local h = pad + headH + S(10) + wellSize + S(12) + buyH + S(4) + statusH + pad - S(6)
 	-- A button, so a tap on the sheet never falls through to the backdrop (which closes it).
 	local s = UI.button({
 		Name = "Sheet",
 		Text = "",
 		Selectable = false,
 		BackgroundColor3 = Color3.fromHex("121216"),
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -margin, 0, top + S(54)),
-		Size = UDim2.new(0, w, 1, -(top + S(54) + margin)),
+		AnchorPoint = if mobile then Vector2.new(1, 1) else Vector2.new(1, 0.5),
+		Position = if mobile then UDim2.new(1, -margin, 1, -margin) else UDim2.new(1, -margin, 0.5, 0),
+		Size = UDim2.fromOffset(w, h),
 		Visible = false,
 		Active = true,
 		ZIndex = 20,
@@ -568,7 +606,6 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 	UI.corner(s, S(6))
 	local edge = UI.stroke(s, Theme.Colors.gold, S(1.5), 0.4)
 	table.insert(chrome, s)
-	local pad = S(16)
 	local tag = UI.text({
 		Name = "Branch",
 		Text = "",
@@ -578,7 +615,7 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 		BackgroundTransparency = 0,
 		BackgroundColor3 = Theme.Colors.gold,
 		Position = UDim2.fromOffset(pad, pad),
-		Size = UDim2.fromOffset(0, S(22)),
+		Size = UDim2.fromOffset(0, headH),
 		AutomaticSize = Enum.AutomaticSize.X,
 		ZIndex = 21,
 		Parent = s,
@@ -594,31 +631,31 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 		TextXAlignment = Enum.TextXAlignment.Right,
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -pad, 0, pad),
-		Size = UDim2.fromOffset(S(90), S(22)),
+		Size = UDim2.fromOffset(S(90), headH),
 		ZIndex = 21,
 		Parent = s,
 	})
-	local wellH = if mobile then S(70) else S(110)
+	local bodyY = pad + headH + S(10)
 	local well = UI.frame({
 		Name = "Well",
 		BackgroundColor3 = PANEL,
-		Position = UDim2.fromOffset(pad, pad + S(32)),
-		Size = UDim2.new(1, -pad * 2, 0, wellH),
+		Position = UDim2.fromOffset(pad, bodyY),
+		Size = UDim2.fromOffset(wellSize, wellSize),
 		ZIndex = 21,
 		Parent = s,
 	})
 	UI.corner(well, S(4))
-	local nameY = pad + S(32) + wellH + S(10)
+	local textX = pad + wellSize + S(12)
 	local name = UI.text({
 		Name = "Name",
 		Text = "",
 		FontFace = Theme.Fonts.display,
-		TextSize = if mobile then S(22) else S(28),
+		TextSize = if mobile then S(20) else S(26),
 		TextColor3 = Theme.Colors.white,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextWrapped = true,
-		Position = UDim2.fromOffset(pad, nameY),
-		Size = UDim2.new(1, -pad * 2, 0, if mobile then S(26) else S(34)),
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Position = UDim2.fromOffset(textX, bodyY - S(2)),
+		Size = UDim2.new(1, -textX - pad, 0, if mobile then S(24) else S(32)),
 		ZIndex = 21,
 		Parent = s,
 	})
@@ -626,65 +663,38 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 		Name = "Effect",
 		Text = "",
 		FontFace = Theme.Fonts.body,
-		TextSize = if mobile then S(15) else S(17),
+		TextScaled = true, -- full size; shrinks only when a long line would overflow its three lines
 		TextColor3 = Theme.Colors.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		TextWrapped = true,
-		Position = UDim2.fromOffset(pad, nameY + (if mobile then S(28) else S(38))),
-		Size = UDim2.new(1, -pad * 2, 0, S(44)),
+		Position = UDim2.fromOffset(textX, bodyY + (if mobile then S(26) else S(34))),
+		Size = UDim2.new(1, -textX - pad, 0, wellSize - (if mobile then S(26) else S(34))),
 		ZIndex = 21,
 		Parent = s,
 	})
-	-- Bottom block: the price pill, BUY, the status line under it (BUY sits in the bottom-right thumb zone).
-	local buyH = if mobile then math.max(44, S(56)) else S(52) -- a thumb-sized target on a phone
-	local status = UI.text({
-		Name = "Status",
-		Text = "",
-		FontFace = Theme.Fonts.display,
-		TextSize = S(14),
-		TextColor3 = Theme.Colors.red,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, pad, 1, -pad + S(2)),
-		Size = UDim2.new(1, -pad * 2, 0, S(18)),
-		ZIndex = 21,
-		Parent = s,
+	line:SetAttribute("FixedTextSize", true)
+	UI.new("UITextSizeConstraint", {
+		MaxTextSize = math.round(
+			(if mobile then S(14) * (Config.MobileStoreTextScale or 1) else S(16)) * Theme.TextScale.body
+		),
+		MinTextSize = 8,
+		Parent = line,
 	})
+	local actionY = bodyY + wellSize + S(12)
 	local buyBtn, buyHandle = Fx.button(s, "BUY", GREEN, Theme.Colors.white, UDim2.new(1, -pad * 2, 0, buyH), 22)
 	buyBtn.Name = "Buy"
-	buyBtn.AnchorPoint = Vector2.new(0, 1)
-	buyBtn.Position = UDim2.new(0, pad, 1, -pad - S(22))
-	buyBtn.TextSize = if mobile then S(24) else S(22)
+	buyBtn.RichText = true
+	buyBtn.Position = UDim2.fromOffset(pad, actionY)
+	buyBtn.TextSize = if mobile then S(22) else S(22)
 	buyBtn.Selectable = true
-	local priceRow = UI.frame({
-		Name = "Price",
-		BackgroundColor3 = Color3.fromHex("1E1E25"),
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, pad, 1, -pad - S(22) - buyH - S(10)),
-		Size = UDim2.new(1, -pad * 2, 0, S(36)),
-		ZIndex = 21,
-		Parent = s,
-	})
-	UI.corner(priceRow, S(4))
-	UI.stroke(priceRow, Theme.Colors.gold, S(1.5), 0.3)
-	local priceLabel = UI.text({
-		Text = "",
-		RichText = true,
-		FontFace = Theme.Fonts.display,
-		TextSize = S(20),
-		TextColor3 = Theme.Colors.white,
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 22,
-		Parent = priceRow,
-	})
 	local ownedStamp = UI.text({
 		Name = "Owned",
 		Text = "OWNED",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(26),
+		TextSize = S(24),
 		TextColor3 = Theme.Colors.health,
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0, pad, 1, -pad - S(22)),
+		Position = UDim2.fromOffset(pad, actionY),
 		Size = UDim2.new(1, -pad * 2, 0, buyH),
 		BackgroundTransparency = 0,
 		BackgroundColor3 = Color3.fromHex("16241B"),
@@ -694,6 +704,17 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 	})
 	UI.corner(ownedStamp, S(4))
 	UI.stroke(ownedStamp, Theme.Colors.health, S(1.5), 0.2)
+	local status = UI.text({
+		Name = "Status",
+		Text = "",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.red,
+		Position = UDim2.fromOffset(pad, actionY + buyH + S(4)),
+		Size = UDim2.new(1, -pad * 2, 0, statusH),
+		ZIndex = 21,
+		Parent = s,
+	})
 	local buyEnabled = false
 	buyBtn.Activated:Connect(function()
 		local id = selected
@@ -703,7 +724,7 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 		end
 	end)
 
-	local wellIcon: Frame? = nil
+	local wellIcon: Instance? = nil
 	paintSheet = function()
 		local id = selected
 		if not id or not s.Visible then
@@ -714,25 +735,28 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 		local v = hexes[id]
 		local st = if v then v.state else "faint"
 		local unknown = st == "outlined" or st == "faint"
-		local color = if id == START then Theme.Colors.gold else branchColor(id)
+		local isOwned = Skills.owns(owned, id)
+		local color = if id == START then Theme.Colors.gold elseif unknown then Theme.Colors.grey else branchColor(id)
 		edge.Color = color
 		tag.BackgroundColor3 = color
-		tag.Text = if id == START then "THE WEB" elseif node then node.branch else ""
+		tag.Text = if id == START then "THE WEB" elseif unknown then "UNKNOWN" elseif node then node.branch else ""
 		ringLabel.Text = if node then "RING " .. node.ring else ""
 		name.Text = if id == START then "START" elseif unknown then "???" elseif node then node.name else ""
-		line.Text = if id == START
-			then "Every branch starts here. Buy a hex next to one you own."
+		line.Text = if id == START and not isOwned
+			then "UNLOCK SKILLS"
+			elseif id == START then "Every branch starts here. Buy a hex next to one you own."
 			elseif unknown then "Unlock a neighbour to reveal it."
 			elseif node then node.line
 			else ""
-		well.BackgroundColor3 = if unknown then PANEL else color:Lerp(PANEL, 0.6)
+		-- The well wears the hex's own colour: dark while locked, bright once owned.
+		well.BackgroundColor3 = if unknown then PANEL elseif isOwned then color else color:Lerp(BG, 0.62)
 		if wellIcon then
 			wellIcon:Destroy()
 			wellIcon = nil
 		end
 		local iconId = if id == START then "star" elseif unknown then "" elseif node then node.icon else ""
 		if iconId ~= "" then
-			local ic = Icons.fit(well, iconId, 0.78, Theme.Colors.white, color:Lerp(PANEL, 0.6))
+			local ic = Icons.fit(well, iconId, 0.74, Theme.Colors.white, well.BackgroundColor3)
 			ic.ZIndex = 22
 			for _, d in ic:GetDescendants() do
 				if d:IsA("GuiObject") then
@@ -741,31 +765,31 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 			end
 			wellIcon = ic
 		else
-			local q = UI.text({
+			wellIcon = UI.text({
 				Text = "?",
 				FontFace = Theme.Fonts.display,
-				TextSize = S(48),
+				TextSize = S(40),
 				TextColor3 = Color3.fromHex("6A6A76"),
 				Size = UDim2.fromScale(1, 1),
 				ZIndex = 22,
 				Parent = well,
 			})
-			wellIcon = q :: any
 		end
-		-- The bottom block by state.
-		local isOwned = Skills.owns(owned, id)
+		-- The action row by state.
 		local cost = if node then Skills.cost(id) else 0
 		local gold = goldNow()
-		local adjacent = node ~= nil and Skills.adjacent(owned, id)
-		priceRow.Visible = node ~= nil and not isOwned and not unknown
-		priceLabel.Text = string.format(
-			'<font color="#E8B64C">◆</font>  <font color="%s">%s</font>',
-			if gold >= cost then "#FFFFFF" else "#FF6B5E",
-			UI.fmtInt(cost)
-		)
+		local adjacent = (node ~= nil or id == START) and Skills.adjacent(owned, id)
 		ownedStamp.Visible = isOwned
-		buyBtn.Visible = not isOwned and node ~= nil
+		buyBtn.Visible = not isOwned and (node ~= nil or id == START)
+		buyBtn.Text = if unknown
+			then "BUY"
+			else string.format(
+				'BUY   <font color="#FFE7A3">◆</font> <font color="%s">%s</font>',
+				if gold >= cost then "#FFFFFF" else "#FFB0A8",
+				UI.fmtInt(cost)
+			)
 		if isOwned then
+			buyEnabled = false
 			status.Text = ""
 		elseif not adjacent then
 			buyEnabled = false
@@ -775,7 +799,7 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 		elseif gold < cost then
 			buyEnabled = false
 			buyHandle.setEnabled(false)
-			status.Text = "NOT ENOUGH GOLD"
+			status.Text = string.format("NOT ENOUGH GOLD · NEED %s MORE", UI.fmtInt(cost - gold))
 			status.TextColor3 = Theme.Colors.red
 		else
 			buyEnabled = not buying
@@ -788,9 +812,182 @@ local function buildSheet(g: ScreenGui, vp: Vector2, top: number, mobile: boolea
 end
 
 ------------------------------------------------------------------ Buying
+-- Round 26c: START bought -> the system switches on. START ignites (flash, two shockwave rings), SKILL WEB UNLOCKED
+-- drops in, the six ring-1 hexes turn over clockwise one by one (each with its branch colour, a lit edge, a burst and
+-- a rising ding while its legend row appears), then the ? ring beyond them fades in.
+local function unlockSequence(set: { [string]: boolean }, gold: number?)
+	local g, c, sv = gui, canvas, hexes[START]
+	if not g or not c or not sv then
+		paintAll(true)
+		return
+	end
+	local S = UI.S
+	revealing = true
+	closeSheet()
+	centreOn(START, false)
+	local g0 = gold or goldNow()
+	local gl = goldLabel
+	if gold and gl then
+		Fx.countUp(gl, if shownGold >= 0 then shownGold else gold, gold, 0.6, nil, false)
+		shownGold = gold
+	end
+	local GOLD = Theme.Colors.gold
+	-- 1. START ignites.
+	paintHex(sv, "owned", false)
+	paintParts(sv.inner, Color3.new(1, 1, 1))
+	for _, f in sv.inner do
+		UI.tween(f, { BackgroundColor3 = GOLD }, 0.5)
+	end
+	sv.scale.Scale = 1.4
+	UI.tween(sv.scale, { Scale = 1 }, 0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	Fx.stinger(4)
+	Fx.haptic(0.7)
+	local flash = UI.frame({
+		BackgroundColor3 = Color3.fromHex("FFE7A3"),
+		BackgroundTransparency = 0.55,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 40,
+		Parent = g,
+	})
+	UI.tween(flash, { BackgroundTransparency = 1 }, 0.6)
+	task.delay(0.65, function()
+		flash:Destroy()
+	end)
+	for k = 0, 1 do
+		task.delay(k * 0.18, function()
+			if not open then
+				return
+			end
+			local ring = UI.frame({
+				BackgroundTransparency = 1,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromOffset(0, 0),
+				Size = UDim2.fromOffset(side * 2, side * 2),
+				ZIndex = 2,
+				Parent = c,
+			})
+			UI.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = ring })
+			local st = UI.new("UIStroke", { Color = GOLD, Thickness = S(4), Transparency = 0, Parent = ring })
+			local reach = grid * 1.5 * 3 * 2
+			UI.tween(ring, { Size = UDim2.fromOffset(reach, reach) }, 0.8, Enum.EasingStyle.Quad)
+			UI.tween(st, { Transparency = 1, Thickness = 1 }, 0.8, Enum.EasingStyle.Quad)
+			task.delay(0.85, function()
+				ring:Destroy()
+			end)
+		end)
+	end
+	-- 2. The banner.
+	local banner = UI.frame({
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, Fx.topInset() + S(4)),
+		Size = UDim2.fromOffset(S(560), S(70)),
+		ZIndex = 41,
+		Parent = g,
+	})
+	local bScale = UI.new("UIScale", { Scale = 0.6, Parent = banner })
+	UI.tween(bScale, { Scale = 1 }, 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local title = UI.text({
+		Text = "SKILL WEB UNLOCKED",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(40),
+		TextColor3 = Color3.new(1, 1, 1),
+		Size = UDim2.new(1, 0, 0, S(46)),
+		ZIndex = 42,
+		Parent = banner,
+	})
+	local tStroke = UI.stroke(title, Color3.new(0, 0, 0), S(1.5), 0.3)
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(Color3.fromHex("FFE7A3"), Color3.fromHex("E8A33C")),
+		Rotation = 90,
+		Parent = title,
+	})
+	local sub = UI.text({
+		Text = "Six branches are open. Buy a hex next to one you own.",
+		FontFace = Theme.Fonts.body,
+		TextSize = S(16),
+		TextColor3 = Theme.Colors.text,
+		Position = UDim2.fromOffset(0, S(46)),
+		Size = UDim2.new(1, 0, 0, S(22)),
+		ZIndex = 42,
+		Parent = banner,
+	})
+	local sStroke = UI.stroke(sub, Color3.new(0, 0, 0), S(1.5), 0.4)
+	task.delay(2.6, function()
+		if banner.Parent then
+			UI.tween(title, { TextTransparency = 1 }, 0.4)
+			UI.tween(sub, { TextTransparency = 1 }, 0.4)
+			UI.tween(tStroke, { Transparency = 1 }, 0.4)
+			UI.tween(sStroke, { Transparency = 1 }, 0.4)
+			task.delay(0.45, function()
+				banner:Destroy()
+			end)
+		end
+	end)
+	-- 3. Ring 1 turns over, clockwise from DAMAGE, with the legend row for each branch.
+	local dist = Skills.distances(set)
+	local t0, step = 0.5, 0.16
+	for i, b in Skills.Branches do
+		local nodeId: string? = nil
+		for _, n in Skills.List do
+			if n.branch == b.id and n.ring == 1 then
+				nodeId = n.id
+			end
+		end
+		local id = nodeId
+		if not id then
+			continue
+		end
+		task.delay(t0 + (i - 1) * step, function()
+			local v = hexes[id]
+			if not open or not v then
+				return
+			end
+			paintHex(v, stateOf(id, dist, g0), false)
+			v.scale.Scale = 0.2
+			UI.tween(v.scale, { Scale = 1 }, 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+			local abs = v.holder.AbsolutePosition + v.holder.AbsoluteSize / 2
+			Fx.burst(g, UDim2.fromOffset(abs.X, abs.Y), branchColor(id), 8, 30)
+			UI.sound(Fx.Sounds.ding, 1 + i * 0.09, 0.22)
+			local row = legendRows[b.id]
+			if row then
+				row.bg.Visible = true
+				UI.punch(row.bg, 1.2, 0.3)
+			end
+		end)
+	end
+	-- 4. The ? ring beyond fades in, then everything settles into its normal paint.
+	local t1 = t0 + #Skills.Branches * step + 0.15
+	task.delay(t1, function()
+		if not open then
+			return
+		end
+		for id, v in hexes do
+			if v.state == "faint" and stateOf(id, dist, g0) == "outlined" then
+				task.delay(math.random() * 0.25, function()
+					if open then
+						paintHex(v, "outlined", false)
+						v.scale.Scale = 0.5
+						UI.tween(v.scale, { Scale = 1 }, 0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+					end
+				end)
+			end
+		end
+		UI.sound(Fx.Sounds.shimmer, 1.1, 0.2)
+	end)
+	task.delay(t1 + 0.6, function()
+		revealing = false
+		if open then
+			paintAll(false)
+			-- The six new hexes are affordable and now seen: no pulse-once for them on the next open.
+			Remotes.SkillSeen:FireServer(Skills.affordableIds(ownedSet(), goldNow()))
+		end
+	end)
+end
+
 buy = function(id: string)
 	local node = Skills.ById[id]
-	if not node or buying then
+	if (not node and id ~= START) or buying or revealing then
 		return
 	end
 	local owned = ownedSet()
@@ -837,11 +1034,15 @@ buy = function(id: string)
 			end
 		end
 		ownedOverride = set
+		if id == START then
+			unlockSequence(set, tonumber(res.gold))
+			return
+		end
 		local v = hexes[id]
 		-- The hex fills with a quick wipe: a white flash that settles into the branch tint.
 		if v then
 			paintHex(v, "owned", false)
-			local tint = branchColor(id):Lerp(PANEL, 0.35)
+			local tint = branchColor(id) -- the bright, saturated owned colour
 			paintParts(v.inner, Color3.new(1, 1, 1))
 			for _, f in v.inner do
 				UI.tween(f, { BackgroundColor3 = tint }, 0.35)
@@ -1092,7 +1293,7 @@ local function bindInput()
 				v.scale.Scale = 1
 				paintHex(v, v.state, false)
 			elseif v.state == "affordable" then
-				paintParts(v.outer, Color3.fromHex("6A6A76"):Lerp(Color3.new(1, 1, 1), k))
+				paintParts(v.outer, v.edge:Lerp(Color3.new(1, 1, 1), k))
 			end
 		end
 	end)
@@ -1288,6 +1489,8 @@ build = function()
 			})
 		end
 		legendRows[b.id] = { label = label, icon = icon, bg = row }
+		-- Round 26c: the branches are a secret until START is bought (the unlock reveals them row by row).
+		row.Visible = Skills.unlocked(ownedSet())
 	end
 
 	-- The Gold pill, top-right (the store's balance style).
@@ -1429,8 +1632,9 @@ function SkillScene.open()
 	UI.sound(Fx.Sounds.whoosh, 1, 0.4) -- the pass scene's open
 	zoom = 1
 	build()
-	zoom = math.clamp(1, zoomMin, zoomMax)
-	centreOn(if hexes[lastSelected] then lastSelected else START, true)
+	-- Round 26b: opens centred on START, zoomed all the way in (SkillOpenZoom).
+	zoom = math.clamp(Config.SkillOpenZoom, zoomMin, zoomMax)
+	centreOn(START, true)
 	-- Pulse once: affordable now and not seen on an earlier visit. Then the server records them as seen.
 	local owned = ownedSet()
 	local seen = seenSet()
@@ -1466,6 +1670,7 @@ function SkillScene.close()
 	end
 	open = false
 	buying = false
+	revealing = false
 	clearInput()
 	if gui then
 		gui:Destroy()
@@ -1538,7 +1743,7 @@ function SkillScene.init()
 					ownedOverride = nil
 				end
 			end
-			if not buying then
+			if not buying and not revealing then
 				paintAll(true)
 			end
 		end
@@ -1548,7 +1753,7 @@ function SkillScene.init()
 			local keepSel = selected
 			build()
 			zoom = math.clamp(zoom, zoomMin, zoomMax)
-			centreOn(lastSelected, true)
+			centreOn(START, true)
 			if keepSel then
 				select(keepSel)
 			end
