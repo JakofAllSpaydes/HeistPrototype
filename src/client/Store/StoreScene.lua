@@ -22,6 +22,7 @@ local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(Client:WaitForChild("HUD"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
+local GamepadNav = require(Client:WaitForChild("GamepadNav"))
 
 local StoreScene = {}
 
@@ -789,8 +790,17 @@ function StoreScene.init()
 			end
 		end
 	end)
+	-- Brief 11: LB / RB walk the tabs on a pad.
+	GamepadNav.register("store", {
+		tabs = function(dir: number)
+			local i = table.find(TABS, currentTab) or 1
+			scrollTo(TABS[(i - 1 + dir) % #TABS + 1])
+		end,
+	})
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if open and input.KeyCode == Enum.KeyCode.Escape and not gameProcessed and not PurchaseSheet.isOpen() then
+		local back = (input.KeyCode == Enum.KeyCode.Escape and not gameProcessed)
+			or input.KeyCode == Enum.KeyCode.ButtonB
+		if open and back and not PurchaseSheet.isOpen() then
 			if overlay and #overlay:GetChildren() > 0 then
 				clearOverlay()
 			else

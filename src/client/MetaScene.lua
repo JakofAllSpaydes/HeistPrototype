@@ -23,6 +23,8 @@ local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local HUD = require(script.Parent:WaitForChild("HUD"))
+local PurchaseSheet = require(script.Parent:WaitForChild("PurchaseSheet"))
+local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
 local RunStartUI = require(script.Parent:WaitForChild("RunStartUI"))
 local Nameplates = require(script.Parent:WaitForChild("Nameplates"))
 local SceneIsolation = require(script.Parent:WaitForChild("SceneIsolation"))
@@ -1017,6 +1019,13 @@ function MetaScene.close()
 end
 
 function MetaScene.init()
+	-- Brief 11: LB / RB walk the booths (WEAPONS / CLASSES / AVATAR) on a pad.
+	GamepadNav.register("meta", {
+		tabs = function(dir: number)
+			local i = table.find(TABS, currentTab or TABS[1]) or 1
+			selectTab(TABS[(i - 1 + dir) % #TABS + 1])
+		end,
+	})
 	tabs = {
 		WEAPONS = require(MetaFolder:WaitForChild("WeaponsTab")),
 		CLASSES = require(MetaFolder:WaitForChild("ClassesTab")),
@@ -1150,7 +1159,9 @@ function MetaScene.init()
 		if not open then
 			return
 		end
-		if input.KeyCode == Enum.KeyCode.Escape and not gameProcessed then
+		local back = (input.KeyCode == Enum.KeyCode.Escape and not gameProcessed)
+			or input.KeyCode == Enum.KeyCode.ButtonB
+		if back and not PurchaseSheet.isOpen() then
 			MetaScene.close()
 			return
 		end

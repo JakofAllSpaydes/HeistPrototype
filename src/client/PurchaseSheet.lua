@@ -682,6 +682,13 @@ function PurchaseSheet.getRobux(opts: Opts?)
 end
 
 function PurchaseSheet.init()
+	-- Brief 11: B closes the sheet on a pad.
+	local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
+	GamepadNav.register("purchase", {
+		back = function()
+			PurchaseSheet.close()
+		end,
+	})
 	-- A dead character or a hub return never leaves the sheet's block behind.
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "HubEnter" and openNow and not busy then

@@ -34,6 +34,7 @@ local HUD = require(Client:WaitForChild("HUD"))
 local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local StoreFolder = Client:WaitForChild("Store")
 local Fx = require(StoreFolder:WaitForChild("Fx"))
+local GamepadNav = require(Client:WaitForChild("GamepadNav"))
 local Sets = require(StoreFolder:WaitForChild("Sets"))
 local Models = require(StoreFolder:WaitForChild("Models"))
 local ItemArt = require(StoreFolder:WaitForChild("ItemArt"))
@@ -1589,10 +1590,23 @@ function PassScene.init()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if open and input.KeyCode == Enum.KeyCode.Escape and not gameProcessed and not PurchaseSheet.isOpen() then
+		local back = (input.KeyCode == Enum.KeyCode.Escape and not gameProcessed)
+			or input.KeyCode == Enum.KeyCode.ButtonB
+		if open and back and not PurchaseSheet.isOpen() then
 			PassScene.close()
 		end
 	end)
+	-- Brief 11: LB / RB page the track on a pad (the BACK / NEXT arrows).
+	GamepadNav.register("pass", {
+		tabs = function(dir: number)
+			local p = profile()
+			if p then
+				page = math.clamp(page + dir * Config.PassPageLevels, 1, lastPage(p))
+				UI.sound(Fx.Sounds.whoosh, 1.4, 0.25)
+				render()
+			end
+		end,
+	})
 	-- Drag on the stage (not on a panel) turns the mannequin.
 	local dragging = false
 	local lastX = 0

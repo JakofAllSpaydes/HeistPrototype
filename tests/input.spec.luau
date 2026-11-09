@@ -51,6 +51,7 @@ local Config = loadShared("Config")
 local GamepadMap = loadShared("GamepadMap")
 local Glyphs = loadShared("Glyphs")
 local SprintRule = loadShared("SprintRule")
+local NavMath = loadShared("NavMath")
 
 ------------------------------------------------------------------ tiny test kit
 local passed, failed = 0, 0
@@ -432,6 +433,57 @@ do
 	check("on the ring does not re-arm", not SprintRule.rearmed(SprintRule.touch(0, -58, 60)))
 	local _, _, f5 = SprintRule.touch(0, -30, 60)
 	check("half forward is below keep", f5 < Config.SprintKeepThreshold)
+end
+
+------------------------------------------------------------------ 7. screens (step 4): the nav geometry
+do
+	local function R(x, y, w, h)
+		return { x = x, y = y, w = w, h = h }
+	end
+	-- a 3x2 grid of 100x60 tiles, 20 px apart
+	local grid = {}
+	for row = 0, 1 do
+		for col = 0, 2 do
+			table.insert(grid, R(col * 120, row * 80, 100, 60))
+		end
+	end
+	local function from(i: number, dir: string): number?
+		local others, map = {}, {}
+		for j, r in grid do
+			if j ~= i then
+				table.insert(others, r)
+				table.insert(map, j)
+			end
+		end
+		local k = NavMath.pick(grid[i], dir, others)
+		return if k then map[k] else nil
+	end
+	check("grid right", from(1, "right") == 2)
+	check("grid down", from(1, "down") == 4)
+	check("grid down from the middle", from(2, "down") == 5)
+	check("grid left from the edge: nothing", from(1, "left") == nil)
+	check("grid up from the bottom row", from(6, "up") == 3)
+	check("grid right skips nothing", from(5, "right") == 6)
+	-- a wide button under a row of three: down from the right tile still lands on it, up from it lands above
+	local wide = { R(0, 0, 100, 60), R(120, 0, 100, 60), R(240, 0, 100, 60) }
+	local cta = R(0, 100, 340, 60)
+	check("down onto a wide CTA", NavMath.pick(wide[3], "down", { cta, wide[1], wide[2] }) == 1)
+	check(
+		"a row neighbour beats a nearer diagonal",
+		NavMath.pick(R(0, 0, 100, 60), "right", { R(110, 70, 50, 50), R(300, 10, 100, 40) }) == 2
+	)
+	check("stick dead zone", NavMath.stickDir(0.3, 0.2, Config.NavStickPress) == nil)
+	check("stick up is up (y up)", NavMath.stickDir(0.1, 0.9, Config.NavStickPress) == "up")
+	check("stick left", NavMath.stickDir(-0.8, 0.3, Config.NavStickPress) == "left")
+	local d, e = Config.NavRepeatDelaySec, Config.NavRepeatSec
+	check("repeat: first move at once", NavMath.repeatStep(0, nil, 0, d, e))
+	check("repeat: waits the delay", not NavMath.repeatStep(0, 0, d * 0.9, d, e))
+	check("repeat: moves at the delay", NavMath.repeatStep(0, 0, d + 0.001, d, e))
+	check("repeat: then every NavRepeatSec", not NavMath.repeatStep(0, d, d + e * 0.5, d, e))
+	check("repeat: ...and again", NavMath.repeatStep(0, d, d + e + 0.001, d, e))
+	check("scroll: below the window scrolls down", NavMath.scrollInto(0, 300, 350, 400, 10) == 110)
+	check("scroll: above scrolls up", NavMath.scrollInto(200, 300, 150, 190, 10) == 140)
+	check("scroll: inside stays", NavMath.scrollInto(0, 300, 50, 100, 10) == 0)
 end
 
 print(string.format("input.spec: %d passed, %d failed", passed, failed))

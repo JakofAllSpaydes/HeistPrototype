@@ -27,6 +27,7 @@ local SkillLayout = require(Shared:WaitForChild("SkillLayout"))
 
 local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
+local GamepadNav = require(Client:WaitForChild("GamepadNav"))
 local UI = require(Client:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(Client:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(Client:WaitForChild("UI"):WaitForChild("Icons"))
@@ -574,6 +575,11 @@ local function select(id: string)
 	centreInFree(id, false)
 	paintLegend()
 	UI.sound(Fx.Sounds.tab, 1.4, 0.25)
+	-- Brief 11: on a pad the sheet's BUY is the next selection (B closes the sheet, back to the hex).
+	local b = s and s:FindFirstChild("Buy", true)
+	if b and b:IsA("GuiObject") and b.Visible then
+		GamepadNav.focus(b)
+	end
 end
 
 -- Round 26b: a compact card (was a full-height column, mostly empty): the branch tag and ring, the pictogram well
@@ -603,6 +609,8 @@ local function buildSheet(g: ScreenGui, vp: Vector2, _top: number, mobile: boole
 		ZIndex = 20,
 		Parent = g,
 	})
+	s:SetAttribute("NavSkip", true) -- brief 11: the card itself is not a choice (BUY is)
+
 	UI.corner(s, S(6))
 	local edge = UI.stroke(s, Theme.Colors.gold, S(1.5), 0.4)
 	table.insert(chrome, s)
@@ -1710,6 +1718,33 @@ local function stamp(p: any): string
 end
 
 function SkillScene.init()
+	-- Brief 11: the hex cursor. The pad hops hex to hex by direction (GamepadNav's geometry, hexes may be off
+	-- screen) and the view glides to keep the selected hex in the middle; the right stick pans and the triggers zoom
+	-- (below); A opens the sheet, whose BUY takes the selection.
+	local lastHex = START
+	local function hexOf(g: GuiObject): string?
+		for id, v in hexes do
+			if v.button == g then
+				return id
+			end
+		end
+		return nil
+	end
+	GamepadNav.register("skills", {
+		offscreen = true,
+		default = function()
+			local v = hexes[selected or lastHex] or hexes[START]
+			return if v then v.button else nil
+		end,
+		onSelect = function(g: GuiObject)
+			local id = hexOf(g)
+			if id then
+				lastHex = id
+				centreInFree(id, false)
+			end
+		end,
+		page = function() end, -- the triggers zoom here (polled below)
+	})
 	ClientState.Juice:Connect(function(name: string, _data: any)
 		if name == "OpenSkills" then
 			SkillScene.open()

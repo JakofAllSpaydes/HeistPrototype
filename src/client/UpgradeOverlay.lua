@@ -789,6 +789,12 @@ function UpgradeOverlay.init()
 			UpgradeOverlay.close()
 		end
 	end)
+	-- Brief 11: B keeps the cards (gameProcessed is set while the pad has a card selected).
+	UserInputService.InputBegan:Connect(function(input: InputObject)
+		if isOpen and input.KeyCode == Enum.KeyCode.ButtonB then
+			UpgradeOverlay.close()
+		end
+	end)
 end
 
 return UpgradeOverlay

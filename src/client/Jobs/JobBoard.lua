@@ -1367,7 +1367,9 @@ function JobBoard.init()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if open and input.KeyCode == Enum.KeyCode.Escape and not gameProcessed then
+		local back = (input.KeyCode == Enum.KeyCode.Escape and not gameProcessed)
+			or input.KeyCode == Enum.KeyCode.ButtonB
+		if open and back and not PurchaseSheet.isOpen() then
 			JobBoard.close()
 		end
 	end)

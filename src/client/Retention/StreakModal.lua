@@ -602,6 +602,7 @@ local function render(v: View)
 	local wide = if u.mobile then S(330) else S(300)
 	if v.state == "claim" then
 		local claim = mk("CLAIM", GREEN, wide, 2)
+		claim:SetAttribute("NavDefault", true) -- brief 11: CLAIM is the pad's only stop
 		Fx.shine(claim)
 		claim.Activated:Connect(function()
 			invoke("claim")

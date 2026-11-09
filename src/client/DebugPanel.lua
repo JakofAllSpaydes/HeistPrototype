@@ -19,6 +19,7 @@ local InputMonitor = require(script.Parent:WaitForChild("InputMonitor"))
 local Haptics = require(script.Parent:WaitForChild("Haptics"))
 local GamepadMap = require(Shared:WaitForChild("GamepadMap"))
 local Sprint = require(script.Parent:WaitForChild("Sprint"))
+local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
 
 local DebugPanel = {}
 
@@ -208,7 +209,12 @@ local function build()
 	end, Theme.Colors.amber)
 	local ri3 = row(panel, 0.131, rh)
 	local sprintBtn: TextButton
-	sprintBtn = btn(ri3, if Sprint.showLog then "Sprint log ON" else "Sprint log on screen", 1, function()
+	local navBtn: TextButton
+	navBtn = btn(ri3, if GamepadNav.showNav then "Show nav ON" else "Show nav", 0.5, function()
+		GamepadNav.showNav = not GamepadNav.showNav
+		navBtn.Text = if GamepadNav.showNav then "Show nav ON" else "Show nav"
+	end, Theme.Colors.amber)
+	sprintBtn = btn(ri3, if Sprint.showLog then "Sprint log ON" else "Sprint log on screen", 0.5, function()
 		Sprint.showLog = not Sprint.showLog
 		sprintBtn.Text = if Sprint.showLog then "Sprint log ON" else "Sprint log on screen"
 	end, Theme.Colors.amber)
@@ -806,6 +812,12 @@ function DebugPanel.setVisible(on: boolean)
 	end
 	ClientState.setBlock("debug", on)
 end
+
+GamepadNav.register("debug", {
+	back = function()
+		DebugPanel.setVisible(false)
+	end,
+})
 
 -- Mobile has no backtick: a small DBG chip top-left toggles the panel.
 local function buildMobileToggle()

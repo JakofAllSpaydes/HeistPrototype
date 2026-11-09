@@ -575,6 +575,7 @@ local function showSummary(d: any)
 	})
 	UI.corner(again, S(12))
 	UI.stroke(again, Theme.Colors.black, S(2), 0.4)
+	again:SetAttribute("NavDefault", true) -- brief 11: the pad lands on PLAY AGAIN
 	again.Activated:Connect(function()
 		choose("again", again)
 	end)

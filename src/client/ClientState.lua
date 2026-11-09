@@ -117,6 +117,11 @@ end
 local lockedRoot: BasePart? = nil
 local savedWalkSpeed: number? = nil
 
+-- Brief 11: the movement-lock reasons held now (GamepadNav reads screens from these and the blocks).
+function ClientState.movementLocks(): { [string]: boolean }
+	return controlLocks
+end
+
 function ClientState.lockMovement(reason: string, on: boolean)
 	controlLocks[reason] = if on then true else nil
 	local want = next(controlLocks) == nil

@@ -649,6 +649,14 @@ local function apply(v: any)
 end
 
 function QueueUI.init()
+	-- Brief 11: B on the Create Match card is its X (cancel and close).
+	local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
+	GamepadNav.register("queue", {
+		back = function()
+			Remotes.QueueAction:FireServer("cancel")
+			closeCreate()
+		end,
+	})
 	Remotes.QueueState.OnClientEvent:Connect(apply)
 	ClientState.Juice:Connect(function(name: string, data: any)
 		if name == "QueueToast" then

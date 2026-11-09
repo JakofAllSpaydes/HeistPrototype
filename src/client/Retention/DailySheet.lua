@@ -418,6 +418,7 @@ function DailySheet.open(state: string)
 		btn.Position = UDim2.fromOffset(pad, btnY)
 		btn.TextSize = T(if mobile then 22 else 24)
 		btn.Selectable = true
+		btn:SetAttribute("NavDefault", true) -- brief 11: the pad lands on OPEN NOW / CRACK
 		Fx.shine(btn)
 		main = btn
 		btn.Activated:Connect(function()

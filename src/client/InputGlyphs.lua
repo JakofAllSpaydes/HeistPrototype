@@ -160,6 +160,7 @@ export type ChipOpts = {
 	padOnly: boolean?, -- hidden on keyboard too (a pad-only hint)
 	keyboardText: string?, -- override the key cap text on keyboard
 	button: string?, -- draw this pad button instead of resolving an action
+	device: string?, -- draw for this device whatever is in use (the CONTROLS list shows both)
 }
 
 local function widthFor(text: string, h: number): number
@@ -177,7 +178,7 @@ local function redraw(chip: Frame, action: string, h: number, opts: ChipOpts): b
 		end
 	end
 	local stroke = chip:FindFirstChild("Edge") :: UIStroke?
-	local device = ClientState.inputDevice
+	local device = opts.device or ClientState.inputDevice
 	if device == "touch" then
 		chip.Visible = false
 		return false

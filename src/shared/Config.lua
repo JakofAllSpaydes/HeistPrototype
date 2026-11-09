@@ -418,6 +418,16 @@ local Config = {
 			Thumbstick2 = "R STICK",
 		},
 	},
+	-- Brief 11 step 4: screens on a pad (GamepadNav, SelectionRing).
+	NavRepeatDelaySec = 0.35, -- a held direction (stick or D-pad) repeats after this...
+	NavRepeatSec = 0.18, -- ...every this long
+	NavStickPress = 0.55, -- the left stick counts as a direction past this
+	NavToggleButtons = { "ButtonSelect" }, -- hub: these enter / leave the HUD selection (add the touchpad's code here)
+	SelectionRingColor = "E8B64C",
+	SelectionRingStroke = 3,
+	SelectionRingGlow = 5,
+	SelectionRingPad = 4,
+	SelectionRingSlideSec = 0.12,
 	-- The face buttons' colours on the drawn chips (PlayStation shapes / Xbox letters).
 	GlyphColors = {
 		playstation = { ButtonA = "7DA9FF", ButtonB = "FF6B73", ButtonX = "E89BD0", ButtonY = "3FCCA6" },

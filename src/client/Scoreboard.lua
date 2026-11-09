@@ -19,6 +19,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local JobPool = require(Shared:WaitForChild("JobPool"))
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local Hint = require(script.Parent:WaitForChild("Hint"))
+local GamepadNav = require(script.Parent:WaitForChild("GamepadNav"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
 local Theme = require(script.Parent:WaitForChild("UI"):WaitForChild("Theme"))
 local Icons = require(script.Parent:WaitForChild("UI"):WaitForChild("Icons"))
@@ -518,6 +519,26 @@ local function build()
 		Parent = p,
 	})
 	UI.corner(pauseBtn, S(6))
+	-- Brief 11: CONTROLS (the INPUT settings) beside it.
+	local controlsBtn = UI.button({
+		Name = "Controls",
+		Text = "CONTROLS",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(10),
+		TextColor3 = Theme.Colors.text,
+		BackgroundColor3 = Theme.Colors.panel2,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -S(112), 0, S(10)),
+		Size = UDim2.fromOffset(S(80), S(20)),
+		ZIndex = 3,
+		Parent = p,
+	})
+	UI.corner(controlsBtn, S(6))
+	controlsBtn.Activated:Connect(function()
+		Scoreboard.setOpen(false)
+		ClientState.Juice:Fire("OpenInputSettings", {})
+	end)
+	pauseBtn:SetAttribute("NavDefault", true)
 	if not ClientState.isMobile then
 		-- Brief 11: a pad has no pause key (the button itself is selectable with the pad).
 		Hint.bind(pauseBtn, function()
@@ -667,6 +688,9 @@ function Scoreboard.setOpen(on: boolean)
 	end
 	open = on
 	ClientState.scoreboardOpen = on -- brief 11: Create toggles it on a pad (Input.lua)
+	if not on then
+		GamepadNav.pop("scoreboard")
+	end
 	local g = gui
 	if not g then
 		return
@@ -733,6 +757,21 @@ function Scoreboard.init()
 			-- Brief 11: the pad's Create (Input.lua): a tap toggles, a hold peeks; a run only.
 			local on = typeof(data) == "table" and data.on == true
 			Scoreboard.setOpen(on and not ClientState.inHub())
+			-- A tap leaves it open: then it is a screen the pad walks (PAUSE). A held peek stays in play.
+			if on and open then
+				task.delay(Config.GamepadTapMaxSec + 0.05, function()
+					local held =
+						UserInputService:IsGamepadButtonDown(Enum.UserInputType.Gamepad1, Enum.KeyCode.ButtonSelect)
+					if open and not held and ClientState.inputDevice == "gamepad" then
+						GamepadNav.push("scoreboard", {
+							gui = { "Scoreboard" },
+							back = function()
+								Scoreboard.setOpen(false)
+							end,
+						})
+					end
+				end)
+			end
 		elseif name == "HubEnter" or name == "RunEndBegin" then
 			Scoreboard.setOpen(false)
 		end
