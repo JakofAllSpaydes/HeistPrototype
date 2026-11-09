@@ -18,6 +18,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Crates = require(Shared:WaitForChild("Crates"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
+local Weapons = require(Shared:WaitForChild("Weapons")) -- Round 30d: the summary cards' type line
 
 local Client = script.Parent.Parent
 local ClientState = require(Client:WaitForChild("ClientState"))
@@ -124,6 +125,15 @@ end
 
 local function alive(t: number): boolean
 	return running and token == t
+end
+
+-- Round 30d: the item type line on a summary card: the gun's type, MASK, WRAP, EMOTE...
+local function typeOf(r: any): string
+	if r.kind == "weapon" then
+		local t = Weapons.typeName(r.id)
+		return if t ~= "" then t else "GUN"
+	end
+	return string.upper(tostring(r.kind))
 end
 
 -- Waits `sec`, returning false as soon as the run was skipped or ended.
@@ -256,6 +266,10 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	local rays: Frame? = nil
 	local advance = false
 	local skipped = false
+	-- Round 30d: a tap fast-forwards the crate being opened to its reveal (`hurry`), and on a revealed crate with NEXT
+	-- up it is NEXT. SKIP (the button) still jumps every crate to the summary.
+	local hurry = false
+	local stage = "opening" -- opening (drop, rattle, until the name card) | revealed
 	local masteryFired: { [number]: boolean } = {}
 	local function fireMastery(i: number)
 		local r = results[i]
@@ -276,7 +290,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 	end
 	local function pause(sec: number): boolean
 		local p0 = os.clock()
-		while os.clock() - p0 < sec do
+		while os.clock() - p0 < sec and not hurry do
 			if not go() then
 				return false
 			end
@@ -358,6 +372,28 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		skipped = true
 		advance = true
 	end)
+	-- Round 30d: a click or tap anywhere moves on one step: the crate being opened jumps to its reveal, a revealed
+	-- crate (×N, NEXT up) goes to the next one. A ×1 reveal and the summary keep their CONFIRM / DONE. Under the buttons.
+	local tapSkip = UI.button({
+		Name = "TapSkip",
+		Text = "",
+		AutoButtonColor = false,
+		Selectable = false,
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 2,
+		Parent = gui,
+	})
+	tapSkip.Activated:Connect(function()
+		if not running then
+			return
+		end
+		if stage == "opening" then
+			hurry = true -- straight to this crate's reveal
+		elseif nextBtn.Visible then
+			advance = true -- the next crate
+		end
+	end)
 	nextBtn.Activated:Connect(function()
 		advance = true
 	end)
@@ -375,6 +411,8 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		-- Round 28e: SKIP is up from the moment the opening starts, even for a single crate (a skipped ×1 still
 		-- lands on the summary, with its one card, since the reveal never finished).
 		skip.Visible = true
+		hurry = false
+		stage = "opening"
 		counter.Text = string.format("%d / %d", i, #results)
 		UI.punch(counter, 1.2, 0.25)
 		local color = Rarity.color(r.rarity)
@@ -385,7 +423,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		m.model.Parent = set.model
 		local restCf = set.pedestal
 		local t0 = os.clock()
-		while os.clock() - t0 < 0.22 do
+		while os.clock() - t0 < 0.22 and not hurry do
 			local k = (os.clock() - t0) / 0.22
 			m.model:PivotTo(restCf * CFrame.new(0, 3 * (1 - k * k), 0))
 			task.wait()
@@ -400,7 +438,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		t0 = os.clock()
 		local nextTick = 0
 		UI.sound(Theme.Sounds.lootRise, math.clamp(1 / math.max(openSec, 0.5), 0.6, 1.2), 0.35) -- Round 19e: the build
-		while os.clock() - t0 < openSec do
+		while os.clock() - t0 < openSec and not hurry do
 			if not go() then
 				return false
 			end
@@ -444,7 +482,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			end
 		end)
 		-- Reveal: the item rises on a beam and turns slowly.
-		local it = Models.item({ kind = r.kind, id = r.id }, r.rarity)
+		local it = Models.item({ kind = r.kind, id = r.id, on = (r :: any).on }, r.rarity) -- Round 30d: a wrap on its gun
 		item = it
 		it.Parent = set.model
 		local start = restCf * CFrame.new(0, 1.2, 0)
@@ -617,6 +655,7 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 		task.delay(0.5, function()
 			fireMastery(i)
 		end)
+		stage = "revealed"
 		return true
 	end
 
@@ -654,12 +693,12 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 0),
 			Position = UDim2.new(0.5, 0, 0.16, 0),
-			Size = UDim2.fromOffset(perRow * S(cell + 12), math.ceil(#results / perRow) * S(cell + 34)),
+			Size = UDim2.fromOffset(perRow * S(cell + 12), math.ceil(#results / perRow) * S(cell + 48)),
 			ZIndex = 21,
 			Parent = layer,
 		})
 		UI.new("UIGridLayout", {
-			CellSize = UDim2.fromOffset(S(cell), S(cell + 22)),
+			CellSize = UDim2.fromOffset(S(cell), S(cell + 36)), -- Round 30d: room for the type line
 			CellPadding = UDim2.fromOffset(S(12), S(12)),
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
@@ -687,9 +726,21 @@ function CrateScene.play(crateId: string, results: { Result }, productId: string
 				Rotation = 90,
 				Parent = body,
 			})
-			local art = ItemArt.draw(body, { kind = r.kind, id = r.id }, S(cell - 40), 24)
+			local art = ItemArt.draw(body, { kind = r.kind, id = r.id, on = (r :: any).on } :: any, S(cell - 40), 24)
 			art.AnchorPoint = Vector2.new(0.5, 0)
 			art.Position = UDim2.new(0.5, 0, 0, S(6))
+			-- Round 30d: type, name, state (SHOTGUN / ARCTIC · SPAS-12 / NEW).
+			UI.text({
+				Text = typeOf(r),
+				FontFace = Theme.Fonts.display,
+				TextSize = S(10),
+				TextColor3 = Theme.Colors.textDim,
+				AnchorPoint = Vector2.new(0.5, 1),
+				Position = UDim2.new(0.5, 0, 1, -S(37)),
+				Size = UDim2.new(1, -S(8), 0, S(13)),
+				ZIndex = 24,
+				Parent = body,
+			})
 			UI.text({
 				Text = string.upper(r.name),
 				FontFace = Theme.Fonts.display,

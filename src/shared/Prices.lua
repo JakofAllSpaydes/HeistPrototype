@@ -7,7 +7,9 @@ local Prices = {
 	class = 100,
 	ability = 100, -- per ability level
 	mask = 100,
-	wrap = 100,
+	wrap = 100, -- the fallback
+	-- Round 30d: a shop wrap is bought per gun, priced by that gun's rarity (Common .. Legendary).
+	wrapByGunRarity = { 100, 150, 250, 400, 600 },
 	emote = 100, -- SQUAD poses and MVP flexes
 }
 

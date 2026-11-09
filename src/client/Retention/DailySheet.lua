@@ -3,11 +3,10 @@
 -- pushes the camera onto it (CameraShots.daily, the JOBS board's timing) and docks the compact sheet on the right (the
 -- Skill Web's card; bottom-right at 42% of the width on a phone, the action under the thumb):
 --   DAILY CRATE (the tier's colour) · LV N · X
---   the crate beside its state line: PLAY A MATCH TO UNLOCK / READY / NEW CRATE IN 21H 06M 12S (ticking), the pool
---   line, FIRST ONE'S A GUN (while it applies)
---   what it can drop (the best few items of your band, framed in their rarity) and the odds row
---   ready: OPEN · locked: BUY 1 · R$ 99 · claimed: ROLL AGAIN · R$ 79 (no BACK: Round 27i)
--- OPEN / a purchase -> the server rolls -> the existing crate scene -> the camera comes back to the podium and lets go.
+--   Round 30d: the state beside the title (READY / PLAY A MATCH TO UNLOCK / NEW IN 21H 06M 12S, ticking), then one
+--   big mystery frame (the possible rewards turning in it, darkened, under a big ?), the odds row
+--   ready: OPEN · locked: BUY 1 · R$ 99 · claimed: ROLL AGAIN · R$ 79 (no BACK: Round 27i), and ×3 / ×10 spins under it
+-- OPEN / a purchase -> the server rolls -> the existing crate scene -> back on the sheet (spin again at once).
 -- The X, Esc or B (or a tap off the sheet) close it.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -17,7 +16,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
-local Crates = require(Shared:WaitForChild("Crates"))
+local Wraps = require(Shared:WaitForChild("Wraps"))
 local Catalog = require(Shared:WaitForChild("Catalog"))
 local Clock = require(Shared:WaitForChild("Clock"))
 
@@ -31,7 +30,7 @@ local PurchaseSheet = require(Client:WaitForChild("PurchaseSheet"))
 local CameraShots = require(Client:WaitForChild("CameraShots"))
 local Store = Client:WaitForChild("Store")
 local Fx = require(Store:WaitForChild("Fx"))
-local ItemArt = require(Store:WaitForChild("ItemArt"))
+local ModelIcon = require(Client:WaitForChild("UI"):WaitForChild("ModelIcon")) -- Round 30d: the mystery frame
 local CrateScene = require(Store:WaitForChild("CrateScene"))
 
 local DailySheet = {}
@@ -42,7 +41,6 @@ local playerGui = player:WaitForChild("PlayerGui")
 local GREEN = Color3.fromHex("2FB75A")
 local PANEL = Color3.fromHex("1C1C22")
 local AMBER = Color3.fromHex("F2A93B")
-local CONTENTS = 6 -- item tiles shown
 
 local gui: ScreenGui? = nil
 local busy = false
@@ -74,33 +72,6 @@ local function odds(gunOnly: boolean): { number }
 	end
 	for r = 1, 5 do
 		out[r] = if total > 0 then out[r] / total else 0
-	end
-	return out
-end
-
--- The best few of the pool (rarest first), guns and masks mixed (guns only while the first one's a gun).
-local function showcase(gunOnly: boolean): { Catalog.Item }
-	local items = table.clone(Catalog.dailyItems(if gunOnly then "weapon" else nil, nil))
-	table.sort(items, function(a, b)
-		if a.rarity ~= b.rarity then
-			return a.rarity > b.rarity
-		end
-		return a.id < b.id
-	end)
-	local out = {}
-	local masks = 0
-	for _, it in items do
-		-- Keep the last slot for a mask when the pool has them, so the mix reads.
-		if #out == CONTENTS - 1 and masks == 0 and not gunOnly and it.kind ~= "mask" then
-			continue
-		end
-		if it.kind == "mask" then
-			masks += 1
-		end
-		table.insert(out, it)
-		if #out >= CONTENTS then
-			break
-		end
 	end
 	return out
 end
@@ -149,20 +120,92 @@ local function play(data: any)
 	playing = true
 	teardown()
 	CrateScene.play(tostring(data.crateId), data.results, nil, function()
-		-- Round 27g: control comes straight back. The crate scene hands its camera back to our shot about 0.13 s after
-		-- this (its dip to black); letting go just after puts you behind your character while it is still black
-		-- (holding the podium shot for ~2 s read as being stuck).
+		-- Round 30d: back to the sheet (spin again at once). The crate scene hands its camera back to our podium shot
+		-- about 0.13 s after this; the sheet reopens on it with the podium's new state, the block and lock still held.
 		task.delay(0.25, function()
-			release()
+			playing = false
+			busy = false
+			local st = player:GetAttribute("DailyCrate")
+			DailySheet.open(if typeof(st) == "string" then st else "claimed", true)
 		end)
 	end)
 end
 
-function DailySheet.open(state: string)
+-- Round 30d: the mystery frame. Every DailyMysteryCycleSec the next possible reward (a gun, a mask, a shop wrap on one
+-- of your guns, round again; guns only while the first one's a gun) turns slowly in it, darkened, under a big ?.
+local function mysteryCycle(frame: Frame, first: boolean, profile: any)
+	local holder = UI.frame({
+		Name = "Preview",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.86, 0.86),
+		ZIndex = 22,
+		Parent = frame,
+	})
+	local guns = Catalog.dailyItems("weapon", nil)
+	local masks = Catalog.dailyItems("mask", nil)
+	local shopWraps = {}
+	for _, w in Wraps.List do
+		if Wraps.perGun(w) then
+			table.insert(shopWraps, w.id)
+		end
+	end
+	local owned = {}
+	for id in (if profile and profile.weapons then profile.weapons else {}) do
+		table.insert(owned, id)
+	end
+	local order = if first then { "weapon" } else { "weapon", "mask", "wrap" }
+	local step = 0
+	local function nextItem(): { kind: string, id: string, on: string? }?
+		step += 1
+		local kind = order[(step - 1) % #order + 1]
+		if kind == "mask" and #masks > 0 then
+			return { kind = "mask", id = masks[math.random(#masks)].id }
+		elseif kind == "wrap" and #shopWraps > 0 then
+			local on = if #owned > 0 then owned[math.random(#owned)] else nil
+			return { kind = "wrap", id = shopWraps[math.random(#shopWraps)], on = on }
+		elseif #guns > 0 then
+			return { kind = "weapon", id = guns[math.random(#guns)].id }
+		end
+		return nil
+	end
+	task.spawn(function()
+		local current: ViewportFrame? = nil
+		while frame.Parent do
+			local it = nextItem()
+			if it then
+				local vp = ModelIcon.item(holder, it, UDim2.fromScale(1, 1), { motion = "always", zIndex = 22 })
+				if vp then
+					vp.AnchorPoint = Vector2.new(0.5, 0.5)
+					vp.Position = UDim2.fromScale(0.5, 0.5)
+					ModelIcon.tint(vp, Color3.fromRGB(34, 34, 42), 0.05) -- darkened: a shape, not the answer
+					vp.ImageTransparency = 1
+					UI.tween(vp, { ImageTransparency = 0.05 }, 0.3)
+					local old = current
+					current = vp
+					if old then
+						UI.tween(old, { ImageTransparency = 1 }, 0.25)
+						task.delay(0.3, function()
+							old:Destroy()
+						end)
+					end
+				end
+			end
+			task.wait(math.max(0.3, Config.DailyMysteryCycleSec))
+		end
+	end)
+end
+
+-- `reopen`: back from a crate scene (the camera shot, the movement lock and the block are still held).
+function DailySheet.open(state: string, reopen: boolean?)
 	if gui or playing or not ClientState.inHub() or not Config.DailyCrateEnabled then
 		return
 	end
 	if state ~= "ready" and state ~= "claimed" and state ~= "locked" then
+		if reopen then
+			release()
+		end
 		return
 	end
 	local S = UI.S
@@ -175,14 +218,15 @@ function DailySheet.open(state: string)
 	local trim = Color3.fromHex(def.trim)
 	local first = player:GetAttribute("DailyCrateFirst") == true
 	local profile = ClientState.sync and (ClientState.sync :: any).profile
-	local level = if profile then tonumber(profile.level) or 1 else 1
 
-	ClientState.lockMovement("daily", true)
-	ClientState.setBlock("daily", true)
 	HUD.setMode("meta")
-	local shot = CameraShots.daily()
-	if shot then
-		CameraShots.push(shot)
+	if not reopen then
+		ClientState.lockMovement("daily", true)
+		ClientState.setBlock("daily", true)
+		local shot = CameraShots.daily()
+		if shot then
+			CameraShots.push(shot)
+		end
 	end
 
 	local g = UI.new("ScreenGui", {
@@ -211,13 +255,13 @@ function DailySheet.open(state: string)
 	local pad = S(14)
 	local closeSize = CloseButton.size()
 	local headH = math.max(T(30), closeSize) -- the header row holds the shared X
-	local wellSize = if mobile then math.floor(w * 0.24) else S(86)
-	local tileGap = S(6)
-	local tile = math.floor((w - pad * 2 - tileGap * (CONTENTS - 1)) / CONTENTS)
+	local mysteryH = if mobile then math.floor(w * 0.5) else S(176)
 	local oddsH = T(22)
 	local btnH = if mobile then math.max(48, S(56)) else S(52)
+	local multiH = if mobile then math.max(40, S(44)) else S(40)
+	local multi = Config.DailyCrateEnabled -- Round 30d: ×3 / ×10 spins in every state
 	-- Round 27i: no BACK button (the X, Esc / B and a tap off the sheet close it).
-	local h = pad + headH + S(8) + wellSize + S(10) + tile + S(8) + oddsH + S(12) + btnH + pad
+	local h = pad + headH + S(8) + mysteryH + S(8) + oddsH + S(12) + btnH + (if multi then S(8) + multiH else 0) + pad
 	local s = UI.button({
 		Name = "Sheet",
 		Text = "",
@@ -233,9 +277,12 @@ function DailySheet.open(state: string)
 	})
 	UI.corner(s, S(6))
 	UI.stroke(s, trim, S(1.5), 0.3)
-	Fx.slideIn(s, UDim2.fromOffset(S(40), 0), 0.25)
+	if not reopen then
+		Fx.slideIn(s, UDim2.fromOffset(S(40), 0), 0.25)
+	end
 
-	-- Header.
+	-- Header: DAILY CRATE, its state (the live countdown) beside it, the shared X. Round 30d: no LV.
+	local titleW = T(if mobile then 132 else 168)
 	UI.text({
 		Text = "DAILY CRATE",
 		FontFace = Theme.Fonts.display,
@@ -243,48 +290,19 @@ function DailySheet.open(state: string)
 		TextColor3 = trim,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Position = UDim2.fromOffset(pad, pad),
-		Size = UDim2.new(1, -pad * 2, 0, headH),
+		Size = UDim2.fromOffset(titleW, headH),
 		ZIndex = 21,
 		Parent = s,
 	})
-	UI.text({
-		Text = "LV " .. level,
-		FontFace = Theme.Fonts.display,
-		TextSize = T(15),
-		TextColor3 = Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -(pad + closeSize + S(8)), 0, pad),
-		Size = UDim2.fromOffset(S(90), headH),
-		ZIndex = 21,
-		Parent = s,
-	})
-	-- The shared red X (CloseButton), top-right in the header row.
-	local x = CloseButton.new(s, DailySheet.close, { margin = pad, top = pad + (headH - closeSize) // 2, z = 21 })
-
-	-- The crate and its state.
-	local bodyY = pad + headH + S(8)
-	local well = UI.frame({
-		BackgroundColor3 = PANEL,
-		Position = UDim2.fromOffset(pad, bodyY),
-		Size = UDim2.fromOffset(wellSize, wellSize),
-		ZIndex = 21,
-		Parent = s,
-	})
-	UI.corner(well, S(4))
-	UI.stroke(well, trim, S(1), 0.5)
-	local art = ItemArt.draw(well, { kind = "crate", id = Crates.dailyId(tierId()), amount = 1 }, wellSize, 22)
-	art.AnchorPoint = Vector2.new(0.5, 0.5)
-	art.Position = UDim2.fromScale(0.5, 0.5)
-	local textX = pad + wellSize + S(12)
+	local statusX = pad + titleW + S(8)
 	local status = UI.text({
 		Text = "",
 		FontFace = Theme.Fonts.display,
-		TextSize = T(if mobile then 18 else 22),
+		TextSize = T(if mobile then 13 else 16),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Position = UDim2.fromOffset(textX, bodyY),
-		Size = UDim2.new(1, -textX - pad, 0, T(26)),
+		Position = UDim2.fromOffset(statusX, pad),
+		Size = UDim2.new(1, -statusX - pad - closeSize - S(6), 0, headH),
 		ZIndex = 21,
 		Parent = s,
 	})
@@ -295,7 +313,7 @@ function DailySheet.open(state: string)
 		status.TextColor3 = Theme.Colors.white
 		task.spawn(function()
 			while status.Parent do
-				status.Text = "NEW CRATE IN " .. untilTomorrow()
+				status.Text = "NEW IN " .. untilTomorrow()
 				task.wait(1)
 			end
 		end)
@@ -303,56 +321,63 @@ function DailySheet.open(state: string)
 		status.Text = "PLAY A MATCH TO UNLOCK"
 		status.TextColor3 = AMBER
 	end
+	-- The shared red X (CloseButton), top-right in the header row.
+	local x = CloseButton.new(s, DailySheet.close, { margin = pad, top = pad + (headH - closeSize) // 2, z = 21 })
+
+	-- Round 30d: one big mystery frame: what it can give, darkened and turning under a big ?.
+	local bodyY = pad + headH + S(8)
+	local mystery = UI.frame({
+		Name = "Mystery",
+		BackgroundColor3 = PANEL,
+		ClipsDescendants = true,
+		Position = UDim2.fromOffset(pad, bodyY),
+		Size = UDim2.new(1, -pad * 2, 0, mysteryH),
+		ZIndex = 21,
+		Parent = s,
+	})
+	UI.corner(mystery, S(4))
+	UI.stroke(mystery, trim, S(1.5), 0.3)
+	UI.new("UIGradient", {
+		Color = ColorSequence.new(PANEL:Lerp(trim, 0.12), PANEL),
+		Rotation = 90,
+		Parent = mystery,
+	})
+	mysteryCycle(mystery, first, profile)
+	local q = UI.text({
+		Name = "Question",
+		Text = "?",
+		FontFace = Theme.Fonts.display,
+		TextSize = math.floor(mysteryH * 0.62),
+		TextColor3 = trim,
+		TextTransparency = 0.1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 24,
+		Parent = mystery,
+	})
+	q:SetAttribute("FixedTextSize", true)
+	UI.stroke(q, Theme.Colors.black, S(3), 0.2)
 	UI.text({
-		Text = "GUNS + MASKS · YOUR LEVEL",
+		Text = if first then "FIRST ONE'S A GUN" else "GUNS · MASKS · WRAPS",
 		FontFace = Theme.Fonts.display,
 		TextSize = T(14),
-		TextColor3 = Theme.Colors.textDim,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(textX, bodyY + T(28)),
-		Size = UDim2.new(1, -textX - pad, 0, T(18)),
-		ZIndex = 21,
-		Parent = s,
+		TextColor3 = if first then Theme.Colors.gold else Theme.Colors.textDim,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -S(6)),
+		Size = UDim2.new(1, -S(12), 0, T(18)),
+		ZIndex = 24,
+		Parent = mystery,
 	})
-	if first then
-		UI.text({
-			Text = "FIRST ONE'S A GUN",
-			FontFace = Theme.Fonts.display,
-			TextSize = T(15),
-			TextColor3 = Theme.Colors.gold,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Position = UDim2.fromOffset(textX, bodyY + T(48)),
-			Size = UDim2.new(1, -textX - pad, 0, T(18)),
-			ZIndex = 21,
-			Parent = s,
-		})
-	end
-
-	-- What it can drop.
-	local contentsY = bodyY + wellSize + S(10)
-	local strip = UI.frame({
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(pad, contentsY),
-		Size = UDim2.new(1, -pad * 2, 0, tile),
-		ZIndex = 21,
-		Parent = s,
-	})
-	UI.list(strip, Enum.FillDirection.Horizontal, tileGap, Enum.HorizontalAlignment.Left)
-	for i, it in showcase(first) do
-		local cell = UI.frame({
-			BackgroundColor3 = PANEL,
-			Size = UDim2.fromOffset(tile, tile),
-			LayoutOrder = i,
-			ZIndex = 21,
-			Parent = strip,
-		})
-		UI.corner(cell, S(3))
-		UI.stroke(cell, Rarity.color(it.rarity), S(1.5), 0.1)
-		ItemArt.draw(cell, { kind = it.kind, id = it.id }, tile, 22)
-	end
+	-- A slow breathe on the ? so the frame feels alive between swaps.
+	task.spawn(function()
+		local t0 = os.clock()
+		while q.Parent do
+			q.TextTransparency = 0.1 + 0.12 * (0.5 + 0.5 * math.sin((os.clock() - t0) * 2.5))
+			task.wait(1 / 30)
+		end
+	end)
 
 	-- The odds row: a chip per rarity the roll can land on, in its colour.
-	local oddsY = contentsY + tile + S(8)
+	local oddsY = bodyY + mysteryH + S(8)
 	local row = UI.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(pad, oddsY),
@@ -401,9 +426,36 @@ function DailySheet.open(state: string)
 			label = ""
 		end
 	end
+	local handles: { any } = {}
+	local function setAll(on: boolean)
+		for _, hd in handles do
+			hd.setEnabled(on)
+		end
+	end
+	-- Buys `pid` through the purchase sheet; the crate scene plays and the sheet comes back after it.
+	local function buy(pid: string)
+		if busy then
+			return
+		end
+		busy = true
+		setAll(false)
+		PurchaseSheet.open(pid, {
+			context = "daily crate " .. state,
+			onSuccess = function(data: any)
+				play(data)
+			end,
+			onClose = function(bought: boolean)
+				if not bought and gui == g then
+					busy = false
+					setAll(true)
+				end
+			end,
+		})
+	end
 	local main: TextButton? = nil
 	if label ~= "" then
 		local btn, handle = Fx.button(s, label, GREEN, Theme.Colors.white, UDim2.new(1, -pad * 2, 0, btnH), 22)
+		table.insert(handles, handle)
 		btn.Position = UDim2.fromOffset(pad, btnY)
 		btn.TextSize = T(if mobile then 22 else 24)
 		btn.Selectable = true
@@ -414,24 +466,13 @@ function DailySheet.open(state: string)
 			if busy then
 				return
 			end
-			busy = true
-			handle.setEnabled(false)
 			local pid = productId
 			if pid then
-				PurchaseSheet.open(pid, {
-					context = "daily crate " .. state,
-					onSuccess = function(data: any)
-						play(data)
-					end,
-					onClose = function(bought: boolean)
-						if not bought and gui == g then
-							busy = false
-							handle.setEnabled(true)
-						end
-					end,
-				})
+				buy(pid)
 				return
 			end
+			busy = true
+			setAll(false)
 			task.spawn(function()
 				local ok, res = pcall(function()
 					return Remotes.DailyCrateOpen:InvokeServer()
@@ -444,7 +485,7 @@ function DailySheet.open(state: string)
 					play(res)
 				else
 					busy = false
-					handle.setEnabled(true)
+					setAll(true)
 					local reason = if ok and typeof(res) == "table"
 						then tostring(res.reason or "TRY AGAIN")
 						else "TRY AGAIN"
@@ -453,10 +494,35 @@ function DailySheet.open(state: string)
 			end)
 		end)
 	end
+	-- Round 30d: ×3 and ×10 spins, smaller, in one row under the main button.
+	if multi then
+		local multiY = btnY + btnH + S(8)
+		local half = (w - pad * 2 - S(8)) / 2
+		for i, n in { 3, 10 } do
+			local price = if n == 3 then Config.DailyCrateSpin3Price else Config.DailyCrateSpin10Price
+			local b, handle = Fx.button(
+				s,
+				string.format("×%d · R$ %s", n, UI.fmtInt(price)),
+				GREEN:Lerp(Color3.fromHex("121216"), 0.35),
+				Theme.Colors.white,
+				UDim2.fromOffset(half, multiH),
+				22
+			)
+			table.insert(handles, handle)
+			b.Position = UDim2.fromOffset(pad + (i - 1) * (half + S(8)), multiY)
+			b.TextSize = T(if mobile then 16 else 18)
+			b.Selectable = true
+			b.Activated:Connect(function()
+				buy("dailycrate_spin" .. n)
+			end)
+		end
+	end
 	if UserInputService.GamepadEnabled then
 		GuiService.SelectedObject = main or x
 	end
-	UI.sound(Fx.Sounds.whoosh, 1.1, 0.4)
+	if not reopen then
+		UI.sound(Fx.Sounds.whoosh, 1.1, 0.4)
+	end
 end
 
 function DailySheet.init()

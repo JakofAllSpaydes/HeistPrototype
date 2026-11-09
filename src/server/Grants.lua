@@ -58,10 +58,22 @@ local function giveItem(player: Player, profile: Profiles.Profile, r: Rewards.Re
 	elseif r.kind == "mask" and Masks.ById[id] then
 		profile.masks.owned[id] = true
 	elseif r.kind == "wrap" and Wraps.ById[id] then
-		profile.wraps.owned[id] = true
-		local target = opts.wrapOn
+		local target = r.on or opts.wrapOn
+		if Wraps.perGun(Wraps.ById[id]) then
+			-- Round 30d: a shop wrap is owned per gun: on the named gun, else (no gun named) on every gun owned.
+			if target and profile.weapons[target] then
+				profile.wraps.owned[Wraps.key(target, id)] = true
+			else
+				for weaponId in profile.weapons do
+					profile.wraps.owned[Wraps.key(weaponId, id)] = true
+				end
+			end
+		else
+			profile.wraps.owned[id] = true
+		end
 		local entry = target and profile.weapons[target]
-		if entry then
+		-- Round 30d: a crate's wrap (r.on) goes on its gun only when that gun wears none; wrapOn always applies.
+		if entry and (opts.wrapOn ~= nil or (entry :: any).wrap == nil) then
 			entry.wrap = id
 			local state = PlayerState.get(player)
 			if state.held.weaponId == target then

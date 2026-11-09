@@ -3020,6 +3020,77 @@ the rest works solo. Watch the output for `[GHS Breach]`, `[GHS Markers]`, `[GHS
   (staged dressing, the helicopter, siren beds), relics (profile v7, the roll and guarantee, the show, the summary
   row, the booth shelf, the Create Match rail and phone sheet), the HEIST debug group.
 
+- **Round 30b–30c (9 Nov).** Relic guarantees became a list of ids each profile records (`relics.guarantees`;
+  the built-in `first_crate` = `StarterRelic`, more in `RelicGuarantees { id, relic, map }`), so a guarantee added
+  later reaches existing accounts; debug Re-arm guarantees. Brief 12 (Round 29 / 29b) and Brief 13 merged on `main`;
+  the phone relic sheet uses Round 29b's shared close button.
+- **Round 30d (9 Nov, Jack's play feedback on brief 13; seen in Studio as it went, the rest unplayed).** This entry
+  supersedes the Brief 13 section above where they differ.
+  - *Objectives vs side jobs.* Every objective (a called door, the vault, offices, the hatch) is **amber**: its pill,
+    MARLOW's card and pill (`Lines.door.kind` = door), the hold bar, the edge arrow, the chevrons; locked doors'
+    `UNLOCKS · WAVE N` signs are grey; side jobs stay blue. The Objective marker is a compact pill (icon, name, the
+    distance in big digits, a timer beside it when it has one) with a breathing halo (harder for a called door / the
+    vault), the key hint only within `ObjectiveHintRange` 30, visible from any distance (no far badge). The called
+    objective's prop (front doors, stair chains, shutters) is outlined amber through walls (`ObjectiveHighlightFill`).
+    The cap counts door groups, so every way in shows (both stair chains); each player's floor guide goes to the part
+    nearest them. While a main objective is up, the side job shrinks to a small blue `!` waypoint with its distance
+    (no pulse, a dimmer outline) and opens back up within `JobNearRange`.
+  - *The door guide* is per player (nobody sees a teammate's route), re-planned when you have moved
+    `DoorGuideReplanStuds` 5 or every `DoorGuideRefreshSec` 2; a new strip replaces yours and chevrons you pass go out;
+    brighter chevrons; the edge arrow is bigger, pulses and shows the live distance (`DoorGuideEdgeDistance`).
+  - *Pre-heist.* The front doors' sign reads `START HEIST` (`Lines.preHeist.sign`) until the breach.
+  - *Zones hold.* Containment (Doors.lua): a member inside a still-closed `ZoneContainZones` zone (upper, back,
+    stairs) goes back to where they last stood in an open zone with `LOCKED · <DOOR> FIRST`; an enemy inside one is
+    removed. Chain blockers are `ChainBlockerHeight` 14 (was 8). The lobby, vault and tunnel keep their own rules.
+  - *Street.* Siren beds play from the nearest police vehicle (`DressingAmbienceVolume` 0.6, `RollOff` 40 / 300) and
+    drop to `DressingInsideMult` 20% (the rotor too) inside any bank zone. The grass across the road dresses up by
+    stage too (cruisers and tape, a SWAT van and barricades, more cruisers and sawhorses, a boss ambulance; 11 nodes).
+    Dressing needs `rojo serve` restarted once (the `Workspace.Bank.Dressing` entry).
+  - *Combat.* A dead enemy leaves `Enemies` for `Effects` and stops taking shots at once (no shooting afterimages);
+    `RagdollLifetime` 1 / `RagdollFadeSec` 0.3 / `ShrinkOutSec` 0.12. Placeables (and the med bag, now a proper kit)
+    drop in from `PlaceableDropHeight` 7 over `PlaceableDropSec` 0.3 (a client-side copy; the real one is live at once).
+    INITIATE PATCHED UP heals 50% (`StimMasteryHealPct`). Bag icons sit above the bag (`LootIconLift`).
+  - *Run end.* The party-wipe window is 10 s (`RunOverHoldSec` 9); the summary returns to the lobby after 60 s.
+  - *Hub.* Queue pads are floating text: `START HEIST` (`PadBoardTitle`) with `0/4 CREW` under it, then the map and
+    `STARTING IN N · 2/4 CREW`; no pad numbers anywhere (`PadBoardWidth` 11).
+  - *Wraps per gun.* Shop (Direct) wraps are owned per gun (`profile.wraps.owned["<weaponId>|<wrapId>"]`, `Wraps.owns`)
+    and priced by the gun's rarity (`Prices.wrapByGunRarity` 100 / 150 / 250 / 400 / 600); pass, bundle and mastery
+    wraps keep their rules. A wrap owned the old way becomes owned on every gun the profile had when it loads.
+  - *One mixed roll* (`shared/MixedRoll.lua`): category, then rarity, then item, optionally seeded. The daily crate
+    (gun / mask / wrap, `DailyCrateCategoryWeights`; a wrap goes to an owned gun of the rolled rarity weighted by how
+    many shop wraps it is missing, as one it lacks by `DailyWrapWeights`; it goes on the gun when the gun wears none),
+    the daily shop (`DailyShopCategoryWeights`, `DailyShopRarityWeights`; still the same set for everyone that day,
+    never a repeat) and the gun crate's bonus roll (`relic` at `RelicDropChance` vs `none`; relics carry a `kind`,
+    all `mask` today) use it.
+  - *Daily crate sheet.* The state sits beside DAILY CRATE (`READY` / `PLAY A MATCH TO UNLOCK` / `NEW IN …`, no LV),
+    one big mystery frame turns darkened possible rewards under a breathing `?` (`DailyMysteryCycleSec`), `×3` and
+    `×10` spins sit under the main button (`dailycrate_spin3` / `spin10`, `DailyCrateSpin3Price` / `Spin10Price`), and
+    after a spin you land back on the sheet. Crate scenes: a tap jumps the crate being opened to its reveal and, with
+    NEXT up, goes to the next one (SKIP still jumps to the summary); summary cards show type, name, state, and wraps
+    on their own gun.
+
+### Round 30d verify list
+
+Restart `rojo serve` if it predates the Dressing entry, then on `main`:
+
+1. THE BANK pre-heist: the front doors read START HEIST; MARLOW's card and the pill are amber; the door is outlined
+   amber through the facade. Breach; at wave 2 / 5 the called door's pill shows from anywhere with big digits and
+   E · CUT only up close; both stair chains keep a pill; the floor strip follows you as you move and re-points to
+   the nearer chain; off screen the amber edge arrow pulses with the distance.
+2. A side job while a door is called: a small blue ! with its distance; walk within 25 studs and it opens up.
+3. Jump onto the mezzanine (or down a stairwell) before its chains are cut: you are put back with `LOCKED · CUT THE
+   CHAINS FIRST`; `[GHS Door] <you> pushed back out of upper (closed)`.
+4. Debug dressing Stage 1–3 / BOSS: pieces at both fence ends and on the grass; sirens loud by the cruisers, faint in
+   the lobby.
+5. Kill enemies point blank: no shot lands on a falling body; bodies gone in about a second. Place a turret, the
+   barricade and the med bag: each drops in, then rings.
+6. Hub: the pads read START HEIST / 0/4 CREW in large floating text.
+7. Weapons booth: a wrap's price follows the gun's rarity; buying Crimson on one gun leaves it unowned on another; an
+   old profile's wraps show owned on every gun it had.
+8. Daily crate podium: the mystery frame, the countdown by the title, ×3 / ×10 under ROLL AGAIN; spin: the crate
+   scene, a tap jumps to the reveal, NEXT steps on, the summary cards read TYPE / NAME / STATE; then back on the
+   sheet. Wraps from it name and show their gun. The FEATURED daily items still match between two clients.
+
 ### Brief 13 open notes (deviations and assumptions)
 
 - **Round number.** Brief 12 claimed Round 29 on its branch first, so this is Round 30. Whichever merges second
@@ -3041,8 +3112,8 @@ the rest works solo. Watch the output for `[GHS Breach]`, `[GHS Markers]`, `[GHS
   (a dupe for them). A second member's first open later in the run drops the starter again.
 - **The window breach** counts once a member's root is inside the `lobby` zone volume; the window bays in front of
   the facade are outside it, so it fires as you step from a bay into the lobby proper.
-- **Objective cap of one** means D3's three shutter parts show one beacon (the nearest), and the hatch beacon hides
-  while the open vault's marker is up.
+- **Objective cap of one** counts objectives, not parts (Round 30d): D3's three shutters all show, and the hatch
+  beacon hides while the open vault's marker is up.
 - **Dealer crates** are not in the Loot tier: the dealer's stands are their own panels during the break.
 - **Pause** is unavailable in the pre-heist (nothing to pause); AUTO SKIP and votes appear from wave 1.
 - `street_road` (the street's capture spot) stays per the brief's assumption; with D1 open from wave 1 the existing

@@ -545,7 +545,7 @@ local function buildParty(v: any)
 	local map = mapById(v.settings and v.settings.mapId)
 	local diff = diffById(v.settings and v.settings.difficultyId)
 	UI.text({
-		Text = string.format("PAD %d · %s · %s", tonumber(v.zone) or 1, map.name, diff.name),
+		Text = string.format("%s · %s", map.name, diff.name), -- Round 30d: no pad numbers
 		FontFace = Theme.Fonts.body,
 		TextSize = S(14),
 		TextColor3 = Theme.Colors.white,

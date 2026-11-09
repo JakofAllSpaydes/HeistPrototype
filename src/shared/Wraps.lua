@@ -39,6 +39,49 @@ for _, w in Wraps.List do
 	Wraps.ById[w.id] = w
 end
 
+-- Round 30d: the shop wraps (saleType Direct) are owned PER GUN: Crimson on the AK and Crimson on the M1911 are
+-- two unlocks, priced by the gun's rarity (Prices.wrapByGunRarity). Pass and bundle wraps stay owned once for every
+-- gun; mastery wraps belong to the gun whose mastery unlocked them (MasteryCopy, checked by the callers).
+-- profile.wraps.owned holds "<weaponId>|<wrapId>" for per-gun wraps and the plain wrap id for the others.
+function Wraps.perGun(w: Wrap?): boolean
+	return w ~= nil and w.saleType == "Direct"
+end
+
+function Wraps.key(weaponId: string, wrapId: string): string
+	return weaponId .. "|" .. wrapId
+end
+
+-- Is this (non-mastery) wrap owned for this gun?
+function Wraps.owns(profile: any, wrapId: string, weaponId: string?): boolean
+	local owned = profile and profile.wraps and profile.wraps.owned
+	if not owned then
+		return false
+	end
+	local w = Wraps.ById[wrapId]
+	if Wraps.perGun(w) then
+		return weaponId ~= nil and owned[Wraps.key(weaponId, wrapId)] == true
+	end
+	return owned[wrapId] == true
+end
+
+-- The shop wraps a gun does not have yet (what the daily crate can give it), in list order.
+function Wraps.missingOn(profile: any, weaponId: string): { Wrap }
+	local out = {}
+	for _, w in Wraps.List do
+		if Wraps.perGun(w) and not Wraps.owns(profile, w.id, weaponId) then
+			table.insert(out, w)
+		end
+	end
+	return out
+end
+
+-- The Gold price of a shop wrap on a gun of this rarity.
+function Wraps.priceFor(gunRarity: number): number
+	local Prices = require(script.Parent.Prices) :: any
+	local list = Prices.wrapByGunRarity :: { number }?
+	return if list then list[math.clamp(math.floor(gunRarity), 1, #list)] or Prices.wrap else Prices.wrap
+end
+
 -- The grip material for a wrap (SmoothPlastic unless the wrap names one).
 function Wraps.material(w: Wrap): Enum.Material
 	local name = w.material

@@ -16950,6 +16950,1327 @@
             ],
             "Transparency": 0.55
           }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 1
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_cruiser_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_cruiser_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -0.939693,
+                    0,
+                    0.34202
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -0.34202,
+                    0,
+                    -0.939693
+                  ]
+                ],
+                "position": [
+                  -40,
+                  2,
+                  -1250
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 1
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_cruiser_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_cruiser_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -0.939693,
+                    0,
+                    -0.34202
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0.34202,
+                    0,
+                    -0.939693
+                  ]
+                ],
+                "position": [
+                  40,
+                  2,
+                  -1250
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Tape",
+            "Stage": 1
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_tape",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.8,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_tape",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  0,
+                  2,
+                  -1236
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              34,
+              3.6,
+              0.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "SwatVan",
+            "Stage": 2
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_swat",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_swat",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  0,
+                  2,
+                  -1262
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              8,
+              22
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Barricade",
+            "Stage": 2
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_barricade_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_barricade_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -20,
+                  2,
+                  -1238
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              3,
+              2.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Barricade",
+            "Stage": 2
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_barricade_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_barricade_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  20,
+                  2,
+                  -1238
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              3,
+              2.6
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 3
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_cruiser_far_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_cruiser_far_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  -85,
+                  2,
+                  -1256
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Cruiser",
+            "Stage": 3
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_cruiser_far_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  3.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_cruiser_far_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    -1
+                  ]
+                ],
+                "position": [
+                  85,
+                  2,
+                  -1256
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              7,
+              5,
+              14
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Sawhorse",
+            "Stage": 3
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_sawhorse_w",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_sawhorse_w",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  -60,
+                  2,
+                  -1237
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              6,
+              3,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Mesh": "Sawhorse",
+            "Stage": 3
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_sawhorse_e",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  2.5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_sawhorse_e",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    1,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                "position": [
+                  60,
+                  2,
+                  -1237
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              6,
+              3,
+              1.2
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
+        },
+        {
+          "attributes": {
+            "Boss": true,
+            "Mesh": "Ambulance",
+            "Stage": 0
+          },
+          "children": [
+            {
+              "children": [
+                {
+                  "className": "TextLabel",
+                  "name": "Text",
+                  "properties": {
+                    "BackgroundColor3": [
+                      0.08,
+                      0.08,
+                      0.1
+                    ],
+                    "BackgroundTransparency": 0.4,
+                    "BorderSizePixel": 0,
+                    "Font": "GothamBold",
+                    "Size": {
+                      "UDim2": [
+                        [
+                          1,
+                          0
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ]
+                    },
+                    "Text": "DRESS · grass_ambulance",
+                    "TextColor3": [
+                      0.91,
+                      0.435,
+                      0.949
+                    ],
+                    "TextSize": 10
+                  }
+                }
+              ],
+              "className": "BillboardGui",
+              "name": "NodeTag",
+              "properties": {
+                "AlwaysOnTop": false,
+                "LightInfluence": 0,
+                "MaxDistance": 60,
+                "Size": {
+                  "UDim2": [
+                    [
+                      0,
+                      170
+                    ],
+                    [
+                      0,
+                      16
+                    ]
+                  ]
+                },
+                "StudsOffsetWorldSpace": [
+                  0,
+                  5,
+                  0
+                ]
+              }
+            }
+          ],
+          "className": "Part",
+          "name": "grass_ambulance",
+          "properties": {
+            "Anchored": true,
+            "CFrame": {
+              "CFrame": {
+                "orientation": [
+                  [
+                    -0.939693,
+                    0,
+                    0.34202
+                  ],
+                  [
+                    0,
+                    1,
+                    0
+                  ],
+                  [
+                    -0.34202,
+                    0,
+                    -0.939693
+                  ]
+                ],
+                "position": [
+                  -120,
+                  2,
+                  -1262
+                ]
+              }
+            },
+            "CanCollide": false,
+            "CanQuery": true,
+            "CanTouch": false,
+            "CastShadow": false,
+            "Color": [
+              0.91,
+              0.435,
+              0.949
+            ],
+            "Locked": false,
+            "Material": "SmoothPlastic",
+            "Size": [
+              8,
+              8,
+              17
+            ],
+            "Tags": [
+              "GHS_Dressing"
+            ],
+            "Transparency": 0.55
+          }
         }
       ],
       "className": "Folder",

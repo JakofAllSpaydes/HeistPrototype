@@ -217,8 +217,9 @@ local Config = {
 	EnemyHitKnockback = 0, -- studs/s added along the shot on a hit (0 = none)
 	RagdollEnabled = true, -- false: every kill shrinks out as before
 	ActiveRagdolls = 8, -- bodies on the floor at once; past this a kill shrinks out (performance cap)
-	RagdollLifetime = 2.0, -- a body lies this long, then fades over RagdollFadeSec and is removed
-	RagdollFadeSec = 0.5,
+	RagdollLifetime = 1.0, -- a body lies this long, then fades over RagdollFadeSec and is removed (Round 30d: was 2)
+	RagdollFadeSec = 0.3, -- (Round 30d: was 0.5)
+	ShrinkOutSec = 0.12, -- Round 30d: a kill with no ragdoll shrinks away this fast (was 0.2); either way it takes no shots
 	RagdollImpulse = 40, -- studs/s along the killing shot
 	RagdollLift = 14, -- studs/s upward, so the body hops before it drops
 	RagdollSpin = 10, -- tumble
@@ -1191,7 +1192,7 @@ local Config = {
 	MasteryWrapIds = { "gunmetal", "masterygold", "blackred" }, -- weapon tier 1 / 2 / 3 unlock these wraps on that gun
 	MasteryPopSec = 3.2, -- the mid-run tier-up card holds this long (cards queue; the reward is live at once)
 	-- INITIATE
-	StimMasteryHealPct = 0.25, -- I: Adrenaline heals this share of max HP on use
+	StimMasteryHealPct = 0.5, -- I: Adrenaline heals this share of max HP on use (Round 30d: was 0.25)
 	MasteryExtraCharges = 1, -- II: Frag and Claymore hold this many extra charges
 	StimExtendSec = 0.5, -- III: every kill during Adrenaline extends it this much...
 	StimExtendCap = 6, -- ...up to this much extra per use
@@ -1398,7 +1399,14 @@ local Config = {
 	-- re-planned every DoorGuideRefreshSec for DoorGuideSec (or until it opens), its loud beacon, and a screen-edge
 	-- arrow whenever the door is off screen.
 	DoorGuideSec = 0, -- Round 19h: 0 = the guide (chevrons, loud beacon, edge arrow) stays up until the door opens
-	DoorGuideRefreshSec = 5,
+	DoorGuideRefreshSec = 2, -- Round 30d: each player's route re-plans at least this often (was 5, shared by all)
+	DoorGuideReplanStuds = 5, -- Round 30d: ... and as soon as they have moved this far since its last plan
+	DoorGuideEdgeDistance = true, -- Round 30d: the screen-edge arrow carries the live distance to the door
+	-- Round 30d: containment. A member found inside one of these zones while it is still shut goes back to where they
+	-- last stood in an open zone; an enemy found there is removed. (The lobby, vault and tunnel have their own rules.)
+	ZoneContainZones = { "upper", "back", "stairs" },
+	ZoneContainTickSec = 0.2,
+	ChainBlockerHeight = 14, -- studs: a chain door's invisible wall (was 8, low enough to jump)
 	DoorInteractTime = 3, -- hold length at a door (a node's InteractTime overrides)
 	DoorOpenCashReward = 400, -- per player when a door opens (a node's CashReward overrides)
 	DoorHoldSec = 2, -- a released hold keeps its fill this long, then resets
@@ -1463,7 +1471,8 @@ local Config = {
 	-- (doors, windows and the vault are stateful), so a second party on a busy map waits on its pad.
 	MapInstancesPerMap = 1, -- parties per map at once (above 1 needs map copies: out of scope, capped to 1)
 	MapBusyAutoStart = true, -- a waiting party starts the moment its map frees (false: its countdown restarts)
-	PadBoardWidth = 8, -- studs wide, the billboard over each queue pad (its height follows)
+	PadBoardWidth = 11, -- studs wide, the floating text over each queue pad (its height follows; Round 30d: was 8)
+	PadBoardTitle = "START HEIST", -- Round 30d: an open pad's board (was PAD 1-4); its crew count 0/4 CREW goes under it
 	PadBoardLift = 4.5, -- studs above the middle of the pad
 	MapBusyText = "MAP BUSY · %s IS INSIDE", -- the pad's billboard line while it waits (%s = the crew inside)
 	-- Round 16: difficulty is live. Each row scales enemy HP (hpMult) and damage (dmgMult), the wave's enemy count
@@ -1930,7 +1939,7 @@ local Config = {
 	-- The red screen and stamp stay this much longer, then the run end cutscene starts. The whole window
 	-- (RunOverSlowSec + RunOverHoldSec) is when REVIVE EVERYBODY still saves the run: the crew stands up and the
 	-- same wave restarts.
-	RunOverHoldSec = 4,
+	RunOverHoldSec = 9, -- Round 30d: was 4 (a 10 s window, with RunOverSlowSec, to buy the team revive)
 	RunOverTimeScale = 0.3, -- player and enemy speed during the slow-mo
 	-- Downed sidearm: the held gun is stowed and a Common pistol takes its place until revive (back exactly
 	-- as it was) or bleed-out (the stowed gun drops as ground loot).
@@ -1964,7 +1973,7 @@ local Config = {
 	MvpKillWeight = 1,
 	MvpCashWeight = 0.05,
 	MvpReviveWeight = 40,
-	SummaryAutoLobbySec = 30, -- TO LOBBY fires on its own after this
+	SummaryAutoLobbySec = 60, -- TO LOBBY fires on its own after this (Round 30d: was 30)
 	SummaryPassOpenDelaySec = 0.6, -- Round 19c: CLAIM IN PASS goes to the hub first; the pass opens this long after you land
 	SummaryCountUpSec = 1, -- GOLD EARNED count-up length
 
@@ -1979,6 +1988,9 @@ local Config = {
 	-- Fake clocks: every timer below runs on the player's fake clock (real UTC + the debug offset on the profile).
 	FeaturedRotationSec = 2 * 86400 + 14 * 3600, -- the featured bundle rotates this often (LEAVING IN hh:mm:ss)
 	DailyShopItems = 6, -- FEATURED's daily single items (DailyShop.lua), redrawn every fake UTC day
+	-- Round 30d: each daily shop slot rolls a category, then a rarity, then an item (the shared MixedRoll).
+	DailyShopCategoryWeights = { weapon = 40, mask = 40, emote = 20, wrap = 0 },
+	DailyShopRarityWeights = { 30, 30, 22, 12, 6 }, -- Common .. Legendary
 	DailyShopRerollPrice = 25, -- R$: REROLL on DAILY ITEMS draws a fresh set for you today (no limit)
 	FeaturedEpochUtc = 1793318400, -- 2026-10-30 00:00 UTC: the rotation clock counts from here
 	BundleRevealStagger = 0.3, -- the stacked reveal cards each item in this far apart
@@ -2128,6 +2140,14 @@ local Config = {
 		elite = { weights = { 8, 22, 34, 25, 11 }, color = "3A1C46", trim = "E86FF2", name = "ELITE" },
 	},
 	DailyCrateFirstIsGun = true, -- the first daily crate a profile ever opens rolls from the guns only
+	DailyCrateSpin3Price = 199, -- Round 30d: fake R$, ×3 spins under the sheet's main button (product dailycrate_spin3)
+	DailyCrateSpin10Price = 599, -- ×10 spins (product dailycrate_spin10)
+	DailyMysteryCycleSec = 1.4, -- the sheet's mystery frame shows the next darkened possible reward this often
+	-- Round 30d: the daily crate rolls a category first (weights), then a rarity (the tier's), then the item. A wrap goes
+	-- to an owned gun of that rarity, the guns missing the most shop wraps first, as one of the wraps it lacks.
+	DailyCrateCategoryWeights = { weapon = 45, mask = 30, wrap = 25 },
+	DailyWrapWeights = { crimson = 10, arctic = 10, jade = 10, royal = 6, void = 6, gold = 3 }, -- per shop wrap
+	DailyWrapWeightDefault = 5, -- a shop wrap missing from DailyWrapWeights
 	DailyCrateRerollEnabled = true, -- the claimed podium offers ROLL AGAIN for fake R$
 	DailyCrateRerollPrice = 79, -- product dailycrate_reroll
 	DailyCrateRerollMaxPerDay = 0, -- 0 = unlimited
@@ -2309,6 +2329,8 @@ local Config = {
 	-- walls only within BagWallRange (the whole map during an intermission), gone beyond BagMarkerRange, 3+ bags
 	-- within LootClusterRadius as one ×N, the nearest LootMarkerCap shown.
 	ObjectiveMarkerCap = 1,
+	ObjectiveHintRange = 30, -- Round 30d: an Objective pill shows its key hint (E · CUT) only within this many studs
+	ObjectiveHighlightFill = 0.12, -- Round 30d: the called door / chains / shutters outlined in amber through walls (fill opacity)
 	JobNearRange = 25, -- studs: inside it the Job pill drops its distance and the pulse stops
 	JobPulseSec = 3, -- seconds between the Job tier's floor chevron pulses
 	JobPulseLength = 18, -- studs of floor the pulse runs ahead of you toward the job
@@ -2322,6 +2344,9 @@ local Config = {
 	LootClusterRadius = 10, -- studs: 3+ bags this close together collapse into one ×N marker
 	LootClusterMin = 3,
 	LootIconMobileScale = 0.85, -- phones: loot icons this size
+	PlaceableDropHeight = 7, -- Round 30d: placeables (turrets, barricade, claymore, drum...) drop in from this many studs up
+	PlaceableDropSec = 0.3, -- ... over this long, then the placement ring and thump (0 = they just appear, as before)
+	LootIconLift = 3.4, -- Round 30d: studs above a bag's floor point where its icon starts (it grows up from there, clear of the bag)
 	LootLookAngle = 7, -- degrees off the screen centre that count as looking at a loot marker (its label shows)
 	LootLookLabelSec = 1, -- the looked-at label holds this long
 	GunCrateTagScale = 0.8, -- the GUN CRATE tag at Loot size
@@ -2345,10 +2370,11 @@ local Config = {
 	-- 1 Police Siren Slow Vehicle Away 1, 2 Accident Scene 4, 3 Siren Composite 2. Alternatives: 9117810961 Police Siren
 	-- Slow Vehicle Away 2, 9117810647 Police Siren Old Hand Crank Style 1, 9112759347 City Night Ambience 1.
 	DressingAmbience = { "rbxassetid://9117810852", "rbxassetid://9112736857", "rbxassetid://9112871933" },
-	DressingAmbienceVolume = 0.35,
+	DressingAmbienceVolume = 0.6, -- Round 30d: out on the street (was 0.35)
 	DressingAmbienceBossMult = 1.7, -- the siren bed this much louder on a boss wave
 	DressingAmbienceCombatDuck = 0.6, -- ... and this much quieter while a wave is being fought
-	DressingAmbienceRollOff = { 60, 420 }, -- studs: full volume within the first, silent past the second (it carries in)
+	DressingAmbienceRollOff = { 40, 300 }, -- studs from the nearest police vehicle: full within the first, silent past the second
+	DressingInsideMult = 0.2, -- Round 30d: inside the bank (any zone but the street) the sirens and the rotor drop to this share
 	-- Relics (step 5): a map's ultra-rare masks (Relics.lua), dropped only by its gun crates (RelicService.lua).
 	RelicsEnabled = true, -- false = no roll, no first-crate drop, no Create Match rail
 	RelicsPerMap = 4, -- set size per map

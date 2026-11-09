@@ -678,6 +678,22 @@ if process.args[1] == "brief13" then
 	-- Boss waves (additive): an ambulance and extra cruiser lights.
 	dress("ambulance", { -165 * K, 2, -183 }, { 8, 8, 17 }, -90, scaled(0, "Ambulance", { Boss = true }))
 	ends("cruiser_boss", 172, -170, { 7, 5, 14 }, -100, scaled(0, "Cruiser", { Boss = true }))
+	-- Round 30d: the grass plaza across the road dresses up too, everything nosed at the bank (yaw 180 faces +Z). It
+	-- is behind the grass Blocker, so nothing here is in anyone's way.
+	local grass = function(stage: number, mesh: string, boss: boolean?): { [string]: any }
+		return { Stage = stage, Mesh = mesh, Boss = boss == true or nil }
+	end
+	dress("grass_cruiser_w", { -40, 2, -250 }, { 7, 5, 14 }, 160, grass(1, "Cruiser"))
+	dress("grass_cruiser_e", { 40, 2, -250 }, { 7, 5, 14 }, -160, grass(1, "Cruiser"))
+	dress("grass_tape", { 0, 2, -236 }, { 34, 3.6, 0.6 }, 0, grass(1, "Tape"))
+	dress("grass_swat", { 0, 2, -262 }, { 8, 8, 22 }, 180, grass(2, "SwatVan"))
+	dress("grass_barricade_w", { -20, 2, -238 }, { 8, 3, 2.6 }, 0, grass(2, "Barricade"))
+	dress("grass_barricade_e", { 20, 2, -238 }, { 8, 3, 2.6 }, 0, grass(2, "Barricade"))
+	dress("grass_cruiser_far_w", { -85, 2, -256 }, { 7, 5, 14 }, 180, grass(3, "Cruiser"))
+	dress("grass_cruiser_far_e", { 85, 2, -256 }, { 7, 5, 14 }, 180, grass(3, "Cruiser"))
+	dress("grass_sawhorse_w", { -60, 2, -237 }, { 6, 3, 1.2 }, 0, grass(3, "Sawhorse"))
+	dress("grass_sawhorse_e", { 60, 2, -237 }, { 6, 3, 1.2 }, 0, grass(3, "Sawhorse"))
+	dress("grass_ambulance", { -120, 2, -262 }, { 8, 8, 17 }, 160, grass(0, "Ambulance", true))
 	-- The helicopter's loop: an oval over the street and the bank front, flown in Index order at HeliAltitude.
 	for i = 1, 8 do
 		local a = (i - 1) / 8 * math.pi * 2

@@ -227,7 +227,7 @@ function Models.coin(color: Color3): Model
 end
 
 -- The 3D stand-in for a reward (crate reveals, the pass hero): guns, masks, wraps on a rifle, a coin otherwise.
-function Models.item(r: { kind: string, id: string?, amount: number? }, rarity: number): Model
+function Models.item(r: { kind: string, id: string?, amount: number?, on: string? }, rarity: number): Model
 	local color = Rarity.color(math.clamp(rarity, 1, 5))
 	if r.kind == "weapon" and r.id then
 		return Models.gun(r.id, color)
@@ -235,7 +235,8 @@ function Models.item(r: { kind: string, id: string?, amount: number? }, rarity: 
 		return Models.maskBust(r.id)
 	elseif r.kind == "wrap" and r.id then
 		local w = Wraps.ById[r.id]
-		return Models.gun("AK-47", if w then Color3.fromHex(w.color) else color, r.id)
+		-- Round 30d: a per-gun wrap on the gun it is for (the daily crate names it), else the AK-47.
+		return Models.gun(r.on or "AK-47", if w then Color3.fromHex(w.color) else color, r.id)
 	elseif r.kind == "gold" then
 		return Models.coin(Color3.fromHex("E8B64C"))
 	elseif r.kind == "tokens" then

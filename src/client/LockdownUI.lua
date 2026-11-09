@@ -12,6 +12,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Lines = require(Shared:WaitForChild("CrewCall"):WaitForChild("Lines"))
+local Config = require(Shared:WaitForChild("Config"))
 
 local ClientState = require(script.Parent:WaitForChild("ClientState"))
 local UI = require(script.Parent:WaitForChild("UI"):WaitForChild("UI"))
@@ -29,6 +30,8 @@ local banner: Frame
 local title: TextLabel
 local sub: TextLabel
 local arrow: Frame
+local arrowStroke: UIStroke
+local dist: TextLabel
 local conn: RBXScriptConnection? = nil
 
 local function build()
@@ -68,25 +71,37 @@ local function build()
 	})
 	UI.stroke(sub, Theme.Colors.black, S(1), 0.3)
 	-- The edge arrow: a ▲ (the house marker glyph) on a dark disc, turned to point at the door.
+	-- Round 30d: amber like every objective (side jobs are the blue ones), bigger, pulsing, with the live distance.
 	arrow = UI.frame({
 		BackgroundColor3 = Theme.Colors.bg,
-		BackgroundTransparency = 0.25,
+		BackgroundTransparency = 0.15,
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Size = UDim2.fromOffset(S(40), S(40)),
+		Size = UDim2.fromOffset(S(52), S(52)),
 		Visible = false,
 		Parent = gui,
 	})
-	UI.corner(arrow, S(20))
-	UI.stroke(arrow, Theme.Colors.blue, S(2))
-	local glyph = UI.text({
+	UI.corner(arrow, S(26))
+	arrowStroke = UI.stroke(arrow, Theme.Colors.amber, S(3))
+	UI.text({
 		Text = "▲",
 		FontFace = Theme.Fonts.body,
-		TextSize = S(22),
-		TextColor3 = Theme.Colors.blue,
+		TextSize = S(28),
+		TextColor3 = Theme.Colors.amber,
 		Size = UDim2.fromScale(1, 1),
 		Parent = arrow,
 	})
-	local _ = glyph
+	-- The distance sits under the disc and never turns with it.
+	dist = UI.text({
+		Text = "",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(16),
+		TextColor3 = Theme.Colors.amber,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Size = UDim2.fromOffset(S(80), S(18)),
+		Visible = false,
+		Parent = gui,
+	})
+	UI.stroke(dist, Theme.Colors.black, S(1.5), 0.2)
 end
 
 local function disconnectIfIdle()
@@ -94,6 +109,7 @@ local function disconnectIfIdle()
 		conn:Disconnect()
 		conn = nil
 		arrow.Visible = false
+		dist.Visible = false
 	end
 end
 
@@ -101,6 +117,7 @@ local function stop()
 	target = nil
 	banner.Visible = false
 	arrow.Visible = false
+	dist.Visible = false
 	disconnectIfIdle()
 end
 
@@ -120,12 +137,14 @@ local function step()
 	local cam = Workspace.CurrentCamera
 	if not t or not cam then
 		arrow.Visible = false
+		dist.Visible = false
 		return
 	end
 	local view = cam.ViewportSize
 	local p, onScreen = cam:WorldToViewportPoint(t)
 	if onScreen and p.Z > 0 then
 		arrow.Visible = false
+		dist.Visible = false
 		return
 	end
 	local center = view / 2
@@ -143,6 +162,17 @@ local function step()
 	arrow.Position = UDim2.fromOffset(pos.X, pos.Y)
 	arrow.Rotation = math.deg(math.atan2(dir.X, -dir.Y)) -- ▲ points up at 0
 	arrow.Visible = true
+	-- A slow breathe so it reads from the corner of your eye, and how far it is.
+	local beat = 0.5 + 0.5 * math.sin(os.clock() * 5)
+	arrowStroke.Thickness = UI.S(2 + 2 * beat)
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root and Config.DoorGuideEdgeDistance then
+		dist.Text = string.format("%dm", math.round((t - root.Position).Magnitude))
+		dist.Position = UDim2.fromOffset(pos.X, pos.Y + UI.S(28))
+		dist.Visible = true
+	else
+		dist.Visible = false
+	end
 end
 
 local function start(data: any)

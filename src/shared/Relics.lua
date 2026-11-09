@@ -12,6 +12,7 @@ export type Relic = {
 	id: string,
 	name: string, -- THE TELLER (the popup's and the rail's name)
 	map: string, -- the map whose gun crates drop it
+	kind: string, -- Round 30d: what it unlocks: "mask" (all four today); later "wrap", "weapon"...
 	color: string,
 	accent: string?,
 	type: string,
@@ -31,6 +32,7 @@ Relics.List = {
 		id = "bank_teller",
 		name = "The Teller",
 		map = "TheBank",
+		kind = "mask",
 		color = "C9A46A",
 		accent = "3A2A16",
 		type = "Face",
@@ -44,6 +46,7 @@ Relics.List = {
 		id = "bank_guard",
 		name = "The Guard",
 		map = "TheBank",
+		kind = "mask",
 		color = "2E3B4E",
 		accent = "E8B64C",
 		type = "Head",
@@ -57,6 +60,7 @@ Relics.List = {
 		id = "bank_manager",
 		name = "The Manager",
 		map = "TheBank",
+		kind = "mask",
 		color = "1E1A16",
 		accent = "E8B64C",
 		type = "Face",
@@ -70,6 +74,7 @@ Relics.List = {
 		id = "bank_vault",
 		name = "The Vault",
 		map = "TheBank",
+		kind = "mask",
 		color = "8C9399",
 		accent = "FFD36B",
 		type = "Head",

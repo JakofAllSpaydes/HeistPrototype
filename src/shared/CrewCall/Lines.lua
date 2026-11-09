@@ -133,7 +133,8 @@ local Lines = {
 	door = {
 		crewLead = "MARLOW",
 		typeLabel = "DOOR",
-		kind = "job",
+		kind = "door", -- Round 30d: amber like every objective (was "job" blue, the side jobs' colour)
+		zoneLocked = "LOCKED · %s FIRST", -- Round 30d: the toast when containment puts you back (the door's ping text)
 		lines = {
 			D1 = "Front doors. Make some noise.",
 			D2 = "They chained the stairs. Cut it.",
@@ -286,6 +287,7 @@ local Lines = {
 	-- Brief 13: the pre-heist on THE BANK (Breach.lua, the wave bar's pill, the summary). [Copy: TBA]
 	preHeist = {
 		doorLine = "Front doors. Make some noise.", -- MARLOW's card with the front-door objective from the first second
+		sign = "START HEIST", -- Round 30d: the front doors' sign board until the breach (was UNLOCKS · WAVE 2)
 		nagLabel = "WHENEVER YOU'RE READY",
 		stamp = "HEIST ON", -- the centre stamp at the breach
 		pill = "BREACH WHEN READY", -- where the wave bar sits until the breach

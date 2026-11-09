@@ -32,6 +32,8 @@ local CrewCall = require(script.Parent.CrewCall)
 local Pause = require(script.Parent.Pause)
 local Minigames = require(script.Parent.Minigames)
 local GuidePath = require(script.Parent.GuidePath)
+local Enemy = require(script.Parent.Enemy) -- Round 30d: containment removes enemies from closed zones
+local Remotes = require(script.Parent.SlotRemotes)
 
 local Doors = {}
 
@@ -108,7 +110,14 @@ function Doors.everOpened(group: string): boolean
 	return g ~= nil and g.ever
 end
 
+-- Round 30d: a sign that says something else for now (the pre-heist's front doors read START HEIST).
+local signOverride: { [string]: string } = {}
+
 local function signText(door: MapLoader.Door): string
+	local override = signOverride[door.group]
+	if override then
+		return override
+	end
 	if door.triggerWave == 0 then
 		return Lines.door.vaultSign
 	end
@@ -297,7 +306,10 @@ local function buildProp(dp: MapLoader.DoorPart, door: MapLoader.Door): Prop
 	model.Name = "DoorProp_" .. dp.name
 	local cf, size = dp.cframe, dp.size
 	-- The blocker: solid for players and enemies, never in the way of bullets; paths treat it as a wall.
-	local blockSize = if dp.style == "chain" then Vector3.new(size.X, math.max(size.Y, 8), size.Z) else size
+	-- Round 30d: chains block up to ChainBlockerHeight (was 8: a jump cleared it).
+	local blockSize = if dp.style == "chain"
+		then Vector3.new(size.X, math.max(size.Y, Config.ChainBlockerHeight), size.Z)
+		else size
 	local floor = Ground.y(cf.Position, cf.Position.Y - size.Y / 2)
 	local blockCF = if dp.style == "chain"
 		then cf.Rotation + Vector3.new(cf.Position.X, floor + blockSize.Y / 2, cf.Position.Z)
@@ -846,18 +858,49 @@ function guideTo(group: string, target: Vector3)
 	local sec = if Config.DoorGuideSec > 0 then Config.DoorGuideSec else 1e6
 	World.fireRun("DoorPing", { group = group, sec = sec })
 	World.fireRun("DoorGuide", { group = group, position = target, sec = sec })
+	-- Round 30d: each player gets their own route (nobody sees a teammate's), re-planned once they have moved
+	-- DoorGuideReplanStuds or every DoorGuideRefreshSec; the client swaps the new strip in for the old one.
+	-- Round 30d: a group with several parts (both stair chains) is several ways in: each player's route goes to the
+	-- part nearest them (the near side of it), so walking toward the other one re-points the strip there.
+	local approaches: { Vector3 } = {}
+	local door = MapLoader.doors[group]
+	for _, dp in if door then door.parts else {} do
+		table.insert(approaches, Ground.at(dp.cframe.Position - towardZone(dp) * 4))
+	end
+	if #approaches == 0 then
+		approaches = { target }
+	end
+	local function nearestTo(p: Vector3): Vector3
+		local best, bestD = approaches[1], math.huge
+		for _, a in approaches do
+			local d = (a - p).Magnitude
+			if d < bestD then
+				best, bestD = a, d
+			end
+		end
+		return best
+	end
 	task.spawn(function()
 		local t0 = os.clock()
+		local last: { [Player]: { at: Vector3, t: number } } = {}
 		while os.clock() - t0 < sec and stateOf(group).state == "called" and World.inRun() and not World.runOver do
-			local left = sec - (os.clock() - t0)
-			local span = math.min(Config.DoorGuideRefreshSec + 0.5, left)
+			local now = os.clock()
+			local span = math.min(Config.DoorGuideRefreshSec * 2 + 2, sec - (now - t0))
 			for _, p in World.runAudience() do
 				local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
 				if root and PlayerState.isStanding(PlayerState.get(p)) then
-					GuidePath.arrows(root.Position, target, span)
+					local l = last[p]
+					if
+						not l
+						or (root.Position - l.at).Magnitude >= Config.DoorGuideReplanStuds
+						or now - l.t >= Config.DoorGuideRefreshSec
+					then
+						last[p] = { at = root.Position, t = now }
+						GuidePath.arrows(root.Position, nearestTo(root.Position), span, p, "door")
+					end
 				end
 			end
-			task.wait(Config.DoorGuideRefreshSec)
+			task.wait(0.35)
 		end
 	end)
 end
@@ -929,10 +972,13 @@ end
 
 -- Brief 13: call a door now, ahead of the queue, whatever its TriggerWave (the pre-heist's front doors from the
 -- first second). `line` replaces MARLOW's door line on its card.
-function Doors.callNow(group: string, line: string?)
+function Doors.callNow(group: string, line: string?, sign: string?)
 	local g = stateOf(group)
 	if not onBank() or not MapLoader.doors[group] or g.state ~= "closed" then
 		return
+	end
+	if sign then
+		Doors.setSign(group, sign)
 	end
 	g.state = "queued"
 	g.dueWave = World.wave
@@ -942,6 +988,31 @@ function Doors.callNow(group: string, line: string?)
 	table.insert(queue, 1, group)
 	Log.event("Door", "%s called now (pre-heist)", group)
 	Doors.pump()
+end
+
+-- Round 30d: repaint a group's sign boards (nil = back to its own UNLOCKS line).
+function Doors.setSign(group: string, text: string?)
+	if text then
+		signOverride[group] = text
+	else
+		signOverride[group] = nil
+	end
+	local door = MapLoader.doors[group]
+	if not door then
+		return
+	end
+	local shown = string.upper(signText(door))
+	for _, prop in groupProps(group) do
+		local board = prop.model:FindFirstChild("Sign")
+		if board then
+			for _, d in board:GetDescendants() do
+				if d:IsA("TextLabel") then
+					d.Text = shown
+				end
+			end
+		end
+	end
+	Doors.sendState()
 end
 
 -- Doors due by `wave` join the queue (by Priority) and the first one takes the slot when it is free.
@@ -1056,6 +1127,68 @@ local function boxOpen(b: any): boolean
 		return true
 	end
 	return zoneOpen(b.zone)
+end
+
+------------------------------------------------------------------ Containment (Round 30d)
+-- The door blockers only fill the doorways, so a jump over a railing or past a chain got players (and so enemies
+-- chasing them) into a zone that is still shut. Every ZoneContainTickSec: a member inside a closed zone listed in
+-- ZoneContainZones goes back to where they last stood on the ground in an open zone (a LOCKED toast names the door
+-- to open), and an enemy inside one is removed (no cash, no credit). The lobby (the window breach), the vault and
+-- the tunnel keep their own rules and are not listed.
+local lastGood: { [Player]: CFrame } = {}
+local lastLockToast: { [Player]: number } = {}
+
+local function contained(zone: string?): boolean
+	return zone ~= nil and table.find(Config.ZoneContainZones, zone) ~= nil and not zoneOpen(zone)
+end
+
+local function doorOpening(zone: string): MapLoader.Door?
+	for _, door in MapLoader.doors do
+		if door.triggerWave > 0 and table.find(door.opens, zone) then
+			return door
+		end
+	end
+	return nil
+end
+
+local function containTick()
+	if not onBank() or not World.inRun() then
+		return
+	end
+	for _, p in World.runAudience() do
+		local char = p.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not root or not hum or not char then
+			continue
+		end
+		local zone = MapLoader.zoneAt(root.Position)
+		if contained(zone) then
+			local back = lastGood[p]
+			if back then
+				char:PivotTo(back)
+				root.AssemblyLinearVelocity = Vector3.zero
+			end
+			local now = os.clock()
+			if now - (lastLockToast[p] or 0) > 2 then
+				lastLockToast[p] = now
+				local door = doorOpening(zone :: string)
+				Remotes.Juice:FireClient(p, "Toast", {
+					text = string.format(Lines.door.zoneLocked, if door then door.pingText else "THE DOOR"),
+				})
+				Log.event("Door", "%s pushed back out of %s (closed)", p.Name, zone :: string)
+			end
+		elseif hum.FloorMaterial ~= Enum.Material.Air then
+			lastGood[p] = root.CFrame -- standing on something, in an open zone (or none)
+		end
+	end
+	for _, d in Enemy.all() do
+		local z = MapLoader.zoneAt(d.root.Position)
+		if contained(z) then
+			Log.event("Door", "enemy %s inside closed %s: removed", d.row.id, z :: string)
+			Enemy.kill(d.model)
+		end
+	end
 end
 
 ------------------------------------------------------------------ Run lifecycle
@@ -1264,6 +1397,9 @@ end
 function Doors.resetRun()
 	queue = {}
 	lineOverride = {}
+	for group in table.clone(signOverride) do
+		Doors.setSign(group, nil)
+	end
 	Doors.openedLog = {}
 	for gid, door in MapLoader.doors do
 		local g = stateOf(gid)
@@ -1306,6 +1442,16 @@ function Doors.init()
 	MapLoader.onRead = Doors.build
 	CrewCall.onSlotFree = Doors.pump
 	CrewCall.supersedes = Doors.supersedes
+	-- Round 30d: nobody gets into a zone that is still shut.
+	task.spawn(function()
+		while true do
+			task.wait(Config.ZoneContainTickSec)
+			local ok, err = pcall(containTick)
+			if not ok then
+				warn("[GHS Door] containment: " .. tostring(err))
+			end
+		end
+	end)
 
 	-- The hold: any standing holder feeds the group; released, it keeps its fill DoorHoldSec, then resets.
 	RunService.Heartbeat:Connect(function(dt)

@@ -5,6 +5,7 @@
 local Config = require(script.Parent.Config)
 local Crates = require(script.Parent.Crates)
 local Rewards = require(script.Parent.Rewards)
+local MixedRoll = require(script.Parent.MixedRoll) -- Round 30d
 
 export type Entry = { kind: string, id: string }
 
@@ -40,15 +41,43 @@ function DailyShop.rerollsOn(profile: any, day: number): number
 	return math.max(0, math.floor(tonumber(r.count) or 0))
 end
 
--- The day's items (a fake UTC day number) after `rerolls` rerolls, in display order.
+-- The day's items (a fake UTC day number) after `rerolls` rerolls, in display order. Round 30d: each slot is the shared
+-- mixed roll (MixedRoll: category by DailyShopCategoryWeights, then rarity by DailyShopRarityWeights, then an item),
+-- seeded by the day so every client and the server draw the same set; nothing shows twice in a day.
+local KINDS = { "weapon", "mask", "emote", "wrap" } -- fixed order: the seeded roll must see the same list everywhere
+
 function DailyShop.forDay(day: number, rerolls: number?): { Entry }
 	local rng = Random.new(day * 7919 + 17 + (rerolls or 0) * 104729)
-	local pool = table.clone(DailyShop.Pool)
+	local byKind: { [string]: { MixedRoll.Entry } } = {}
+	for _, e in DailyShop.Pool do
+		local list = byKind[e.kind] or {}
+		byKind[e.kind] = list
+		table.insert(list, { kind = e.kind, id = e.id, rarity = math.clamp(Rewards.rarity(e :: any), 1, 5) })
+	end
+	local taken: { [string]: boolean } = {}
+	local function skip(e: MixedRoll.Entry): boolean
+		return taken[e.kind .. ":" .. e.id] == true
+	end
 	local out = {}
-	for _ = 1, math.min(Config.DailyShopItems, #pool) do
-		local i = rng:NextInteger(1, #pool)
-		table.insert(out, pool[i])
-		table.remove(pool, i)
+	for _ = 1, Config.DailyShopItems do
+		local categories: { MixedRoll.Category } = {}
+		for _, kind in KINDS do
+			local list = byKind[kind]
+			if list then
+				local w = tonumber((Config.DailyShopCategoryWeights :: any)[kind]) or 0
+				table.insert(categories, MixedRoll.list(kind, w, list, skip))
+			end
+		end
+		local item = MixedRoll.roll({
+			categories = categories,
+			rarityWeights = Config.DailyShopRarityWeights,
+			rng = rng,
+		})
+		if not item then
+			break
+		end
+		taken[item.kind .. ":" .. item.id] = true
+		table.insert(out, { kind = item.kind, id = item.id })
 	end
 	return out
 end

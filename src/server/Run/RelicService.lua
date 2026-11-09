@@ -17,6 +17,8 @@ local Config = require(Shared.Config)
 local Relics = require(Shared.Relics)
 local Maps = require(Shared.Maps)
 local Lines = require(Shared.CrewCall.Lines)
+local Rarity = require(Shared.Rarity)
+local MixedRoll = require(Shared.MixedRoll) -- Round 30d: the crate's bonus roll
 local World = require(script.Parent.World)
 local Remotes = require(script.Parent.SlotRemotes)
 local Profiles = require(script.Parent.Parent.Profiles)
@@ -44,7 +46,11 @@ function RelicService.grant(player: Player, id: string): string
 		return "dupe"
 	end
 	p.relics.owned[id] = true
-	p.masks.owned[id] = true -- equips from the Avatar booth like any mask
+	local row = Relics.ById[id]
+	if row.kind == "mask" then
+		p.masks.owned[id] = true -- equips from the Avatar booth like any mask
+	end
+	-- (Round 30d: other relic kinds unlock through their own owner here when the first one lands.)
 	Profiles.markDirty(player)
 	task.spawn(Profiles.save, player, "relic")
 	Log.event("Relic", "unlock %s %s", player.Name, id)
@@ -80,10 +86,31 @@ local function decide(opener: Player, crateId: string): (string?, string)
 	if #candidates == 0 then
 		return nil, "none left"
 	end
-	local hit = RelicService.forceNext or math.random() < Config.RelicDropChance
+	-- Round 30d: the crate's one bonus roll is the shared mixed roll (MixedRoll): a `relic` category at
+	-- RelicDropChance against `none` for the rest. Other bonus kinds (a wrap, a mask, a weapon unlock) are further
+	-- categories beside these; relics themselves can be any kind (Relics row `kind`).
 	local forced = RelicService.forceNext
 	RelicService.forceNext = false
-	local id = if hit then candidates[math.random(#candidates)] else nil
+	local chance = if forced then 1 else math.clamp(Config.RelicDropChance, 0, 1)
+	local relicCategory: MixedRoll.Category = {
+		id = "relic",
+		weight = chance,
+		rarities = { Rarity.Relic },
+		has = function(_r: number): boolean
+			return #candidates > 0
+		end,
+		pick = function(r: number, _rng: Random?): MixedRoll.Picked?
+			local rid = candidates[math.random(#candidates)]
+			local row = Relics.ById[rid]
+			return { kind = if row then row.kind else "mask", id = rid, rarity = r }
+		end,
+	}
+	local picked = MixedRoll.roll({
+		categories = { relicCategory, MixedRoll.none(1 - chance, { Rarity.Relic }) },
+		rarityWeights = {},
+	})
+	local hit = picked ~= nil
+	local id = if picked then picked.id else nil
 	Log.event(
 		"Relic",
 		"roll %s %s %s%s",

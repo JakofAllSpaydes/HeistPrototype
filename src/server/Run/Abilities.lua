@@ -472,7 +472,11 @@ local function placed(s: Structure, color: Color3, radius: number?)
 	end
 	s.repair = s.attackable and PlayerState.passive(os_, "ENGINEER", 2)
 	register(s)
-	World.fireRun("StructurePlaced", { kind = s.kind, position = s.hitPart.Position, color = color, radius = radius })
+	-- Round 30d: the model goes along so clients can play its drop-in (WorldFx); it is live where it stands at once.
+	World.fireRun(
+		"StructurePlaced",
+		{ kind = s.kind, position = s.hitPart.Position, color = color, radius = radius, model = s.model }
+	)
 end
 
 -- Turret body shared by the three turret kinds: base (the hit part), head and a welded barrel.
@@ -692,11 +696,12 @@ placeField = function(
 			fire.Parent = anchor
 		end
 	else
-		-- The bag: a green box with a white cross.
+		-- The bag (Round 30d: a proper kit, not a tiny box): a green case with a dark lid band, a carry handle and a
+		-- white cross on the top and both long sides.
 		local bag = part({
 			Name = "Bag",
-			Size = Vector3.new(1.6, 1, 1.2),
-			CFrame = CFrame.new(position.X, Ground.y(position) + 0.5, position.Z),
+			Size = Vector3.new(2.2, 1.3, 1.5),
+			CFrame = CFrame.new(position.X, Ground.y(position) + 0.65, position.Z),
 			CanCollide = false,
 			CanQuery = false,
 			Color = COLOR.green,
@@ -704,25 +709,57 @@ placeField = function(
 			Parent = model,
 		})
 		part({
-			Name = "CrossA",
-			Size = Vector3.new(1.0, 0.05, 0.3),
-			CFrame = bag.CFrame * CFrame.new(0, 0.52, 0),
+			Name = "Band",
+			Size = Vector3.new(2.24, 0.16, 1.54),
+			CFrame = bag.CFrame * CFrame.new(0, 0.3, 0),
 			CanCollide = false,
 			CanQuery = false,
-			Color = COLOR.white,
-			Material = Enum.Material.Neon,
+			Color = Color3.fromRGB(30, 34, 40),
+			Material = Enum.Material.SmoothPlastic,
 			Parent = model,
 		})
+		for _, sx in { -1, 1 } do
+			part({
+				Name = "HandlePost",
+				Size = Vector3.new(0.14, 0.4, 0.14),
+				CFrame = bag.CFrame * CFrame.new(sx * 0.45, 0.85, 0),
+				CanCollide = false,
+				CanQuery = false,
+				Color = Color3.fromRGB(30, 34, 40),
+				Material = Enum.Material.SmoothPlastic,
+				Parent = model,
+			})
+		end
 		part({
-			Name = "CrossB",
-			Size = Vector3.new(0.3, 0.05, 1.0),
-			CFrame = bag.CFrame * CFrame.new(0, 0.52, 0),
+			Name = "Handle",
+			Size = Vector3.new(1.04, 0.14, 0.18),
+			CFrame = bag.CFrame * CFrame.new(0, 1.05, 0),
 			CanCollide = false,
 			CanQuery = false,
-			Color = COLOR.white,
-			Material = Enum.Material.Neon,
+			Color = Color3.fromRGB(30, 34, 40),
+			Material = Enum.Material.SmoothPlastic,
 			Parent = model,
 		})
+		-- Crosses: on the top (flat) and on each long side (standing).
+		local faces = {
+			{ CFrame.new(0, 0.66, 0), Vector3.new(0.9, 0.05, 0.28), Vector3.new(0.28, 0.05, 0.9) },
+			{ CFrame.new(0, 0, 0.76), Vector3.new(0.7, 0.22, 0.05), Vector3.new(0.22, 0.7, 0.05) },
+			{ CFrame.new(0, 0, -0.76), Vector3.new(0.7, 0.22, 0.05), Vector3.new(0.22, 0.7, 0.05) },
+		}
+		for _, f in faces do
+			for i = 2, 3 do
+				part({
+					Name = "Cross",
+					Size = f[i] :: Vector3,
+					CFrame = bag.CFrame * (f[1] :: CFrame),
+					CanCollide = false,
+					CanQuery = false,
+					Color = COLOR.white,
+					Material = Enum.Material.Neon,
+					Parent = model,
+				})
+			end
+		end
 	end
 	model.PrimaryPart = disc
 	model.Parent = folder
@@ -754,6 +791,7 @@ placeField = function(
 		math.round(perSec),
 		lifetime
 	)
+	return model -- Round 30d: the med bag's placement juice drops it in
 end
 
 local function removeField(f: Field, reason: string)
@@ -991,8 +1029,12 @@ local function placeMedBag(player: Player, state: PlayerState.State, char: Model
 		radius *= Config.FieldHospitalRadiusMult
 		heal *= Config.FieldHospitalHealMult
 	end
-	placeField("medbag", player, pos, radius, Config.MedBagLifetime, heal, 1)
-	World.fireRun("StructurePlaced", { kind = "medbag", position = pos, color = COLOR.green, radius = radius })
+	local model = placeField("medbag", player, pos, radius, Config.MedBagLifetime, heal, 1)
+	-- Round 30d: like every placeable, the kit drops in (the clients play it from the model).
+	World.fireRun(
+		"StructurePlaced",
+		{ kind = "medbag", position = pos, color = COLOR.green, radius = radius, model = model }
+	)
 end
 
 local function placeHealTurret(player: Player, state: PlayerState.State, char: Model)

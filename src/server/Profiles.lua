@@ -17,6 +17,7 @@ local Weapons = require(Shared.Weapons)
 local Classes = require(Shared.Classes)
 local Masks = require(Shared.Masks)
 local Relics = require(Shared.Relics) -- brief 13
+local Wraps = require(Shared.Wraps) -- Round 30d: per-gun shop wraps
 local Emotes = require(Shared.Emotes)
 local Signal = require(Shared.Signal)
 local InputSettings = require(Shared.InputSettings)
@@ -371,7 +372,16 @@ local function migrate(raw: any): Profile
 	end
 	if typeof(raw.wraps) == "table" and typeof(raw.wraps.owned) == "table" then
 		for id, v in raw.wraps.owned do
-			if v then
+			if not v or typeof(id) ~= "string" then
+				continue
+			end
+			-- Round 30d: shop wraps are per gun now ("<weaponId>|<wrapId>"). One owned the old way (once for every
+			-- gun) becomes owned on every gun the profile has, so nothing is lost.
+			if not string.find(id, "|", 1, true) and Wraps.perGun(Wraps.ById[id]) then
+				for weaponId in p.weapons do
+					p.wraps.owned[Wraps.key(weaponId, id)] = true
+				end
+			else
 				p.wraps.owned[id] = true
 			end
 		end

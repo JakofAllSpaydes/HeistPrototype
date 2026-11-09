@@ -152,8 +152,17 @@ type Job = {
 	near: boolean?,
 	faded: boolean,
 	tierHidden: boolean,
+	mini: Frame, -- Round 30d: the minimized waypoint (a blue ! and the distance) while a main objective is up
+	miniDist: TextLabel,
+	minimized: boolean,
 }
 local job: Job? = nil
+-- Round 30d: a main objective (a called door, the vault) is up: the side job steps back to a small waypoint.
+local mainActive = false
+
+function TierMarkers.setMainObjective(on: boolean)
+	mainActive = on
+end
 
 local function findProp(id: any): Instance?
 	local effects = Workspace:FindFirstChild("Effects")
@@ -285,6 +294,37 @@ function TierMarkers.setJob(id: any, position: Vector3, name: string, hint: stri
 	local barFill = UI.frame({ BackgroundColor3 = Theme.Colors.cash, Size = UDim2.fromScale(0, 1), Parent = bar })
 	UI.corner(barFill, S(3))
 	UI.punch(pill, 1.3, 0.35)
+	-- Round 30d: the minimized waypoint: a small blue ! with the distance under it.
+	local mini = UI.frame({
+		Name = "JobMini",
+		BackgroundColor3 = JOB_BLUE,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromOffset(S(24), S(24)),
+		Visible = false,
+		Parent = gui,
+	})
+	UI.corner(mini, S(5))
+	UI.stroke(mini, Theme.Colors.black, S(1.5), 0.4)
+	UI.text({
+		Text = "!",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(17),
+		TextColor3 = Theme.Colors.bg,
+		Size = UDim2.fromScale(1, 1),
+		Parent = mini,
+	})
+	local miniDist = UI.text({
+		Text = "",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(14),
+		TextColor3 = JOB_BLUE,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, S(2)),
+		Size = UDim2.fromOffset(S(80), S(16)),
+		Parent = mini,
+	})
+	UI.stroke(miniDist, Theme.Colors.black, S(1.5), 0.3)
 	local j: Job = {
 		id = id,
 		position = position,
@@ -304,6 +344,9 @@ function TierMarkers.setJob(id: any, position: Vector3, name: string, hint: stri
 		near = nil,
 		faded = false,
 		tierHidden = false,
+		mini = mini,
+		miniDist = miniDist,
+		minimized = false,
 	}
 	job = j
 	-- The outline: the beacon is server-built, so wait for it to replicate.
@@ -319,7 +362,10 @@ function TierMarkers.setJob(id: any, position: Vector3, name: string, hint: stri
 				h.FillColor = JOB_BLUE
 				h.FillTransparency = 1 - math.clamp(Config.JobHighlightFill, 0, 1)
 				h.OutlineColor = JOB_BLUE
-				h.OutlineTransparency = 0
+				h.OutlineTransparency = if j.minimized then 0.55 else 0
+				if j.minimized then
+					h.FillTransparency = 1
+				end
 				h.Parent = fx()
 				j.highlight = h
 				return
@@ -499,13 +545,15 @@ local function icon(
 	end
 	local att = Instance.new("Attachment")
 	att.Name = "LootMarker"
-	att.WorldPosition = position + Vector3.new(0, 3.2, 0) -- low: under the Job and Objective tiers
+	-- Round 30d: the icon sits above this point (SizeOffset), clear of the bag model; still under the other tiers.
+	att.WorldPosition = position + Vector3.new(0, Config.LootIconLift, 0)
 	att.Parent = Workspace.Terrain
 	local gui = Instance.new("BillboardGui")
 	gui.Adornee = att
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Size = UDim2.fromOffset(S(120), S(54))
+	gui.SizeOffset = Vector2.new(0, 0.5) -- the billboard grows up from its point, never down over the bag
 	gui.ClipsDescendants = false
 	gui.Parent = att
 	local dot = UI.frame({
@@ -583,6 +631,7 @@ local function clusterMarker(i: number): Cluster
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Size = UDim2.fromOffset(S(64), S(30))
+	gui.SizeOffset = Vector2.new(0, 0.5)
 	gui.Enabled = false
 	gui.Parent = att
 	local chip = UI.frame({
@@ -755,7 +804,7 @@ local function tickLoot()
 		end
 		if on and g and c then
 			shown += 1
-			c.att.WorldPosition = g.p + Vector3.new(0, 3.2, 0)
+			c.att.WorldPosition = g.p + Vector3.new(0, Config.LootIconLift, 0)
 			local text = "×" .. tostring(g.n)
 			if c.count.Text ~= text then
 				c.count.Text = text
@@ -805,6 +854,25 @@ local function tickJob()
 	)
 	j.distLabel.Text = if near then "" else string.format("%dm", math.round(d))
 	j.distLabel.Visible = not near
+	-- Round 30d: while a main objective is up the side job is a small waypoint (unless you are right at it).
+	local mini = mainActive and not near
+	if mini ~= j.minimized then
+		j.minimized = mini
+		j.pill.Visible = not mini
+		j.mini.Visible = mini
+		j.hint.Visible = near and not mini
+		j.bar.Visible = j.bar.Visible and not mini
+		UI.punch(if mini then j.mini else j.pill, 1.2, 0.25)
+		local h = j.highlight
+		if h then
+			-- The outline stays (so it can still be found) but steps back.
+			h.OutlineTransparency = if mini then 0.55 else 0
+			h.FillTransparency = if mini then 1 else 1 - math.clamp(Config.JobHighlightFill, 0, 1)
+		end
+	end
+	if mini then
+		j.miniDist.Text = string.format("%dm", math.round(d))
+	end
 	if near ~= j.near then
 		j.near = near
 		j.hint.Visible = near
@@ -833,7 +901,7 @@ local function tickJob()
 	end
 	-- The soft guide.
 	local now = os.clock()
-	if not near and not hide and now >= j.nextPulse then
+	if not near and not hide and not j.minimized and now >= j.nextPulse then
 		j.nextPulse = now + Config.JobPulseSec
 		pulse(me, j.position)
 	end

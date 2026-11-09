@@ -711,12 +711,15 @@ local function shrinkOut(model: Model)
 		if p:IsA("BasePart") then
 			p.Anchored = true
 			p.CanCollide = false
-			TweenService:Create(p, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				Size = Vector3.new(0.05, 0.05, 0.05),
-			}):Play()
+			p.CanQuery = false
+			TweenService
+				:Create(p, TweenInfo.new(Config.ShrinkOutSec, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Size = Vector3.new(0.05, 0.05, 0.05),
+				})
+				:Play()
 		end
 	end
-	task.delay(0.22, function()
+	task.delay(Config.ShrinkOutSec + 0.02, function()
 		model:Destroy()
 	end)
 end
@@ -851,6 +854,19 @@ function Enemy.kill(model: Model, attacker: Player?, hit: Hit?, overkill: number
 	local hook = Enemy.onDeath
 	if hook then
 		hook(d, attacker)
+	end
+	-- Round 30d: the body stops being a target the moment it dies: out of the Enemies folder (aim assist and the
+	-- clients' shots look there) into Effects (every shot ray skips it), and nothing of it takes a hit.
+	if model.Parent then
+		for _, p in model:GetDescendants() do
+			if p:IsA("BasePart") then
+				p.CanQuery = false
+			end
+		end
+		local effects = Workspace:FindFirstChild("Effects")
+		if effects then
+			model.Parent = effects
+		end
 	end
 	if attacker and Config.RagdollEnabled and corpseCount < Config.ActiveRagdolls and model.Parent then
 		ragdoll(d, hit, overkill or 0)

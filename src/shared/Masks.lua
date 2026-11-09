@@ -237,7 +237,9 @@ Masks.List = {
 
 -- Brief 13: the relic masks (Relics.lua) are mask rows too, saleType "Relic" (never sold anywhere).
 for _, r in require(script.Parent.Relics).List do
-	table.insert(Masks.List, r :: any)
+	if r.kind == "mask" then -- Round 30d: relics can be other kinds later
+		table.insert(Masks.List, r :: any)
+	end
 end
 
 Masks.ById = {} :: { [string]: Mask }

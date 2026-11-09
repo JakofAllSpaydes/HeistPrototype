@@ -36,14 +36,28 @@ type Marker = {
 	noCompact: boolean, -- the vault job's beacon never shrinks to a badge
 	diamond: Frame?, -- a rotating diamond over the box (the vault job)
 	prio: number, -- brief 13: Objective tier urgency (1 = most); only the top ObjectiveMarkerCap show
+	group: string, -- Round 30d: the objective it belongs to (the cap counts these)
 	tierHidden: boolean, -- brief 13: held back by the Objective cap
+	glow: Frame, -- Round 30d: the halo behind the pill
+	tick: Frame,
+	urgent: boolean, -- Round 30d: prio 1-2 breathe harder
+	strokeBase: number,
 }
 
 -- Optional look for a marker: `scale` multiplies every size, `noCompact` keeps the full box at any distance,
 -- `diamond` puts a rotating diamond in the marker color over it. Brief 13: every marker drawn here is the Objective
 -- tier; `prio` ranks them for the cap (1 the vault job / open vault, 2 a called door, 3 an office, 4 the hatch, 5 a
 -- closed door's sign). Side jobs and loot are drawn by TierMarkers.
-export type Opts = { scale: number?, noCompact: boolean?, diamond: boolean?, maxDistance: number?, prio: number? }
+-- Round 30d: `group` ties markers that are one objective (a door group's parts): the cap counts groups, so every
+-- way to do the objective shows (both stair chains), never just the nearer one.
+export type Opts = {
+	scale: number?,
+	noCompact: boolean?,
+	diamond: boolean?,
+	maxDistance: number?,
+	prio: number?,
+	group: string?,
+}
 
 local Markers = {}
 
@@ -64,6 +78,9 @@ function Markers.remove(id: string)
 	end
 	markers[id] = nil
 	UI.tween(m.frame, { BackgroundTransparency = 1 }, 0.25)
+	UI.tween(m.glow, { BackgroundTransparency = 1 }, 0.25)
+	UI.tween(m.tick, { BackgroundTransparency = 1 }, 0.25)
+	UI.tween(m.sub, { TextTransparency = 1 }, 0.25)
 	UI.tween(m.compact, { BackgroundTransparency = 1 }, 0.25)
 	for _, d in m.compact:GetDescendants() do
 		if d:IsA("TextLabel") then
@@ -82,6 +99,10 @@ function Markers.remove(id: string)
 	end)
 end
 
+-- Round 30d: the Objective marker is a compact pill, not a box: an icon square, the name, and the distance in big
+-- digits (a timer beside it when the objective has one), a halo that breathes behind it (harder for the urgent ones:
+-- prio 1-2), and a pointer tick. The key hint (E · CUT) shows under it only once you are within ObjectiveHintRange,
+-- so far off it is small enough not to hide the outlined prop. Far away it still shrinks to the badge.
 function Markers.add(
 	id: string,
 	position: Vector3,
@@ -97,7 +118,9 @@ function Markers.add(
 	local function S(n: number): number
 		return UI.S(n * scale)
 	end
-	local diamondH = if opts and opts.diamond then S(34) else 0
+	local diamondH = if opts and opts.diamond then S(26) else 0
+	local pillH = S(34)
+	local halo = S(8)
 	local att = Instance.new("Attachment")
 	att.Name = "Marker_" .. id
 	att.WorldPosition = position + Vector3.new(0, 7.5, 0)
@@ -105,8 +128,8 @@ function Markers.add(
 	local gui = Instance.new("BillboardGui")
 	gui.Adornee = att
 	gui.AlwaysOnTop = true
-	gui.Size = UDim2.fromOffset(S(176), S(76) + diamondH)
-	gui.MaxDistance = (opts and opts.maxDistance) or 500
+	gui.Size = UDim2.fromOffset(S(320), diamondH + halo + pillH + halo + S(22))
+	gui.MaxDistance = (opts and opts.maxDistance) or 1e5 -- Round 30d: an objective reads from anywhere
 	gui.LightInfluence = 0
 	gui.ClipsDescendants = false
 	gui.Parent = att
@@ -117,7 +140,7 @@ function Markers.add(
 			BackgroundColor3 = color,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0.5, 0, 0, diamondH / 2),
-			Size = UDim2.fromOffset(diamondH * 0.62, diamondH * 0.62),
+			Size = UDim2.fromOffset(diamondH * 0.6, diamondH * 0.6),
 			Rotation = 45,
 			Parent = gui,
 		})
@@ -125,85 +148,143 @@ function Markers.add(
 		UI.stroke(dm, Theme.Colors.white, S(2), 0.2)
 		diamond = dm
 	end
-	local frame = UI.frame({
-		BackgroundColor3 = Theme.Colors.panel,
-		BackgroundTransparency = 0.15,
-		Position = UDim2.fromOffset(0, diamondH),
-		Size = UDim2.new(1, 0, 1, -diamondH),
+	local pillY = diamondH + halo
+	-- The halo: a soft block of the marker colour behind the pill, sized to it (it follows the pill's width).
+	local glow = UI.frame({
+		Name = "Glow",
+		BackgroundColor3 = color,
+		BackgroundTransparency = 0.7,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, pillY + pillH / 2),
+		Size = UDim2.fromOffset(S(140), pillH + halo * 2),
+		ZIndex = 1,
 		Parent = gui,
 	})
-	UI.corner(frame, S(10))
-	local stroke = UI.stroke(frame, color, S(2))
+	UI.corner(glow, (pillH + halo * 2) / 2)
+	local frame = UI.frame({
+		Name = "Pill",
+		BackgroundColor3 = Theme.Colors.bg,
+		BackgroundTransparency = 0.05,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, pillY),
+		Size = UDim2.fromOffset(0, pillH),
+		AutomaticSize = Enum.AutomaticSize.X,
+		ZIndex = 2,
+		Parent = gui,
+	})
+	UI.corner(frame, pillH / 2)
+	local stroke = UI.stroke(frame, color, S(2.5))
+	UI.pad(frame, S(5), 0, S(12), 0)
+	UI.list(frame, Enum.FillDirection.Horizontal, S(8), Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
+	local icon = UI.frame({
+		BackgroundColor3 = color,
+		Size = UDim2.fromOffset(pillH - S(10), pillH - S(10)),
+		LayoutOrder = 1,
+		ZIndex = 3,
+		Parent = frame,
+	})
+	UI.corner(icon, S(5))
+	UI.text({
+		Text = glyph or "!",
+		FontFace = Theme.Fonts.display,
+		TextSize = S(17),
+		TextColor3 = Theme.Colors.bg,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 4,
+		Parent = icon,
+	})
 	local title = UI.text({
 		Text = titleText,
 		FontFace = Theme.Fonts.display,
-		TextSize = S(17),
-		TextColor3 = color,
-		Position = UDim2.fromOffset(0, S(4)),
-		Size = UDim2.new(1, 0, 0, S(22)),
-		Parent = frame,
-	})
-	local sub = UI.text({
-		Text = Hint.swap(subText), -- brief 11: HOLD E reads HOLD □ on a pad
-		TextSize = S(11),
+		TextSize = S(18),
 		TextColor3 = Theme.Colors.text,
-		Position = UDim2.fromOffset(0, S(25)),
-		Size = UDim2.new(1, 0, 0, S(16)),
+		Size = UDim2.fromOffset(0, pillH),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 2,
+		ZIndex = 3,
 		Parent = frame,
 	})
+	-- A timer (the vault, an office) and the distance: big, in the marker colour, the wave bar's digits.
 	local timer = UI.text({
 		Text = "",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(16),
+		TextSize = S(18),
 		TextColor3 = color,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(S(12), S(44)),
-		Size = UDim2.new(0.5, -S(12), 0, S(22)),
+		Size = UDim2.fromOffset(0, pillH),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Visible = endsAt > 0,
+		LayoutOrder = 3,
+		ZIndex = 3,
 		Parent = frame,
 	})
 	local dist = UI.text({
 		Text = "",
-		TextSize = S(12),
-		TextColor3 = Theme.Colors.grey,
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Position = UDim2.new(0.5, 0, 0, S(46)),
-		Size = UDim2.new(0.5, -S(12), 0, S(18)),
+		FontFace = Theme.Fonts.display,
+		TextSize = S(20),
+		TextColor3 = color,
+		Size = UDim2.fromOffset(0, pillH),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 4,
+		ZIndex = 3,
 		Parent = frame,
 	})
-	-- Progress bar along the bottom edge (capture point); hidden until setProgress is called.
+	-- The pointer tick under the pill.
+	local tick = UI.frame({
+		BackgroundColor3 = color,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, pillY + pillH),
+		Size = UDim2.fromOffset(S(9), S(9)),
+		Rotation = 45,
+		ZIndex = 3,
+		Parent = gui,
+	})
+	UI.corner(tick, S(2))
+	-- The key hint, under it, only when close (the refresh loop shows it).
+	local sub = UI.text({
+		Text = Hint.swap(subText), -- brief 11: HOLD E reads HOLD □ on a pad
+		FontFace = Theme.Fonts.display,
+		TextSize = S(13),
+		TextColor3 = Theme.Colors.text,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, pillY + pillH + halo),
+		Size = UDim2.new(1, 0, 0, S(16)),
+		Visible = false,
+		ZIndex = 3,
+		Parent = gui,
+	})
+	UI.stroke(sub, Theme.Colors.black, S(1.5), 0.3)
+	-- Progress bar under the pill (setProgress); hidden until used.
 	local bar = UI.frame({
 		BackgroundColor3 = Theme.Colors.bg,
-		Position = UDim2.new(0, S(12), 1, -S(10)),
-		Size = UDim2.new(1, -S(24), 0, S(5)),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, pillY + pillH + S(4)),
+		Size = UDim2.fromOffset(S(120), S(5)),
 		Visible = false,
-		Parent = frame,
+		ZIndex = 3,
+		Parent = gui,
 	})
 	UI.corner(bar, S(3))
 	local barFill = UI.frame({
 		BackgroundColor3 = Theme.Colors.cash,
 		Size = UDim2.fromScale(0, 1),
+		ZIndex = 4,
 		Parent = bar,
 	})
 	UI.corner(barFill, S(3))
-	-- Pointer tick under the box.
-	local tick = UI.frame({
-		BackgroundColor3 = color,
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, -S(2)),
-		Size = UDim2.fromOffset(S(10), S(10)),
-		Rotation = 45,
-		Parent = frame,
-	})
-	UI.corner(tick, S(2))
+	-- The halo follows the pill's width as its text changes.
+	frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		glow.Size = UDim2.fromOffset(frame.AbsoluteSize.X + halo * 2, pillH + halo * 2)
+	end)
 	UI.punch(frame, 1.35, 0.4)
 
-	-- Compact form for far away: a small badge with the distance and timer under it.
+	-- Compact form for far away: a small badge with the distance (and timer) under it, readable.
 	local compact = UI.frame({
 		BackgroundColor3 = color,
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -S(18)),
+		Position = UDim2.new(0.5, 0, 1, -S(22)),
 		Size = UDim2.fromOffset(S(30), S(30)),
 		Visible = false,
+		ZIndex = 3,
 		Parent = gui,
 	})
 	UI.corner(compact, S(15))
@@ -214,20 +295,23 @@ function Markers.add(
 		TextSize = S(20),
 		TextColor3 = Theme.Colors.bg,
 		Size = UDim2.fromScale(1, 1),
+		ZIndex = 4,
 		Parent = compact,
 	})
 	local compactLabel = UI.text({
 		Text = "",
 		FontFace = Theme.Fonts.display,
-		TextSize = S(12),
+		TextSize = S(16),
 		TextColor3 = color,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 1, S(2)),
-		Size = UDim2.fromOffset(S(120), S(16)),
+		Size = UDim2.fromOffset(S(120), S(18)),
+		ZIndex = 4,
 		Parent = compact,
 	})
 	UI.stroke(compactLabel, Theme.Colors.black, S(1.5), 0.3)
 
+	local prio = (opts and opts.prio) or 3
 	markers[id] = {
 		att = att,
 		frame = frame,
@@ -244,10 +328,16 @@ function Markers.add(
 		color = color,
 		endsAt = endsAt,
 		position = position,
-		noCompact = opts ~= nil and opts.noCompact == true,
+		-- Round 30d: the objective pill never shrinks to the far badge (only a closed door's sign may).
+		noCompact = prio <= 4 or (opts ~= nil and opts.noCompact == true),
 		diamond = diamond,
-		prio = (opts and opts.prio) or 3,
+		prio = prio,
+		group = (opts and opts.group) or id,
 		tierHidden = false,
+		glow = glow,
+		tick = tick,
+		urgent = prio <= 2,
+		strokeBase = S(2.5),
 	}
 end
 
@@ -255,11 +345,23 @@ end
 -- wave toward the door (the FTUE arrows will use the same look).
 -- Round 19: `points` is the walking route the server planned (stairs and floors included); without it the strip
 -- is the straight line. Chevrons sit every 4 studs along the route, on the floor under each point.
-local function floorArrows(from: Vector3, to: Vector3, seconds: number, points: { Vector3 }?)
+-- Round 30d: a `key`ed strip (the door guide, re-planned as you move) replaces your previous one with the same key,
+-- and chevrons you have walked past go out, so the strip always starts at your feet.
+local keyedArrows: { [string]: Folder } = {}
+local function floorArrows(from: Vector3, to: Vector3, seconds: number, points: { Vector3 }?, key: string?)
 	local route: { Vector3 } = if points and #points >= 2 then points else { from, to }
+	if key then
+		local old = keyedArrows[key]
+		if old then
+			old:Destroy()
+		end
+	end
 	local folder = Instance.new("Folder")
 	folder.Name = "VaultArrows"
 	folder.Parent = Workspace:FindFirstChild("Effects") or Workspace
+	if key then
+		keyedArrows[key] = folder
+	end
 	local chevrons: { BasePart } = {}
 	local step = 4
 	-- Walk the polyline: a chevron every `step` studs (measured in the flat), facing along its segment.
@@ -312,16 +414,44 @@ local function floorArrows(from: Vector3, to: Vector3, seconds: number, points: 
 	task.spawn(function()
 		local t0 = os.clock()
 		local count = #chevrons // 2
+		local passed = 0 -- chevrons behind you (keyed strips only)
 		while os.clock() - t0 < seconds and folder.Parent do
 			local t = os.clock() - t0
-			local head = (t * 6) % math.max(count, 1)
+			if key then
+				local char = player.Character
+				local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if root then
+					-- The sample nearest you (ahead of what is already passed) is where the strip now starts.
+					local best, bestD = passed, math.huge
+					for k = passed + 1, math.min(#samples, passed + 12) do
+						local s = samples[k].p
+						local d = Vector3.new(s.X - root.Position.X, 0, s.Z - root.Position.Z).Magnitude
+						if d < bestD then
+							best, bestD = k, d
+						end
+					end
+					if bestD < 3.5 then
+						passed = best
+					end
+				end
+			end
+			local head = passed + (t * 6) % math.max(count - passed, 1)
 			for i, bar in chevrons do
 				local k = (i + 1) // 2
+				if k <= passed then
+					bar.Transparency = 1
+					continue
+				end
 				local near = math.abs(k - head) < 1.5
 				local fade = math.clamp((seconds - t) / 1.5, 0, 1)
-				bar.Transparency = 1 - (if near then 0.9 else 0.35) * fade
+				-- Round 30d: keyed guides read stronger (they are the one thing to follow).
+				local base = if key then 0.55 else 0.35
+				bar.Transparency = 1 - (if near then 0.95 else base) * fade
 			end
 			task.wait(1 / 30)
+		end
+		if keyedArrows[key or ""] == folder then
+			keyedArrows[key :: string] = nil
 		end
 		folder:Destroy()
 	end)
@@ -358,7 +488,50 @@ end
 local doorPing: { [string]: number } = {} -- group -> os.clock() the loud pulse ends
 local doorList: { any } = {}
 
+-- Round 30d: the called objective's prop itself (the front doors, the stair chains, the shutters) outlined in amber
+-- through walls, the way the side job's prop is outlined blue: the thing to go and open.
+local doorOutlines: { [string]: Highlight } = {}
+local function outlineDoors()
+	local want: { [string]: boolean } = {}
+	local bank = Workspace:FindFirstChild("Bank")
+	local props = bank and bank:FindFirstChild("DoorProps")
+	for _, d in doorList do
+		if d.state ~= "called" or not props then
+			continue
+		end
+		local name = tostring(d.name)
+		local model = props:FindFirstChild("DoorProp_" .. name)
+		if not model then
+			continue
+		end
+		want[name] = true
+		local h = doorOutlines[name]
+		if not h or not h.Parent or h.Adornee ~= model then
+			if h then
+				h:Destroy()
+			end
+			local nh = Instance.new("Highlight")
+			nh.Name = "ObjectiveOutline"
+			nh.Adornee = model
+			nh.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			nh.FillColor = Theme.Colors.amber
+			nh.FillTransparency = 1 - math.clamp(Config.ObjectiveHighlightFill, 0, 1)
+			nh.OutlineColor = Theme.Colors.amber
+			nh.OutlineTransparency = 0
+			nh.Parent = Workspace.CurrentCamera or Workspace
+			doorOutlines[name] = nh
+		end
+	end
+	for name, h in table.clone(doorOutlines) do
+		if not want[name] then
+			h:Destroy()
+			doorOutlines[name] = nil
+		end
+	end
+end
+
 local function drawDoors()
+	outlineDoors()
 	local live: { [string]: boolean } = {}
 	for _, d in doorList do
 		local id = "door_" .. tostring(d.name)
@@ -376,7 +549,8 @@ local function drawDoors()
 		Markers.add(
 			id,
 			d.position,
-			if called then Theme.Colors.blue else Theme.Colors.amber,
+			-- Round 30d: a called door is amber (objectives; side jobs are blue), a door still locked is grey.
+			if called then Theme.Colors.amber else Theme.Colors.grey,
 			if called then tostring(d.ping) else tostring(d.label),
 			if called then tostring(d.hint or Lines.door.markerHint) else tostring(d.sign),
 			0,
@@ -389,6 +563,7 @@ local function drawDoors()
 				-- Round 19: a closed door's beacon reads only within DoorBeaconRange; a called one from anywhere.
 				maxDistance = if called then nil else Config.DoorBeaconRange,
 				prio = if called then 2 else 5,
+				group = "door:" .. tostring(d.group),
 			}
 		);
 		(markers[id] :: any).doorState = want
@@ -486,10 +661,15 @@ function Markers.init()
 				data.from,
 				data.to,
 				tonumber(data.sec) or Config.VaultArrowSec,
-				if typeof(data.points) == "table" then data.points else nil
+				if typeof(data.points) == "table" then data.points else nil,
+				if typeof(data.key) == "string" then data.key else nil
 			)
-			if capture then
-				Markers.setProgress("job", 0, true)
+		elseif name == "DoorOpened" then
+			-- Round 30d: the door is open: its guide strip goes at once.
+			local strip = keyedArrows.door
+			if strip then
+				strip:Destroy()
+				keyedArrows.door = nil
 			end
 		elseif name == "JobProgress" then
 			-- Brief 13: the capture job is the Job tier: its pill carries the bar and the hint line.
@@ -573,6 +753,11 @@ function Markers.init()
 		-- The vault diamond turns every frame; the rest refreshes ten times a second.
 		-- Round 24: cutscenes (run start / end, the boss) show no world markers.
 		local hide = ClientState.cameraMode == "cinematic"
+		for _, h in doorOutlines do
+			if h.Enabled == hide then
+				h.Enabled = not hide
+			end
+		end
 		for _, m in markers do
 			local bb = m.att:FindFirstChildOfClass("BillboardGui")
 			local off = hide or m.tierHidden -- brief 13: the Objective cap holds the rest back
@@ -582,6 +767,14 @@ function Markers.init()
 			local dm = m.diamond
 			if dm then
 				dm.Rotation = (dm.Rotation + dt * 120) % 360
+			end
+			-- Round 30d: the halo breathes (the urgent ones harder, with the outline swelling in time).
+			if not m.isCompact then
+				local beat = 0.5 + 0.5 * math.sin(os.clock() * (if m.urgent then 4 else 2))
+				m.glow.BackgroundTransparency = if m.urgent then 0.4 + 0.4 * beat else 0.75 + 0.15 * beat
+				if m.urgent then
+					m.stroke.Thickness = m.strokeBase * (1 + 0.8 * beat)
+				end
 			end
 		end
 		if acc < 0.1 then
@@ -603,9 +796,19 @@ function Markers.init()
 			end
 			return (a.position - here).Magnitude < (b.position - here).Magnitude
 		end)
-		for i, m in ranked do
-			m.tierHidden = i > Config.ObjectiveMarkerCap
+		local mainUp = false
+		local groupsShown: { [string]: boolean } = {}
+		local nGroups = 0
+		for _, m in ranked do
+			if not groupsShown[m.group] and nGroups < Config.ObjectiveMarkerCap then
+				groupsShown[m.group] = true
+				nGroups += 1
+			end
+			m.tierHidden = not groupsShown[m.group]
+			mainUp = mainUp or m.prio <= 2 -- a called door, the vault job, the open vault
 		end
+		-- Round 30d: with a main objective up, the side job shows as a small waypoint.
+		TierMarkers.setMainObjective(mainUp)
 		local shownNow, hiddenNow = TierMarkers.lootStats()
 		peakShown = math.max(peakShown, shownNow)
 		peakHidden = math.max(peakHidden, hiddenNow)
@@ -628,16 +831,20 @@ function Markers.init()
 			if root then
 				local d = (m.position - root.Position).Magnitude
 				m.dist.Text = string.format("%dm", math.round(d))
-				m.dist.TextColor3 = if d < 12 then Theme.Colors.cash else Theme.Colors.grey
-				-- Far away: the full panel gives way to the badge (5 stud hysteresis so it never flickers).
+				m.dist.TextColor3 = if d < 12 then Theme.Colors.cash else m.color
+				-- Far away: the pill gives way to the badge (5 stud hysteresis so it never flickers).
 				local limit = Config.MarkerCompactDistance + (if m.isCompact then -5 else 0)
 				local wantCompact = d > limit and not m.noCompact
 				if wantCompact ~= m.isCompact then
 					m.isCompact = wantCompact
 					m.frame.Visible = not wantCompact
+					m.glow.Visible = not wantCompact
+					m.tick.Visible = not wantCompact
 					m.compact.Visible = wantCompact
 					UI.punch(if wantCompact then m.compact else m.frame, 1.25, 0.3)
 				end
+				-- Round 30d: the key hint only once you are close enough to use it.
+				m.sub.Visible = not m.isCompact and d <= Config.ObjectiveHintRange
 				if m.isCompact then
 					m.compactLabel.Text = if timeText ~= ""
 						then string.format("%dm · %s", math.round(d), timeText)

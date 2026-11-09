@@ -43,9 +43,9 @@ local function ensureBar()
 		Parent = g,
 	})
 	UI.corner(root, S(13))
-	UI.stroke(root, Theme.Colors.blue, S(2))
+	UI.stroke(root, Theme.Colors.amber, S(2))
 	local fill = UI.frame({
-		BackgroundColor3 = Theme.Colors.blue,
+		BackgroundColor3 = Theme.Colors.amber,
 		Size = UDim2.fromScale(0, 1),
 		Parent = root,
 	})

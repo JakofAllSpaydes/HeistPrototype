@@ -82,6 +82,7 @@ type Heli = {
 	total: number,
 }
 local heli: Heli? = nil
+local vehicles: { [Model]: boolean } = {} -- Round 30d: the pieces with light bars (cruisers, the SWAT van, ambulance)
 
 local function addPiece(m: Instance)
 	if not m:IsA("Model") then
@@ -93,6 +94,7 @@ local function addPiece(m: Instance)
 				phase = if d.Name == "LightRed" then 0 else 0.5,
 				light = d:FindFirstChildOfClass("PointLight"),
 			}
+			vehicles[m] = true -- Round 30d: the siren plays from the nearest of these
 		end
 	end
 	local head = m:FindFirstChild("Head")
@@ -177,6 +179,7 @@ live.ChildRemoved:Connect(function(c)
 	end
 	if c:IsA("Model") then
 		sweeps[c] = nil
+		vehicles[c] = nil
 		local h = heli
 		if h and h.model == c then
 			heli = nil
@@ -240,6 +243,28 @@ local function posOnLoop(h: Heli, dist: number): (Vector3, Vector3)
 end
 
 local acc = 0
+local sirenAcc = 0
+local hasVehicle = false
+local insideMult = 1 -- Round 30d: DressingInsideMult while you stand inside the bank
+
+-- Inside the bank = inside any zone volume but the street (the node parts are there, hidden, on every client).
+local function insideBank(p: Vector3): boolean
+	local nodes = bank:FindFirstChild("Nodes")
+	local zones = nodes and nodes:FindFirstChild("Zones")
+	if not zones then
+		return false
+	end
+	for _, z in zones:GetChildren() do
+		if z:IsA("BasePart") and z.Name ~= "street" then
+			local o = z.CFrame:PointToObjectSpace(p)
+			local h = z.Size / 2
+			if math.abs(o.X) <= h.X and math.abs(o.Y) <= h.Y and math.abs(o.Z) <= h.Z then
+				return true
+			end
+		end
+	end
+	return false
+end
 RunService.RenderStepped:Connect(function(dt)
 	local now = ClientState.serverNow()
 	-- Light bars: alternate halves.
@@ -324,11 +349,42 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 	end
-	-- The siren bed: louder on boss waves, ducked while a wave is fought.
+	-- The siren bed: louder on boss waves, ducked while a wave is fought. Round 30d: it plays from the police
+	-- vehicle nearest you (a short roll-off), so it is loud only beside the cars and faint or gone anywhere else.
+	sirenAcc += dt
+	if sirenAcc >= 0.25 then
+		sirenAcc = 0
+		local cam = Workspace.CurrentCamera
+		local from = if cam then cam.CFrame.Position else Vector3.zero
+		local best: Vector3? = nil
+		local bestD = math.huge
+		for v in vehicles do
+			if v.Parent then
+				local p = v:GetPivot().Position
+				local d = (p - from).Magnitude
+				if d < bestD then
+					best, bestD = p, d
+				end
+			end
+		end
+		hasVehicle = best ~= nil
+		local char = game:GetService("Players").LocalPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		insideMult = if root and insideBank(root.Position) then Config.DressingInsideMult else 1
+		local hh = heli
+		if hh and hh.sound then
+			hh.sound.Volume = Config.HeliRotorVolume * insideMult
+		end
+		if best then
+			emitter.CFrame = CFrame.new(best + Vector3.new(0, 3, 0))
+		end
+	end
 	local sync = ClientState.sync
 	local fighting = sync ~= nil and sync.waveState == "Wave"
 	local boss = live:GetAttribute("Boss") == true
-	bed.Volume = Config.DressingAmbienceVolume
-		* (if boss then Config.DressingAmbienceBossMult else 1)
-		* (if fighting then Config.DressingAmbienceCombatDuck else 1)
+	bed.Volume = if not hasVehicle
+		then 0
+		else Config.DressingAmbienceVolume * (if boss then Config.DressingAmbienceBossMult else 1) * (if fighting
+			then Config.DressingAmbienceCombatDuck
+			else 1) * insideMult
 end)

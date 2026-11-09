@@ -179,22 +179,26 @@ handlers.buyWrap = function(player, state, p, args)
 	if not wrap then
 		return fail("no such wrap")
 	end
-	if p.wraps.owned[wrap.id] then
-		return fail("already owned")
-	end
 	if MasteryCopy.wrapTier(wrap.id) then
 		return fail("mastery wrap", "Earned through weapon mastery")
 	end
 	if wrap.saleType ~= "Direct" then
 		return fail(saleOnly(wrap.saleType))
 	end
-	if not charge(player, Prices.wrap) then
+	-- Round 30d: a shop wrap is bought for one gun you own, at that gun's rarity price.
+	local w = Weapons.ById[tostring(args and args.weaponId)]
+	if not w or not p.weapons[w.id] then
+		return fail("no gun", "Pick an owned gun to wrap")
+	end
+	if Wraps.owns(p, wrap.id, w.id) then
+		return fail("already owned")
+	end
+	if not charge(player, Wraps.priceFor(w.rarity)) then
 		return fail("gold", NOT_ENOUGH)
 	end
-	p.wraps.owned[wrap.id] = true
-	-- Applied at once to the weapon it was bought from (args.weaponId), when owned.
-	local w = Weapons.ById[tostring(args and args.weaponId)]
-	local entry = w and p.weapons[w.id]
+	p.wraps.owned[Wraps.key(w.id, wrap.id)] = true
+	-- Applied at once to the weapon it was bought for.
+	local entry = p.weapons[w.id]
 	if w and entry then
 		entry.wrap = wrap.id
 		if state.held.weaponId == w.id then
@@ -222,7 +226,7 @@ handlers.applyWrap = function(player, state, p, args)
 		if MasteryCopy.weaponTier(if m then m.xp else 0) < masteryTier then
 			return fail("wrap not owned", "Needs " .. w.displayName .. " mastery " .. MasteryCopy.Roman[masteryTier])
 		end
-	elseif wrapId and not (Wraps.ById[wrapId] and p.wraps.owned[wrapId]) then
+	elseif wrapId and not (Wraps.ById[wrapId] and Wraps.owns(p, wrapId, w.id)) then -- Round 30d: per gun
 		return fail("wrap not owned")
 	end
 	entry.wrap = wrapId

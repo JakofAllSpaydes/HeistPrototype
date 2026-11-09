@@ -228,6 +228,17 @@ add({
 	icon = { kind = "crate", id = "arms", amount = 1 },
 	sub = "One more roll from today's crate",
 })
+-- Round 30d: multi-spins under the daily crate's main button (any state; the day's free crate is untouched).
+for _, n in { 3, 10 } do
+	add({
+		id = "dailycrate_spin" .. n,
+		kind = "dailycrate_spin" .. n,
+		name = string.format("DAILY CRATE · %d SPINS", n),
+		price = if n == 3 then Config.DailyCrateSpin3Price else Config.DailyCrateSpin10Price,
+		icon = { kind = "crate", id = "arms", amount = n },
+		sub = string.format("%d crates from your level band now", n),
+	})
+end
 
 add({
 	id = "dealer_restock",

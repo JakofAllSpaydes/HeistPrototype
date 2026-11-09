@@ -88,7 +88,7 @@ function Breach.waitForBreach(setState: (string) -> ())
 	World.idleBeforeBreach = 0
 	setState("PreHeist")
 	Log.event("Breach", "pre-heist on %s: the crew is on the street, %s called", World.map, Config.BreachDoorGroup)
-	Doors.callNow(Config.BreachDoorGroup, Lines.preHeist.doorLine)
+	Doors.callNow(Config.BreachDoorGroup, Lines.preHeist.doorLine, Lines.preHeist.sign)
 	local nagAt = os.clock() + Config.PreHeistNagSec
 	local nagIndex = 0
 	while not World.runOver do

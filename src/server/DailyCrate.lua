@@ -21,6 +21,8 @@ local Remotes = require(Shared.Remotes)
 local Catalog = require(Shared.Catalog)
 local Crates = require(Shared.Crates)
 local Rarity = require(Shared.Rarity)
+local Weapons = require(Shared.Weapons) -- Round 30d: wraps go to owned guns by rarity
+local MixedRoll = require(Shared.MixedRoll) -- Round 30d: the shared category / rarity / item roll
 local Profiles = require(script.Parent.Profiles)
 local PlayerState = require(script.Parent.PlayerState)
 local Runs = require(script.Parent.Runs)
@@ -101,47 +103,52 @@ function DailyCrate.unlock(player: Player)
 end
 
 ------------------------------------------------------------------ The roll
-local function pickRarity(weights: { number }): number
-	local total = 0
-	for r = 1, 5 do
-		total += weights[r]
-	end
-	if total <= 0 then
-		return 1
-	end
-	local x = math.random() * total
-	for r = 1, 5 do
-		x -= weights[r]
-		if x < 0 then
-			return r
-		end
-	end
-	return 5
-end
+-- Round 30d: the daily crate is a mixed lootbox on the shared roll (MixedRoll): category (DailyCrateCategoryWeights:
+-- gun / mask / wrap; guns only on the first-ever crate; a category with nothing to give sits out), then rarity (the
+-- tier's weights; `floor` and Force rarity apply), then the item. A wrap goes to an owned gun of that rarity, the guns
+-- missing the most shop wraps first, as one of the wraps it lacks (DailyWrapWeights).
+type Item = { kind: string, id: string, rarity: number, on: string? }
 
--- One item from the tier's weights over the pool (guns only when gunOnly); rarities the pool lacks weigh nothing.
--- `floor`: the lowest rarity (Round 27d: the streak's RARE+ / EPIC+ days roll the daily crate above it).
-local function rollItem(player: Player, tierId: string, gunOnly: boolean, floor: number?): Catalog.Item?
+local function rollItem(
+	player: Player,
+	profile: Profiles.Profile,
+	tierId: string,
+	gunOnly: boolean,
+	floor: number?
+): Item?
 	local tier = (Config.DailyCrateTierOdds :: any)[tierId] or (Config.DailyCrateTierOdds :: any).basic
-	local kind = if gunOnly then "weapon" else nil
-	local weights = {}
-	for r = 1, 5 do
-		weights[r] = if #Catalog.dailyItems(kind, r) > 0 and r >= (floor or 1) then (tier.weights[r] or 0) else 0
+	local weights = Config.DailyCrateCategoryWeights :: any
+	local categories: { MixedRoll.Category } = {
+		MixedRoll.list("weapon", tonumber(weights.weapon) or 0, Catalog.dailyItems("weapon", nil) :: any),
+	}
+	if not gunOnly then
+		table.insert(
+			categories,
+			MixedRoll.list("mask", tonumber(weights.mask) or 0, Catalog.dailyItems("mask", nil) :: any)
+		)
+		table.insert(
+			categories,
+			MixedRoll.wraps(profile, tonumber(weights.wrap) or 0, function(wrapId: string): number
+				return tonumber((Config.DailyWrapWeights :: any)[wrapId]) or Config.DailyWrapWeightDefault
+			end)
+		)
 	end
-	local rarity = pickRarity(weights)
 	local forced = CrateOpen.forced[player] -- the debug panel's Force rarity lands here too
-	if forced and #Catalog.dailyItems(kind, forced) > 0 then
-		CrateOpen.forced[player] = nil
-		rarity = forced
-	end
-	local items = Catalog.dailyItems(kind, rarity)
-	if #items == 0 then
-		items = Catalog.dailyItems(kind, nil)
-	end
-	if #items == 0 then
+	CrateOpen.forced[player] = nil
+	local item = MixedRoll.roll({
+		categories = categories,
+		rarityWeights = tier.weights,
+		floor = floor,
+		forceRarity = forced,
+	})
+	if not item then
 		return nil
 	end
-	return items[math.random(1, #items)]
+	if item.kind == "wrap" and item.on then
+		local gw = Weapons.ById[item.on]
+		item.rarity = if gw then gw.rarity else item.rarity
+	end
+	return item
 end
 
 -- Rolls, grants and logs one open. Returns the crate scene's rows.
@@ -154,23 +161,24 @@ local function openOne(
 	floor: number?
 ): any
 	local tierId = tierOverride or DailyCrate.tierOf(player, profile)
-	local item = rollItem(player, tierId, gunOnly, floor)
+	local item = rollItem(player, profile, tierId, gunOnly, floor)
 	if not item then
 		return nil
 	end
 	local ups = {}
 	local res = Grants.apply(
 		player,
-		{ kind = item.kind, id = item.id },
+		{ kind = item.kind, id = item.id, on = item.on },
 		{ source = "daily crate " .. tierId, deferMastery = ups }
 	)
 	Log.event(
 		"Daily",
-		"%s opened %s level %d -> %s %s%s%s",
+		"%s opened %s level %d -> %s%s %s%s%s",
 		player.Name,
 		tierId,
 		profile.level,
 		item.id,
+		if item.on then " on " .. item.on else "",
 		Rarity.name(item.rarity),
 		if res.dupe then " (dupe)" else "",
 		if source ~= "" then " (" .. source .. ")" else ""
@@ -181,6 +189,7 @@ local function openOne(
 			{
 				kind = item.kind,
 				id = item.id,
+				on = item.on, -- Round 30d: a wrap's gun (the reveal shows it on that gun)
 				rarity = item.rarity,
 				name = res.name,
 				new = res.new,
@@ -315,6 +324,40 @@ Purchases.register("dailycrate_reroll", {
 		return data, nil
 	end,
 })
+
+-- Round 30d: ×3 / ×10 spins, any podium state: that many opens from your tier (the first-gun rule on the first one
+-- ever), all shown by one crate scene. The day's free crate and ROLL AGAIN are untouched.
+for _, n in { 3, 10 } do
+	Purchases.register("dailycrate_spin" .. n, {
+		check = function(player, _profile)
+			if not Config.DailyCrateEnabled then
+				return "The daily crate is off"
+			end
+			if Runs.inRunCycle(player) then
+				return "Not during a run"
+			end
+			return nil
+		end,
+		grant = function(player, profile)
+			local tierId = DailyCrate.tierOf(player, profile)
+			local out = { crateId = Crates.dailyId(tierId), results = {} }
+			for _ = 1, n do
+				local gunOnly = Config.DailyCrateFirstIsGun and not profile.dailyCrate.everOpened
+				local data = openOne(player, profile, gunOnly, string.format("x%d", n))
+				if data then
+					profile.dailyCrate.everOpened = true
+					table.insert(out.results, data.results[1])
+				end
+			end
+			if #out.results == 0 then
+				return nil, "Nothing to roll"
+			end
+			Log.event("Daily", "%s x%d spins paid", player.Name, n)
+			DailyCrate.refresh(player)
+			return out, nil
+		end,
+	})
+end
 
 -- E at the podium: the state decides (the client's prompt already reads the same words).
 local function onPrompt(player: Player)

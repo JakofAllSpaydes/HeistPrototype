@@ -189,6 +189,64 @@ local function sparks(position: Vector3, color: Color3, count: number, speed: nu
 end
 
 -- Expanding ring on the floor (splash blast).
+-- Round 30d: a placeable falls in from PlaceableDropHeight over PlaceableDropSec (an ease-in, like the gun crate),
+-- with a slight settle tilt. The real model is already live where it stands; it hides locally while a copy falls.
+local function dropIn(model: Model, onLand: () -> ())
+	local parts: { BasePart } = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			table.insert(parts, d)
+		end
+	end
+	if #parts == 0 then
+		onLand()
+		return
+	end
+	local ghost = model:Clone()
+	ghost.PrimaryPart = nil -- pivot on the whole copy (the med bag's PrimaryPart is its floor disc, which goes below)
+	for _, d in ghost:GetDescendants() do
+		-- Marks on the floor (the med bag's disc and rim) do not fall: the real ones show on landing.
+		if d:IsA("BasePart") and (d.Name == "Disc" or d.Name == "Rim") then
+			d:Destroy()
+		elseif d:IsA("ProximityPrompt") or d:IsA("BillboardGui") or d:IsA("Sound") or d:IsA("Highlight") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+		end
+	end
+	for _, p in parts do
+		p.LocalTransparencyModifier = 1
+	end
+	-- The copy starts where the real one stands; it moves about its own centre.
+	local home = ghost:GetPivot()
+	ghost.Parent = Workspace.CurrentCamera or Workspace
+	local height = Config.PlaceableDropHeight
+	local sec = math.max(Config.PlaceableDropSec, 0.05)
+	local t0 = os.clock()
+	local conn: RBXScriptConnection
+	conn = game:GetService("RunService").RenderStepped:Connect(function()
+		local k = math.clamp((os.clock() - t0) / sec, 0, 1)
+		local e = k * k -- ease in: it falls, it does not float
+		local tilt = math.rad(8) * (1 - e)
+		ghost:PivotTo((home + Vector3.new(0, height * (1 - e), 0)) * CFrame.Angles(tilt, 0, tilt * 0.5))
+		if k >= 1 or not model.Parent then
+			conn:Disconnect()
+			ghost:Destroy()
+			for _, p in parts do
+				if p.Parent then
+					p.LocalTransparencyModifier = 0
+				end
+			end
+			if model.Parent then
+				onLand()
+			end
+		end
+	end)
+end
+
 local function blastRing(position: Vector3, radius: number, color: Color3)
 	local ring = Instance.new("Part")
 	ring.Shape = Enum.PartType.Cylinder
@@ -855,8 +913,20 @@ function WorldFx.build(gui: ScreenGui, track: (RBXScriptConnection) -> ())
 			trail(data.from, data.to, Theme.Colors.gold, 0.06)
 			UI.sound(Theme.Sounds.shot, 1.6, 0.15)
 		elseif name == "StructurePlaced" then
-			blastRing(data.position, data.radius or 5, data.color or Theme.Colors.gold)
-			UI.sound(Theme.Sounds.crate, 1.2, 0.5)
+			local function land()
+				blastRing(data.position, data.radius or 5, data.color or Theme.Colors.gold)
+				UI.sound(Theme.Sounds.crate, 1.2, 0.5)
+			end
+			-- Round 30d: a placeable drops in from above like the gun crate (a local copy falls while the real one,
+			-- already live, stays hidden), then the ring and thump on landing. No model (the med bag): at once.
+			if typeof(data.model) == "Instance" and data.model:IsA("Model") and Config.PlaceableDropSec > 0 then
+				dropIn(data.model, function()
+					land()
+					ClientState.Juice:Fire("Shake", { amp = 0.08, dur = 0.1 })
+				end)
+			else
+				land()
+			end
 		elseif name == "Overclock" then
 			UI.sound(Theme.Sounds.lootRise, 1.4, 0.35)
 			ClientState.Juice:Fire("Shake", { amp = 0.1, dur = 0.12 })

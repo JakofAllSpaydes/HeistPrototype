@@ -52,7 +52,6 @@ local Queue = {}
 local zones: { Zone } = {}
 local zoneOf: { [Player]: Zone } = {} -- the pad a player is standing on
 local lastSent: { [Player]: string } = {}
-local BLUE = Color3.fromHex("4D9FE8")
 local GOLD = Color3.fromHex("E8B64C")
 local TEXT = Color3.fromHex("F2E6C8")
 local GREY = Color3.fromHex("9BA0A8")
@@ -121,24 +120,17 @@ local function buildBoard(z: Zone)
 	gui.Name = "QueueBoard"
 	gui.Adornee = anchor
 	gui.AlwaysOnTop = false
-	gui.Size = UDim2.fromScale(Config.PadBoardWidth, Config.PadBoardWidth * 0.275) -- studs (Round 20q: smaller)
+	-- Round 30d: floating text (no panel): wider and taller so the words read from across the hall.
+	gui.Size = UDim2.fromScale(Config.PadBoardWidth, Config.PadBoardWidth * 0.42) -- studs
 	gui.StudsOffset = Vector3.new(0, if anchor == z.room.pad then Config.PadBoardLift else 0, 0)
 	gui.MaxDistance = 140
 	gui.LightInfluence = 0
 	gui.Parent = anchor
 	local frame = Instance.new("Frame")
-	frame.BackgroundColor3 = DARK
-	frame.BackgroundTransparency = 0.1
+	frame.BackgroundTransparency = 1
 	frame.BorderSizePixel = 0
 	frame.Size = UDim2.fromScale(1, 1)
 	frame.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.04, 0)
-	corner.Parent = frame
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = BLUE
-	stroke.Thickness = 3
-	stroke.Parent = frame
 	local function label(y: number, h: number, size: number, color: Color3): TextLabel
 		local l = Instance.new("TextLabel")
 		l.BackgroundTransparency = 1
@@ -152,13 +144,19 @@ local function buildBoard(z: Zone)
 		local c = Instance.new("UITextSizeConstraint")
 		c.MaxTextSize = size
 		c.Parent = l
+		-- A heavy dark outline so the words stand on their own against the hall.
+		local outline = Instance.new("UIStroke")
+		outline.Color = DARK
+		outline.Thickness = 3
+		outline.Transparency = 0.05
+		outline.Parent = l
 		return l
 	end
-	local title = label(0.04, 0.3, 40, TEXT)
+	local title = label(0, 0.46, 160, GOLD)
 	local slotRow = Instance.new("Frame")
 	slotRow.BackgroundTransparency = 1
-	slotRow.Position = UDim2.fromScale(0, 0.36)
-	slotRow.Size = UDim2.fromScale(1, 0.24)
+	slotRow.Position = UDim2.fromScale(0, 0.48)
+	slotRow.Size = UDim2.fromScale(1, 0.16)
 	slotRow.Parent = frame
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -183,8 +181,8 @@ local function buildBoard(z: Zone)
 		r.Parent = s
 		slots[i] = s
 	end
-	local status = label(0.62, 0.22, 30, GOLD)
-	local toast = label(0.82, 0.16, 20, Color3.fromHex("8FE3A1"))
+	local status = label(0.64, 0.22, 80, TEXT)
+	local toast = label(0.86, 0.14, 40, Color3.fromHex("8FE3A1"))
 	z.board = { gui = gui, title = title, slots = slots, status = status, toast = toast }
 end
 
@@ -200,16 +198,18 @@ local function paintBoard(z: Zone)
 	end
 	local s = z.settings
 	if z.phase == "idle" or z.phase == "creating" then
-		b.title.Text = "PAD " .. z.index
-		b.status.Text = if z.phase == "creating" then "SETTING UP A MATCH…" else "WALK IN TO CREATE A MATCH"
-		b.status.TextColor3 = GREY
+		-- Round 30d: the pad reads as the way into a run, its crew count under it (no pad numbers).
+		b.title.Text = Config.PadBoardTitle
+		b.status.Text = if z.phase == "creating"
+			then "SETTING UP A MATCH…"
+			else string.format("0/%d CREW", Config.MaxPartySize)
+		b.status.TextColor3 = if z.phase == "creating" then GREY else TEXT
 		for _, slot in b.slots do
 			slot.Visible = false
 		end
 		return
 	end
-	b.title.Text =
-		string.upper(string.format("PAD %d · %s · %s", z.index, mapName(s.mapId), diffName(s.difficultyId)))
+	b.title.Text = string.upper(string.format("%s · %s", mapName(s.mapId), diffName(s.difficultyId)))
 	for i, slot in b.slots do
 		slot.Visible = i <= s.partySize
 		local filled = i <= #z.members
@@ -229,7 +229,7 @@ local function paintBoard(z: Zone)
 		b.status.TextColor3 = RED
 	else
 		local left = math.max(0, math.ceil(z.startsAt - now()))
-		b.status.Text = string.format("STARTING IN %d · %d / %d", left, #z.members, s.partySize)
+		b.status.Text = string.format("STARTING IN %d · %d/%d CREW", left, #z.members, s.partySize)
 		b.status.TextColor3 = GOLD
 	end
 end
@@ -442,7 +442,7 @@ local function tryJoin(z: Zone, player: Player)
 		return
 	end
 	if #z.members >= z.settings.partySize then
-		Remotes.Juice:FireClient(player, "QueueToast", { text = string.format("PAD %d · PARTY FULL", z.index) })
+		Remotes.Juice:FireClient(player, "QueueToast", { text = "PARTY FULL" })
 		stepOut(z, player)
 		return
 	end
@@ -453,13 +453,7 @@ local function tryJoin(z: Zone, player: Player)
 	paintBoard(z)
 	memberToast(
 		z,
-		string.format(
-			"%s JOINED THE PARTY · PAD %d (%d/%d)",
-			string.upper(player.Name),
-			z.index,
-			#z.members,
-			z.settings.partySize
-		)
+		string.format("%s JOINED THE CREW (%d/%d)", string.upper(player.Name), #z.members, z.settings.partySize)
 	)
 	sendMembers(z)
 	Log.event("Queue", "pad %d: %s joined (%d/%d)", z.index, player.Name, #z.members, z.settings.partySize)
@@ -504,11 +498,7 @@ local function onEnter(z: Zone, player: Player)
 	end
 	local other = partyOf(player)
 	if other and other ~= z then
-		Remotes.Juice:FireClient(
-			player,
-			"QueueToast",
-			{ text = string.format("YOU'RE IN THE PAD %d PARTY", other.index) }
-		)
+		Remotes.Juice:FireClient(player, "QueueToast", { text = "YOU'RE ALREADY IN A CREW" })
 		stepOut(z, player)
 		return
 	end

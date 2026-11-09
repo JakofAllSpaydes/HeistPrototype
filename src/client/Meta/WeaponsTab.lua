@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Wraps = require(Shared:WaitForChild("Wraps"))
-local Prices = require(Shared:WaitForChild("Prices"))
 local Rarity = require(Shared:WaitForChild("Rarity"))
 local Config = require(Shared:WaitForChild("Config"))
 local MasteryCopy = require(Shared:WaitForChild("MasteryCopy"))
@@ -96,7 +95,8 @@ local function masteryXp(profile: any, id: string): number
 	return if m then (tonumber(m.xp) or 0) else 0
 end
 
--- Shop wraps are owned once for every gun; a mastery wrap is owned on the gun whose mastery tier reached it.
+-- Round 30d: shop wraps are owned per gun (Wraps.owns); a mastery wrap is owned on the gun whose mastery tier
+-- reached it; pass and bundle wraps are owned once for every gun.
 local function wrapOwnedOn(profile: any, wrapId: string, weaponId: string): boolean
 	if not profile then
 		return false
@@ -105,7 +105,7 @@ local function wrapOwnedOn(profile: any, wrapId: string, weaponId: string): bool
 	if mt then
 		return MasteryCopy.weaponTier(masteryXp(profile, weaponId)) >= mt
 	end
-	return profile.wraps.owned[wrapId] == true
+	return Wraps.owns(profile, wrapId, weaponId)
 end
 
 -- The wrap applied to an owned gun (its model icon wears it).
@@ -651,7 +651,7 @@ local function renderCustomize(scene: any)
 				then nil
 				elseif mt then "MASTERY " .. MasteryCopy.Roman[mt]
 				elseif wrap.saleType ~= "Direct" then string.upper(wrap.saleType)
-				else MetaUI.fmtGold(Prices.wrap),
+				else MetaUI.fmtGold(Wraps.priceFor(w.rarity)),
 			wrapPreview == wrap.id,
 			applied == wrap.id,
 			if mt then "Mastery" elseif wrap.saleType ~= "Direct" then wrap.saleType else nil
@@ -715,7 +715,7 @@ local function renderCustomize(scene: any)
 		elseif not isOwned and pw.saleType ~= "Direct" then
 			MetaUI.sourceButton(scene, action, 1, "wrap", pw.id, pw.saleType)
 		elseif not isOwned then
-			MetaUI.button(action, 1, "BUY - " .. MetaUI.fmtGold(Prices.wrap), "green", function()
+			MetaUI.button(action, 1, "BUY - " .. MetaUI.fmtGold(Wraps.priceFor(w.rarity)), "green", function()
 				local r = scene.request("buyWrap", { wrapId = pw.id, weaponId = w.id })
 				if r.ok then
 					scene.preview.commit()

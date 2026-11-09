@@ -10,7 +10,8 @@ local BoostDefs = require(script.Parent.BoostDefs)
 
 -- kind: gold | tokens | crate (id = crate id, amount = opens) | weapon | mask | wrap | emote | class |
 -- boost (id = boost id, sec) | mastery (amount: XP on the starter gun and the equipped class) | xp | passxp
-export type Reward = { kind: string, id: string?, amount: number?, sec: number? }
+-- Round 30d: `on` = the gun a per-gun shop wrap is for (the daily crate names it).
+export type Reward = { kind: string, id: string?, amount: number?, sec: number?, on: string? }
 
 local Rewards = {}
 
@@ -61,6 +62,11 @@ function Rewards.name(r: Reward): string
 		return if m then string.upper(m.name) else id
 	elseif k == "wrap" then
 		local w = Wraps.ById[id]
+		-- Round 30d: a per-gun wrap names its gun (CRIMSON · AK-47).
+		local gun = r.on and Weapons.ById[r.on]
+		if w and gun then
+			return string.upper(w.name) .. " · " .. string.upper(gun.displayName)
+		end
 		return if w then string.upper(w.name) .. " WRAP" else id
 	elseif k == "emote" then
 		local e = Emotes.ById[id]
@@ -146,7 +152,7 @@ function Rewards.owned(profile: any, r: Reward): boolean
 	elseif r.kind == "mask" then
 		return profile.masks ~= nil and profile.masks.owned[id] == true
 	elseif r.kind == "wrap" then
-		return profile.wraps ~= nil and profile.wraps.owned[id] == true
+		return Wraps.owns(profile, id, r.on) -- Round 30d: per gun for shop wraps
 	elseif r.kind == "emote" then
 		return profile.emotes ~= nil and profile.emotes.owned[id] == true
 	elseif r.kind == "class" then

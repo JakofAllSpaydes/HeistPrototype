@@ -508,7 +508,7 @@ end
 -- The icon for a reward, or nil for kinds that keep their drawn art (currencies, tokens, boosts, badges ...).
 function ModelIcon.item(
 	parent: Instance?,
-	r: { kind: string, id: string? },
+	r: { kind: string, id: string?, on: string? },
 	size: number | UDim2,
 	opts: Opts?
 ): ViewportFrame?
@@ -521,7 +521,13 @@ function ModelIcon.item(
 	elseif r.kind == "mask" then
 		return ModelIcon.mask(parent, id, size, opts)
 	end
-	return ModelIcon.wrap(parent, id, size, opts)
+	-- Round 30d: a per-gun wrap shows on the gun it is for.
+	local o: Opts = opts or {}
+	if r.on and not o.weaponId then
+		o = table.clone(o)
+		o.weaponId = r.on
+	end
+	return ModelIcon.wrap(parent, id, size, o)
 end
 
 return ModelIcon
